@@ -1,0 +1,213 @@
+#include <linux/netfilter.h>
+#include <linux/dcache.h>
+#include <linux/skbuff.h>
+#include <linux/types.h>
+#include <net/tcp.h>
+#include <net/udp.h>
+#include <linux/ip.h>
+
+struct xt_action_param {
+	union {
+		const struct xt_match *match;
+		const struct xt_target *target;
+	};
+	union {
+		const void *matchinfo, *targinfo;
+	};
+	const struct nf_hook_state *state;
+	int fragoff;
+	unsigned int thoff;
+	bool hotdrop;
+};
+
+struct nft_pktinfo {
+	struct sk_buff			*skb;
+	bool				tprot_set;
+	u8				tprot;
+	struct xt_action_param xt;
+};
+
+struct nft_expr {
+	const struct nft_expr_ops *ops;
+	unsigned char data[];
+};
+
+struct nft_rule {
+	struct list_head list;
+	u64 handle : 42, genmask : 2, dlen : 12, udata : 1;
+	unsigned char data[]
+		__attribute__((aligned(__alignof__(struct nft_expr))));
+};
+
+struct nft_table {
+	struct list_head list;
+	struct rhltable chains_ht;
+	struct list_head chains;
+	struct list_head sets;
+	struct list_head objects;
+	struct list_head flowtables;
+	u64 hgenerator;
+	u64 handle;
+	u32 use;
+	u16 family : 6, flags : 8, genmask : 2;
+	char *name;
+};
+
+struct nft_chain {
+	struct nft_rule *__rcu *rules_gen_0;
+	struct nft_rule *__rcu *rules_gen_1;
+	struct list_head rules;
+	struct list_head list;
+	struct rhlist_head rhlhead;
+	struct nft_table *table;
+	u64 handle;
+	u32 use;
+	u8 flags : 6, genmask : 2;
+	char *name;
+
+	/* Only used during control plane commit phase: */
+	struct nft_rule **rules_next;
+};
+
+BEGIN {
+    @verdict_code_str[-1] = "NFT_CONTINUE";
+    @verdict_code_str[-2] = "NFT_BREAK";
+    @verdict_code_str[-3] = "NFT_JUMP";
+    @verdict_code_str[-4] = "NFT_GOTO";
+    @verdict_code_str[-5] = "NFT_RETURN";
+    @verdict_code_str[0] = "NF_DROP";
+    @verdict_code_str[1] = "NF_ACCEPT";
+    @verdict_code_str[2] = "NF_STOLEN";
+    @verdict_code_str[3] = "NF_QUEUE";
+    @verdict_code_str[4] = "NF_REPEAT";
+    @verdict_code_str[5] = "NF_STOP";
+}
+
+END {
+    clear(@verdict_code_str);
+}
+
+// 这是nft_do_chain入口的kprobe
+kprobe:nft_do_chain
+{
+    $nft_pkginfo = (struct nft_pktinfo*)arg0;
+    $nft_chain = (struct nft_chain*)arg1;
+    $net = (struct net*)($nft_pkginfo->xt.state->net);
+
+    // netfilter信息
+    @curr_table_name = $nft_chain->table->name;
+    @curr_chain_name = $nft_chain->name;
+
+    // skb hash值
+    $skb_hash = $nft_pkginfo->skb->hash;
+
+    // ip信息
+    $iph = ((struct iphdr *) ($nft_pkginfo->skb->head + $nft_pkginfo->skb->network_header)); // https://elixir.bootlin.com/linux/v4.9/source/include/uapi/linux/ip.h#L85
+	$s_addr = ntop($iph->saddr);
+	$d_addr = ntop($iph->daddr);
+
+    // 协议类型 TCP UDP
+    $proto = $iph->protocol;
+    $ipv = $iph->version;
+    // ip包唯一标识
+    $ip_id = (uint16)($iph->id << 8) | ($iph->id >> 8);
+
+    $protocol_name = "PROTO_UNKNOWN";
+    // 端口
+    $s_port = -1;
+    $d_port = -1;
+
+    if($proto == IPPROTO_TCP) {
+        $protocol_name = "TCP";
+        $tcp_h = (struct tcphdr *)($nft_pkginfo->skb->head + $nft_pkginfo->skb->transport_header);    // https://elixir.bootlin.com/linux/v4.9/source/include/uapi/linux/tcp.h#L24
+        $tcp_pkg_size = (($iph->tot_len >> 8) | (($iph->tot_len & 0xff) << 8)) - ($tcp_h->doff * 4) - ($iph->ihl * 4);
+
+        // __be16 be开头是大端，所以要交换变为小端，正确显示 source dest
+        $s_port = (uint16)($tcp_h->source << 8) | ($tcp_h->source >> 8);
+        $d_port = (uint16)($tcp_h->dest << 8) | ($tcp_h->dest >> 8);
+
+    } else if($proto == IPPROTO_UDP) {
+        $protocol_name = "UDP";
+
+        $udp_h = (struct udphdr *)($nft_pkginfo->skb->head + $nft_pkginfo->skb->transport_header);
+        $s_port = (uint16)($udp_h->source << 8) | ($udp_h->source >> 8);
+        $d_port = (uint16)($udp_h->dest << 8) | ($udp_h->dest >> 8);
+    } else if($proto == IPPROTO_ICMP) {
+        $protocol_name = "ICMP";
+    }
+
+    // iptables表，例如mangle、filter、nat
+    if(($proto == IPPROTO_TCP || $proto == IPPROTO_UDP) && ($d_port == 9080 || $d_port == 80 || $s_port == 9080 || $s_port == 80)) {
+        printf("nft_do_chain <=====\n");
+
+        @skb[tid] = 1;
+        printf("\tpkg protocol:'%s' skb_hash:[%u] ip_id:[%d] %s(%u):%d --> %s(%u):%d\n", $protocol_name, $skb_hash, $ip_id, $s_addr, $iph->saddr, $s_port, $d_addr, $iph->daddr, $d_port);
+        printf("\tenter nft_table: '%s', if_index: %d, genbit: %d\n", str(@curr_table_name), $net->ifindex, $net->nft.gencursor);
+    }
+}
+
+// get rule info
+kprobe:nft_do_chain+420 {
+    if(@skb[tid] == 1) {
+
+    }
+}
+
+kprobe:nft_do_chain+675 {
+    if(@skb[tid] == 1) {
+
+    }
+}
+
+// switch (regs.verdict.code) {
+kprobe:nft_do_chain+652 {
+    if(@skb[tid] == 1) {
+        $verdict_code = (int32)reg("ax");
+        if($verdict_code == -1 || $verdict_code == -2) {
+            printf("\t\tin chain: '%s' rule expr ops eval code: '%s'\n", str(@curr_chain_name), @verdict_code_str[$verdict_code]);
+        } else {
+            printf("\t\tin chain: '%s' rule expr ops eval code: '%s', break loop rules\n", str(@curr_chain_name), @verdict_code_str[$verdict_code]);
+        }
+    }
+}
+
+// 224			goto do_chain;
+kprobe:nft_do_chain+794 {
+    if(@skb[tid] == 1) {
+        $nft_chain = (struct nft_chain*)reg("ax"); // 0xffffffffc0ab939a <+794>:	mov    0x18(%rsp),%rax
+        $to_chain = $nft_chain->name;
+
+        printf("\t\tGOTO or JUMP, chain from '%s' ===> '%s'\n\n", str(@curr_chain_name), str($to_chain));
+        @curr_chain_name = $to_chain
+    }
+}
+
+
+kprobe:nft_do_chain+1162 {
+    if(@skb[tid] == 1) {
+        printf("\tchain: '%s' rules expr ops eval code in NF_ACCEPT,NF_DROP,NF_QUEUE,NF_STOLEN\n", str(@curr_chain_name));
+    }
+}
+
+kretprobe:nft_do_chain {
+    if(@skb[tid] == 1) {
+
+        printf("\texit nft_table: '%s', return code '%s'\n", str(@curr_table_name), @verdict_code_str[retval]);
+        /*
+        if(retval == 0) {
+            printf("nft_do_chain =====> NF_DROP\n");
+        } else if (retval == 1) {
+            printf("nft_do_chain =====> NF_ACCEPT\n");
+        } else if (retval == 2) {
+            printf("nft_do_chain =====> NF_STOLEN\n");
+        } else if (retval == 3) {
+            printf("nft_do_chain =====> NF_QUEUE\n");
+        } else if (retval == 4) {
+            printf("nft_do_chain =====> NF_REPEAT\n");
+        } else if (retval == 5) {
+            printf("nft_do_chain =====> NF_STOP\n");
+        }*/
+        delete(@skb[tid]);
+        printf("nft_do_chain =====>\n\n");
+    }
+}
