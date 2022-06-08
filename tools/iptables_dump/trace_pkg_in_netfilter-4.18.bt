@@ -199,7 +199,7 @@ kprobe:nft_do_chain+652 {
     if(@skb[tid] == 1) {
         $p_nft_rule = *(struct nft_rule**)reg("r13");
         // TODO: 获取expr失败
-        $p_nft_expr = (struct nft_expr*)($p_nft_rule->data);
+        // $p_nft_expr = (struct nft_expr*)($p_nft_rule->data);
 
         $verdict_code = (int32)reg("ax");
 
@@ -219,11 +219,19 @@ kprobe:nft_do_chain+794 {
         $nft_chain = (struct nft_chain*)reg("ax"); // 0xffffffffc0ab939a <+794>:	mov    0x18(%rsp),%rax
         $to_chain = $nft_chain->name;
 
-        printf("\t\tGOTO or JUMP, chain from '%s' ===> '%s'\n\n", str(@curr_chain_name), str($to_chain));
+        printf("\t\tGOTO or JUMP IN, chain from '%s' ===> '%s'\n\n", str(@curr_chain_name), str($to_chain));
         @curr_chain_name = $to_chain
     }
 }
 
+kprobe:nft_do_chain+946 {
+    if(@skb[tid] == 1) {
+        $nft_chain = (struct nft_chain*)reg("di");
+        $to_chain = $nft_chain->name;
+        printf("\t\tGOTO or JUMP OUT, chain from '%s' ===> '%s'\n\n", str(@curr_chain_name), str($to_chain));
+        @curr_chain_name = $to_chain
+    }
+}
 
 kprobe:nft_do_chain+1162 {
     if(@skb[tid] == 1) {
