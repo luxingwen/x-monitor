@@ -390,9 +390,9 @@ int32_t get_process_smaps_info(const char *smaps_path, struct process_smaps_info
     return 0;
 }
 
-static void __get_all_childpids(pid_t ppid, pid_t **child_pids, size_t child_pids_count) {
+static void __get_all_childpids(pid_t ppid, struct process_descendant_pids *pd_pids) {
     int32_t  read_size = 0;
-    int32_t  read_pids_count = 0;
+    int32_t  child_pids_size = 0;
     char     proc_children_file[XM_PROC_CHILDREN_FILENAME_SIZE] = { 0 };
     char     proc_children_line[XM_PROC_CHILDREN_LINE_SIZE] = { 0 };
     uint64_t children_pids[XM_CHILDPID_COUNT_MAX] = { 0 };
@@ -403,39 +403,36 @@ static void __get_all_childpids(pid_t ppid, pid_t **child_pids, size_t child_pid
 
     read_size = read_file(proc_children_file, proc_children_line, XM_PROC_CHILDREN_LINE_SIZE - 1);
     if (likely(read_size > 0)) {
-        read_pids_count =
+        child_pids_size =
             str_split_to_nums(proc_children_line, " ", children_pids, XM_CHILDPID_COUNT_MAX);
 
-        if (likely(read_pids_count > 0)) {
-            *child_pids =
-                (pid_t *)realloc(*child_pids, sizeof(pid_t) * (child_pids_count + read_pids_count));
-            if (unlikely(!*child_pids)) {
+        if (likely(child_pids_size > 0)) {
+            pd_pids->pids = (pid_t *)realloc(
+                pd_pids->pids, sizeof(pid_t) * (pd_pids->pids_size + child_pids_size));
+            if (unlikely(!pd_pids->pids)) {
                 error("realloc child_pids failed");
                 return;
             }
-            // 当前这一层
-            for (int32_t i = 0; i < read_pids_count; i++) {
-                (*child_pids)[child_pids_count + i] = (pid_t)children_pids[i];
+            // child level
+            for (int32_t i = 0; i < child_pids_size; i++) {
+                pd_pids->pids[pd_pids->pids_size] = (pid_t)children_pids[i];
+                pd_pids->pids_size++;
             }
 
-            child_pids_count += read_pids_count;
-
-            // 下一层
-            for (int32_t i = 0; i < read_pids_count; i++) {
-                __get_all_childpids(children_pids[i], child_pids, child_pids_count);
+            // grandson level
+            for (int32_t i = 0; i < child_pids_size; i++) {
+                __get_all_childpids(children_pids[i], pd_pids);
             }
         }
     }
 }
 
-size_t get_all_childpids(pid_t ppid, pid_t **child_pids) {
-    size_t child_pids_count = 0;
-
-    if (unlikely(NULL == child_pids || ppid < 0)) {
-        return 0;
+int32_t get_process_descendant_pids(pid_t pid, struct process_descendant_pids *pd_pids) {
+    if (unlikely(NULL == pd_pids || pid < 0)) {
+        return -1;
     }
 
-    __get_all_childpids(ppid, child_pids, child_pids_count);
+    __get_all_childpids(pid, pd_pids);
 
-    return child_pids_count;
+    return pd_pids->pids_size;
 }

@@ -55,7 +55,13 @@ struct process_smaps_info {
 
 extern int32_t get_process_smaps_info(const char *smaps_path, struct process_smaps_info *info);
 
-extern size_t get_all_childpids(pid_t ppid, pid_t **child_pids);
+struct process_descendant_pids {
+    pid_t *pids;
+    size_t pids_size;
+};
+
+// 获得进程所有的后代进程pid
+extern int32_t get_process_descendant_pids(pid_t pid, struct process_descendant_pids *pd_pids);
 
 #ifdef __cplusplus
 }

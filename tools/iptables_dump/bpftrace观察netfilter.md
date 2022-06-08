@@ -190,79 +190,46 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 
 ### 使用bpftrace观察nft_do_chain
 
-1. 使用podman构造验证环境，启动连个容器，nat端口不同。
-   
-   ```
-   [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 8080:80 nginx
-   63185f11e26b8a1075b8e2403b1819a40288780acca1ab9453fa8c1417ff572b
-   [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 9080:80 nginx
-   bf5636ceef9bf16a655e47b40e3f5d7cb5044da6caea2650b288d927f31ef046
-   ```
+1. 加载nft_do_chain函数对应的模块，读取符号表
 
-2. 加载nft_do_chain函数对应的模块，读取符号表
-   
    ```
    add-symbol-file /lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko 0xffffffffc0a24000
    ```
 
-3. disassemble，显示代码和指令的对应。使用/s或/m，前者更详细，后者看起来更清晰。
-   
-   ```
-   (gdb) disassemble /s nft_do_chain
-   Dump of assembler code for function nft_do_chain:
-   net/netfilter/nf_tables_core.c:
-   152    {
-      0xffffffffc0a24080 <+0>:    callq  0xffffffffc0a24085 <nft_do_chain+5>
-      0xffffffffc0a24085 <+5>:    push   %rbp
-      0xffffffffc0a24086 <+6>:    mov    %rsp,%rbp
-      0xffffffffc0a24089 <+9>:    push   %r15
-      0xffffffffc0a2408b <+11>:    push   %r14
-      0xffffffffc0a2408d <+13>:    push   %r13
-      0xffffffffc0a2408f <+15>:    push   %r12
-      0xffffffffc0a24091 <+17>:    mov    %rdi,%r12
-      0xffffffffc0a24094 <+20>:    push   %rbx
-      0xffffffffc0a24095 <+21>:    and    $0xfffffffffffffff0,%rsp
-      0xffffffffc0a24099 <+25>:    sub    $0x1b0,%rsp
-      0xffffffffc0a240a0 <+32>:    mov    %rsi,0x8(%rsp)
-      0xffffffffc0a240a5 <+37>:    mov    %gs:0x28,%rax
-      0xffffffffc0a240ae <+46>:    mov    %rax,0x1a8(%rsp)
-      0xffffffffc0a240b6 <+54>:    xor    %eax,%eax
-   
-   ./include/net/netfilter/nf_tables.h:
-   31        return pkt->xt.state->net;
-      0xffffffffc0a240b8 <+56>:    mov    0x20(%rdi),%rax
-      0xffffffffc0a240bc <+60>:    mov    0x20(%rax),%rax
-   
-   ./include/linux/compiler.h:
-   276        __READ_ONCE_SIZE;
-      0xffffffffc0a240c0 <+64>:    movb   $0x0,0x4d(%rsp)
-      0xffffffffc0a240c5 <+69>:    movzbl 0x12ec(%rax),%eax
-      0xffffffffc0a240cc <+76>:    mov    %al,0x13(%rsp)
-   
-   ./arch/x86/include/asm/jump_label.h:
-   38        asm_volatile_goto("1:"
-      0xffffffffc0a240d0 <+80>:    nopl   0x0(%rax,%rax,1)
-   
-   net/netfilter/nf_tables_core.c:
-   168        if (genbit)
-      0xffffffffc0a240d5 <+85>:    mov    0x8(%rsp),%rax
-      0xffffffffc0a240da <+90>:    cmpb   $0x0,0x13(%rsp)
-      0xffffffffc0a240df <+95>:    movl   $0x0,0x14(%rsp)
-      0xffffffffc0a240e7 <+103>:    mov    %rax,0x18(%rsp)
-      0xffffffffc0a240ec <+108>:    mov    0x18(%rsp),%rax
-      0xffffffffc0a240f1 <+113>:    je     0xffffffffc0a243a5 <nft_do_chain+805>
-   
-   ```
+2. disassemble，显示代码和指令的对应。使用/s或/m，前者更详细，后者看起来更清晰。
 
-4. 使用kprobe偏移来观察nft_do_chain
-   
+   [nft_do_chain_kernel-4.18.disa_s](./nft_do_chain_kernel-4.18.disa_s)
+
+   [nft_do_chain_kernel-4.18.disa_m](nft_do_chain_kernel-4.18.disa_m)
+
+3. 运行脚本，使用kprobe偏移来观察nft_do_chain
+
    ```
    BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter.bt
    ```
 
-5.  bpftrace观察的寄存器名
-   
-   [bpftrace/x86_64.cpp at master · ajor/bpftrace (github.com)](https://github.com/ajor/bpftrace/blob/master/src/arch/x86_64.cpp)
+4. 测试
+
+   - podman启动nginx容器。本地nat映射端口不同。
+
+     ```
+     [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 8080:80 nginx
+     63185f11e26b8a1075b8e2403b1819a40288780acca1ab9453fa8c1417ff572b
+     [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 9080:80 nginx
+     bf5636ceef9bf16a655e47b40e3f5d7cb5044da6caea2650b288d927f31ef046
+     ```
+
+   - 普通访问测试
+
+     ```
+     [root@localhost ~]# curl 127.0.0.1:9080
+     ```
+
+   - iptables drop测试
+
+     ```
+     iptables -t filter -I OUTPUT 1 -m tcp --proto tcp --dst 127.0.0.1/32 --dport 9080 -j DROP
+     ```
 
 ### 资料
 
@@ -273,3 +240,5 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 - [bpftrace/reference_guide.md at master · iovisor/bpftrace (github.com)](https://github.com/iovisor/bpftrace/blob/master/docs/reference_guide.md#1-kprobekretprobe-dynamic-tracing-kernel-level)
 
 - [Kernel analysis with bpftrace [LWN.net\]](https://lwn.net/Articles/793749/)
+
+- bpftrace观察的寄存器名：[bpftrace/x86_64.cpp at master · ajor/bpftrace (github.com)](https://github.com/ajor/bpftrace/blob/master/src/arch/x86_64.cpp)

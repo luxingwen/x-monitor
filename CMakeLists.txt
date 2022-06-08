@@ -113,6 +113,7 @@ add_subdirectory(cli/prom_client_test)
 add_subdirectory(cli/process_stat_test)
 add_subdirectory(cli/regex_cli)
 add_subdirectory(cli/config_test)
+add_subdirectory(cli/pdpids_test)
 
 add_subdirectory(cli/ebpf/cachestat_cli)
 #add_subdirectory(cli/ebpf/perf_event_stack_cli)

@@ -316,7 +316,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
     char                      cmd_line[XM_CMD_LINE_MAX] = { 0 };
 
     // 读取进程的命令行
-    ret = read_proc_pid_cmdline(pid, cmd_line, XM_CMD_LINE_MAX);
+    ret = read_proc_pid_cmdline(pid, cmd_line, XM_CMD_LINE_MAX - 1);
     if (unlikely(ret)) {
         // error("[PLUGIN_APPSTATUS] read pid:%d cmdline failed", pid);
         return -1;
@@ -379,14 +379,15 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
 
         // 匹配成功，判断rule的assign_type
         if (rule->assign_type == APP_BIND_PROCESSTREE) {
-            pid_t *child_pids = NULL;
-            size_t child_pids_count = get_all_childpids(pid, &child_pids);
+            struct process_descendant_pids pd_pids = { NULL, 0 };
 
-            if (likely(child_pids_count > 0 && child_pids != NULL)) {
-                for (size_t i = 0; i < child_pids_count; i++) {
-                    __get_app_assoc_process(as, child_pids[i], app_pid, rule->app_name);
+            if (likely(-1 != get_process_descendant_pids(pid, &pd_pids))) {
+                for (size_t p_i = 0; p_i < pd_pids.pids_size; p_i++) {
+                    __get_app_assoc_process(as, pd_pids.pids[p_i], app_pid, rule->app_name);
                 }
-                free(child_pids);
+                free(pd_pids.pids);
+            } else {
+                error("[PLUGIN_APPSTATUS] get process descendant pids for pid %d failed", pid);
             }
         }
     }
