@@ -169,10 +169,10 @@ int32_t pluginsd_routine_init() {
     __pluginsd.scan_frequency = appconfig_get_int("pluginsd.check_for_new_plugins_every", 5);
     if (__pluginsd.scan_frequency <= 0) {
         __pluginsd.scan_frequency = 1;
-    } else if (__pluginsd.scan_frequency > DEFAULT_SCAN_MAX_FREQUENCY) {
-        __pluginsd.scan_frequency = DEFAULT_SCAN_MAX_FREQUENCY;
+    } else if (__pluginsd.scan_frequency > PLUGINSD_DEFAULT_SCAN_MAX_FREQUENCY) {
+        __pluginsd.scan_frequency = PLUGINSD_DEFAULT_SCAN_MAX_FREQUENCY;
         warn("the pluginsd.check_for_new_plugins_every: %d is too large, set to %d",
-             __pluginsd.scan_frequency, DEFAULT_SCAN_MAX_FREQUENCY);
+             __pluginsd.scan_frequency, PLUGINSD_DEFAULT_SCAN_MAX_FREQUENCY);
     }
     debug("pluginsd.check_for_new_plugins_every: %d", __pluginsd.scan_frequency);
 
