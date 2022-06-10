@@ -110,6 +110,14 @@ struct nft_chain {
 	struct nft_rule **rules_next;
 };
 
+enum nft_verdicts {
+	NFT_CONTINUE	= -1,
+	NFT_BREAK	= -2,
+	NFT_JUMP	= -3,
+	NFT_GOTO	= -4,
+	NFT_RETURN	= -5,
+};
+
 BEGIN {
     @verdict_code_str[-1] = "NFT_CONTINUE";
     @verdict_code_str[-2] = "NFT_BREAK";
@@ -139,6 +147,10 @@ kprobe:nft_do_chain
     @curr_table_name = $nft_chain->table->name;
     @curr_chain_name = $nft_chain->name;
 
+    if(strncmp("firewalld", str(@curr_table_name), 9) == 0 || strncmp("mangle", str(@curr_table_name), 6) == 0) {
+        return;
+    }
+
     // skb hash值
     $skb_hash = $nft_pkginfo->skb->hash;
 
@@ -151,7 +163,7 @@ kprobe:nft_do_chain
     $proto = $iph->protocol;
     $ipv = $iph->version;
     // ip包唯一标识
-    $ip_id = (uint16)($iph->id << 8) | ($iph->id >> 8);
+    @ip_pkg_id = (uint16)($iph->id << 8) | ($iph->id >> 8);
 
     $protocol_name = "PROTO_UNKNOWN";
     // 端口
@@ -178,64 +190,58 @@ kprobe:nft_do_chain
     }
 
     // iptables表，例如mangle、filter、nat
-    if(($proto == IPPROTO_TCP || $proto == IPPROTO_UDP) && ($d_port == 9080 || $d_port == 80 || $s_port == 9080 || $s_port == 80)) {
+    if(($proto == IPPROTO_TCP || $proto == IPPROTO_UDP) && ($d_port == $1 || $d_port == $2 || $s_port == $1 || $s_port == $2)) {
         printf("nft_do_chain <=====\n");
 
         @skb[tid] = 1;
-        printf("\tpkg protocol:'%s' skb_hash:[%u] ip_id:[%d] %s(%u):%d --> %s(%u):%d\n", $protocol_name, $skb_hash, $ip_id, $s_addr, $iph->saddr, $s_port, $d_addr, $iph->daddr, $d_port);
+        printf("\tpkg protocol:'%s' skb_hash:[%u] ip_pkg_id:[%d] %s(%u):%d --> %s(%u):%d\n", $protocol_name, $skb_hash, @ip_pkg_id, $s_addr, $iph->saddr, $s_port, $d_addr, $iph->daddr, $d_port);
         printf("\tenter nft_table: '%s', if_index: %d, genbit: %d\n", str(@curr_table_name), $net->ifindex, $net->nft.gencursor);
     }
 }
-
-/* get rule info
-kprobe:nft_do_chain+675 {
-    if(@skb[tid] == 1) {
-
-    }
-}*/
 
 // switch (regs.verdict.code) {
 kprobe:nft_do_chain+652 {
     if(@skb[tid] == 1) {
         $p_nft_rule = *(struct nft_rule**)reg("r13");
-        // TODO: 获取expr失败
-        // $p_nft_expr = (struct nft_expr*)($p_nft_rule->data);
-
+        @curr_nft_rule_handle = $p_nft_rule->handle;
         $verdict_code = (int32)reg("ax");
 
-        printf("\t\tchain: '%s' ntf_rule.handle: %llu\n", str(@curr_chain_name), $p_nft_rule->handle);
-
-        if($verdict_code == -1 || $verdict_code == -2) {
-            printf("\t\tin chain: '%s' rule expr ops eval code: '%s'\n", str(@curr_chain_name), @verdict_code_str[$verdict_code]);
+        if($verdict_code == NFT_CONTINUE || $verdict_code == NFT_BREAK) {
+            printf("\t\tin chain: '%s' rule handle: %llu expr-ops eval code: '%s', next rule...\n", str(@curr_chain_name), @curr_nft_rule_handle, @verdict_code_str[$verdict_code]);
+            printf("\t\t-----------------------------------------------------\n");
         } else {
-            printf("\t\tin chain: '%s' rule expr ops eval code: '%s', break loop rules\n", str(@curr_chain_name), @verdict_code_str[$verdict_code]);
+            printf("\t\tin chain: '%s' rule handle: %llu expr-ops eval code: '%s', break rules\n", str(@curr_chain_name), @curr_nft_rule_handle, @verdict_code_str[$verdict_code]);
+            printf("\t\t-----------------------------------------------------\n");
         }
     }
 }
 
-// 224			goto do_chain;
+// 224			goto do_chain; JUMP IN
 kprobe:nft_do_chain+794 {
     if(@skb[tid] == 1) {
         $nft_chain = (struct nft_chain*)reg("ax"); // 0xffffffffc0ab939a <+794>:	mov    0x18(%rsp),%rax
         $to_chain = $nft_chain->name;
 
-        printf("\t\tGOTO or JUMP IN, chain from '%s' ===> '%s'\n\n", str(@curr_chain_name), str($to_chain));
-        @curr_chain_name = $to_chain
+        printf("\t\tGOTO or JUMP IN, chain from '%s' ===> '%s'\n", str(@curr_chain_name), str($to_chain));
+        printf("\t\t-----------------------------------------------------\n");
+        @curr_chain_name = $to_chain;
     }
 }
 
+// JUMP OUT
 kprobe:nft_do_chain+946 {
     if(@skb[tid] == 1) {
         $nft_chain = (struct nft_chain*)reg("di");
         $to_chain = $nft_chain->name;
-        printf("\t\tGOTO or JUMP OUT, chain from '%s' ===> '%s'\n\n", str(@curr_chain_name), str($to_chain));
-        @curr_chain_name = $to_chain
+        printf("\t\tGOTO or JUMP OUT, chain from '%s' ===> '%s'\n", str(@curr_chain_name), str($to_chain));
+        printf("\t\t-----------------------------------------------------\n");
+        @curr_chain_name = $to_chain;
     }
 }
 
 kprobe:nft_do_chain+1162 {
     if(@skb[tid] == 1) {
-        printf("\tchain: '%s' rules expr ops eval code in NF_ACCEPT,NF_DROP,NF_QUEUE,NF_STOLEN\n", str(@curr_chain_name));
+        printf("\tchain: '%s' rules expr-ops eval code in NF_ACCEPT,NF_DROP,NF_QUEUE,NF_STOLEN\n", str(@curr_chain_name));
     }
 }
 
@@ -259,5 +265,24 @@ kretprobe:nft_do_chain {
         }*/
         delete(@skb[tid]);
         printf("nft_do_chain =====>\n\n");
+    }
+}
+
+kprobe:nft_payload_eval,
+kprobe:nft_cmp_eval,
+kprobe:nft_meta_get_eval,
+kprobe:nft_lookup_eval, 
+kprobe:nft_range_eval,
+kprobe:nft_immediate_eval,
+kprobe:nft_byteorder_eval,
+kprobe:nft_dynset_eval, 
+kprobe:nft_rt_get_eval, 
+kprobe:nft_bitwise_eval {
+    if(@skb[tid] == 1) {
+        $nft_expr = (struct nft_expr*)arg0;
+        $nft_pkginfo = (struct nft_pktinfo*)arg2;  
+        $iph = ((struct iphdr *) ($nft_pkginfo->skb->head + $nft_pkginfo->skb->network_header));
+
+        printf("\t\tin chain: '%s' rule.ntf_expr eval type: '%s'\n", str(@curr_chain_name), str($nft_expr->ops->type->name));      
     }
 }

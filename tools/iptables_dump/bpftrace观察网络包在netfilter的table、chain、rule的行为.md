@@ -1,4 +1,4 @@
-# bpftrace观察netfilter
+# bpftrace观察网络包在netfilter的table、chain、rule的行为
 
 ### 获取内核函数nft_nat_do_chain的调用堆栈
 
@@ -204,8 +204,10 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 
 3. 运行脚本，使用kprobe偏移来观察nft_do_chain
 
+   指定要观察的sport、dport两个端口号
+
    ```
-   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter.bt
+   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter-4.18.bt 9070 80
    ```
 
 4. 测试
@@ -213,16 +215,52 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    - podman启动nginx容器。本地nat映射端口不同。
 
      ```
-     [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 8080:80 nginx
-     63185f11e26b8a1075b8e2403b1819a40288780acca1ab9453fa8c1417ff572b
      [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 9080:80 nginx
+     63185f11e26b8a1075b8e2403b1819a40288780acca1ab9453fa8c1417ff572b
+     [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 9070:80 nginx
      bf5636ceef9bf16a655e47b40e3f5d7cb5044da6caea2650b288d927f31ef046
      ```
 
    - 普通访问测试
 
      ```
-     [root@localhost ~]# curl 127.0.0.1:9080
+     [root@localhost ~]# curl 127.0.0.1:9070
+     ```
+
+     可以看到nat表的输出
+
+     ```
+     nft_do_chain <=====
+     	pkg protocol:'TCP' skb_hash:[1200608847] ip_pkg_id:[32521] 127.0.0.1(16777343):36848 --> 127.0.0.1(16777343):9070
+     	enter nft_table: 'nat', if_index: 7, genbit: 1
+     		in chain: 'OUTPUT' rule.ntf_expr eval type: 'immediate'
+     		in chain: 'OUTPUT' rule handle: 23 expr-ops eval code: 'NFT_JUMP', break loop rules
+     		-----------------------------------------------------
+     		GOTO or JUMP IN, chain from 'OUTPUT' ===> 'CNI-HOSTPORT-DNAT'
+     		-----------------------------------------------------
+     		in chain: 'CNI-HOSTPORT-DNAT' rule.ntf_expr eval type: 'meta'
+     		in chain: 'CNI-HOSTPORT-DNAT' rule handle: 28 expr-ops eval code: 'NFT_BREAK'
+     		-----------------------------------------------------
+     		in chain: 'CNI-HOSTPORT-DNAT' rule.ntf_expr eval type: 'meta'
+     		in chain: 'CNI-HOSTPORT-DNAT' rule.ntf_expr eval type: 'immediate'
+     		in chain: 'CNI-HOSTPORT-DNAT' rule handle: 37 expr-ops eval code: 'NFT_JUMP', break loop rules
+     		-----------------------------------------------------
+     		GOTO or JUMP IN, chain from 'CNI-HOSTPORT-DNAT' ===> 'CNI-DN-162cf53ba5c84222b475b'
+     		-----------------------------------------------------
+     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule.ntf_expr eval type: 'meta'
+     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule.ntf_expr eval type: 'meta'
+     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule.ntf_expr eval type: 'immediate'
+     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule handle: 35 expr-ops eval code: 'NFT_JUMP', break loop rules
+     		-----------------------------------------------------
+     		GOTO or JUMP IN, chain from 'CNI-DN-162cf53ba5c84222b475b' ===> 'CNI-HOSTPORT-SETMARK'
+     		-----------------------------------------------------
+     		GOTO or JUMP OUT, chain from 'CNI-HOSTPORT-SETMARK' ===> 'CNI-DN-162cf53ba5c84222b475b'
+     		-----------------------------------------------------
+     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule.ntf_expr eval type: 'meta'
+     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule handle: 36 expr-ops eval code: 'NF_ACCEPT', break loop rules
+     		-----------------------------------------------------
+     	exit nft_table: 'nat', return code 'NF_ACCEPT'
+     nft_do_chain =====>
      ```
 
    - iptables drop测试
@@ -230,6 +268,14 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
      ```
      iptables -t filter -I OUTPUT 1 -m tcp --proto tcp --dst 127.0.0.1/32 --dport 9080 -j DROP
      ```
+
+5. 从kprobe观察nft_do_chain函数看出表、链、rule的运转规则，对应函数逻辑。
+
+   1. 如果规则返回的是break和continue，就会继续执行同链的后续rule。
+   2. 如果rule返回的是accept、drop、queue、stolen，链、表都停止，函数return。不会恢复入栈链和rule。
+   3. 如果rule是jump、goto，则将当前的下一条rule和当前chain入栈，跳转到目标链继续执行1、2。
+   4. 对于jump in的chain，执行到3之后会恢复堆栈执行jump out到入栈保存的chain和rule。
+
 
 ### 资料
 

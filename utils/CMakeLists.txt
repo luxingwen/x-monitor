@@ -1,6 +1,10 @@
 # 目录下所有的源代码文件并将列表存储在XMONITOR_UTILS_SRCS中
 AUX_SOURCE_DIRECTORY(. XMONITOR_UTILS_SRCS)
 
+if ("${CMAKE_HOST_SYSTEM_VERSION}" MATCHES "3.10.*.el7.x86_64")
+    list(REMOVE_ITEM XMONITOR_UTILS_SRCS "./x_ebpf.c")
+endif()
+
 #会追加到父CMakeLists.txt的include变量中
 include_directories("${EXTRA_DIR}/include/libbpf/libbpf/include/uapi"
                     "${EXTRA_DIR}/include/libbpf/libbpf/include")

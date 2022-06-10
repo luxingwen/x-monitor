@@ -236,6 +236,8 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
                                          &additional_filter_keywords);
             config_setting_lookup_string(elem, "app_bind_process_type", &app_bind_process_type);
 
+            // TODO 判断下获取的值是否合法
+
             // 开始构造规则，从文件中过滤出appname和关键字
             __generate_filter_rules(enable, filter_sources_str, app_type_name, filter_regex_pattern,
                                     appname_match_index, additional_filter_keywords,

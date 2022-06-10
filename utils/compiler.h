@@ -18,12 +18,6 @@
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
-#if __STDC_VERSION__ < 199901L
-#define FLEXMEMB_SIZE 1
-#else
-#define FLEXMEMB_SIZE /* nothing */
-#endif
-
 // linux kernel的ARRAY_SIZE
 // macro為了預防傳入的變數是pointer而不是真正的array，背後其實花了很多心力來防範這件事，使得如果發生問題就會在編譯時期就失敗，避免了因為誤用而在run-time才發生問題的狀況。
 // /* Are two types/vars the same type (ignoring qualifiers)? */
