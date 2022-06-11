@@ -207,10 +207,10 @@ kprobe:nft_do_chain+652 {
         $verdict_code = (int32)reg("ax");
 
         if($verdict_code == NFT_CONTINUE || $verdict_code == NFT_BREAK) {
-            printf("\t\tin chain: '%s' rule handle: %llu expr-ops eval code: '%s', next rule...\n", str(@curr_chain_name), @curr_nft_rule_handle, @verdict_code_str[$verdict_code]);
+            printf("\t\tin chain: '%s' rule handle: %llu, dlen: %d, expr-ops eval code: '%s', next rule...\n", str(@curr_chain_name), @curr_nft_rule_handle, $p_nft_rule->dlen, @verdict_code_str[$verdict_code]);
             printf("\t\t-----------------------------------------------------\n");
         } else {
-            printf("\t\tin chain: '%s' rule handle: %llu expr-ops eval code: '%s', break rules\n", str(@curr_chain_name), @curr_nft_rule_handle, @verdict_code_str[$verdict_code]);
+            printf("\t\tin chain: '%s' rule handle: %llu, dlen: %d, expr-ops eval code: '%s', break rules\n", str(@curr_chain_name), @curr_nft_rule_handle, $p_nft_rule->dlen, @verdict_code_str[$verdict_code]);
             printf("\t\t-----------------------------------------------------\n");
         }
     }
@@ -271,18 +271,18 @@ kretprobe:nft_do_chain {
 kprobe:nft_payload_eval,
 kprobe:nft_cmp_eval,
 kprobe:nft_meta_get_eval,
-kprobe:nft_lookup_eval, 
+kprobe:nft_lookup_eval,
 kprobe:nft_range_eval,
 kprobe:nft_immediate_eval,
 kprobe:nft_byteorder_eval,
-kprobe:nft_dynset_eval, 
-kprobe:nft_rt_get_eval, 
+kprobe:nft_dynset_eval,
+kprobe:nft_rt_get_eval,
 kprobe:nft_bitwise_eval {
     if(@skb[tid] == 1) {
         $nft_expr = (struct nft_expr*)arg0;
-        $nft_pkginfo = (struct nft_pktinfo*)arg2;  
+        $nft_pkginfo = (struct nft_pktinfo*)arg2;
         $iph = ((struct iphdr *) ($nft_pkginfo->skb->head + $nft_pkginfo->skb->network_header));
 
-        printf("\t\tin chain: '%s' rule.ntf_expr eval type: '%s'\n", str(@curr_chain_name), str($nft_expr->ops->type->name));      
+        printf("\t\tin chain: '%s' rule.ntf_expr type: '%s'， size: %u\n", str(@curr_chain_name), str($nft_expr->ops->type->name), $nft_expr->ops->size);
     }
 }

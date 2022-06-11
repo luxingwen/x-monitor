@@ -210,6 +210,8 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter-4.18.bt 9070 80
    ```
 
+   [trace_pkg_in_netfilter-4.18.bt](trace_pkg_in_netfilter-4.18.bt)
+
 4. 测试
 
    - podman启动nginx容器。本地nat映射端口不同。
@@ -271,19 +273,6 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
      [root@localhost ~]# iptables -t nat -S
 
      ```
-     -P PREROUTING ACCEPT
-     -P INPUT ACCEPT
-     -P POSTROUTING ACCEPT
-     -P OUTPUT ACCEPT
-     -N LIBVIRT_PRT
-     -N DOCKER
-     -N CNI-HOSTPORT-SETMARK
-     -N CNI-HOSTPORT-MASQ
-     -N CNI-HOSTPORT-DNAT
-     -N CNI-fcb138bbe0a69715574a4f40
-     -N CNI-DN-fcb138bbe0a69715574a4
-     -N CNI-01a0df798eef277db5129302
-     -N CNI-DN-01a0df798eef277db5129
      -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
      -A PREROUTING -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
      -A POSTROUTING -m comment --comment "CNI portfwd requiring masquerade" -j CNI-HOSTPORT-MASQ
@@ -340,3 +329,5 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 - [Kernel analysis with bpftrace [LWN.net\]](https://lwn.net/Articles/793749/)
 
 - bpftrace观察的寄存器名：[bpftrace/x86_64.cpp at master · ajor/bpftrace (github.com)](https://github.com/ajor/bpftrace/blob/master/src/arch/x86_64.cpp)
+
+- [How The Tables Have Turned: An analysis of two new Linux vulnerabilities in nf_tables · David's Blog (dbouman.nl)](https://blog.dbouman.nl/2022/04/02/How-The-Tables-Have-Turned-CVE-2022-1015-1016/)
