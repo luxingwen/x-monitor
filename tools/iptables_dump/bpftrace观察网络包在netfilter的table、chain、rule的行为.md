@@ -215,52 +215,104 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    - podman启动nginx容器。本地nat映射端口不同。
 
      ```
-     [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 9080:80 nginx
-     63185f11e26b8a1075b8e2403b1819a40288780acca1ab9453fa8c1417ff572b
      [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 9070:80 nginx
+     63185f11e26b8a1075b8e2403b1819a40288780acca1ab9453fa8c1417ff572b
+     [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 9080:80 nginx
      bf5636ceef9bf16a655e47b40e3f5d7cb5044da6caea2650b288d927f31ef046
      ```
 
    - 普通访问测试
 
      ```
-     [root@localhost ~]# curl 127.0.0.1:9070
+     [root@localhost ~]# curl 127.0.0.1:9080
      ```
 
      可以看到nat表的输出
 
      ```
      nft_do_chain <=====
-     	pkg protocol:'TCP' skb_hash:[1200608847] ip_pkg_id:[32521] 127.0.0.1(16777343):36848 --> 127.0.0.1(16777343):9070
-     	enter nft_table: 'nat', if_index: 7, genbit: 1
+     	pkg protocol:'TCP' skb_hash:[930402457] ip_pkg_id:[39977] 127.0.0.1(16777343):56284 --> 127.0.0.1(16777343):9080
+     	enter nft_table: 'nat', if_index: 12, genbit: 1
+     		in chain: 'OUTPUT' rule.ntf_expr eval type: 'cmp'
+     		in chain: 'OUTPUT' rule handle: 16 expr-ops eval code: 'NFT_BREAK', next rule...
+     		-----------------------------------------------------
      		in chain: 'OUTPUT' rule.ntf_expr eval type: 'immediate'
-     		in chain: 'OUTPUT' rule handle: 23 expr-ops eval code: 'NFT_JUMP', break loop rules
+     		in chain: 'OUTPUT' rule handle: 30 expr-ops eval code: 'NFT_JUMP', break rules
      		-----------------------------------------------------
      		GOTO or JUMP IN, chain from 'OUTPUT' ===> 'CNI-HOSTPORT-DNAT'
      		-----------------------------------------------------
      		in chain: 'CNI-HOSTPORT-DNAT' rule.ntf_expr eval type: 'meta'
-     		in chain: 'CNI-HOSTPORT-DNAT' rule handle: 28 expr-ops eval code: 'NFT_BREAK'
+     		in chain: 'CNI-HOSTPORT-DNAT' rule handle: 75 expr-ops eval code: 'NFT_BREAK', next rule...
      		-----------------------------------------------------
      		in chain: 'CNI-HOSTPORT-DNAT' rule.ntf_expr eval type: 'meta'
      		in chain: 'CNI-HOSTPORT-DNAT' rule.ntf_expr eval type: 'immediate'
-     		in chain: 'CNI-HOSTPORT-DNAT' rule handle: 37 expr-ops eval code: 'NFT_JUMP', break loop rules
+     		in chain: 'CNI-HOSTPORT-DNAT' rule handle: 84 expr-ops eval code: 'NFT_JUMP', break rules
      		-----------------------------------------------------
-     		GOTO or JUMP IN, chain from 'CNI-HOSTPORT-DNAT' ===> 'CNI-DN-162cf53ba5c84222b475b'
+     		GOTO or JUMP IN, chain from 'CNI-HOSTPORT-DNAT' ===> 'CNI-DN-01a0df798eef277db5129'
      		-----------------------------------------------------
-     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule.ntf_expr eval type: 'meta'
-     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule.ntf_expr eval type: 'meta'
-     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule.ntf_expr eval type: 'immediate'
-     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule handle: 35 expr-ops eval code: 'NFT_JUMP', break loop rules
+     		in chain: 'CNI-DN-01a0df798eef277db5129' rule.ntf_expr eval type: 'meta'
+     		in chain: 'CNI-DN-01a0df798eef277db5129' rule.ntf_expr eval type: 'meta'
+     		in chain: 'CNI-DN-01a0df798eef277db5129' rule.ntf_expr eval type: 'immediate'
+     		in chain: 'CNI-DN-01a0df798eef277db5129' rule handle: 82 expr-ops eval code: 'NFT_JUMP', break rules
      		-----------------------------------------------------
-     		GOTO or JUMP IN, chain from 'CNI-DN-162cf53ba5c84222b475b' ===> 'CNI-HOSTPORT-SETMARK'
+     		GOTO or JUMP IN, chain from 'CNI-DN-01a0df798eef277db5129' ===> 'CNI-HOSTPORT-SETMARK'
      		-----------------------------------------------------
-     		GOTO or JUMP OUT, chain from 'CNI-HOSTPORT-SETMARK' ===> 'CNI-DN-162cf53ba5c84222b475b'
+     		GOTO or JUMP OUT, chain from 'CNI-HOSTPORT-SETMARK' ===> 'CNI-DN-01a0df798eef277db5129'
      		-----------------------------------------------------
-     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule.ntf_expr eval type: 'meta'
-     		in chain: 'CNI-DN-162cf53ba5c84222b475b' rule handle: 36 expr-ops eval code: 'NF_ACCEPT', break loop rules
+     		in chain: 'CNI-DN-01a0df798eef277db5129' rule.ntf_expr eval type: 'meta'
+     		in chain: 'CNI-DN-01a0df798eef277db5129' rule handle: 83 expr-ops eval code: 'NF_ACCEPT', break rules
      		-----------------------------------------------------
      	exit nft_table: 'nat', return code 'NF_ACCEPT'
      nft_do_chain =====>
+     ```
+
+     对比iptables nat表、链、规则的内容。
+
+     [root@localhost ~]# iptables -t nat -S
+
+     ```
+     -P PREROUTING ACCEPT
+     -P INPUT ACCEPT
+     -P POSTROUTING ACCEPT
+     -P OUTPUT ACCEPT
+     -N LIBVIRT_PRT
+     -N DOCKER
+     -N CNI-HOSTPORT-SETMARK
+     -N CNI-HOSTPORT-MASQ
+     -N CNI-HOSTPORT-DNAT
+     -N CNI-fcb138bbe0a69715574a4f40
+     -N CNI-DN-fcb138bbe0a69715574a4
+     -N CNI-01a0df798eef277db5129302
+     -N CNI-DN-01a0df798eef277db5129
+     -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
+     -A PREROUTING -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
+     -A POSTROUTING -m comment --comment "CNI portfwd requiring masquerade" -j CNI-HOSTPORT-MASQ
+     -A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
+     -A POSTROUTING -j LIBVIRT_PRT
+     -A POSTROUTING -s 10.88.0.6/32 -m comment --comment "name: \"podman\" id: \"fa36b49b8bea7190b08c43e96ab22615774c259264cbebcac1ab598114f062b4\"" -j CNI-fcb138bbe0a69715574a4f40
+     -A POSTROUTING -s 10.88.0.7/32 -m comment --comment "name: \"podman\" id: \"47c6c0a0689ac856ca395ac0390bbaec5c53fc8d29f2089a19a84b8312cad638\"" -j CNI-01a0df798eef277db5129302
+     -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
+     -A OUTPUT -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
+     -A LIBVIRT_PRT -s 192.168.122.0/24 -d 224.0.0.0/24 -j RETURN
+     -A LIBVIRT_PRT -s 192.168.122.0/24 -d 255.255.255.255/32 -j RETURN
+     -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -p tcp -j MASQUERADE --to-ports 1024-65535
+     -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -p udp -j MASQUERADE --to-ports 1024-65535
+     -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -j MASQUERADE
+     -A DOCKER -i docker0 -j RETURN
+     -A CNI-HOSTPORT-SETMARK -m comment --comment "CNI portfwd masquerade mark" -j MARK --set-xmark 0x2000/0x2000
+     -A CNI-HOSTPORT-MASQ -m mark --mark 0x2000/0x2000 -j MASQUERADE
+     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"fa36b49b8bea7190b08c43e96ab22615774c259264cbebcac1ab598114f062b4\"" -m multiport --dports 9070 -j CNI-DN-fcb138bbe0a69715574a4
+     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"47c6c0a0689ac856ca395ac0390bbaec5c53fc8d29f2089a19a84b8312cad638\"" -m multiport --dports 9080 -j CNI-DN-01a0df798eef277db5129
+     -A CNI-fcb138bbe0a69715574a4f40 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"fa36b49b8bea7190b08c43e96ab22615774c259264cbebcac1ab598114f062b4\"" -j ACCEPT
+     -A CNI-fcb138bbe0a69715574a4f40 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"fa36b49b8bea7190b08c43e96ab22615774c259264cbebcac1ab598114f062b4\"" -j MASQUERADE
+     -A CNI-DN-fcb138bbe0a69715574a4 -s 10.88.0.0/16 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-fcb138bbe0a69715574a4 -s 127.0.0.1/32 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-fcb138bbe0a69715574a4 -p tcp -m tcp --dport 9070 -j DNAT --to-destination 10.88.0.6:80
+     -A CNI-01a0df798eef277db5129302 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"47c6c0a0689ac856ca395ac0390bbaec5c53fc8d29f2089a19a84b8312cad638\"" -j ACCEPT
+     -A CNI-01a0df798eef277db5129302 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"47c6c0a0689ac856ca395ac0390bbaec5c53fc8d29f2089a19a84b8312cad638\"" -j MASQUERADE
+     -A CNI-DN-01a0df798eef277db5129 -s 10.88.0.0/16 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-01a0df798eef277db5129 -s 127.0.0.1/32 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-01a0df798eef277db5129 -p tcp -m tcp --dport 9080 -j DNAT --to-destination 10.88.0.7:80
      ```
 
    - iptables drop测试
