@@ -182,7 +182,7 @@ int32_t pluginsd_routine_init() {
 }
 
 void *pluginsd_routine_start(void *UNUSED(arg)) {
-    debug("routine '%s' start", __name);
+    debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
     // https://www.cnblogs.com/guxuanqing/p/8385077.html
     // pthread_cleanup_push( pluginsd_cleanup, NULL );

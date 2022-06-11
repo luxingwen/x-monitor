@@ -178,38 +178,27 @@ __always_inline int32_t read_tcp_max_orphans(uint64_t *tcp_max_orphans) {
     return 0;
 }
 
-/**
- * Get the command line of a process
- *
- * @param pid The process ID of the process you want to get the name of.
- * @param name The name of the process.
- * @param name_size The size of the buffer that will hold the process name.
- *
- * @return The process name.
- */
+static __thread char __proc_pid_cmdline_file[XM_PROC_FILENAME_MAX] = { 0 };
+
 int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
-    char              *filename;
     int32_t            fd;
     int32_t            rc = 0;
     static const char *unknown_cmdline = "<unknown>";
 
-    if (asprintf(&filename, "/proc/%d/cmdline", pid) < 0) {
-        rc = 1;
-        goto exit;
-    }
+    snprintf(__proc_pid_cmdline_file, XM_PROC_FILENAME_MAX - 1, " /proc/%d/cmdline", pid);
 
-    fd = open(filename, O_RDONLY | O_NOFOLLOW, 0666);
+    fd = open(__proc_pid_cmdline_file, O_RDONLY | O_NOFOLLOW, 0666);
     if (unlikely(fd == -1)) {
-        rc = 2;
-        goto releasefilename;
+        rc = -1;
+        goto exit;
     }
 
     ssize_t bytes = read(fd, cmdline, size);
     close(fd);
 
     if (unlikely(bytes < 0)) {
-        rc = 3;
-        goto releasefilename;
+        rc = -2;
+        goto exit;
     }
 
     // ** 要特殊处理
@@ -219,8 +208,6 @@ int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
             cmdline[i] = ' ';
     }
 
-releasefilename:
-    free(filename);
 exit:
     if (rc != 0) {
         /*
@@ -229,7 +216,7 @@ exit:
          * at a blank.
          */
         if (strlcpy(cmdline, unknown_cmdline, size) >= size) {
-            rc = 4;
+            rc = -3;
         }
     }
 

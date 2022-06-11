@@ -317,7 +317,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
 
     // 读取进程的命令行
     ret = read_proc_pid_cmdline(pid, cmd_line, XM_CMD_LINE_MAX - 1);
-    if (unlikely(ret)) {
+    if (unlikely(ret < 0)) {
         // error("[PLUGIN_APPSTATUS] read pid:%d cmdline failed", pid);
         return -1;
     }
@@ -446,6 +446,7 @@ int32_t update_app_collection(struct app_filter_rules *afr) {
 
     struct dirent *de = NULL;
 
+    // **https://stackoverflow.com/questions/36023562/is-glob-using-a-unique-prefix-faster-than-readdir
     while ((de = readdir(dir))) {
         char *endptr = de->d_name;
         // 跳过非/proc/pid目录
@@ -454,7 +455,7 @@ int32_t update_app_collection(struct app_filter_rules *afr) {
         }
 
         // 应用、进程匹配
-        pid = (pid_t)strtoul(de->d_name, &endptr, 10);
+        pid = (pid_t)str2int64_t(de->d_name, &endptr);
 
         if (unlikely(endptr == de->d_name || *endptr != '\0'))
             continue;

@@ -227,21 +227,27 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
 
         const char *elem_name = config_setting_name(elem);
         if (!strncmp("app_", elem_name, 4) && config_setting_is_group(elem)) {
-            config_setting_lookup_bool(elem, "enable", &enable);
-            config_setting_lookup_string(elem, "type", &app_type_name);
-            config_setting_lookup_string(elem, "filter_sources", &filter_sources_str);
-            config_setting_lookup_string(elem, "filter_regex_pattern", &filter_regex_pattern);
-            config_setting_lookup_int(elem, "appname_match_index", &appname_match_index);
-            config_setting_lookup_string(elem, "additional_filter_keywords",
-                                         &additional_filter_keywords);
-            config_setting_lookup_string(elem, "app_bind_process_type", &app_bind_process_type);
 
-            // TODO 判断下获取的值是否合法
-
-            // 开始构造规则，从文件中过滤出appname和关键字
-            __generate_filter_rules(enable, filter_sources_str, app_type_name, filter_regex_pattern,
-                                    appname_match_index, additional_filter_keywords,
-                                    app_bind_process_type, filter_rules);
+            if (unlikely(!(
+                    config_setting_lookup_int(elem, "enable", &enable)
+                    && config_setting_lookup_string(elem, "app_type", &app_type_name)
+                    && config_setting_lookup_string(elem, "filter_sources", &filter_sources_str)
+                    && config_setting_lookup_string(elem, "filter_regex_pattern",
+                                                    &filter_regex_pattern)
+                    && config_setting_lookup_string(elem, "additional_filter_keywords",
+                                                    &additional_filter_keywords)
+                    && config_setting_lookup_int(elem, "appname_match_index", &appname_match_index)
+                    && config_setting_lookup_string(elem, "app_bind_process_type",
+                                                    &app_bind_process_type)))) {
+                error("[PLUGIN_APPSTATUS] config lookup path:'%s' %d elem failed", config_path,
+                      index);
+            } else {
+                // 开始构造规则，从文件中过滤出appname和关键字
+                __generate_filter_rules(enable, filter_sources_str, app_type_name,
+                                        filter_regex_pattern, appname_match_index,
+                                        additional_filter_keywords, app_bind_process_type,
+                                        filter_rules);
+            }
         }
     }
     debug("[PLUGIN_APPSTATUS] app_filter_rules size:%d", filter_rules->rule_count);

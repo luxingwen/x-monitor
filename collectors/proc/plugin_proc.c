@@ -99,7 +99,7 @@ int32_t proc_routine_init() {
 }
 
 void *proc_routine_start(void *UNUSED(arg)) {
-    debug("[%s] routine start", __name);
+    debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
     int32_t index = 0;
     int32_t update_every = appconfig_get_int("collector_plugin_proc.update_every", 1);

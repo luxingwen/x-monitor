@@ -153,7 +153,7 @@ int32_t diskspace_routine_init() {
 }
 
 void *diskspace_routine_start(void *UNUSED(arg)) {
-    debug("[%s] routine start", __name);
+    debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
     // 每次tick的时间间隔，转换为微秒
     usec_t step_usecs = __collector_diskspace.update_every * USEC_PER_SEC;

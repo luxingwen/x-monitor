@@ -71,7 +71,7 @@ int32_t appstat_collector_routine_init() {
 }
 
 void *appstat_collector_routine_start(void *UNUSED(arg)) {
-    debug("[%s] routine start", __name);
+    debug("[%s] routine, thread id: %d start", __name, pthread_self());
 
     usec_t step_usecs = __collector_appstat.update_every * USEC_PER_SEC;
     usec_t step_usecs_for_app = __collector_appstat.update_every_for_app * USEC_PER_SEC;
@@ -116,6 +116,7 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
             && now_usecs - __collector_appstat.last_update_for_app_usec >= step_usecs_for_app) {
             // 清理规则匹配标志，更新应用
             clean_filter_rules(afr);
+            // 匹配进程cmdline，找到应用对应进程，更新应用集合
             update_app_collection(afr);
             __collector_appstat.last_update_for_app_usec = now_usecs;
         }
