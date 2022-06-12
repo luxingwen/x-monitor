@@ -207,7 +207,7 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    指定要观察的sport、dport两个端口号
 
    ```
-   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter-4.18.bt 9070 80
+   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter-4.18.bt 9080 80
    ```
 
    [trace_pkg_in_netfilter-4.18.bt](trace_pkg_in_netfilter-4.18.bt)
