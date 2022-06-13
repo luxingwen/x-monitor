@@ -185,7 +185,7 @@ int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
     int32_t            rc = 0;
     static const char *unknown_cmdline = "<unknown>";
 
-    snprintf(__proc_pid_cmdline_file, XM_PROC_FILENAME_MAX - 1, " /proc/%d/cmdline", pid);
+    snprintf(__proc_pid_cmdline_file, XM_PROC_FILENAME_MAX - 1, "/proc/%d/cmdline", pid);
 
     fd = open(__proc_pid_cmdline_file, O_RDONLY | O_NOFOLLOW, 0666);
     if (unlikely(fd == -1)) {

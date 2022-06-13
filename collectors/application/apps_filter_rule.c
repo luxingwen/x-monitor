@@ -229,8 +229,8 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
         if (!strncmp("app_", elem_name, 4) && config_setting_is_group(elem)) {
 
             if (unlikely(!(
-                    config_setting_lookup_int(elem, "enable", &enable)
-                    && config_setting_lookup_string(elem, "app_type", &app_type_name)
+                    config_setting_lookup_bool(elem, "enable", &enable)
+                    && config_setting_lookup_string(elem, "type", &app_type_name)
                     && config_setting_lookup_string(elem, "filter_sources", &filter_sources_str)
                     && config_setting_lookup_string(elem, "filter_regex_pattern",
                                                     &filter_regex_pattern)
