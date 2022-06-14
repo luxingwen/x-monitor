@@ -1,4 +1,4 @@
-# bpftrace观察网络包在netfilter的table、chain、rule的行为
+# bpftrace观察网络包nft_table,nft_chain,nft_rule,nft_expr的行为
 
 ### 获取内核函数nft_nat_do_chain的调用堆栈
 
