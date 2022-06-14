@@ -1,0 +1,27 @@
+ ⚡ root@localhost  ~  iptables -t filter -S
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-N LIBVIRT_INP
+-N LIBVIRT_OUT
+-N LIBVIRT_FWO
+-N LIBVIRT_FWI
+-N LIBVIRT_FWX
+-A INPUT -j LIBVIRT_INP
+-A FORWARD -j LIBVIRT_FWX
+-A FORWARD -j LIBVIRT_FWI
+-A FORWARD -j LIBVIRT_FWO
+-A OUTPUT -j LIBVIRT_OUT
+-A LIBVIRT_INP -i virbr0 -p udp -m udp --dport 53 -j ACCEPT
+-A LIBVIRT_INP -i virbr0 -p tcp -m tcp --dport 53 -j ACCEPT
+-A LIBVIRT_INP -i virbr0 -p udp -m udp --dport 67 -j ACCEPT
+-A LIBVIRT_INP -i virbr0 -p tcp -m tcp --dport 67 -j ACCEPT
+-A LIBVIRT_OUT -o virbr0 -p udp -m udp --dport 53 -j ACCEPT
+-A LIBVIRT_OUT -o virbr0 -p tcp -m tcp --dport 53 -j ACCEPT
+-A LIBVIRT_OUT -o virbr0 -p udp -m udp --dport 68 -j ACCEPT
+-A LIBVIRT_OUT -o virbr0 -p tcp -m tcp --dport 68 -j ACCEPT
+-A LIBVIRT_FWO -s 192.168.122.0/24 -i virbr0 -j ACCEPT
+-A LIBVIRT_FWO -i virbr0 -j REJECT --reject-with icmp-port-unreachable
+-A LIBVIRT_FWI -d 192.168.122.0/24 -o virbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A LIBVIRT_FWI -o virbr0 -j REJECT --reject-with icmp-port-unreachable
+-A LIBVIRT_FWX -i virbr0 -o virbr0 -j ACCEPT

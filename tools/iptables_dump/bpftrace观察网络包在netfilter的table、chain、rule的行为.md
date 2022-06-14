@@ -317,6 +317,18 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    3. 如果rule是jump、goto，则将当前的下一条rule和当前chain入栈，跳转到目标链继续执行1、2。
    4. 对于jump in的chain，执行到3之后会恢复堆栈执行jump out到入栈保存的chain和rule。
 
+### 相关
+
+1. ​	使用debugfs查看当前系统安装的kprobe。
+
+   ```
+   cat /sys/kernel/debug/kprobes/list
+   ```
+
+2. 支持probe offset。
+
+   If you need to insert a probe in the middle of a function, you may find it useful to “Compile the kernel with debug info” (CONFIG_DEBUG_INFO), so you can use “objdump -d -l vmlinux” to see the source-to-object code mapping.
+
 
 ### 资料
 
@@ -331,3 +343,5 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 - bpftrace观察的寄存器名：[bpftrace/x86_64.cpp at master · ajor/bpftrace (github.com)](https://github.com/ajor/bpftrace/blob/master/src/arch/x86_64.cpp)
 
 - [How The Tables Have Turned: An analysis of two new Linux vulnerabilities in nf_tables · David's Blog (dbouman.nl)](https://blog.dbouman.nl/2022/04/02/How-The-Tables-Have-Turned-CVE-2022-1015-1016/)
+
+- kprobe不能探测说明：[Kernel Probes (Kprobes) — The Linux Kernel documentation](https://docs.kernel.org/trace/kprobes.html#kprobes-blacklist)

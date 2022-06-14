@@ -269,14 +269,14 @@ kprobe:nft_do_chain+172 {
     if(@skb[tid] == 1) {
         $p_nft_rule = *(struct nft_rule**)reg("r13");
         @curr_nft_rule_handle = $p_nft_rule->handle;
-        printf("\t\t+172 in chain: '%s' rules, rule handle: %llu\n", str(@curr_chain_name), @curr_nft_rule_handle);
+        printf("\t\t<+172>\tin chain: '%s' rules, rule handle: %llu\n", str(@curr_chain_name), @curr_nft_rule_handle);
     }
 }
-/*
-kprobe:nft_do_chain+341 {
+
+kprobe:nft_do_chain+334 {
     if(@skb[tid] == 1) {
     }
-}*/
+}
 
 // switch (regs.verdict.code) {
 kprobe:nft_do_chain+652 {
@@ -286,12 +286,12 @@ kprobe:nft_do_chain+652 {
         $curr_nft_rule_handle = $p_nft_rule->handle;
         $verdict_code = (int32)reg("ax");
 
-        if($verdict_code == NFT_CONTINUE || $verdict_code == NFT_BREAK) {
-            printf("\t\t+652 in chain: '%s' rules, rule handle: %llu, dlen: %d, expr-ops eval code: '%s', next rule...\n", str(@curr_chain_name), $curr_nft_rule_handle, $p_nft_rule->dlen, @verdict_code_str[$verdict_code]);
-            printf("\t\t+652 -----------------------------------------------------\n");
+        if($verdict_code == (int32)NFT_CONTINUE || $verdict_code == (int32)NFT_BREAK) {
+            printf("\t\t<+652>\tin chain: '%s' rules, rule handle: %llu, dlen: %d, expr-ops eval code: '%s', next rule...\n", str(@curr_chain_name), $curr_nft_rule_handle, $p_nft_rule->dlen, @verdict_code_str[$verdict_code]);
+            printf("\t\t<+652> -----------------------------------------------------\n");
         } else {
-            printf("\t\t+652 in chain: '%s' rules, rule handle: %llu, dlen: %d, expr-ops eval code: '%s', break rules\n", str(@curr_chain_name), $curr_nft_rule_handle, $p_nft_rule->dlen, @verdict_code_str[$verdict_code]);
-            printf("\t\t+652 -----------------------------------------------------\n");
+            printf("\t\t<+652>\tin chain: '%s' rules, rule handle: %llu, dlen: %d, expr-ops eval code: '%s', break rules\n", str(@curr_chain_name), $curr_nft_rule_handle, $p_nft_rule->dlen, @verdict_code_str[$verdict_code]);
+            printf("\t\t<+652> -----------------------------------------------------\n");
         }
     }
 }
@@ -329,20 +329,6 @@ kretprobe:nft_do_chain {
     if(@skb[tid] == 1) {
 
         printf("\texit nft_table: '%s', return code '%s'\n", str(@curr_table_name), @verdict_code_str[retval]);
-        /*
-        if(retval == 0) {
-            printf("nft_do_chain =====> NF_DROP\n");
-        } else if (retval == 1) {
-            printf("nft_do_chain =====> NF_ACCEPT\n");
-        } else if (retval == 2) {
-            printf("nft_do_chain =====> NF_STOLEN\n");
-        } else if (retval == 3) {
-            printf("nft_do_chain =====> NF_QUEUE\n");
-        } else if (retval == 4) {
-            printf("nft_do_chain =====> NF_REPEAT\n");
-        } else if (retval == 5) {
-            printf("nft_do_chain =====> NF_STOP\n");
-        }*/
         delete(@skb[tid]);
         printf("nft_do_chain =====>\n\n");
     }
@@ -362,23 +348,23 @@ kprobe:nft_bitwise_eval {
         $nft_expr = (struct nft_expr*)arg0;
         //$nft_pkginfo = (struct nft_pktinfo*)arg2;
 
-        printf("\t\t+_eval in chain: '%s' rules, rule handle: %llu, ntf_expr type: '%s'， size: %u\n", str(@curr_chain_name), @curr_nft_rule_handle, str($nft_expr->ops->type->name), $nft_expr->ops->size);
+        printf("\t\t<eval>\tin chain: '%s' rules, rule handle: %llu, ntf_expr type: '%s'， size: %u\n", 
+			str(@curr_chain_name), @curr_nft_rule_handle, str($nft_expr->ops->type->name), $nft_expr->ops->size);
     }
 }
 
-/*
+
 kprobe:nft_meta_get_eval {
     if(@skb[tid] == 1) {
-        $nft_expr = (struct nft_expr*)arg0;
-        $nft_pkginfo = (struct nft_pktinfo*)arg2;
+        //$nft_expr = (struct nft_expr*)arg0;
+        //$nft_pkginfo = (struct nft_pktinfo*)arg2;
 
         //$nft_meta = (struct nft_meta*)($nft_expr->data);
-        $nft_in_dev = (struct net_device*)($nft_pkginfo->xt.state->in);
-        $nft_out_dev = (struct net_device*)($nft_pkginfo->xt.state->out);
+        //$nft_in_dev = (struct net_device*)($nft_pkginfo->xt.state->in);
+        //$nft_out_dev = (struct net_device*)($nft_pkginfo->xt.state->out);
 
         //printf("%s\n", kstack);
-        //printf("\t\tin chain: '%s' rules, rule handle: %llu, ntf_expr type: 'meta',  in_dev: '%s', out_dev: '%s', nft_meta.ket: %d\n", str(@curr_chain_name), @curr_nft_rule_handle, str($nft_in_dev->name), str($nft_out_dev->name), $nft_meta->key);
-        printf("\t\tin chain: '%s' rules, rule handle: %llu, ntf_expr type: 'meta',  in_dev: '%s', out_dev: '%s'\n", str(@curr_chain_name), @curr_nft_rule_handle, str($nft_in_dev), str($nft_out_dev));
+        //printf("\t\tin chain: '%s' rules, rule handle: %llu, ntf_expr type: 'meta',  in_dev: '%s', out_dev: '%s', nft_meta.ket: %d\n", 
+		//	str(@curr_chain_name), @curr_nft_rule_handle, str($nft_in_dev->name), str($nft_out_dev->name), $nft_meta->key);
     }
 }
-*/
