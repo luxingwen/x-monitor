@@ -196,20 +196,43 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    add-symbol-file /lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko 0xffffffffc0a24000
    ```
 
-2. disassemble，显示代码和指令的对应。使用/s或/m，前者更详细，后者看起来更清晰。
+   现在看看各个地址之间的关系：
+
+   0xffffffffc0a24000：这个地址是模块运行后的基地址。使用如下命令，可以看到函数nft_do_chain运行的地址：
+
+   ```
+   (gdb) p nft_do_chain
+   $1 = {unsigned int (struct nft_pktinfo *, void *)} 0xffffffffc0a24080 <nft_do_chain>
+   ```
+
+   0xffffffffc0a24080 - 0xffffffffc0a24000 = 0x80怎么来的呢，其实0x80就是编译器设定的elf文件中的偏移地址。如下最后一行可以看到80的偏移。
+
+   ```
+   [root@localhost iptables_dump]# readelf -sW /lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko |grep nft_do_chain
+       43: 00000000000000c0    16 OBJECT  LOCAL  DEFAULT   11 __ksymtab_nft_do_chain
+       44: 0000000000000000    13 OBJECT  LOCAL  DEFAULT   20 __kstrtab_nft_do_chain
+      302: 0000000000010860    87 FUNC    LOCAL  DEFAULT    2 nft_do_chain_arp
+      303: 00000000000108c0   128 FUNC    LOCAL  DEFAULT    2 nft_do_chain_ipv4
+      305: 0000000000010a50   242 FUNC    LOCAL  DEFAULT    2 nft_do_chain_inet
+      306: 0000000000010b50   394 FUNC    LOCAL  DEFAULT    2 nft_do_chain_bridge
+      307: 0000000000010ce0   379 FUNC    LOCAL  DEFAULT    2 nft_do_chain_netdev
+      308: 0000000000010e60   171 FUNC    LOCAL  DEFAULT    2 nft_do_chain_ipv6
+      595: 000000000f887883     0 NOTYPE  GLOBAL DEFAULT  ABS __crc_nft_do_chain
+      731: 0000000000000080  1221 FUNC    GLOBAL DEFAULT    2 nft_do_chain
+   ```
+
+2. 使用disassemble /m(/s) nft_do_chain查看汇编与代码的对应，后者更详细，但对应关系很难看。
 
    [nft_do_chain_kernel-4.18.disa_s](./nft_do_chain_kernel-4.18.disa_s)
 
    [nft_do_chain_kernel-4.18.disa_m](nft_do_chain_kernel-4.18.disa_m)
 
-3. 运行脚本，使用kprobe偏移来观察nft_do_chain
-
-   指定要观察的sport、dport两个端口号
+3. 运行脚本，使用kprobe偏移来观察nft_do_chain，脚本参数来指定要观察的sport、dport两个端口号
 
    ```
-   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter-4.18.bt 9080 80
+BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter-4.18.bt 9080 80
    ```
-
+   
    [trace_pkg_in_netfilter-4.18.bt](trace_pkg_in_netfilter-4.18.bt)
 
 4. 测试
@@ -270,9 +293,8 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 
      对比iptables nat表、链、规则的内容。
 
-     [root@localhost ~]# iptables -t nat -S
-
      ```
+     [root@localhost ~]# iptables -t nat -S
      -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
      -A PREROUTING -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
      -A POSTROUTING -m comment --comment "CNI portfwd requiring masquerade" -j CNI-HOSTPORT-MASQ
@@ -319,7 +341,7 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 
 ### 相关
 
-1. ​	使用debugfs查看当前系统安装的kprobe。
+1. ​	使用debugfs文件系统查看当前系统安装的kprobe。
 
    ```
    cat /sys/kernel/debug/kprobes/list
@@ -328,6 +350,12 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 2. 支持probe offset。
 
    If you need to insert a probe in the middle of a function, you may find it useful to “Compile the kernel with debug info” (CONFIG_DEBUG_INFO), so you can use “objdump -d -l vmlinux” to see the source-to-object code mapping.
+
+3. sp和bp寄存器。
+
+   bp指向栈的开始，sp指向栈顶。栈的扩展方向是从高地址向低地址，所以sp的地址会小于等于bp。一般函数开始会将bp先push		栈，再将sp赋值给bp。
+
+   函数中的局部变量都是存放在堆栈中的，要想访问一般都是通过sp+offset来访问的。
 
 
 ### 资料
