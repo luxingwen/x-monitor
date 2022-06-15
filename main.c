@@ -136,11 +136,16 @@ static void on_signal(int32_t UNUSED(signo), enum signal_action_mode mode) {
         }
 
         struct xmonitor_static_routine *routine = __xmonitor_static_routine_list.root;
-        for (; routine; routine = routine->next) {
+        struct xmonitor_static_routine *free_routine = NULL;
+        while (routine) {
             if (routine->enabled && routine->stop_routine) {
                 routine->stop_routine();
                 debug("Routine '%s' has been Cleaned up.", routine->name);
             }
+            free_routine = routine;
+            routine = free_routine->next;
+            free(free_routine);
+            free_routine = NULL;
         }
 
         // 指标对象这里统一释放
