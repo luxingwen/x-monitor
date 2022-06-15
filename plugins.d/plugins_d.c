@@ -108,6 +108,7 @@ static void *external_plugin_thread_worker(void *arg) {
 
     while (!ep->exit_flag) {
         // 执行扩展插件
+        // TODO: popen这个fd放到ep结构中，这样可以在ep结构被释放时关闭这个fd
         FILE *child_fp = mypopen(ep->cmd, &ep->child_pid);
         if (unlikely(!child_fp)) {
             error("Cannot popen(\"%s\", \"r\").", ep->cmd);
@@ -319,13 +320,21 @@ void pluginsd_routine_stop() {
     __pluginsd.exit_flag = 1;
     pthread_join(__pluginsd.thread_id, NULL);
 
-    for (struct external_plugin *p = __pluginsd.external_plugins_root; p; p = p->next) {
+    struct external_plugin *p = __pluginsd.external_plugins_root;
+    struct external_plugin *free_p = NULL;
+
+    while (p) {
         p->exit_flag = 1;
         // 对external_plugin的工作线程发送cancel信号, 线程运行到cancel点后退出
         pthread_cancel(p->thread_id);
         // 等待external_plugin的工作线程结束
         pthread_join(p->thread_id, NULL);
         info("[%s] external plugin '%s' worker thread exit!", __name, p->config_name);
+
+        free_p = p;
+        p = p->next;
+        free(free_p);
+        free_p = NULL;
     }
     debug("routine '%s' has completely stopped", __name);
 }

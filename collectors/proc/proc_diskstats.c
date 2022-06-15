@@ -161,6 +161,7 @@ static struct io_device *__get_device(char *device_name, uint32_t major, uint32_
 }
 
 int32_t init_collector_proc_diskstats() {
+    debug("[PLUGIN_PROC:proc_diskstats] init successed");
     return 0;
 }
 
@@ -372,4 +373,18 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
 }
 
 void fini_collector_proc_diskstats() {
+    if (likely(__pf_diskstats)) {
+        procfile_close(__pf_diskstats);
+        __pf_diskstats = NULL;
+    }
+
+    if (likely(__iodev_list)) {
+        struct io_device *dev = __iodev_list;
+        while (dev) {
+            struct io_device *next = dev->next;
+            free(dev);
+            dev = next;
+        }
+    }
+    debug("[PLUGIN_PROC:proc_diskstats] stopped");
 }

@@ -576,7 +576,7 @@ void fini_collector_proc_netstat() {
         __arl_tcpext = NULL;
     }
 
-    if (likely(!__pf_netstat)) {
+    if (likely(__pf_netstat)) {
         procfile_close(__pf_netstat);
         __pf_netstat = NULL;
     }

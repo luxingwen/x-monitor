@@ -34,7 +34,7 @@ static struct proxy_envoy_mgr {
     .exec_cmd_line = { 0 },
 };
 
-__attribute__((constructor)) static void pluginsd_register_routine() {
+__attribute__((constructor)) static void proxy_envoymgr_register_routine() {
     fprintf(stderr, "---register_proxy_envoymgr_routine---\n");
     struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
