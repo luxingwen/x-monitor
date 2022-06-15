@@ -21,7 +21,7 @@ if(STATIC_LINKING)
 endif(STATIC_LINKING)
 
 # debug 、 release版本
-set(CMAKE_C_FLAGS_DEBUG "-O0 -Wall -g -ggdb3")
+set(CMAKE_C_FLAGS_DEBUG "-O1 -Wall -g -ggdb3")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 
 # 设置c编译参数
@@ -29,7 +29,7 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -fno-omit-frame-pointer")
 
 if(USE_ADDRSANITIZER)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize-recover=address")
   message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
 endif(USE_ADDRSANITIZER)
 
