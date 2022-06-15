@@ -1,6 +1,6 @@
 # bpftrace观察网络包nft_table,nft_chain,nft_rule,nft_expr的行为
 
-### 获取内核函数nft_nat_do_chain的调用堆栈
+### 获取内核函数nft_nat_do_chain调用堆栈
 
 使用bfptrace脚本来获取内核堆栈
 
@@ -56,7 +56,7 @@ bpftrace -e 'kprobe:nft_nat_do_chain { @[kstack] = count(); }'
 ]: 18
 ```
 
-### 获取栈帧对应的内核代码
+### 通过栈帧查询对应的内核代码
 
 这里想知道nf_hook_slow+63具体是内核的代码那一行。这里要获取该版本带有的debuginfo的vmlinux。使用如下命令：
 
@@ -83,35 +83,35 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
   115025: ffffffff82bbe0c0   396 FUNC    GLOBAL DEFAULT    1 nf_hook_slow
   ```
   
-  使用基地址+0x3F(63)偏移 = FFFFFFFF82BBE0FF
+  使用运行时基地址ffffffff82bbe0c0+0x3F(63)偏移 = FFFFFFFF82BBE0FF
 
-**使用addr2line定位到对应代码:**
+- 使用addr2line定位到对应代码
 
-```
-[root@VM-0-8-centos Program]# addr2line -e /usr/lib/debug/lib/modules/5.14.0-55.el9.x86_64+debug/vmlinux FFFFFFFF82BBE0FF
-/usr/src/debug/kernel-5.14.0-55.el9/linux-5.14.0-55.el9.x86_64/net/netfilter/core.c:589
-```
+  ```
+  [root@VM-0-8-centos Program]# addr2line -e /usr/lib/debug/lib/modules/5.14.0-55.el9.x86_64+debug/vmlinux FFFFFFFF82BBE0FF
+  /usr/src/debug/kernel-5.14.0-55.el9/linux-5.14.0-55.el9.x86_64/net/netfilter/core.c:589
+  ```
 
-**使用gdb更快获取对应代码：**
+- 使用gdb更快获取对应代码
 
-```
-[root@VM-0-8-centos Program]# gdb /usr/lib/debug/lib/modules/5.14.0-55.el9.x86_64+debug/vmlinux
+  ```
+  [root@VM-0-8-centos Program]# gdb /usr/lib/debug/lib/modules/5.14.0-55.el9.x86_64+debug/vmlinux
+  
+  (gdb) list *(nf_hook_slow+0x3f)
+  0xffffffff82bbe0ff is in nf_hook_slow (net/netfilter/core.c:589).
+  584             const struct nf_hook_entries *e, unsigned int s)
+  585    {
+  586        unsigned int verdict;
+  587        int ret;
+  588
+  589        for (; s < e->num_hook_entries; s++) {
+  590            verdict = nf_hook_entry_hookfn(&e->hooks[s], skb, state);
+  591            switch (verdict & NF_VERDICT_MASK) {
+  592            case NF_ACCEPT:
+  593
+  ```
 
-(gdb) list *(nf_hook_slow+0x3f)
-0xffffffff82bbe0ff is in nf_hook_slow (net/netfilter/core.c:589).
-584             const struct nf_hook_entries *e, unsigned int s)
-585    {
-586        unsigned int verdict;
-587        int ret;
-588
-589        for (; s < e->num_hook_entries; s++) {
-590            verdict = nf_hook_entry_hookfn(&e->hooks[s], skb, state);
-591            switch (verdict & NF_VERDICT_MASK) {
-592            case NF_ACCEPT:
-593
-```
-
-### 内核module函数定位
+### 内核Module函数定位
 
 上面nf_hook_slow函数使内核代码，而nf_nat_ipv4_out、nf_nat_inet_fn、nft_nat_do_chain这些都在ko中，vmlinux是没有其符号信息的，这样需要加载kernel module。
 
