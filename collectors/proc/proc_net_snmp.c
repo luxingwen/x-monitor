@@ -28,7 +28,8 @@
 // https://wiki.nix-pro.com/view/Linux_networking_stats
 // 调优方式 https://ref.onixs.biz/lost-multicast-packets-troubleshooting.html
 
-static const char       *__proc_net_snmp_filename = "/proc/net/snmp";
+static const char       *__def_proc_net_snmp_filename = "/proc/net/snmp";
+static const char       *__cfg_proc_net_snmp_filename = NULL;
 static struct proc_file *__pf_net_snmp = NULL;
 static ARL_BASE         *__arl_ip = NULL, *__arl_tcp = NULL, *__arl_udp = NULL;
 
@@ -355,21 +356,23 @@ int32_t collector_proc_net_snmp(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                 const char *config_path) {
     debug("[PLUGIN_PROC:proc_net_snmp] config:%s running", config_path);
 
-    const char *f_netsnmp =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_net_snmp_filename);
+    if (unlikely(!__cfg_proc_net_snmp_filename)) {
+        __cfg_proc_net_snmp_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __def_proc_net_snmp_filename);
+    }
 
     if (unlikely(!__pf_net_snmp)) {
-        __pf_net_snmp = procfile_open(f_netsnmp, " \t:", PROCFILE_FLAG_DEFAULT);
+        __pf_net_snmp = procfile_open(__cfg_proc_net_snmp_filename, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_net_snmp)) {
-            error("[PLUGIN_PROC:proc_net_snmp] Cannot open %s", f_netsnmp);
+            error("[PLUGIN_PROC:proc_net_snmp] Cannot open %s", __cfg_proc_net_snmp_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_net_snmp] opened '%s'", f_netsnmp);
+        debug("[PLUGIN_PROC:proc_net_snmp] opened '%s'", __cfg_proc_net_snmp_filename);
     }
 
     __pf_net_snmp = procfile_readall(__pf_net_snmp);
     if (unlikely(!__pf_net_snmp)) {
-        error("Cannot read %s", f_netsnmp);
+        error("Cannot read %s", __cfg_proc_net_snmp_filename);
         return -1;
     }
 
@@ -384,7 +387,8 @@ int32_t collector_proc_net_snmp(int32_t UNUSED(update_every), usec_t UNUSED(dt),
 
             words = procfile_linewords(__pf_net_snmp, l);
             if (unlikely(words < 3)) {
-                error("Cannot read %s Ip line, Expected 3+ columns, read %zu.", f_netsnmp, words);
+                error("Cannot read %s Ip line, Expected 3+ columns, read %zu.",
+                      __cfg_proc_net_snmp_filename, words);
                 continue;
             }
 
@@ -440,7 +444,8 @@ int32_t collector_proc_net_snmp(int32_t UNUSED(update_every), usec_t UNUSED(dt),
 
             words = procfile_linewords(__pf_net_snmp, l);
             if (unlikely(words < 3)) {
-                error("Cannot read %s Tcp line, Expected 3+ columns, read %zu.", f_netsnmp, words);
+                error("Cannot read %s Tcp line, Expected 3+ columns, read %zu.",
+                      __cfg_proc_net_snmp_filename, words);
                 continue;
             }
 
@@ -484,7 +489,8 @@ int32_t collector_proc_net_snmp(int32_t UNUSED(update_every), usec_t UNUSED(dt),
 
             words = procfile_linewords(__pf_net_snmp, l);
             if (unlikely(words < 3)) {
-                error("Cannot read %s Udp line, Expected 3+ columns, read %zu.", f_netsnmp, words);
+                error("Cannot read %s Udp line, Expected 3+ columns, read %zu.",
+                      __cfg_proc_net_snmp_filename, words);
                 continue;
             }
 

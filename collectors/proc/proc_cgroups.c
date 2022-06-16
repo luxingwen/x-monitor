@@ -18,7 +18,8 @@
 
 #include "appconfig/appconfig.h"
 
-static const char       *__proc_cgroups_filename = "/proc/cgroups";
+static const char       *__def_proc_cgroups_filename = "/proc/cgroups";
+static const char       *__cfg_proc_cgroups_filename = NULL;
 static struct proc_file *__pf_cgroups = NULL;
 
 static prom_gauge_t *__metric_cgroup_subsys_hierarchy_count = NULL,
@@ -50,21 +51,23 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                const char *config_path) {
     debug("[PLUGIN_PROC:proc_cgroups] config:%s running", config_path);
 
-    const char *f_cgroups =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_cgroups_filename);
+    if (unlikely(!__cfg_proc_cgroups_filename)) {
+        __cfg_proc_cgroups_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __def_proc_cgroups_filename);
+    }
 
     if (unlikely(!__pf_cgroups)) {
-        __pf_cgroups = procfile_open(f_cgroups, " \t", PROCFILE_FLAG_DEFAULT);
+        __pf_cgroups = procfile_open(__cfg_proc_cgroups_filename, " \t", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_cgroups)) {
-            error("[PLUGIN_PROC:proc_cgroups] Cannot open %s", f_cgroups);
+            error("[PLUGIN_PROC:proc_cgroups] Cannot open %s", __cfg_proc_cgroups_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_cgroups] opened '%s'", f_cgroups);
+        debug("[PLUGIN_PROC:proc_cgroups] opened '%s'", __cfg_proc_cgroups_filename);
     }
 
     __pf_cgroups = procfile_readall(__pf_cgroups);
     if (unlikely(!__pf_cgroups)) {
-        error("Cannot read %s", f_cgroups);
+        error("Cannot read %s", __cfg_proc_cgroups_filename);
         return -1;
     }
 
@@ -84,7 +87,8 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     for (size_t l = 1; l < lines - 1; l++) {
         words = procfile_linewords(__pf_cgroups, l);
         if (unlikely(words < 4)) {
-            error("[PLUGIN_PROC:proc_cgroups] '%s' line %lu has less than 4 words", f_cgroups, l);
+            error("[PLUGIN_PROC:proc_cgroups] '%s' line %lu has less than 4 words",
+                  __cfg_proc_cgroups_filename, l);
             continue;
         }
 

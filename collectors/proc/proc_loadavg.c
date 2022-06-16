@@ -19,7 +19,8 @@
 
 // http://brytonlee.github.io/blog/2014/05/07/linux-kernel-load-average-calc/
 
-static const char       *__proc_loadavg_filename = "/proc/loadavg";
+static const char       *__def_proc_loadavg_filename = "/proc/loadavg";
+static const char       *__cfg_proc_loadavg_filename = NULL;
 static struct proc_file *__pf_loadavg = NULL;
 
 static prom_gauge_t *__metric_loadavg_1min = NULL, *__metric_loadavg_5min = NULL,
@@ -53,31 +54,33 @@ int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                const char *config_path) {
     debug("[PLUGIN_PROC:proc_loadavg] config:%s running", config_path);
 
-    const char *f_loadavg =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_loadavg_filename);
+    if (unlikely(!__cfg_proc_loadavg_filename)) {
+        __cfg_proc_loadavg_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __def_proc_loadavg_filename);
+    }
 
     if (unlikely(!__pf_loadavg)) {
-        __pf_loadavg = procfile_open(f_loadavg, " \t,:|/", PROCFILE_FLAG_DEFAULT);
+        __pf_loadavg = procfile_open(__cfg_proc_loadavg_filename, " \t,:|/", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_loadavg)) {
-            error("[PLUGIN_PROC:proc_loadavg] Cannot open %s", f_loadavg);
+            error("[PLUGIN_PROC:proc_loadavg] Cannot open %s", __cfg_proc_loadavg_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_loadavg] opened '%s'", f_loadavg);
+        debug("[PLUGIN_PROC:proc_loadavg] opened '%s'", __cfg_proc_loadavg_filename);
     }
 
     __pf_loadavg = procfile_readall(__pf_loadavg);
     if (unlikely(!__pf_loadavg)) {
-        error("Cannot read %s", f_loadavg);
+        error("Cannot read %s", __cfg_proc_loadavg_filename);
         return -1;
     }
 
     if (unlikely(procfile_lines(__pf_loadavg) < 1)) {
-        error("%s: File does not contain enough lines.", f_loadavg);
+        error("%s: File does not contain enough lines.", __cfg_proc_loadavg_filename);
         return -1;
     }
 
     if (unlikely(procfile_linewords(__pf_loadavg, 0) < 6)) {
-        error("%s: File does not contain enough columns.", f_loadavg);
+        error("%s: File does not contain enough columns.", __cfg_proc_loadavg_filename);
         return -1;
     }
 

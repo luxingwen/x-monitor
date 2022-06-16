@@ -22,7 +22,8 @@
 
 #include "appconfig/appconfig.h"
 
-static const char       *__proc_netstat_filename = "/proc/net/netstat";
+static const char       *__def_proc_netstat_filename = "/proc/net/netstat";
+static const char       *__cfg_proc_netstat_filename = NULL;
 static struct proc_file *__pf_netstat = NULL;
 static ARL_BASE         *__arl_ipext = NULL, *__arl_tcpext = NULL;
 
@@ -424,21 +425,23 @@ int32_t collector_proc_netstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                const char *config_path) {
     debug("[PLUGIN_PROC:proc_netstat] config:%s running", config_path);
 
-    const char *f_netstat =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_netstat_filename);
+    if (unlikely(!__cfg_proc_netstat_filename)) {
+        __cfg_proc_netstat_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __def_proc_netstat_filename);
+    }
 
     if (unlikely(!__pf_netstat)) {
-        __pf_netstat = procfile_open(f_netstat, " \t:", PROCFILE_FLAG_DEFAULT);
+        __pf_netstat = procfile_open(__cfg_proc_netstat_filename, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_netstat)) {
-            error("[PLUGIN_PROC:proc_netstat] Cannot open %s", f_netstat);
+            error("[PLUGIN_PROC:proc_netstat] Cannot open %s", __cfg_proc_netstat_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_netstat] opened '%s'", f_netstat);
+        debug("[PLUGIN_PROC:proc_netstat] opened '%s'", __cfg_proc_netstat_filename);
     }
 
     __pf_netstat = procfile_readall(__pf_netstat);
     if (unlikely(!__pf_netstat)) {
-        error("Cannot read %s", f_netstat);
+        error("Cannot read %s", __cfg_proc_netstat_filename);
         return -1;
     }
 

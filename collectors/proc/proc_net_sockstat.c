@@ -19,6 +19,7 @@
 #include "appconfig/appconfig.h"
 
 static const char       *__proc_net_socksat_filename = "/proc/net/sockstat";
+static const char       *__cfg_proc_net_socksat_filename = NULL;
 static struct proc_file *__pf_net_sockstat = NULL;
 static ARL_BASE *__arl_sockets = NULL, *__arl_tcp = NULL, *__arl_udp = NULL, *__arl_udplite = NULL,
                 *__arl_raw = NULL, *__arl_frag = NULL;
@@ -178,21 +179,25 @@ int32_t collector_proc_net_sockstat(int32_t UNUSED(update_every), usec_t UNUSED(
                                     const char *config_path) {
     debug("[PLUGIN_PROC:proc_net_sockstat] config:%s running", config_path);
 
-    const char *f_sockstat =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_net_socksat_filename);
+    if (unlikely(!__cfg_proc_net_socksat_filename)) {
+        __cfg_proc_net_socksat_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __proc_net_socksat_filename);
+    }
 
     if (unlikely(!__pf_net_sockstat)) {
-        __pf_net_sockstat = procfile_open(f_sockstat, " \t:", PROCFILE_FLAG_DEFAULT);
+        __pf_net_sockstat =
+            procfile_open(__cfg_proc_net_socksat_filename, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_net_sockstat)) {
-            error("[PLUGIN_PROC:proc_net_sockstat] Cannot open %s", f_sockstat);
+            error("[PLUGIN_PROC:proc_net_sockstat] Cannot open %s",
+                  __cfg_proc_net_socksat_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_net_sockstat] opened '%s'", f_sockstat);
+        debug("[PLUGIN_PROC:proc_net_sockstat] opened '%s'", __cfg_proc_net_socksat_filename);
     }
 
     __pf_net_sockstat = procfile_readall(__pf_net_sockstat);
     if (unlikely(!__pf_net_sockstat)) {
-        error("Cannot read %s", f_sockstat);
+        error("Cannot read %s", __cfg_proc_net_socksat_filename);
         return -1;
     }
 

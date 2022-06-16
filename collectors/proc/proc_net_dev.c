@@ -46,7 +46,8 @@ Indicates the current physical link state of the interface.
 
 #include "appconfig/appconfig.h"
 
-static const char       *__proc_net_dev_filename = "/proc/net/dev";
+static const char       *__def_proc_net_dev_filename = "/proc/net/dev";
+static const char       *__cfg_proc_net_dev_filename = NULL;
 static struct proc_file *__pf_net_dev = NULL;
 
 static const char *__metric_help_net_dev_rx_bytes =
@@ -378,21 +379,23 @@ int32_t collector_proc_net_dev(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                const char *config_path) {
     debug("[PLUGIN_PROC:proc_net_dev] config:%s running", config_path);
 
-    const char *f_netdev =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_net_dev_filename);
+    if (!unlikely(__cfg_proc_net_dev_filename)) {
+        __cfg_proc_net_dev_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __def_proc_net_dev_filename);
+    }
 
     if (unlikely(!__pf_net_dev)) {
-        __pf_net_dev = procfile_open(f_netdev, " \t,|", PROCFILE_FLAG_DEFAULT);
+        __pf_net_dev = procfile_open(__cfg_proc_net_dev_filename, " \t,|", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_net_dev)) {
-            error("[PLUGIN_PROC:proc_net_dev] Cannot open %s", f_netdev);
+            error("[PLUGIN_PROC:proc_net_dev] Cannot open %s", __cfg_proc_net_dev_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_net_dev] opened '%s'", f_netdev);
+        debug("[PLUGIN_PROC:proc_net_dev] opened '%s'", __cfg_proc_net_dev_filename);
     }
 
     __pf_net_dev = procfile_readall(__pf_net_dev);
     if (unlikely(!__pf_net_dev)) {
-        error("Cannot read %s", f_netdev);
+        error("Cannot read %s", __cfg_proc_net_dev_filename);
         return -1;
     }
 

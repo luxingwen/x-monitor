@@ -23,7 +23,8 @@
 // https://billtian.github.io/digoal.blog/2016/08/06/03.html
 // https://www.sunliaodong.cn/2021/02/05/Linux-proc-vmstat%E8%AF%A6%E8%A7%A3/
 
-static const char       *__proc_vmstat_filename = "/proc/vmstat";
+static const char       *__def_proc_vmstat_filename = "/proc/vmstat";
+static const char       *__cfg_proc_vmstat_filename = NULL;
 static struct proc_file *__pf_vmstat = NULL;
 static ARL_BASE         *__arl_vmstat = NULL;
 
@@ -160,21 +161,23 @@ int32_t collector_proc_vmstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                               const char *config_path) {
     debug("[PLUGIN_PROC:proc_vmstat] config:%s running", config_path);
 
-    const char *f_vmstat =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_vmstat_filename);
+    if (unlikely(!__cfg_proc_vmstat_filename)) {
+        __cfg_proc_vmstat_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __def_proc_vmstat_filename);
+    }
 
     if (unlikely(!__pf_vmstat)) {
-        __pf_vmstat = procfile_open(f_vmstat, " \t:", PROCFILE_FLAG_DEFAULT);
+        __pf_vmstat = procfile_open(__cfg_proc_vmstat_filename, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_vmstat)) {
-            error("[PLUGIN_PROC:proc_vmstat] Cannot open %s", f_vmstat);
+            error("[PLUGIN_PROC:proc_vmstat] Cannot open %s", __cfg_proc_vmstat_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_vmstat] opened '%s'", f_vmstat);
+        debug("[PLUGIN_PROC:proc_vmstat] opened '%s'", __cfg_proc_vmstat_filename);
     }
 
     __pf_vmstat = procfile_readall(__pf_vmstat);
     if (unlikely(!__pf_vmstat)) {
-        error("Cannot read %s", f_vmstat);
+        error("Cannot read %s", __cfg_proc_vmstat_filename);
         return -1;
     }
 

@@ -17,7 +17,8 @@
 
 #include "appconfig/appconfig.h"
 
-static const char *__proc_net_stat_nf_conntrack_filename = "/proc/net/stat/nf_conntrack";
+static const char *__def_proc_net_stat_nf_conntrack_filename = "/proc/net/stat/nf_conntrack";
+static const char *__cfg_proc_net_stat_nf_conntrack_filename = NULL;
 // static const char *__proc_sys_net_netfilter_nf_conntrack_count =
 //     "/proc/sys/net/netfilter/nf_conntrack_count";
 static const char *__proc_nf_conntrack_max = "/proc/sys/net/netfilter/nf_conntrack_max";
@@ -138,21 +139,25 @@ int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every), usec_t U
                                           const char *config_path) {
     debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] config:%s running", config_path);
 
-    const char *f_nf_conntrack = appconfig_get_member_str(config_path, "monitor_file",
-                                                          __proc_net_stat_nf_conntrack_filename);
+    if (unlikely(!__cfg_proc_net_stat_nf_conntrack_filename)) {
+        __cfg_proc_net_stat_nf_conntrack_filename = appconfig_get_member_str(
+            config_path, "monitor_file", __def_proc_net_stat_nf_conntrack_filename);
+    }
 
     if (unlikely(!__pf_net_stat_nf_conntrack)) {
-        __pf_net_stat_nf_conntrack = procfile_open(f_nf_conntrack, " \t:", PROCFILE_FLAG_DEFAULT);
+        __pf_net_stat_nf_conntrack =
+            procfile_open(__cfg_proc_net_stat_nf_conntrack_filename, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_net_stat_nf_conntrack)) {
-            error("Cannot open %s", f_nf_conntrack);
+            error("Cannot open %s", __cfg_proc_net_stat_nf_conntrack_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] opened '%s'", f_nf_conntrack);
+        debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] opened '%s'",
+              __cfg_proc_net_stat_nf_conntrack_filename);
     }
 
     __pf_net_stat_nf_conntrack = procfile_readall(__pf_net_stat_nf_conntrack);
     if (unlikely(!__pf_net_stat_nf_conntrack)) {
-        error("Cannot read %s", f_nf_conntrack);
+        error("Cannot read %s", __cfg_proc_net_stat_nf_conntrack_filename);
         return -1;
     }
 
@@ -160,7 +165,8 @@ int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every), usec_t U
     size_t words = 0;
 
     memset(&__nf_conntrack_metrics, 0, sizeof(struct nf_conntrack_metrics));
-    // debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] file: '%s' have lines:%zu", f_nf_conntrack,
+    // debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] file: '%s' have lines:%zu",
+    // __cfg_proc_net_stat_nf_conntrack_filename,
     //       lines);
 
     // 每一行是一个cpu统计信息
@@ -168,7 +174,7 @@ int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every), usec_t U
         words = procfile_linewords(__pf_net_stat_nf_conntrack, l);
         if (unlikely(words < 17)) {
             error("Cannot read %s: line %lu have %lu words which is too short, expected 17 words.",
-                  f_nf_conntrack, l, words);
+                  __cfg_proc_net_stat_nf_conntrack_filename, l, words);
             continue;
         }
 

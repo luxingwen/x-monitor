@@ -15,7 +15,8 @@
 
 #include "appconfig/appconfig.h"
 
-static const char       *__proc_diskstat_filename = "/proc/diskstats";
+static const char       *__def_proc_diskstat_filename = "/proc/diskstats";
+static const char       *__cfg_proc_diskstat_filename = NULL;
 static struct proc_file *__pf_diskstats = NULL;
 
 struct io_stats {
@@ -168,11 +169,13 @@ int32_t init_collector_proc_diskstats() {
 int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const char *config_path) {
     debug("[PLUGIN_PROC:proc_diskstats] config:%s running", config_path);
 
-    const char *f_diskstat =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_diskstat_filename);
+    if (unlikely(!__cfg_proc_diskstat_filename)) {
+        __cfg_proc_diskstat_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __def_proc_diskstat_filename);
+    }
 
     if (unlikely(!__pf_diskstats)) {
-        __pf_diskstats = procfile_open(f_diskstat, " \t", PROCFILE_FLAG_DEFAULT);
+        __pf_diskstats = procfile_open(__cfg_proc_diskstat_filename, " \t", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_diskstats)) {
             error("[PLUGIN_PROC:proc_diskstats] Cannot open /proc/diskstats");
             return -1;

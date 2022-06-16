@@ -23,7 +23,8 @@
 
 #include "appconfig/appconfig.h"
 
-static const char       *__proc_stat_filename = "/proc/stat";
+static const char       *__def_proc_stat_filename = "/proc/stat";
+static const char       *__cfg_proc_stat_filename = NULL;
 static struct proc_file *__pf_stat = NULL;
 
 static prom_gauge_t *__metric_node_processes_running = NULL,
@@ -157,21 +158,23 @@ int32_t collector_proc_stat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                             const char *config_path) {
     debug("[PLUGIN_PROC:proc_stat] config:%s running", config_path);
 
-    const char *f_stat =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_stat_filename);
+    if (unlikely(!__cfg_proc_stat_filename)) {
+        __cfg_proc_stat_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __def_proc_stat_filename);
+    }
 
     if (unlikely(!__pf_stat)) {
-        __pf_stat = procfile_open(f_stat, " \t:", PROCFILE_FLAG_DEFAULT);
+        __pf_stat = procfile_open(__cfg_proc_stat_filename, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_stat)) {
-            error("[PLUGIN_PROC:proc_stat] Cannot open %s", f_stat);
+            error("[PLUGIN_PROC:proc_stat] Cannot open %s", __cfg_proc_stat_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_stat] opened '%s'", f_stat);
+        debug("[PLUGIN_PROC:proc_stat] opened '%s'", __cfg_proc_stat_filename);
     }
 
     __pf_stat = procfile_readall(__pf_stat);
     if (unlikely(!__pf_stat)) {
-        error("Cannot read %s", f_stat);
+        error("Cannot read %s", __cfg_proc_stat_filename);
         return -1;
     }
 

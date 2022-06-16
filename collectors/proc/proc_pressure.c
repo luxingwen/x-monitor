@@ -31,6 +31,13 @@ IO）压力造成的任务执行停顿。PSI
 // linux calculates this every 2 seconds, see kernel/sched/psi.c PSI_FREQ
 #define MIN_PRESSURE_UPDATE_EVERY 2
 
+static const char *__def_proc_pressure_cpu_filename = "/proc/pressure/cpu";
+static const char *__def_proc_pressure_mem_filename = "/proc/pressure/mem";
+static const char *__def_proc_pressure_io_filename = "/proc/pressure/io";
+static const char *__cfg_proc_pressure_cpu_filename = NULL;
+static const char *__cfg_proc_pressure_mem_filename = NULL;
+static const char *__cfg_proc_pressure_io_filename = NULL;
+
 static struct proc_file *__pf_psi_cpu = NULL, *__pf_psi_mem = NULL, *__pf_psi_io = NULL;
 
 // 输出的指标
@@ -145,25 +152,27 @@ int32_t init_collector_proc_pressure() {
 }
 
 static void __collector_proc_psi_cpu(const char *config_path) {
-    const char *psi_cpu =
-        appconfig_get_member_str(config_path, "monitor_cpu_file", "/proc/pressure/cpu");
+    if (unlikely(!__cfg_proc_pressure_cpu_filename)) {
+        __cfg_proc_pressure_cpu_filename = appconfig_get_member_str(
+            config_path, "monitor_cpu_file", __def_proc_pressure_cpu_filename);
+    }
 
     if (unlikely(!__pf_psi_cpu)) {
-        __pf_psi_cpu = procfile_open(psi_cpu, " =", PROCFILE_FLAG_DEFAULT);
+        __pf_psi_cpu = procfile_open(__cfg_proc_pressure_cpu_filename, " =", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_psi_cpu)) {
-            error("[PLUGIN_PROC:proc_pressure] Cannot open %s", psi_cpu);
+            error("[PLUGIN_PROC:proc_pressure] Cannot open %s", __cfg_proc_pressure_cpu_filename);
             return;
         }
     }
 
     __pf_psi_cpu = procfile_readall(__pf_psi_cpu);
     if (unlikely(!__pf_psi_cpu)) {
-        error("[PLUGIN_PROC:proc_pressure] Cannot read %s", psi_cpu);
+        error("[PLUGIN_PROC:proc_pressure] Cannot read %s", __cfg_proc_pressure_cpu_filename);
         return;
     }
 
     if (unlikely(procfile_lines(__pf_psi_cpu) < 1)) {
-        error("[PLUGIN_PROC:proc_pressure] %s has no lines", psi_cpu);
+        error("[PLUGIN_PROC:proc_pressure] %s has no lines", __cfg_proc_pressure_cpu_filename);
         return;
     }
     static double   psi_cpu_10secs, psi_cpu_60secs, psi_cpu_300secs;
@@ -189,13 +198,15 @@ static void __collector_proc_psi_cpu(const char *config_path) {
 }
 
 static void __collector_proc_psi_mem(const char *config_path) {
-    const char *psi_memory =
-        appconfig_get_member_str(config_path, "monitor_mem_file", "/proc/pressure/memory");
+    if (unlikely(!__cfg_proc_pressure_mem_filename)) {
+        __cfg_proc_pressure_mem_filename = appconfig_get_member_str(
+            config_path, "monitor_mem_file", __def_proc_pressure_mem_filename);
+    }
 
     if (unlikely(!__pf_psi_mem)) {
-        __pf_psi_mem = procfile_open(psi_memory, " =", PROCFILE_FLAG_DEFAULT);
+        __pf_psi_mem = procfile_open(__cfg_proc_pressure_mem_filename, " =", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_psi_mem)) {
-            error("[PLUGIN_PROC:proc_pressure] Cannot open %s", psi_memory);
+            error("[PLUGIN_PROC:proc_pressure] Cannot open %s", __cfg_proc_pressure_mem_filename);
             return;
         }
         debug("[PLUGIN_PROC:proc_pressure] opened '%s'", procfile_filename(__pf_psi_mem));
@@ -203,12 +214,12 @@ static void __collector_proc_psi_mem(const char *config_path) {
 
     __pf_psi_mem = procfile_readall(__pf_psi_mem);
     if (unlikely(!__pf_psi_mem)) {
-        error("[PLUGIN_PROC:proc_pressure] Cannot read %s", psi_memory);
+        error("[PLUGIN_PROC:proc_pressure] Cannot read %s", __cfg_proc_pressure_mem_filename);
         return;
     }
 
     if (unlikely(procfile_lines(__pf_psi_mem) < 1)) {
-        error("[PLUGIN_PROC:proc_pressure] %s has no lines", psi_memory);
+        error("[PLUGIN_PROC:proc_pressure] %s has no lines", __cfg_proc_pressure_mem_filename);
         return;
     }
 
@@ -260,25 +271,27 @@ static void __collector_proc_psi_mem(const char *config_path) {
 }
 
 static void __collector_proc_psi_io(const char *config_path) {
-    const char *psi_io =
-        appconfig_get_member_str(config_path, "monitor_io_file", "/proc/pressure/io");
+    if (unlikely(!__cfg_proc_pressure_io_filename)) {
+        __cfg_proc_pressure_io_filename = appconfig_get_member_str(config_path, "monitor_io_file",
+                                                                   __def_proc_pressure_io_filename);
+    }
 
     if (unlikely(!__pf_psi_io)) {
-        __pf_psi_io = procfile_open(psi_io, " =", PROCFILE_FLAG_DEFAULT);
+        __pf_psi_io = procfile_open(__cfg_proc_pressure_io_filename, " =", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_psi_io)) {
-            error("[PLUGIN_PROC:proc_pressure] Cannot open %s", psi_io);
+            error("[PLUGIN_PROC:proc_pressure] Cannot open %s", __cfg_proc_pressure_io_filename);
             return;
         }
     }
 
     __pf_psi_io = procfile_readall(__pf_psi_io);
     if (unlikely(!__pf_psi_io)) {
-        error("[PLUGIN_PROC:proc_pressure] Cannot read %s", psi_io);
+        error("[PLUGIN_PROC:proc_pressure] Cannot read %s", __cfg_proc_pressure_io_filename);
         return;
     }
 
     if (unlikely(procfile_lines(__pf_psi_io) < 1)) {
-        error("[PLUGIN_PROC:proc_pressure] %s has no lines", psi_io);
+        error("[PLUGIN_PROC:proc_pressure] %s has no lines", __cfg_proc_pressure_io_filename);
         return;
     }
 

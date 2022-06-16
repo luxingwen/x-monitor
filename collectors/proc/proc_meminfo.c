@@ -24,7 +24,8 @@
 
 #include "appconfig/appconfig.h"
 
-static const char       *__proc_meminfo_filename = "/proc/meminfo";
+static const char       *__def_proc_meminfo_filename = "/proc/meminfo";
+static const char       *__cfg_proc_meminfo_filename = NULL;
 static struct proc_file *__pf_meminfo = NULL;
 static ARL_BASE         *__arl_base = NULL;
 
@@ -379,21 +380,23 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                const char *config_path) {
     debug("[PLUGIN_PROC:proc_meminfo] config:%s running", config_path);
 
-    const char *f_meminfo =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_meminfo_filename);
+    if (unlikely(!__cfg_proc_meminfo_filename)) {
+        __cfg_proc_meminfo_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __def_proc_meminfo_filename);
+    }
 
     if (unlikely(!__pf_meminfo)) {
-        __pf_meminfo = procfile_open(f_meminfo, " \t:", PROCFILE_FLAG_DEFAULT);
+        __pf_meminfo = procfile_open(__cfg_proc_meminfo_filename, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_meminfo)) {
-            error("[PLUGIN_PROC:proc_meminfo] Canont open %s", f_meminfo);
+            error("[PLUGIN_PROC:proc_meminfo] Canont open %s", __cfg_proc_meminfo_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_meminfo] opened '%s'", f_meminfo);
+        debug("[PLUGIN_PROC:proc_meminfo] opened '%s'", __cfg_proc_meminfo_filename);
     }
 
     __pf_meminfo = procfile_readall(__pf_meminfo);
     if (unlikely(!__pf_meminfo)) {
-        error("Canont read %s", f_meminfo);
+        error("Canont read %s", __cfg_proc_meminfo_filename);
         return -1;
     }
 

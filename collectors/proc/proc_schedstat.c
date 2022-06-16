@@ -19,7 +19,8 @@
 
 // https://www.kernel.org/doc/html/latest/scheduler/sched-stats.html
 
-static const char       *__proc_schedstat_filename = "/proc/schedstat";
+static const char       *__def_proc_schedstat_filename = "/proc/schedstat";
+static const char       *__cfg_proc_schedstat_filename = NULL;
 static struct proc_file *__pf_schedstat = NULL;
 
 static prom_gauge_t *__metric_node_schedstat_running_seconds_total = NULL,
@@ -48,21 +49,26 @@ int32_t collector_proc_schedstat(int32_t UNUSED(update_every), usec_t UNUSED(dt)
                                  const char *config_path) {
     debug("[PLUGIN_PROC:proc_schedstat] config:%s running", config_path);
 
-    const char *f_schedstat =
-        appconfig_get_member_str(config_path, "monitor_file", __proc_schedstat_filename);
+    if (unlikely(!__cfg_proc_schedstat_filename)) {
+        __cfg_proc_schedstat_filename =
+            appconfig_get_member_str(config_path, "monitor_file", __def_proc_schedstat_filename);
+    }
 
     if (unlikely(!__pf_schedstat)) {
-        __pf_schedstat = procfile_open(f_schedstat, " \t:", PROCFILE_FLAG_DEFAULT);
+        __pf_schedstat =
+            procfile_open(__cfg_proc_schedstat_filename, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_schedstat)) {
-            error("[PLUGIN_PROC:proc_net_proc_schedstatsockstat] Cannot open %s", f_schedstat);
+            error("[PLUGIN_PROC:proc_net_proc_schedstatsockstat] Cannot open %s",
+                  __cfg_proc_schedstat_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_net_proc_schedstatsockstat] opened '%s'", f_schedstat);
+        debug("[PLUGIN_PROC:proc_net_proc_schedstatsockstat] opened '%s'",
+              __cfg_proc_schedstat_filename);
     }
 
     __pf_schedstat = procfile_readall(__pf_schedstat);
     if (unlikely(!__pf_schedstat)) {
-        error("Cannot read %s", f_schedstat);
+        error("Cannot read %s", __cfg_proc_schedstat_filename);
         return -1;
     }
 
