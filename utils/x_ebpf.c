@@ -13,7 +13,7 @@
 #include <linux/bpf.h>
 #include <linux/if_link.h>
 
-#include "../collectors/ebpf/bpf_and_user.h"
+#include "../plugin_ebpf/bpf_and_user.h"
 
 #define DEBUGFS "/sys/kernel/debug/tracing/"
 #define MAX_SYMS 300000
