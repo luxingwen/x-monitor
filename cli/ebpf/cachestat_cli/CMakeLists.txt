@@ -1,6 +1,6 @@
 AUX_SOURCE_DIRECTORY(. cachestat_cli_srcs)
 
-include_directories("${PROJECT_SOURCE_DIR}/collectors/ebpf/user"
+include_directories("${PROJECT_SOURCE_DIR}//plugin_ebpf/usr"
                     "${EXTRA_DIR}/include/libbpf/libbpf/include"
                     "${EXTRA_DIR}/include/libbpf/libbpf/include/uapi")
 
