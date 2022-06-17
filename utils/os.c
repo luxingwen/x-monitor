@@ -297,6 +297,7 @@ pid_t get_system_pid_max() {
 static const char *const __smaps_tags[] = { "Size:",          "Rss:",           "Pss:",
                                             "Private_Clean:", "Private_Dirty:", "Swap:" };
 static const size_t      __smaps_tags_len[] = { 5, 4, 4, 14, 14, 5 };
+static __thread char     __proc_smaps_line[XM_PROC_LINE_SIZE] = { 0 };
 
 enum smaps_line_type {
     LINE_IS_NORMAL,
@@ -308,42 +309,41 @@ enum smaps_line_type {
 };
 // https://www.jianshu.com/p/8203457a11cc
 
-int32_t get_process_smaps_info(const char *smaps_path, struct process_smaps_info *info) {
-    FILE *f_smaps = fopen(smaps_path, "r");
+// TODO: read /proc/self/smaps_rollup
 
-    if (unlikely(!f_smaps)) {
+int32_t get_process_smaps_info(const char *smaps_path, struct process_smaps_info *info) {
+    FILE *fp_smaps = fopen(smaps_path, "r");
+
+    if (unlikely(!fp_smaps)) {
         error("open smaps '%s' failed", smaps_path);
         memset(info, 0, sizeof(struct process_smaps_info));
         return -1;
     }
 
-    char   *line = NULL, *cursor = NULL, *num = NULL;
-    size_t  line_size = 0;
-    ssize_t read_size = 0;
-
+    char                *cursor = NULL, *num = NULL;
     enum smaps_line_type type = LINE_IS_NORMAL;
 
-    while ((read_size = getline(&line, &line_size, f_smaps)) != -1) {
+    while (NULL != fgets(__proc_smaps_line, XM_PROC_LINE_SIZE, fp_smaps)) {
         type = 0;
 
-        if (0 == strncmp(line, __smaps_tags[0], __smaps_tags_len[0])) {
+        if (0 == strncmp(__proc_smaps_line, __smaps_tags[0], __smaps_tags_len[0])) {
             type = LINE_IS_VMSIZE;
-            cursor = line + __smaps_tags_len[0];
-        } else if (0 == strncmp(line, __smaps_tags[1], __smaps_tags_len[1])) {
+            cursor = __proc_smaps_line + __smaps_tags_len[0];
+        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[1], __smaps_tags_len[1])) {
             type = LINE_IS_RSS;
-            cursor = line + __smaps_tags_len[1];
-        } else if (0 == strncmp(line, __smaps_tags[2], __smaps_tags_len[2])) {
+            cursor = __proc_smaps_line + __smaps_tags_len[1];
+        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[2], __smaps_tags_len[2])) {
             type = LINE_IS_PSS;
-            cursor = line + __smaps_tags_len[2];
-        } else if (0 == strncmp(line, __smaps_tags[3], __smaps_tags_len[3])) {
+            cursor = __proc_smaps_line + __smaps_tags_len[2];
+        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[3], __smaps_tags_len[3])) {
             type = LINE_IS_USS;
-            cursor = line + __smaps_tags_len[3];
-        } else if (0 == strncmp(line, __smaps_tags[4], __smaps_tags_len[4])) {
+            cursor = __proc_smaps_line + __smaps_tags_len[3];
+        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[4], __smaps_tags_len[4])) {
             type = LINE_IS_USS;
-            cursor = line + __smaps_tags_len[4];
-        } else if (0 == strncmp(line, __smaps_tags[5], __smaps_tags_len[5])) {
+            cursor = __proc_smaps_line + __smaps_tags_len[4];
+        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[5], __smaps_tags_len[5])) {
             type = LINE_IS_SWAP;
-            cursor = line + __smaps_tags_len[5];
+            cursor = __proc_smaps_line + __smaps_tags_len[5];
         } else {
             continue;
         }
@@ -370,9 +370,10 @@ int32_t get_process_smaps_info(const char *smaps_path, struct process_smaps_info
         }
     }
 
-    free(line);
-    fclose(f_smaps);
-    f_smaps = NULL;
+    if (likely(fp_smaps)) {
+        fclose(fp_smaps);
+        fp_smaps = NULL;
+    }
 
     return 0;
 }
