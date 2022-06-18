@@ -295,8 +295,9 @@ pid_t get_system_pid_max() {
 }
 
 static const char *const __smaps_tags[] = { "Size:",          "Rss:",           "Pss:",
+                                            "Pss_Anon:",      "Pss_File:",      "Pss_Shmem:",
                                             "Private_Clean:", "Private_Dirty:", "Swap:" };
-static const size_t      __smaps_tags_len[] = { 5, 4, 4, 14, 14, 5 };
+static const size_t      __smaps_tags_len[] = { 5, 4, 4, 9, 9, 10, 14, 14, 5 };
 static __thread char     __proc_smaps_line[XM_PROC_LINE_SIZE] = { 0 };
 
 enum smaps_line_type {
@@ -304,6 +305,9 @@ enum smaps_line_type {
     LINE_IS_VMSIZE,
     LINE_IS_RSS,
     LINE_IS_PSS,
+    LINE_IS_PSS_ANON,
+    LINE_IS_PSS_FILE,
+    LINE_IS_PSS_SHMEM,
     LINE_IS_USS,
     LINE_IS_SWAP,
 };
@@ -311,19 +315,41 @@ enum smaps_line_type {
 
 // TODO: read /proc/self/smaps_rollup
 
-int32_t get_process_smaps_info(const char *smaps_path, struct process_smaps_info *info) {
-    FILE *fp_smaps = fopen(smaps_path, "r");
+static const char *__proc_pid_smaps_fmt = "/proc/%d/smaps";
+static const char *__proc_pid_smaps_rollup_fmt = "/proc/%d/smaps_rollup";
 
-    if (unlikely(!fp_smaps)) {
-        error("open smaps '%s' failed", smaps_path);
-        memset(info, 0, sizeof(struct process_smaps_info));
-        return -1;
+int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
+    char  f_smaps_path[XM_PROC_FILENAME_MAX] = { 0 };
+    char  f_smaps_rollup_path[XM_PROC_FILENAME_MAX] = { 0 };
+    FILE *fp = NULL;
+
+    snprintf(f_smaps_path, XM_PROC_FILENAME_MAX - 1, __proc_pid_smaps_fmt, pid);
+    snprintf(f_smaps_rollup_path, XM_PROC_FILENAME_MAX - 1, __proc_pid_smaps_rollup_fmt, pid);
+
+    // 判断文件是否存在
+    if (file_exists(f_smaps_rollup_path)) {
+        fp = fopen(f_smaps_rollup_path, "r");
+
+        if (unlikely(!fp)) {
+            error("open smaps '%s' failed", f_smaps_rollup_path);
+            memset(info, 0, sizeof(struct process_smaps_info));
+            return -1;
+        }
+
+    } else {
+        fp = fopen(f_smaps_path, "r");
+
+        if (unlikely(!fp)) {
+            error("open smaps '%s' failed", f_smaps_path);
+            memset(info, 0, sizeof(struct process_smaps_info));
+            return -1;
+        }
     }
 
     char                *cursor = NULL, *num = NULL;
     enum smaps_line_type type = LINE_IS_NORMAL;
 
-    while (NULL != fgets(__proc_smaps_line, XM_PROC_LINE_SIZE, fp_smaps)) {
+    while (NULL != fgets(__proc_smaps_line, XM_PROC_LINE_SIZE, fp)) {
         type = 0;
 
         if (0 == strncmp(__proc_smaps_line, __smaps_tags[0], __smaps_tags_len[0])) {
@@ -336,14 +362,23 @@ int32_t get_process_smaps_info(const char *smaps_path, struct process_smaps_info
             type = LINE_IS_PSS;
             cursor = __proc_smaps_line + __smaps_tags_len[2];
         } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[3], __smaps_tags_len[3])) {
-            type = LINE_IS_USS;
+            type = LINE_IS_PSS_ANON;
             cursor = __proc_smaps_line + __smaps_tags_len[3];
         } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[4], __smaps_tags_len[4])) {
-            type = LINE_IS_USS;
+            type = LINE_IS_PSS_FILE;
             cursor = __proc_smaps_line + __smaps_tags_len[4];
         } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[5], __smaps_tags_len[5])) {
-            type = LINE_IS_SWAP;
+            type = LINE_IS_PSS_SHMEM;
             cursor = __proc_smaps_line + __smaps_tags_len[5];
+        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[6], __smaps_tags_len[6])) {
+            type = LINE_IS_USS;
+            cursor = __proc_smaps_line + __smaps_tags_len[6];
+        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[7], __smaps_tags_len[7])) {
+            type = LINE_IS_USS;
+            cursor = __proc_smaps_line + __smaps_tags_len[7];
+        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[8], __smaps_tags_len[8])) {
+            type = LINE_IS_SWAP;
+            cursor = __proc_smaps_line + __smaps_tags_len[8];
         } else {
             continue;
         }
@@ -367,12 +402,18 @@ int32_t get_process_smaps_info(const char *smaps_path, struct process_smaps_info
             info->uss += str2uint64_t(num);
         } else if (LINE_IS_SWAP == type) {
             info->swap += str2uint64_t(num);
+        } else if (LINE_IS_PSS_ANON == type) {
+            info->pss_anon = str2uint64_t(num);
+        } else if (LINE_IS_PSS_FILE == type) {
+            info->pss_file = str2uint64_t(num);
+        } else if (LINE_IS_PSS_SHMEM == type) {
+            info->pss_shmem = str2uint64_t(num);
         }
     }
 
-    if (likely(fp_smaps)) {
-        fclose(fp_smaps);
-        fp_smaps = NULL;
+    if (likely(fp)) {
+        fclose(fp);
+        fp = NULL;
     }
 
     return 0;

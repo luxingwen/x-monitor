@@ -128,10 +128,12 @@ int32_t main(int32_t argc, char **argv) {
         }
 
         memset(&psmaps, 0, sizeof(struct process_smaps_info));
-        get_process_smaps_info(__smaps_file, &psmaps);
+        get_process_smaps_info(pid, &psmaps);
 
-        debug("process: %d, vmszie: %lu kB, rss: %lu kB, pss: %lu kB, uss: %lu kB, swap: %lu kB",
-              pid, psmaps.vmsize, psmaps.rss, psmaps.pss, psmaps.uss, psmaps.swap);
+        debug("process: %d, vmszie: %lu kB, rss: %lu kB, pss: %lu kB, pss_anon: %lu kB, pss_file: "
+              "%lu kB, pss_shem: %lu kB, uss: %lu kB, swap: %lu kB",
+              pid, psmaps.vmsize, psmaps.rss, psmaps.pss, psmaps.pss_anon, psmaps.pss_file,
+              psmaps.pss_shmem, psmaps.uss, psmaps.swap);
 
         prev_process_cpu_jiffies = curr_process_cpu_jiffies;
         curr_process_cpu_jiffies = ps->utime_raw + ps->stime_raw + ps->cutime_raw + ps->cstime_raw;

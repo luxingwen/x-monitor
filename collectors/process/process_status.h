@@ -23,7 +23,6 @@ struct process_status {
     char *status_full_filename;
     char *io_full_filename;
     char *fd_full_filename;
-    char *smaps_full_filename;
     char *oom_score_full_filename;
     char *oom_score_adj_full_filename;
 
@@ -64,6 +63,10 @@ struct process_status {
         pss;   // **  Proportional Set Size, is a much more useful memory management metric, It
                // ** works exactly like RSS, but with the added difference of partitioning shared
                // ** libraries.
+    uint64_t pss_anon;
+    uint64_t pss_file;
+    uint64_t pss_shmem;
+
     uint64_t uss;   // ** The Unique Set Size, or USS, represents the private memory of a process.
                     // ** it shows libraries and pages allocated only to this process.
 

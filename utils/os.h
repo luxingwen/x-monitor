@@ -49,11 +49,14 @@ struct process_smaps_info {
     uint64_t vmsize;
     uint64_t rss;
     uint64_t pss;
+    uint64_t pss_anon;
+    uint64_t pss_file;
+    uint64_t pss_shmem;
     uint64_t uss;
     uint64_t swap;
 };
 
-extern int32_t get_process_smaps_info(const char *smaps_path, struct process_smaps_info *info);
+extern int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info);
 
 struct process_descendant_pids {
     pid_t *pids;

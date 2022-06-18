@@ -101,7 +101,7 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
 
     // pm_process_destroy(pm_proc);
     memset(&pid_smaps, 0, sizeof(struct process_smaps_info));
-    get_process_smaps_info(ps->smaps_full_filename, &pid_smaps);
+    get_process_smaps_info(ps->pid, &pid_smaps);
 
     // 获取进程的内存使用指标，转换成KB
     ps->vmsize = pid_smaps.vmsize;   // /proc/pid/status.VmSize
@@ -109,6 +109,9 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
     ps->vmswap = pid_smaps.swap;
     ps->pss = pid_smaps.pss;
     ps->uss = pid_smaps.uss;
+    ps->pss_anon = pid_smaps.pss_anon;
+    ps->pss_file = pid_smaps.pss_file;
+    ps->pss_shmem = pid_smaps.pss_shmem;
 
     // 读取/proc/pid/status.RssAnon status.RssFile status.RssShmem
     int32_t fd_status = open(ps->status_full_filename, O_RDONLY);
