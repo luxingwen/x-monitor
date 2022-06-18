@@ -157,6 +157,9 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
         APP_METRIC_ADDTO_COLLECTOR(rssshmem, as->metrics.metric_rssshmem, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(vmswap, as->metrics.metric_vmswap, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(pss, as->metrics.metric_pss, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(pss_anon, as->metrics.metric_pss_anon, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(pss_file, as->metrics.metric_pss_file, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(pss_shmem, as->metrics.metric_pss_shmem, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(uss, as->metrics.metric_uss, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(io_logical_bytes_read, as->metrics.metric_io_logical_bytes_read,
                                    as->app_prom_collector);
@@ -530,6 +533,9 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
                 as->rssshmem += ps->rssshmem;
                 as->vmswap += ps->vmswap;
                 as->pss += ps->pss;
+                as->pss_anon += ps->pss_anon;
+                as->pss_file += ps->pss_file;
+                as->pss_shmem += ps->pss_shmem;
                 as->uss += ps->uss;
                 as->io_logical_bytes_read += ps->io_logical_bytes_read;
                 as->io_logical_bytes_written += ps->io_logical_bytes_written;
@@ -616,7 +622,12 @@ again:
         prom_gauge_set(as->metrics.metric_rssfile, as->rssfile, (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_rssshmem, as->rssshmem, (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_vmswap, as->vmswap, (const char *[]){ app_name });
+
         prom_gauge_set(as->metrics.metric_pss, as->pss, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_pss_anon, as->pss_anon, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_pss_file, as->pss_file, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_pss_shmem, as->pss_shmem, (const char *[]){ app_name });
+
         prom_gauge_set(as->metrics.metric_uss, as->uss, (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_io_logical_bytes_read, as->io_logical_bytes_read,
                        (const char *[]){ app_name });
@@ -642,16 +653,18 @@ again:
             "[PLUGIN_APPSTATUS] app '%s' minflt: %lu, cminflt: %lu, "
             "majflt: %lu  cmajflt: %lu, utime: %lu, stime: %lu, cutime: %lu, cstime: %lu, "
             "app_cpu_jiffies: %lu, app_num_threads: %d, vmsize: %lu, vmrss: %lu, rssanon: %lu, "
-            "rssfile: %lu, rssshmem: %lu, pss: %lu, uss: %lu, io_logical_bytes_read: %lu, "
+            "rssfile: %lu, rssshmem: %lu, pss: %lu kB, pss_anon: %lu kB, pss_file %lu kB, pss_shem "
+            "%lu kB, uss: %lu kB, io_logical_bytes_read: %lu, "
             "io_logical_bytes_written: %lu, io_read_calls: %lu, io_write_calls: %lu, "
             "io_storage_bytes_read: %lu, io_storage_bytes_written: %lu, "
             "io_cancelled_write_bytes: %d, open_fds: %d, max_oom_score: %d, max_oom_score_adj: %d",
             as->app_name, as->minflt_raw, as->cminflt_raw, as->majflt_raw, as->cmajflt_raw,
             as->utime_raw, as->stime_raw, as->cutime_raw, as->cstime_raw, as->app_cpu_jiffies,
             as->num_threads, as->vmsize, as->vmrss, as->rssanon, as->rssfile, as->rssshmem, as->pss,
-            as->uss, as->io_logical_bytes_read, as->io_logical_bytes_written, as->io_read_calls,
-            as->io_write_calls, as->io_storage_bytes_read, as->io_storage_bytes_written,
-            as->io_cancelled_write_bytes, as->open_fds, as->max_oom_score, as->max_oom_score_adj);
+            as->pss_anon, as->pss_file, as->pss_shmem, as->uss, as->io_logical_bytes_read,
+            as->io_logical_bytes_written, as->io_read_calls, as->io_write_calls,
+            as->io_storage_bytes_read, as->io_storage_bytes_written, as->io_cancelled_write_bytes,
+            as->open_fds, as->max_oom_score, as->max_oom_score_adj);
     }
     return 0;
 }

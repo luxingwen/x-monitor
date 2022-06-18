@@ -45,7 +45,10 @@ struct app_status {
     uint64_t rssshmem;   // 共享内存RSS内存大小。
     uint64_t vmswap;     // 应用swap使用量
     uint64_t pss;        // **
-    uint64_t uss;        // **
+    uint64_t pss_anon;
+    uint64_t pss_file;
+    uint64_t pss_shmem;
+    uint64_t uss;   // **
     uint64_t io_logical_bytes_read;
     uint64_t io_logical_bytes_written;
     uint64_t io_read_calls;

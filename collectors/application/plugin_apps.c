@@ -71,7 +71,7 @@ int32_t appstat_collector_routine_init() {
 }
 
 void *appstat_collector_routine_start(void *UNUSED(arg)) {
-    debug("[%s] routine, thread id: %d start", __name, pthread_self());
+    debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
     usec_t step_usecs = __collector_appstat.update_every * USEC_PER_SEC;
     usec_t step_usecs_for_app = __collector_appstat.update_every_for_app * USEC_PER_SEC;

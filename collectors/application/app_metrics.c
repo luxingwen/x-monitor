@@ -41,6 +41,12 @@ const char *__app_metric_vmswap_help =
 const char *__app_metric_pss_help =
     "The number of kilobytes of Proportional Set memory size, It works exactly "
     "like RSS, but with the added difference of partitioning shared libraries";
+const char *__app_metric_pss_anon_help =
+    "The number of kilobytes of Proportional Set memory size of anonymous private pages";
+const char *__app_metric_pss_file_help =
+    "The number of kilobytes of Proportional Set memory size of file mappings";
+const char *__app_metric_pss_shmem_help =
+    "The number of kilobytes of Proportional Set memory size of shared memory";
 const char *__app_metric_uss_help =
     "The number of kilobytes of Unique Set memory size, represents the private memory of a "
     "process.  it shows libraries and pages allocated only to this process";
