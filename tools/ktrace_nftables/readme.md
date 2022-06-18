@@ -1,12 +1,18 @@
-# bpftrace观察网络包nft_table,nft_chain,nft_rule,nft_expr的行为
+# 使用bpftrace跟踪网络包在ntf_tables的旅行
 
 ------
 
 
 
-### 获取内核函数nft_nat_do_chain调用堆栈
+### IPtables和NFtables
 
-使用bfptrace脚本来获取内核堆栈
+Nftables由netfilter/IPTables开发，是一个包过滤框架。它的目标是用来取代老的IPtables，因为IPTables在扩展性和性能方面存在一些问题。
+
+NFtables在2014年合入linux kernel，从3.13版本就是内核的一部分了。
+
+### 通过内核堆栈来找到定位函数
+
+使用bfptrace脚本来获取内核堆栈，以nat表为例，观察nft_nat_do_chain函数。
 
 ```
 bpftrace -e 'kprobe:nft_nat_do_chain { @[kstack] = count(); }'
@@ -194,6 +200,8 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 
 ### 使用bpftrace观察nft_do_chain
 
+nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的核心函数。我们编写的bpftrace脚本主要用来观察该函数的执行。
+
 1. 加载nft_do_chain函数对应的模块，读取符号表
 
    ```
@@ -237,7 +245,9 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter-4.18.bt 9080 80
    ```
    
-   [trace_pkg_in_netfilter-4.18.bt](trace_pkg_in_netfilter-4.18.bt)
+   脚本源码：[ktrace_nftables-4.18.bt](ktrace_nftables-4.18.bt)
+
+3. 代码说明
 
 4. 测试
 
@@ -377,3 +387,5 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 - [How The Tables Have Turned: An analysis of two new Linux vulnerabilities in nf_tables · David's Blog (dbouman.nl)](https://blog.dbouman.nl/2022/04/02/How-The-Tables-Have-Turned-CVE-2022-1015-1016/)
 
 - kprobe不能探测说明：[Kernel Probes (Kprobes) — The Linux Kernel documentation](https://docs.kernel.org/trace/kprobes.html#kprobes-blacklist)
+
+- [ungleich blog - IPtables vs. nftables](https://ungleich.ch/en-us/cms/blog/2018/08/18/iptables-vs-nftables/)
