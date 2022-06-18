@@ -11,7 +11,7 @@ Dump of assembler code for function nft_do_chain:
    0xffffffffc0a244e1 <+1121>:	pop    %r14
    0xffffffffc0a244e3 <+1123>:	pop    %r15
    0xffffffffc0a244e5 <+1125>:	pop    %rbp
-   0xffffffffc0a244e6 <+1126>:	retq   
+   0xffffffffc0a244e6 <+1126>:	retq
 
 47			info->rule = rule;
    0xffffffffc0a243ea <+874>:	mov    0x18(%rsp),%rsi
@@ -54,13 +54,13 @@ Dump of assembler code for function nft_do_chain:
 
 49		}
 50	}
-51	
+51
 52	static void nft_cmp_fast_eval(const struct nft_expr *expr,
 53				      struct nft_regs *regs)
 54	{
 55		const struct nft_cmp_fast_expr *priv = nft_expr_priv(expr);
 56		u32 mask = nft_cmp_fast_mask(priv->len);
-57	
+57
 58		if ((regs->data[priv->sreg] & mask) == priv->data)
    0xffffffffc0a241fc <+380>:	movzbl 0xc(%rbx),%edx
    0xffffffffc0a24200 <+384>:	mov    $0x20,%ecx
@@ -74,7 +74,7 @@ Dump of assembler code for function nft_do_chain:
 59			return;
 60		regs->verdict.code = NFT_BREAK;
 61	}
-62	
+62
 63	static bool nft_payload_fast_eval(const struct nft_expr *expr,
 64					  struct nft_regs *regs,
 65					  const struct nft_pktinfo *pkt)
@@ -89,7 +89,7 @@ Dump of assembler code for function nft_do_chain:
 70		unsigned char *ptr;
 
 --Type <RET> for more, q to quit, c to continue without paging--
-71	
+71
 72		if (priv->base == NFT_PAYLOAD_NETWORK_HEADER)
    0xffffffffc0a24241 <+449>:	je     0xffffffffc0a242b8 <nft_do_chain+568>
 
@@ -108,16 +108,16 @@ Dump of assembler code for function nft_do_chain:
    0xffffffffc0a2425b <+475>:	mov    0xe0(%rsi),%rcx
 
 78		}
-79	
+79
 80		ptr += priv->offset;
    0xffffffffc0a24268 <+488>:	movzbl 0x9(%rbx),%edi
    0xffffffffc0a2426c <+492>:	mov    0xd8(%rsi),%esi
    0xffffffffc0a24272 <+498>:	add    %rdi,%rdx
 
-81	
+81
 82		if (unlikely(ptr + priv->len > skb_tail_pointer(skb)))
 83			return false;
-84	
+84
 85		*dest = 0;
    0xffffffffc0a24291 <+529>:	mov    %rcx,%rax
    0xffffffffc0a24294 <+532>:	movl   $0x0,0x50(%rsp,%rcx,4)
@@ -150,18 +150,18 @@ Dump of assembler code for function nft_do_chain:
 
 92		return true;
 93	}
-94	
+94
 95	DEFINE_STATIC_KEY_FALSE(nft_counters_enabled);
-96	
+96
 97	static noinline void nft_update_chain_stats(const struct nft_chain *chain,
 98						    const struct nft_pktinfo *pkt)
 99	{
 100		struct nft_base_chain *base_chain;
 101		struct nft_stats __percpu *pstats;
 102		struct nft_stats *stats;
-103	
+103
 104		base_chain = nft_base_chain(chain);
-105	
+105
 106		rcu_read_lock();
 107		pstats = READ_ONCE(base_chain->stats);
 108		if (pstats) {
@@ -175,13 +175,13 @@ Dump of assembler code for function nft_do_chain:
 116		}
 117		rcu_read_unlock();
 118	}
-119	
+119
 120	struct nft_jumpstack {
 121		const struct nft_chain	*chain;
 --Type <RET> for more, q to quit, c to continue without paging--
 122		struct nft_rule	*const *rules;
 123	};
-124	
+124
 125	static void expr_call_ops_eval(const struct nft_expr *expr,
 
 126				       struct nft_regs *regs,
@@ -193,7 +193,7 @@ Dump of assembler code for function nft_do_chain:
 131	#define X(e, fun) \
 132		do { if ((e) == (unsigned long)(fun)) \
 133			return fun(expr, regs, pkt); } while (0)
-134	
+134
 135		X(e, nft_payload_eval);
    0xffffffffc0a24146 <+198>:	mov    %r12,%rdx
    0xffffffffc0a24149 <+201>:	lea    0x50(%rsp),%rsi
@@ -265,7 +265,7 @@ Dump of assembler code for function nft_do_chain:
    0xffffffffc0a241c9 <+329>:	callq  0xffffffffc0a241ce <nft_do_chain+334>
 
 148	}
-149	
+149
 150	unsigned int
 151	nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 --Type <RET> for more, q to quit, c to continue without paging--
@@ -296,7 +296,7 @@ Dump of assembler code for function nft_do_chain:
 160		struct nft_jumpstack jumpstack[NFT_JUMP_STACK_SIZE];
 161		bool genbit = READ_ONCE(net->nft.gencursor);
 162		struct nft_traceinfo info;
-163	
+163
 164		info.trace = false;
 165		if (static_branch_unlikely(&nft_trace_enabled))
 
@@ -324,7 +324,7 @@ Dump of assembler code for function nft_do_chain:
 171			rules = rcu_dereference(chain->rules_gen_0);
    0xffffffffc0a243a8 <+808>:	jmpq   0xffffffffc0a240fb <nft_do_chain+123>
 
-172	
+172
 173	next_rule:
 174		rule = *rules;
    0xffffffffc0a240fb <+123>:	mov    0x0(%r13),%rax
@@ -370,19 +370,19 @@ Dump of assembler code for function nft_do_chain:
 183					expr_call_ops_eval(expr, &regs, pkt);
    0xffffffffc0a24143 <+195>:	mov    (%rax),%rax
 
-184	
+184
 185				if (regs.verdict.code != NFT_CONTINUE)
    0xffffffffc0a241ce <+334>:	mov    0x50(%rsp),%eax
    0xffffffffc0a241d2 <+338>:	cmp    $0xffffffff,%eax
-   0xffffffffc0a241d5 <+341>:	jne    0xffffffffc0a2430c <nft_do_chain+652>
+   0xffffffffc0a241d5 <+341>:	jne    0xffffffffc0a2430c <nft_do_chain+652> // 如果zf=0（不等于NFT_CONTINUE） 则跳转到0xffffffffc0a2430c
 
 186					break;
 187			}
-188	
+188
 189			switch (regs.verdict.code) {
-   0xffffffffc0a2430c <+652>:	cmp    $0xfffffffe,%eax
+   0xffffffffc0a2430c <+652>:	cmp    $0xfffffffe,%eax    // -2
    0xffffffffc0a2430f <+655>:	je     0xffffffffc0a24218 <nft_do_chain+408>
-   0xffffffffc0a24315 <+661>:	cmp    $0xffffffff,%eax
+   0xffffffffc0a24315 <+661>:	cmp    $0xffffffff,%eax    // -1
    0xffffffffc0a24318 <+664>:	jne    0xffffffffc0a24334 <nft_do_chain+692>
 
 190			case NFT_BREAK:
@@ -399,23 +399,23 @@ Dump of assembler code for function nft_do_chain:
 197			}
 198			break;
 199		}
-200	
+200
 201		switch (regs.verdict.code & NF_VERDICT_MASK) {
-   0xffffffffc0a24334 <+692>:	test   $0xfc,%al
+   0xffffffffc0a24334 <+692>:	test   $0xfc,%al   // 当按位与都是0时, ZF=1，JE会跳转
    0xffffffffc0a24336 <+694>:	je     0xffffffffc0a244c0 <nft_do_chain+1088>
 --Type <RET> for more, q to quit, c to continue without paging--
 
-202		case NF_ACCEPT:
-203		case NF_DROP:
-204		case NF_QUEUE:
-205		case NF_STOLEN:
+202		case NF_ACCEPT: // 1
+203		case NF_DROP:   // 0
+204		case NF_QUEUE:  // 3
+205		case NF_STOLEN: // 2
 206			nft_trace_packet(&info, chain, rule,
 207					 NFT_TRACETYPE_RULE);
 208			return regs.verdict.code;
    0xffffffffc0a2450a <+1162>:	jmp    0xffffffffc0a244c5 <nft_do_chain+1093>
 
 209		}
-210	
+210
 211		switch (regs.verdict.code) {
    0xffffffffc0a2433c <+700>:	cmp    $0xfffffffc,%eax
    0xffffffffc0a2433f <+703>:	je     0xffffffffc0a24386 <nft_do_chain+774>
@@ -427,7 +427,7 @@ Dump of assembler code for function nft_do_chain:
 213			if (WARN_ON_ONCE(stackptr >= NFT_JUMP_STACK_SIZE))
    0xffffffffc0a24350 <+720>:	cmpl   $0xf,0x14(%rsp)
    0xffffffffc0a24355 <+725>:	ja     0xffffffffc0a244e7 <nft_do_chain+1127>
-   0xffffffffc0a244e7 <+1127>:	ud2    
+   0xffffffffc0a244e7 <+1127>:	ud2
    0xffffffffc0a244e9 <+1129>:	xor    %eax,%eax
    0xffffffffc0a244eb <+1131>:	jmp    0xffffffffc0a244c5 <nft_do_chain+1093>
 
@@ -452,7 +452,7 @@ Dump of assembler code for function nft_do_chain:
 219		case NFT_GOTO:
 220			nft_trace_packet(&info, chain, rule,
 221					 NFT_TRACETYPE_RULE);
-222	
+222
 223			chain = regs.verdict.chain;
    0xffffffffc0a2438b <+779>:	mov    0x58(%rsp),%rax
    0xffffffffc0a24390 <+784>:	cmpb   $0x0,0x13(%rsp)
@@ -470,10 +470,10 @@ Dump of assembler code for function nft_do_chain:
 230			break;
 231		default:
 232			WARN_ON(1);
-   0xffffffffc0a2440d <+909>:	ud2    
+   0xffffffffc0a2440d <+909>:	ud2
 
 233		}
-234	
+234
 235		if (stackptr > 0) {
    0xffffffffc0a2440f <+911>:	mov    0x14(%rsp),%eax
    0xffffffffc0a24413 <+915>:	test   %eax,%eax
@@ -501,9 +501,9 @@ Dump of assembler code for function nft_do_chain:
    0xffffffffc0a2443f <+959>:	jne    0xffffffffc0a2440d <nft_do_chain+909>
 
 240		}
-241	
+241
 242		nft_trace_packet(&info, basechain, NULL, NFT_TRACETYPE_POLICY);
-243	
+243
 244		if (static_branch_unlikely(&nft_counters_enabled))
 
 245			nft_update_chain_stats(basechain, pkt);

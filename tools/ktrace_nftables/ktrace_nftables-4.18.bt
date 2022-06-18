@@ -269,10 +269,10 @@ kprobe:nft_do_chain
 // nft_rule_for_each_expr(expr, last, rule) {
 kprobe:nft_do_chain+172 {
     if(@skb[tid] == 1) {
-        $verdict_code = *((int32*)(reg("sp")+80)); // 0x50(%rsp) 直接从栈地址+偏移读取局部变量的值
+        $verdict_code = *((int32*)(reg("sp")+80)); // 0x50(%rsp) 直接从栈地址+偏移读取局部变量的值, sp保存的是栈顶的地址
         $p_nft_rule = *(struct nft_rule**)reg("r13");
         @curr_nft_rule_handle = $p_nft_rule->handle;
-        printf("\t\t<+172>\tin chain: '%s' rules, rule handle: %llu, expr-ops eval code: '%s'\n",
+        printf("\t\t<+172>\tin chain: '%s' rules, rule handle: %llu, eval start--->, prev verdict_code: '%s'\n",
 			str(@curr_chain_name), @curr_nft_rule_handle, @verdict_code_str[$verdict_code]);
     }
 }
@@ -286,12 +286,20 @@ kprobe:nft_do_chain+652 {
         $verdict_code = (int32)reg("ax");
 
         if($verdict_code == (int32)NFT_CONTINUE || $verdict_code == (int32)NFT_BREAK) {
-            printf("\t\t<+652>\tin chain: '%s' rules, rule handle: %llu, dlen: %d, expr-ops eval code: '%s', next rule...\n", str(@curr_chain_name), $curr_nft_rule_handle, $p_nft_rule->dlen, @verdict_code_str[$verdict_code]);
+            printf("\t\t<+652>\tin chain: '%s' rules, rule handle: %llu, dlen: %d, <---eval completed. verdict_code: '%s', next rule...\n", str(@curr_chain_name), $curr_nft_rule_handle, $p_nft_rule->dlen, @verdict_code_str[$verdict_code]);
             printf("\t\t<+652> -----------------------------------------------------\n");
         } else {
-            printf("\t\t<+652>\tin chain: '%s' rules, rule handle: %llu, dlen: %d, expr-ops eval code: '%s', break rules\n", str(@curr_chain_name), $curr_nft_rule_handle, $p_nft_rule->dlen, @verdict_code_str[$verdict_code]);
+            printf("\t\t<+652>\tin chain: '%s' rules, rule handle: %llu, dlen: %d, <---eval completed. verdict_code: '%s', break rules\n", str(@curr_chain_name), $curr_nft_rule_handle, $p_nft_rule->dlen, @verdict_code_str[$verdict_code]);
             printf("\t\t<+652> -----------------------------------------------------\n");
         }
+    }
+}
+
+// kprobe:nft_do_chain+664/694
+kprobe:nft_do_chain+1162 {
+    if(@skb[tid] == 1) {
+	    $verdict_code = (int32)reg("ax");
+	    printf("\t\t<+1162> ------------------------nft_do_chain return verdict_code: '%s' -----------------------------\n", @verdict_code_str[$verdict_code]);
     }
 }
 
@@ -307,7 +315,7 @@ kprobe:nft_do_chain+794 {
     }
 }
 
-// JUMP OUT
+// 237			chain = jumpstack[stackptr].chain;
 kprobe:nft_do_chain+946 {
     if(@skb[tid] == 1) {
         $nft_chain = (struct nft_chain*)reg("di");
@@ -320,7 +328,7 @@ kprobe:nft_do_chain+946 {
 
 kprobe:nft_do_chain+1162 {
     if(@skb[tid] == 1) {
-        printf("\tchain: '%s' rules expr-ops eval code in NF_ACCEPT,NF_DROP,NF_QUEUE,NF_STOLEN\n", str(@curr_chain_name));
+        printf("\tchain: '%s' rules verdict_code in NF_ACCEPT,NF_DROP,NF_QUEUE,NF_STOLEN\n", str(@curr_chain_name));
     }
 }
 
@@ -352,7 +360,7 @@ kprobe:nft_bitwise_eval {
     }
 }
 
-
+/*
 kprobe:nft_meta_get_eval {
     if(@skb[tid] == 1) {
         //$nft_expr = (struct nft_expr*)arg0;
@@ -366,4 +374,4 @@ kprobe:nft_meta_get_eval {
         //printf("\t\tin chain: '%s' rules, rule handle: %llu, ntf_expr type: 'meta',  in_dev: '%s', out_dev: '%s', nft_meta.ket: %d\n",
 		//	str(@curr_chain_name), @curr_nft_rule_handle, str($nft_in_dev->name), str($nft_out_dev->name), $nft_meta->key);
     }
-}
+}*/

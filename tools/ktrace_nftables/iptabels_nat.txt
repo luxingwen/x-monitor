@@ -1,38 +1,43 @@
+[root@localhost calmwu]# iptables -t nat -S
 -P PREROUTING ACCEPT
 -P INPUT ACCEPT
 -P POSTROUTING ACCEPT
 -P OUTPUT ACCEPT
 -N LIBVIRT_PRT
+-N DOCKER
 -N CNI-HOSTPORT-SETMARK
 -N CNI-HOSTPORT-MASQ
 -N CNI-HOSTPORT-DNAT
--N CNI-b806c53598fae5e77a3acca8
--N CNI-DN-b806c53598fae5e77a3ac
--N CNI-a30fd7ff8b45190c3d3f1de1
--N CNI-DN-a30fd7ff8b45190c3d3f1
+-N CNI-92e377bca896633e036be4e2
+-N CNI-DN-92e377bca896633e036be
+-N CNI-287795a77297dd208984b670
+-N CNI-DN-287795a77297dd208984b
+-A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
 -A PREROUTING -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
 -A POSTROUTING -m comment --comment "CNI portfwd requiring masquerade" -j CNI-HOSTPORT-MASQ
+-A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
 -A POSTROUTING -j LIBVIRT_PRT
--A POSTROUTING -s 10.88.0.6/32 -m comment --comment "name: \"podman\" id: \"ace8a4c47f5d76da65566fa35b01c4dd67c78b533e77f3c40038bd95774cd72d\"" -j CNI-b806c53598fae5e77a3acca8
--A POSTROUTING -s 10.88.0.7/32 -m comment --comment "name: \"podman\" id: \"a4fec1732644988ce08573b756a5c0c4905b8ef4872c493dcacbb14ef7540f95\"" -j CNI-a30fd7ff8b45190c3d3f1de1
+-A POSTROUTING -s 10.88.0.12/32 -m comment --comment "name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -j CNI-92e377bca896633e036be4e2
+-A POSTROUTING -s 10.88.0.13/32 -m comment --comment "name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -j CNI-287795a77297dd208984b670
+-A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
 -A OUTPUT -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
 -A LIBVIRT_PRT -s 192.168.122.0/24 -d 224.0.0.0/24 -j RETURN
 -A LIBVIRT_PRT -s 192.168.122.0/24 -d 255.255.255.255/32 -j RETURN
 -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -p tcp -j MASQUERADE --to-ports 1024-65535
 -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -p udp -j MASQUERADE --to-ports 1024-65535
 -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -j MASQUERADE
+-A DOCKER -i docker0 -j RETURN
 -A CNI-HOSTPORT-SETMARK -m comment --comment "CNI portfwd masquerade mark" -j MARK --set-xmark 0x2000/0x2000
 -A CNI-HOSTPORT-MASQ -m mark --mark 0x2000/0x2000 -j MASQUERADE
--A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"ace8a4c47f5d76da65566fa35b01c4dd67c78b533e77f3c40038bd95774cd72d\"" -m multiport --dports 9070 -j CNI-DN-b806c53598fae5e77a3ac
--A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"a4fec1732644988ce08573b756a5c0c4905b8ef4872c493dcacbb14ef7540f95\"" -m multiport --dports 9080 -j CNI-DN-a30fd7ff8b45190c3d3f1
--A CNI-b806c53598fae5e77a3acca8 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"ace8a4c47f5d76da65566fa35b01c4dd67c78b533e77f3c40038bd95774cd72d\"" -j ACCEPT
--A CNI-b806c53598fae5e77a3acca8 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"ace8a4c47f5d76da65566fa35b01c4dd67c78b533e77f3c40038bd95774cd72d\"" -j MASQUERADE
--A CNI-DN-b806c53598fae5e77a3ac -s 10.88.0.0/16 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
--A CNI-DN-b806c53598fae5e77a3ac -s 127.0.0.1/32 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
--A CNI-DN-b806c53598fae5e77a3ac -p tcp -m tcp --dport 9070 -j DNAT --to-destination 10.88.0.6:80
--A CNI-a30fd7ff8b45190c3d3f1de1 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"a4fec1732644988ce08573b756a5c0c4905b8ef4872c493dcacbb14ef7540f95\"" -j ACCEPT
--A CNI-a30fd7ff8b45190c3d3f1de1 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"a4fec1732644988ce08573b756a5c0c4905b8ef4872c493dcacbb14ef7540f95\"" -j MASQUERADE
--A CNI-DN-a30fd7ff8b45190c3d3f1 -s 10.88.0.0/16 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
--A CNI-DN-a30fd7ff8b45190c3d3f1 -s 127.0.0.1/32 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
--A CNI-DN-a30fd7ff8b45190c3d3f1 -p tcp -m tcp --dport 9080 -j DNAT --to-destination 10.88.0.7:80
-
+-A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -m multiport --dports 9070 -j CNI-DN-92e377bca896633e036be
+-A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -m multiport --dports 9080 -j CNI-DN-287795a77297dd208984b
+-A CNI-92e377bca896633e036be4e2 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -j ACCEPT
+-A CNI-92e377bca896633e036be4e2 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -j MASQUERADE
+-A CNI-DN-92e377bca896633e036be -s 10.88.0.0/16 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
+-A CNI-DN-92e377bca896633e036be -s 127.0.0.1/32 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
+-A CNI-DN-92e377bca896633e036be -p tcp -m tcp --dport 9070 -j DNAT --to-destination 10.88.0.12:80
+-A CNI-287795a77297dd208984b670 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -j ACCEPT
+-A CNI-287795a77297dd208984b670 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -j MASQUERADE
+-A CNI-DN-287795a77297dd208984b -s 10.88.0.0/16 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
+-A CNI-DN-287795a77297dd208984b -s 127.0.0.1/32 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
+-A CNI-DN-287795a77297dd208984b -p tcp -m tcp --dport 9080 -j DNAT --to-destination 10.88.0.13:80

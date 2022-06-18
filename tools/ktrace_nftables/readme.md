@@ -240,14 +240,25 @@ nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的�
 3. 运行脚本，使用kprobe偏移来观察nft_do_chain，脚本参数来指定要观察的sport、dport两个端口号
 
    ```
-   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter-4.18.bt 9080 80
+   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./ktrace_nftables-4.18.bt 9080 80
    ```
-   
+
    脚本源码：[ktrace_nftables-4.18.bt](ktrace_nftables-4.18.bt)
 
-3. 代码说明
+   为什么需要函数的汇编代码：
 
-4. 测试
+   1. kprobe+offset可以观察到函数内部流程。
+   2. 代码的局部变量只有通过寄存器才能获取，通过代码对应到汇编指令，才能读取到局部变量。这样能更好的观察函数流程。
+
+4. 代码说明
+
+   1. 指令
+
+      JE：ZF=1则跳转。CMP判断相等ZF=1。
+
+      JNE：ZF=0则跳转。CMP判断不想等，ZF=0。
+
+5. 测试
 
    - podman启动nginx容器。本地nat映射端口不同。
 
@@ -268,37 +279,45 @@ nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的�
 
      ```
      nft_do_chain <=====
-     	pkg protocol:'TCP' skb_hash:[930402457] ip_pkg_id:[39977] 127.0.0.1(16777343):56284 --> 127.0.0.1(16777343):9080
-     	enter nft_table: 'nat', if_index: 12, genbit: 1
-     		in chain: 'OUTPUT' rule.ntf_expr eval type: 'cmp'
-     		in chain: 'OUTPUT' rule handle: 16 expr-ops eval code: 'NFT_BREAK', next rule...
-     		-----------------------------------------------------
-     		in chain: 'OUTPUT' rule.ntf_expr eval type: 'immediate'
-     		in chain: 'OUTPUT' rule handle: 30 expr-ops eval code: 'NFT_JUMP', break rules
-     		-----------------------------------------------------
+     	pkg protocol:'TCP' skb_hash:[3724011105] ip_pkg_id:[59693] 127.0.0.1(16777343):44872 --> 127.0.0.1(16777343):9080
+     	enter nft_table: 'nat', if_index: 18, genbit: 1
+     		<+172>	in chain: 'OUTPUT' rules, rule handle: 16, eval start--->, prev verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'OUTPUT' rules, rule handle: 16, ntf_expr type: 'cmp'， size: 32
+     		<+652>	in chain: 'OUTPUT' rules, rule handle: 16, dlen: 112, <---eval completed. verdict_code: 'NFT_BREAK', next rule...
+     		<+652> -----------------------------------------------------
+     		<+172>	in chain: 'OUTPUT' rules, rule handle: 30, eval start--->, prev verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'OUTPUT' rules, rule handle: 30, ntf_expr type: 'immediate'， size: 32
+     		<+652>	in chain: 'OUTPUT' rules, rule handle: 30, dlen: 64, <---eval completed. verdict_code: 'NFT_JUMP', break rules
+     		<+652> -----------------------------------------------------
      		GOTO or JUMP IN, chain from 'OUTPUT' ===> 'CNI-HOSTPORT-DNAT'
      		-----------------------------------------------------
-     		in chain: 'CNI-HOSTPORT-DNAT' rule.ntf_expr eval type: 'meta'
-     		in chain: 'CNI-HOSTPORT-DNAT' rule handle: 75 expr-ops eval code: 'NFT_BREAK', next rule...
+     		<+172>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 135, eval start--->, prev verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 135, ntf_expr type: 'meta'， size: 16
+     		<+652>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 135, dlen: 152, <---eval completed. verdict_code: 'NFT_BREAK', next rule...
+     		<+652> -----------------------------------------------------
+     		<+172>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 144, eval start--->, prev verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 144, ntf_expr type: 'meta'， size: 16
+     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 144, ntf_expr type: 'immediate'， size: 32
+     		<+652>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 144, dlen: 152, <---eval completed. verdict_code: 'NFT_JUMP', break rules
+     		<+652> -----------------------------------------------------
+     		GOTO or JUMP IN, chain from 'CNI-HOSTPORT-DNAT' ===> 'CNI-DN-287795a77297dd208984b'
      		-----------------------------------------------------
-     		in chain: 'CNI-HOSTPORT-DNAT' rule.ntf_expr eval type: 'meta'
-     		in chain: 'CNI-HOSTPORT-DNAT' rule.ntf_expr eval type: 'immediate'
-     		in chain: 'CNI-HOSTPORT-DNAT' rule handle: 84 expr-ops eval code: 'NFT_JUMP', break rules
+     		<+172>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 141, eval start--->, prev verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 141, ntf_expr type: 'meta'， size: 16
+     		<+172>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 142, eval start--->, prev verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 142, ntf_expr type: 'meta'， size: 16
+     		<eval>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 142, ntf_expr type: 'immediate'， size: 32
+     		<+652>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 142, dlen: 136, <---eval completed. verdict_code: 'NFT_JUMP', break rules
+     		<+652> -----------------------------------------------------
+     		GOTO or JUMP IN, chain from 'CNI-DN-287795a77297dd208984b' ===> 'CNI-HOSTPORT-SETMARK'
      		-----------------------------------------------------
-     		GOTO or JUMP IN, chain from 'CNI-HOSTPORT-DNAT' ===> 'CNI-DN-01a0df798eef277db5129'
+     		<+172>	in chain: 'CNI-HOSTPORT-SETMARK' rules, rule handle: 24, eval start--->, prev verdict_code: 'NFT_CONTINUE'
+     		GOTO or JUMP OUT, chain from 'CNI-HOSTPORT-SETMARK' ===> 'CNI-DN-287795a77297dd208984b'
      		-----------------------------------------------------
-     		in chain: 'CNI-DN-01a0df798eef277db5129' rule.ntf_expr eval type: 'meta'
-     		in chain: 'CNI-DN-01a0df798eef277db5129' rule.ntf_expr eval type: 'meta'
-     		in chain: 'CNI-DN-01a0df798eef277db5129' rule.ntf_expr eval type: 'immediate'
-     		in chain: 'CNI-DN-01a0df798eef277db5129' rule handle: 82 expr-ops eval code: 'NFT_JUMP', break rules
-     		-----------------------------------------------------
-     		GOTO or JUMP IN, chain from 'CNI-DN-01a0df798eef277db5129' ===> 'CNI-HOSTPORT-SETMARK'
-     		-----------------------------------------------------
-     		GOTO or JUMP OUT, chain from 'CNI-HOSTPORT-SETMARK' ===> 'CNI-DN-01a0df798eef277db5129'
-     		-----------------------------------------------------
-     		in chain: 'CNI-DN-01a0df798eef277db5129' rule.ntf_expr eval type: 'meta'
-     		in chain: 'CNI-DN-01a0df798eef277db5129' rule handle: 83 expr-ops eval code: 'NF_ACCEPT', break rules
-     		-----------------------------------------------------
+     		<+172>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 143, eval start--->, prev verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 143, ntf_expr type: 'meta'， size: 16
+     		<+652>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 143, dlen: 128, <---eval completed. verdict_code: 'NF_ACCEPT', break rules
+     		<+652> -----------------------------------------------------
      	exit nft_table: 'nat', return code 'NF_ACCEPT'
      nft_do_chain =====>
      ```
@@ -306,14 +325,27 @@ nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的�
      对比iptables nat表、链、规则的内容。
 
      ```
-     [root@localhost ~]# iptables -t nat -S
+     [root@localhost calmwu]# iptables -t nat -S
+     -P PREROUTING ACCEPT
+     -P INPUT ACCEPT
+     -P POSTROUTING ACCEPT
+     -P OUTPUT ACCEPT
+     -N LIBVIRT_PRT
+     -N DOCKER
+     -N CNI-HOSTPORT-SETMARK
+     -N CNI-HOSTPORT-MASQ
+     -N CNI-HOSTPORT-DNAT
+     -N CNI-92e377bca896633e036be4e2
+     -N CNI-DN-92e377bca896633e036be
+     -N CNI-287795a77297dd208984b670
+     -N CNI-DN-287795a77297dd208984b
      -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
      -A PREROUTING -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
      -A POSTROUTING -m comment --comment "CNI portfwd requiring masquerade" -j CNI-HOSTPORT-MASQ
      -A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
      -A POSTROUTING -j LIBVIRT_PRT
-     -A POSTROUTING -s 10.88.0.6/32 -m comment --comment "name: \"podman\" id: \"fa36b49b8bea7190b08c43e96ab22615774c259264cbebcac1ab598114f062b4\"" -j CNI-fcb138bbe0a69715574a4f40
-     -A POSTROUTING -s 10.88.0.7/32 -m comment --comment "name: \"podman\" id: \"47c6c0a0689ac856ca395ac0390bbaec5c53fc8d29f2089a19a84b8312cad638\"" -j CNI-01a0df798eef277db5129302
+     -A POSTROUTING -s 10.88.0.12/32 -m comment --comment "name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -j CNI-92e377bca896633e036be4e2
+     -A POSTROUTING -s 10.88.0.13/32 -m comment --comment "name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -j CNI-287795a77297dd208984b670
      -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
      -A OUTPUT -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
      -A LIBVIRT_PRT -s 192.168.122.0/24 -d 224.0.0.0/24 -j RETURN
@@ -324,18 +356,18 @@ nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的�
      -A DOCKER -i docker0 -j RETURN
      -A CNI-HOSTPORT-SETMARK -m comment --comment "CNI portfwd masquerade mark" -j MARK --set-xmark 0x2000/0x2000
      -A CNI-HOSTPORT-MASQ -m mark --mark 0x2000/0x2000 -j MASQUERADE
-     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"fa36b49b8bea7190b08c43e96ab22615774c259264cbebcac1ab598114f062b4\"" -m multiport --dports 9070 -j CNI-DN-fcb138bbe0a69715574a4
-     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"47c6c0a0689ac856ca395ac0390bbaec5c53fc8d29f2089a19a84b8312cad638\"" -m multiport --dports 9080 -j CNI-DN-01a0df798eef277db5129
-     -A CNI-fcb138bbe0a69715574a4f40 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"fa36b49b8bea7190b08c43e96ab22615774c259264cbebcac1ab598114f062b4\"" -j ACCEPT
-     -A CNI-fcb138bbe0a69715574a4f40 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"fa36b49b8bea7190b08c43e96ab22615774c259264cbebcac1ab598114f062b4\"" -j MASQUERADE
-     -A CNI-DN-fcb138bbe0a69715574a4 -s 10.88.0.0/16 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-fcb138bbe0a69715574a4 -s 127.0.0.1/32 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-fcb138bbe0a69715574a4 -p tcp -m tcp --dport 9070 -j DNAT --to-destination 10.88.0.6:80
-     -A CNI-01a0df798eef277db5129302 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"47c6c0a0689ac856ca395ac0390bbaec5c53fc8d29f2089a19a84b8312cad638\"" -j ACCEPT
-     -A CNI-01a0df798eef277db5129302 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"47c6c0a0689ac856ca395ac0390bbaec5c53fc8d29f2089a19a84b8312cad638\"" -j MASQUERADE
-     -A CNI-DN-01a0df798eef277db5129 -s 10.88.0.0/16 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-01a0df798eef277db5129 -s 127.0.0.1/32 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-01a0df798eef277db5129 -p tcp -m tcp --dport 9080 -j DNAT --to-destination 10.88.0.7:80
+     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -m multiport --dports 9070 -j CNI-DN-92e377bca896633e036be
+     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -m multiport --dports 9080 -j CNI-DN-287795a77297dd208984b
+     -A CNI-92e377bca896633e036be4e2 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -j ACCEPT
+     -A CNI-92e377bca896633e036be4e2 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -j MASQUERADE
+     -A CNI-DN-92e377bca896633e036be -s 10.88.0.0/16 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-92e377bca896633e036be -s 127.0.0.1/32 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-92e377bca896633e036be -p tcp -m tcp --dport 9070 -j DNAT --to-destination 10.88.0.12:80
+     -A CNI-287795a77297dd208984b670 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -j ACCEPT
+     -A CNI-287795a77297dd208984b670 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -j MASQUERADE
+     -A CNI-DN-287795a77297dd208984b -s 10.88.0.0/16 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-287795a77297dd208984b -s 127.0.0.1/32 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-287795a77297dd208984b -p tcp -m tcp --dport 9080 -j DNAT --to-destination 10.88.0.13:80
      ```
 
    - iptables drop测试
@@ -344,7 +376,7 @@ nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的�
      iptables -t filter -I OUTPUT 1 -m tcp --proto tcp --dst 127.0.0.1/32 --dport 9080 -j DROP
      ```
 
-5. 从kprobe观察nft_do_chain函数看出表、链、rule的运转规则，对应函数逻辑。
+6. 从kprobe观察nft_do_chain函数看出表、链、rule的运转规则，对应函数逻辑。
 
    1. 如果规则返回的是break和continue，就会继续执行同链的后续rule。
    2. 如果rule返回的是accept、drop、queue、stolen，链、表都停止，函数return。不会恢复入栈链和rule。
