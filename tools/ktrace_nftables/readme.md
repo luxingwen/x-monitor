@@ -1,7 +1,5 @@
 # 使用bpftrace跟踪网络包在ntf_tables的旅行
 
-------
-
 
 
 ### IPtables和NFtables
