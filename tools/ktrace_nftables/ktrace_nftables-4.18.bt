@@ -295,11 +295,21 @@ kprobe:nft_do_chain+652 {
     }
 }
 
-// kprobe:nft_do_chain+664/694
+kprobe:nft_do_chain+664 {
+    if(@skb[tid] == 1) {
+        printf("\t\t<+664> -----------------------------------------------------\n");
+    }
+}
+
+kprobe:nft_do_chain+694 {
+    if(@skb[tid] == 1) {
+        printf("\t\t<+694> -----------------------------------------------------\n");
+    }
+}
+
 kprobe:nft_do_chain+1162 {
     if(@skb[tid] == 1) {
-	    $verdict_code = (int32)reg("ax");
-	    printf("\t\t<+1162> ------------------------nft_do_chain return verdict_code: '%s' -----------------------------\n", @verdict_code_str[$verdict_code]);
+        printf("\t\t<+1162> -----------------------------------------------------\n");
     }
 }
 
