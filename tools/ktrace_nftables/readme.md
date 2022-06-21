@@ -279,55 +279,51 @@ nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的�
 
      ```
      nft_do_chain <=====
-     	pkg protocol:'TCP' skb_hash:[3724011105] ip_pkg_id:[59693] 127.0.0.1(16777343):44872 --> 127.0.0.1(16777343):9080
-     	enter nft_table: 'nat', if_index: 18, genbit: 1
-     		<+172>	in chain: 'OUTPUT' rules, rule handle: 16, eval start--->, prev verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'OUTPUT' rules, rule handle: 16, ntf_expr type: 'cmp'， size: 32
-     		<+652>	in chain: 'OUTPUT' rules, rule handle: 16, dlen: 112, <---eval completed. verdict_code: 'NFT_BREAK', next rule...
-     		<+652> -----------------------------------------------------
-     		<+172>	in chain: 'OUTPUT' rules, rule handle: 30, eval start--->, prev verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'OUTPUT' rules, rule handle: 30, ntf_expr type: 'immediate'， size: 32
-     		<+652>	in chain: 'OUTPUT' rules, rule handle: 30, dlen: 64, <---eval completed. verdict_code: 'NFT_JUMP', break rules
+     	pkg protocol:'TCP' skb_hash:[2105204234] ip_pkg_id:[50594] 127.0.0.1(16777343):41660 --> 127.0.0.1(16777343):9080
+     	enter nft_table: 'nat', if_index: 7, genbit: 0
+     		<+172>	in chain: 'OUTPUT' rules, rule handle: 23, eval start--->, default verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'OUTPUT' rules, rule handle: 23, ntf_expr type: 'immediate'， size: 32
+     		<+652>	in chain: 'OUTPUT' rules, rule handle: 23, dlen: 64, <---eval completed. verdict_code: 'NFT_JUMP', break rules
      		<+652> -----------------------------------------------------
      		GOTO or JUMP IN, chain from 'OUTPUT' ===> 'CNI-HOSTPORT-DNAT'
      		-----------------------------------------------------
-     		<+172>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 135, eval start--->, prev verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 135, ntf_expr type: 'meta'， size: 16
-     		<+652>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 135, dlen: 152, <---eval completed. verdict_code: 'NFT_BREAK', next rule...
+     		<+172>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 28, eval start--->, default verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 28, ntf_expr type: 'meta'， size: 16
+     		<+652>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 28, dlen: 152, <---eval completed. verdict_code: 'NFT_BREAK', next rule...
      		<+652> -----------------------------------------------------
-     		<+172>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 144, eval start--->, prev verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 144, ntf_expr type: 'meta'， size: 16
-     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 144, ntf_expr type: 'immediate'， size: 32
-     		<+652>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 144, dlen: 152, <---eval completed. verdict_code: 'NFT_JUMP', break rules
+     		<+172>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 37, eval start--->, default verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 37, ntf_expr type: 'meta'， size: 16
+     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 37, ntf_expr type: 'immediate'， size: 32
+     		<+652>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 37, dlen: 152, <---eval completed. verdict_code: 'NFT_JUMP', break rules
      		<+652> -----------------------------------------------------
-     		GOTO or JUMP IN, chain from 'CNI-HOSTPORT-DNAT' ===> 'CNI-DN-287795a77297dd208984b'
+     		GOTO or JUMP IN, chain from 'CNI-HOSTPORT-DNAT' ===> 'CNI-DN-7ccf4e8d82d7f8dbf3987'
      		-----------------------------------------------------
-     		<+172>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 141, eval start--->, prev verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 141, ntf_expr type: 'meta'， size: 16
-     		<+172>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 142, eval start--->, prev verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 142, ntf_expr type: 'meta'， size: 16
-     		<eval>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 142, ntf_expr type: 'immediate'， size: 32
-     		<+652>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 142, dlen: 136, <---eval completed. verdict_code: 'NFT_JUMP', break rules
+     		<+172>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 34, eval start--->, default verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 34, ntf_expr type: 'meta'， size: 16
+     		<+172>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 35, eval start--->, default verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 35, ntf_expr type: 'meta'， size: 16
+     		<eval>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 35, ntf_expr type: 'immediate'， size: 32
+     		<+652>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 35, dlen: 136, <---eval completed. verdict_code: 'NFT_JUMP', break rules
      		<+652> -----------------------------------------------------
-     		GOTO or JUMP IN, chain from 'CNI-DN-287795a77297dd208984b' ===> 'CNI-HOSTPORT-SETMARK'
+     		GOTO or JUMP IN, chain from 'CNI-DN-7ccf4e8d82d7f8dbf3987' ===> 'CNI-HOSTPORT-SETMARK'
      		-----------------------------------------------------
-     		<+172>	in chain: 'CNI-HOSTPORT-SETMARK' rules, rule handle: 24, eval start--->, prev verdict_code: 'NFT_CONTINUE'
-     		GOTO or JUMP OUT, chain from 'CNI-HOSTPORT-SETMARK' ===> 'CNI-DN-287795a77297dd208984b'
+     		<+172>	in chain: 'CNI-HOSTPORT-SETMARK' rules, rule handle: 17, eval start--->, default verdict_code: 'NFT_CONTINUE'
+     		GOTO or JUMP OUT, chain from 'CNI-HOSTPORT-SETMARK' ===> 'CNI-DN-7ccf4e8d82d7f8dbf3987'
      		-----------------------------------------------------
-     		<+172>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 143, eval start--->, prev verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 143, ntf_expr type: 'meta'， size: 16
-     		<+652>	in chain: 'CNI-DN-287795a77297dd208984b' rules, rule handle: 143, dlen: 128, <---eval completed. verdict_code: 'NF_ACCEPT', break rules
+     		<+172>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 36, eval start--->, default verdict_code: 'NFT_CONTINUE'
+     		<eval>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 36, ntf_expr type: 'meta'， size: 16
+     		<+652>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 36, dlen: 128, <---eval completed. verdict_code: 'NF_ACCEPT', break rules
      		<+652> -----------------------------------------------------
      	exit nft_table: 'nat', return code 'NF_ACCEPT'
      nft_do_chain =====>
      ```
-
+     
      对比iptables nat表、链、规则的内容。
-
+     
      ```
-     [root@localhost calmwu]# iptables -t nat -S
+  [root@localhost calmwu]# iptables -t nat -S
      -P PREROUTING ACCEPT
-     -P INPUT ACCEPT
+  -P INPUT ACCEPT
      -P POSTROUTING ACCEPT
      -P OUTPUT ACCEPT
      -N LIBVIRT_PRT
@@ -369,11 +365,11 @@ nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的�
      -A CNI-DN-287795a77297dd208984b -s 127.0.0.1/32 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
      -A CNI-DN-287795a77297dd208984b -p tcp -m tcp --dport 9080 -j DNAT --to-destination 10.88.0.13:80
      ```
-
+     
    - iptables drop测试
-
+   
      ```
-     iptables -t filter -I OUTPUT 1 -m tcp --proto tcp --dst 127.0.0.1/32 --dport 9080 -j DROP
+  iptables -t filter -I OUTPUT 1 -m tcp --proto tcp --dst 127.0.0.1/32 --dport 9080 -j DROP
      ```
 
 6. 从kprobe观察nft_do_chain函数看出表、链、rule的运转规则，对应函数逻辑。
@@ -419,3 +415,5 @@ nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的�
 - kprobe不能探测说明：[Kernel Probes (Kprobes) — The Linux Kernel documentation](https://docs.kernel.org/trace/kprobes.html#kprobes-blacklist)
 
 - [ungleich blog - IPtables vs. nftables](https://ungleich.ch/en-us/cms/blog/2018/08/18/iptables-vs-nftables/)
+
+- [深入理解计算机系统寄存器寻址讲解_ciqingloveless的博客-CSDN博客_rdx寄存器](https://blog.csdn.net/ciqingloveless/article/details/84136002)

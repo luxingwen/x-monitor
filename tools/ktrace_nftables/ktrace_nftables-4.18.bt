@@ -272,7 +272,7 @@ kprobe:nft_do_chain+172 {
         $verdict_code = *((int32*)(reg("sp")+80)); // 0x50(%rsp) 直接从栈地址+偏移读取局部变量的值, sp保存的是栈顶的地址
         $p_nft_rule = *(struct nft_rule**)reg("r13");
         @curr_nft_rule_handle = $p_nft_rule->handle;
-        printf("\t\t<+172>\tin chain: '%s' rules, rule handle: %llu, eval start--->, prev verdict_code: '%s'\n",
+        printf("\t\t<+172>\tin chain: '%s' rules, rule handle: %llu, eval start--->, default verdict_code: '%s'\n",
 			str(@curr_chain_name), @curr_nft_rule_handle, @verdict_code_str[$verdict_code]);
     }
 }
@@ -294,24 +294,12 @@ kprobe:nft_do_chain+652 {
         }
     }
 }
-
-kprobe:nft_do_chain+664 {
+/*
+kprobe:nft_do_chain+612 {
     if(@skb[tid] == 1) {
-        printf("\t\t<+664> -----------------------------------------------------\n");
+        printf("\t\t<+612> -----------------------------------------------------\n");
     }
-}
-
-kprobe:nft_do_chain+694 {
-    if(@skb[tid] == 1) {
-        printf("\t\t<+694> -----------------------------------------------------\n");
-    }
-}
-
-kprobe:nft_do_chain+1162 {
-    if(@skb[tid] == 1) {
-        printf("\t\t<+1162> -----------------------------------------------------\n");
-    }
-}
+}*/
 
 // 224			goto do_chain; JUMP IN
 kprobe:nft_do_chain+794 {
