@@ -163,9 +163,10 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
     }
 
     debug("[PROCESS:mem] process: '%d', vmsize: %lu kB, vmrss: %lu kB, vmswap: %lu kB, pss: %lu "
-          "kB, uss: %lu kB, rssanon: %lu kB, rssfile: %lu kB, rssshmem: %lu kB",
-          ps->pid, ps->vmsize, ps->vmrss, ps->vmswap, ps->pss, ps->uss, ps->rssanon, ps->rssfile,
-          ps->rssshmem);
+          "kB, pss_anon: %lu kB, pss_file: %lu, pss_shmem: %lu, uss: %lu kB, rss_anon: %lu kB, "
+          "rss_file: %lu kB, rsss_hmem: %lu kB",
+          ps->pid, ps->vmsize, ps->vmrss, ps->vmswap, ps->pss, ps->pss_anon, ps->pss_file,
+          ps->pss_shmem, ps->uss, ps->rssanon, ps->rssfile, ps->rssshmem);
 
     return 0;
 }

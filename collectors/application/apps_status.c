@@ -385,6 +385,8 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
             struct process_descendant_pids pd_pids = { NULL, 0 };
 
             if (likely(-1 != get_process_descendant_pids(pid, &pd_pids))) {
+                debug("[PLUGIN_APPSTATUS] get descendant pids of pid %d on app '%s', count %d", pid,
+                      rule->app_name, pd_pids.pids_size);
                 for (size_t p_i = 0; p_i < pd_pids.pids_size; p_i++) {
                     __get_app_assoc_process(as, pd_pids.pids[p_i], app_pid, rule->app_name);
                 }

@@ -45,34 +45,6 @@
       - util = used / total
         如果 util 操过 50%则认为是有问题的。若是 IO 密集型应用，在 util 操过 50%后一定要注意。
 
-   5. ##### PSI(Pressure Stall Information)
-      
-      使用的 load average 有几个缺点
-      
-      - load average 的计算包含了 TASK_RUNNING 和 TASK_UNINTERRUPTIBLE 两种状态的进程，TASK_RUNNING 是进程处于运行，或等待分配 CPU 的准备运行状态，TASK_UNINTERRUPTIBLE 是进程处于不可中断的等待，一般是等待磁盘的输入输出。因此 load average 的飙高可能是因为 CPU 资源不够，让很多 TASK_RUNNING 状态的进程等待 CPU，也可能是由于磁盘 IO 资源紧张，造成很多进程因为等待 IO 而处于 TASK_UNINTERRUPTIBLE 状态。可以通过 load average 发现系统很忙，但是无法区分是因为争夺 CPU 还是 IO 引起的。
-      - load average 最短的时间窗口是 1 分钟。
-      - load average 报告的是活跃进程的原始数据，还需要知道可用 CPU 核数，这样 load average 的值才有意义。
-      
-      当 CPU、内存或 IO 设备争夺激烈的时候，系统会出现负载的延迟峰值、吞吐量下降，并可能触发内核的 `OOM Killer`。PSI 字面意思就是由于资源（CPU、内存和 IO）压力造成的任务执行停顿。**PSI** 量化了由于硬件资源紧张造成的任务执行中断，统计了系统中任务等待硬件资源的时间。我们可以用 **PSI** 作为指标，来衡量硬件资源的压力情况。停顿的时间越长，说明资源面临的压力越大。PSI 已经包含在 4.20 及以上版本内核中。https://xie.infoq.cn/article/931eee27dabb0de906869ba05。
-      
-      开启 psi：
-      
-      - 查看所有内核启动，grubby --info=ALL
-      
-      - 增加内核启动参数：grubby --update-kernel=/boot/vmlinuz-4.18.0 **--args=psi=1**，重启系统。
-      
-      - 查看 PSI 结果：
-        
-                tail /proc/pressure/*
-                ==> /proc/pressure/cpu <==
-                some avg10=0.00 avg60=0.55 avg300=0.27 total=1192936
-                ==> /proc/pressure/io <==
-                some avg10=0.00 avg60=0.13 avg300=0.06 total=325847
-                full avg10=0.00 avg60=0.03 avg300=0.01 total=134192
-                ==> /proc/pressure/memory <==
-                some avg10=0.00 avg60=0.00 avg300=0.00 total=0
-                full avg10=0.00 avg60=0.00 avg300=0.00 total=0
-
    6. ##### 网络
       
       1. 网卡
@@ -105,7 +77,7 @@
       3. 套接字，/proc/net/socksat
       
       4. 连接跟踪
-
+   
 6. #### 相关知识
 
    1. HZ，USER_HZ，Tick和jiffies。
