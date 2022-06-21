@@ -321,57 +321,52 @@ nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的�
      对比iptables nat表、链、规则的内容。
      
      ```
-  [root@localhost calmwu]# iptables -t nat -S
+      ? root@localhost ? ~ ? iptables -t nat -S
      -P PREROUTING ACCEPT
-  -P INPUT ACCEPT
+     -P INPUT ACCEPT
      -P POSTROUTING ACCEPT
      -P OUTPUT ACCEPT
      -N LIBVIRT_PRT
-     -N DOCKER
+     -N CNI-3cdf151edd7827f1c10df766
      -N CNI-HOSTPORT-SETMARK
      -N CNI-HOSTPORT-MASQ
      -N CNI-HOSTPORT-DNAT
-     -N CNI-92e377bca896633e036be4e2
-     -N CNI-DN-92e377bca896633e036be
-     -N CNI-287795a77297dd208984b670
-     -N CNI-DN-287795a77297dd208984b
-     -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
+     -N CNI-DN-3cdf151edd7827f1c10df
+     -N CNI-7ccf4e8d82d7f8dbf39874d1
+     -N CNI-DN-7ccf4e8d82d7f8dbf3987
      -A PREROUTING -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
      -A POSTROUTING -m comment --comment "CNI portfwd requiring masquerade" -j CNI-HOSTPORT-MASQ
-     -A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
      -A POSTROUTING -j LIBVIRT_PRT
-     -A POSTROUTING -s 10.88.0.12/32 -m comment --comment "name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -j CNI-92e377bca896633e036be4e2
-     -A POSTROUTING -s 10.88.0.13/32 -m comment --comment "name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -j CNI-287795a77297dd208984b670
-     -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
+     -A POSTROUTING -s 10.88.0.2/32 -m comment --comment "name: \"podman\" id: \"9577a05c078bef63c9c2528f3d98920b9b5fdaa1e204548144a2bde23be4142a\"" -j CNI-3cdf151edd7827f1c10df766
+     -A POSTROUTING -s 10.88.0.3/32 -m comment --comment "name: \"podman\" id: \"fd63d47de63d7d5c32f4824d5964e9530a51ccd4785e32418168a5216d530128\"" -j CNI-7ccf4e8d82d7f8dbf39874d1
      -A OUTPUT -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
      -A LIBVIRT_PRT -s 192.168.122.0/24 -d 224.0.0.0/24 -j RETURN
      -A LIBVIRT_PRT -s 192.168.122.0/24 -d 255.255.255.255/32 -j RETURN
      -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -p tcp -j MASQUERADE --to-ports 1024-65535
      -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -p udp -j MASQUERADE --to-ports 1024-65535
      -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -j MASQUERADE
-     -A DOCKER -i docker0 -j RETURN
+     -A CNI-3cdf151edd7827f1c10df766 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"9577a05c078bef63c9c2528f3d98920b9b5fdaa1e204548144a2bde23be4142a\"" -j ACCEPT
+     -A CNI-3cdf151edd7827f1c10df766 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"9577a05c078bef63c9c2528f3d98920b9b5fdaa1e204548144a2bde23be4142a\"" -j MASQUERADE
      -A CNI-HOSTPORT-SETMARK -m comment --comment "CNI portfwd masquerade mark" -j MARK --set-xmark 0x2000/0x2000
      -A CNI-HOSTPORT-MASQ -m mark --mark 0x2000/0x2000 -j MASQUERADE
-     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -m multiport --dports 9070 -j CNI-DN-92e377bca896633e036be
-     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -m multiport --dports 9080 -j CNI-DN-287795a77297dd208984b
-     -A CNI-92e377bca896633e036be4e2 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -j ACCEPT
-     -A CNI-92e377bca896633e036be4e2 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"1b781a84173ec70fadffc404f82cc29fcc78af5b0a82b51f0f83e1d4b21137ae\"" -j MASQUERADE
-     -A CNI-DN-92e377bca896633e036be -s 10.88.0.0/16 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-92e377bca896633e036be -s 127.0.0.1/32 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-92e377bca896633e036be -p tcp -m tcp --dport 9070 -j DNAT --to-destination 10.88.0.12:80
-     -A CNI-287795a77297dd208984b670 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -j ACCEPT
-     -A CNI-287795a77297dd208984b670 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"bb2e33c739437d6ed7708fd52d243bd9c814124b7f0d835d3fd1cb9b34b2d2f0\"" -j MASQUERADE
-     -A CNI-DN-287795a77297dd208984b -s 10.88.0.0/16 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-287795a77297dd208984b -s 127.0.0.1/32 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-287795a77297dd208984b -p tcp -m tcp --dport 9080 -j DNAT --to-destination 10.88.0.13:80
+     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"9577a05c078bef63c9c2528f3d98920b9b5fdaa1e204548144a2bde23be4142a\"" -m multiport --dports 9070 -j CNI-DN-3cdf151edd7827f1c10df
+     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"fd63d47de63d7d5c32f4824d5964e9530a51ccd4785e32418168a5216d530128\"" -m multiport --dports 9080 -j CNI-DN-7ccf4e8d82d7f8dbf3987
+     -A CNI-DN-3cdf151edd7827f1c10df -s 10.88.0.0/16 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-3cdf151edd7827f1c10df -s 127.0.0.1/32 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-3cdf151edd7827f1c10df -p tcp -m tcp --dport 9070 -j DNAT --to-destination 10.88.0.2:80
+     -A CNI-7ccf4e8d82d7f8dbf39874d1 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"fd63d47de63d7d5c32f4824d5964e9530a51ccd4785e32418168a5216d530128\"" -j ACCEPT
+     -A CNI-7ccf4e8d82d7f8dbf39874d1 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"fd63d47de63d7d5c32f4824d5964e9530a51ccd4785e32418168a5216d530128\"" -j MASQUERADE
+     -A CNI-DN-7ccf4e8d82d7f8dbf3987 -s 10.88.0.0/16 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-7ccf4e8d82d7f8dbf3987 -s 127.0.0.1/32 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
+     -A CNI-DN-7ccf4e8d82d7f8dbf3987 -p tcp -m tcp --dport 9080 -j DNAT --to-destination 10.88.0.3:80
      ```
      
    - iptables drop测试
    
      ```
-  iptables -t filter -I OUTPUT 1 -m tcp --proto tcp --dst 127.0.0.1/32 --dport 9080 -j DROP
+     iptables -t filter -I OUTPUT 1 -m tcp --proto tcp --dst 127.0.0.1/32 --dport 9080 -j DROP
      ```
-
+   
 6. 从kprobe观察nft_do_chain函数看出表、链、rule的运转规则，对应函数逻辑。
 
    1. 如果规则返回的是break和continue，就会继续执行同链的后续rule。
