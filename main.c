@@ -224,7 +224,7 @@ int32_t main(int32_t argc, char *argv[]) {
 
     uint16_t metrics_http_export_port =
         (uint16_t)appconfig_get_member_int("application.metrics_http_exporter", "port", 8000);
-    ret = snprintf(premetheus_instance_label, XM_PPROM_METRIC_LABEL_VALUE_LEN - 1, "%s:%d",
+    ret = snprintf(premetheus_instance_label, XM_PPROM_METRIC_LABEL_VALUE_LEN, "%s:%d",
                    get_hostname(), metrics_http_export_port);
     premetheus_instance_label[ret] = '\0';
     debug("premetheus_instance_label: %s", premetheus_instance_label);
