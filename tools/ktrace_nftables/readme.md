@@ -275,91 +275,13 @@ nft_do_chain才是包在nft_table、ntf_chain、nft_rule、nft_expr中执行的�
      [root@localhost ~]# curl 127.0.0.1:9080
      ```
 
-     可以看到nat表的输出
+     可以看到nat表的输出，正确的匹配出chain的跳转、rule的顺序和判断verdict code。
 
-     ```
-     nft_do_chain <=====
-     	pkg protocol:'TCP' skb_hash:[2105204234] ip_pkg_id:[50594] 127.0.0.1(16777343):41660 --> 127.0.0.1(16777343):9080
-     	enter nft_table: 'nat', if_index: 7, genbit: 0
-     		<+172>	in chain: 'OUTPUT' rules, rule handle: 23, eval start--->, default verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'OUTPUT' rules, rule handle: 23, ntf_expr type: 'immediate'， size: 32
-     		<+652>	in chain: 'OUTPUT' rules, rule handle: 23, dlen: 64, <---eval completed. verdict_code: 'NFT_JUMP', break rules
-     		<+652> -----------------------------------------------------
-     		GOTO or JUMP IN, chain from 'OUTPUT' ===> 'CNI-HOSTPORT-DNAT'
-     		-----------------------------------------------------
-     		<+172>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 28, eval start--->, default verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 28, ntf_expr type: 'meta'， size: 16
-     		<+652>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 28, dlen: 152, <---eval completed. verdict_code: 'NFT_BREAK', next rule...
-     		<+652> -----------------------------------------------------
-     		<+172>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 37, eval start--->, default verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 37, ntf_expr type: 'meta'， size: 16
-     		<eval>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 37, ntf_expr type: 'immediate'， size: 32
-     		<+652>	in chain: 'CNI-HOSTPORT-DNAT' rules, rule handle: 37, dlen: 152, <---eval completed. verdict_code: 'NFT_JUMP', break rules
-     		<+652> -----------------------------------------------------
-     		GOTO or JUMP IN, chain from 'CNI-HOSTPORT-DNAT' ===> 'CNI-DN-7ccf4e8d82d7f8dbf3987'
-     		-----------------------------------------------------
-     		<+172>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 34, eval start--->, default verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 34, ntf_expr type: 'meta'， size: 16
-     		<+172>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 35, eval start--->, default verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 35, ntf_expr type: 'meta'， size: 16
-     		<eval>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 35, ntf_expr type: 'immediate'， size: 32
-     		<+652>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 35, dlen: 136, <---eval completed. verdict_code: 'NFT_JUMP', break rules
-     		<+652> -----------------------------------------------------
-     		GOTO or JUMP IN, chain from 'CNI-DN-7ccf4e8d82d7f8dbf3987' ===> 'CNI-HOSTPORT-SETMARK'
-     		-----------------------------------------------------
-     		<+172>	in chain: 'CNI-HOSTPORT-SETMARK' rules, rule handle: 17, eval start--->, default verdict_code: 'NFT_CONTINUE'
-     		GOTO or JUMP OUT, chain from 'CNI-HOSTPORT-SETMARK' ===> 'CNI-DN-7ccf4e8d82d7f8dbf3987'
-     		-----------------------------------------------------
-     		<+172>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 36, eval start--->, default verdict_code: 'NFT_CONTINUE'
-     		<eval>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 36, ntf_expr type: 'meta'， size: 16
-     		<+652>	in chain: 'CNI-DN-7ccf4e8d82d7f8dbf3987' rules, rule handle: 36, dlen: 128, <---eval completed. verdict_code: 'NF_ACCEPT', break rules
-     		<+652> -----------------------------------------------------
-     	exit nft_table: 'nat', return code 'NF_ACCEPT'
-     nft_do_chain =====>
-     ```
+     ![nat_table_trace](./nat_table_trace.jpg)
      
      对比iptables nat表、链、规则的内容。
      
-     ```
-      ? root@localhost ? ~ ? iptables -t nat -S
-     -P PREROUTING ACCEPT
-     -P INPUT ACCEPT
-     -P POSTROUTING ACCEPT
-     -P OUTPUT ACCEPT
-     -N LIBVIRT_PRT
-     -N CNI-3cdf151edd7827f1c10df766
-     -N CNI-HOSTPORT-SETMARK
-     -N CNI-HOSTPORT-MASQ
-     -N CNI-HOSTPORT-DNAT
-     -N CNI-DN-3cdf151edd7827f1c10df
-     -N CNI-7ccf4e8d82d7f8dbf39874d1
-     -N CNI-DN-7ccf4e8d82d7f8dbf3987
-     -A PREROUTING -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
-     -A POSTROUTING -m comment --comment "CNI portfwd requiring masquerade" -j CNI-HOSTPORT-MASQ
-     -A POSTROUTING -j LIBVIRT_PRT
-     -A POSTROUTING -s 10.88.0.2/32 -m comment --comment "name: \"podman\" id: \"9577a05c078bef63c9c2528f3d98920b9b5fdaa1e204548144a2bde23be4142a\"" -j CNI-3cdf151edd7827f1c10df766
-     -A POSTROUTING -s 10.88.0.3/32 -m comment --comment "name: \"podman\" id: \"fd63d47de63d7d5c32f4824d5964e9530a51ccd4785e32418168a5216d530128\"" -j CNI-7ccf4e8d82d7f8dbf39874d1
-     -A OUTPUT -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
-     -A LIBVIRT_PRT -s 192.168.122.0/24 -d 224.0.0.0/24 -j RETURN
-     -A LIBVIRT_PRT -s 192.168.122.0/24 -d 255.255.255.255/32 -j RETURN
-     -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -p tcp -j MASQUERADE --to-ports 1024-65535
-     -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -p udp -j MASQUERADE --to-ports 1024-65535
-     -A LIBVIRT_PRT -s 192.168.122.0/24 ! -d 192.168.122.0/24 -j MASQUERADE
-     -A CNI-3cdf151edd7827f1c10df766 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"9577a05c078bef63c9c2528f3d98920b9b5fdaa1e204548144a2bde23be4142a\"" -j ACCEPT
-     -A CNI-3cdf151edd7827f1c10df766 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"9577a05c078bef63c9c2528f3d98920b9b5fdaa1e204548144a2bde23be4142a\"" -j MASQUERADE
-     -A CNI-HOSTPORT-SETMARK -m comment --comment "CNI portfwd masquerade mark" -j MARK --set-xmark 0x2000/0x2000
-     -A CNI-HOSTPORT-MASQ -m mark --mark 0x2000/0x2000 -j MASQUERADE
-     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"9577a05c078bef63c9c2528f3d98920b9b5fdaa1e204548144a2bde23be4142a\"" -m multiport --dports 9070 -j CNI-DN-3cdf151edd7827f1c10df
-     -A CNI-HOSTPORT-DNAT -p tcp -m comment --comment "dnat name: \"podman\" id: \"fd63d47de63d7d5c32f4824d5964e9530a51ccd4785e32418168a5216d530128\"" -m multiport --dports 9080 -j CNI-DN-7ccf4e8d82d7f8dbf3987
-     -A CNI-DN-3cdf151edd7827f1c10df -s 10.88.0.0/16 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-3cdf151edd7827f1c10df -s 127.0.0.1/32 -p tcp -m tcp --dport 9070 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-3cdf151edd7827f1c10df -p tcp -m tcp --dport 9070 -j DNAT --to-destination 10.88.0.2:80
-     -A CNI-7ccf4e8d82d7f8dbf39874d1 -d 10.88.0.0/16 -m comment --comment "name: \"podman\" id: \"fd63d47de63d7d5c32f4824d5964e9530a51ccd4785e32418168a5216d530128\"" -j ACCEPT
-     -A CNI-7ccf4e8d82d7f8dbf39874d1 ! -d 224.0.0.0/4 -m comment --comment "name: \"podman\" id: \"fd63d47de63d7d5c32f4824d5964e9530a51ccd4785e32418168a5216d530128\"" -j MASQUERADE
-     -A CNI-DN-7ccf4e8d82d7f8dbf3987 -s 10.88.0.0/16 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-7ccf4e8d82d7f8dbf3987 -s 127.0.0.1/32 -p tcp -m tcp --dport 9080 -j CNI-HOSTPORT-SETMARK
-     -A CNI-DN-7ccf4e8d82d7f8dbf3987 -p tcp -m tcp --dport 9080 -j DNAT --to-destination 10.88.0.3:80
-     ```
+     ![nat_iptables](./nat_iptables.jpg)
      
    - iptables drop测试
    

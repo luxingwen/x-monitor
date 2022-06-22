@@ -277,6 +277,7 @@ kprobe:nft_do_chain+172 {
     }
 }
 
+
 // switch (regs.verdict.code) {
 kprobe:nft_do_chain+652 {
     if(@skb[tid] == 1) {
