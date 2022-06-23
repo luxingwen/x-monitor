@@ -267,7 +267,7 @@ void *pluginsd_routine_start(void *UNUSED(arg)) {
                 strlcpy(ep->config_name, external_plugin_cfgname, XM_CONFIG_NAME_MAX);
                 strlcpy(ep->file_name, entry->d_name, XM_FILENAME_SIZE);
                 // -Wformat-truncation=
-                snprintf(ep->full_file_name, XM_FILENAME_SIZE - 1, "%s/%s", dir_cfg, entry->d_name);
+                snprintf(ep->full_file_name, XM_FILENAME_SIZE, "%s/%s", dir_cfg, entry->d_name);
                 // 检查文件是否可执行
                 if (unlikely(access(ep->full_file_name, X_OK) != 0)) {
                     warn("cannot execute file '%s'", ep->full_file_name);
@@ -283,7 +283,7 @@ void *pluginsd_routine_start(void *UNUSED(arg)) {
 
                 // 生成执行命令
                 char *def = "";
-                snprintf(ep->cmd, XM_CMD_LINE_MAX - 1, "exec %s %d %s", ep->full_file_name,
+                snprintf(ep->cmd, XM_CMD_LINE_MAX, "exec %s %d %s", ep->full_file_name,
                          ep->update_every,
                          appconfig_get_member_str(external_plugin_cfgname, "command_options", def));
 

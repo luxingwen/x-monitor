@@ -67,7 +67,7 @@ struct io_stats {
 };
 
 struct io_device {
-    char device_name[XM_DEV_NAME_MAX + 1];   //
+    char device_name[XM_DEV_NAME_MAX];   //
 
     uint32_t       major;
     uint32_t       minor;
@@ -141,7 +141,7 @@ static struct io_device *__get_device(char *device_name, uint32_t major, uint32_
         exit(-1);
     }
 
-    strncpy(dev->device_name, device_name, XM_DEV_NAME_MAX);
+    strlcpy(dev->device_name, device_name, XM_DEV_NAME_MAX);
     dev->major = major;
     dev->minor = minor;
     dev->device_hash = hash;

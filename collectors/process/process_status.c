@@ -24,11 +24,11 @@ static const char *__proc_pid_stat_path_fmt = "/proc/%d/stat",
                   *__proc_pid_oom_score_fmt = "/proc/%d/oom_score",
                   *__proc_pid_oom_score_adj_fmt = "/proc/%d/oom_score_adj";
 
-#define MAKE_PROCESS_FULL_FILENAME(full_filename, path_fmt, pid)                  \
-    do {                                                                          \
-        char    file_path[XM_PROC_FILENAME_MAX] = { 0 };                          \
-        int32_t n = snprintf(file_path, XM_PROC_FILENAME_MAX - 1, path_fmt, pid); \
-        full_filename = strndup(file_path, n);                                    \
+#define MAKE_PROCESS_FULL_FILENAME(full_filename, path_fmt, pid)              \
+    do {                                                                      \
+        char    file_path[XM_PROC_FILENAME_MAX] = { 0 };                      \
+        int32_t n = snprintf(file_path, XM_PROC_FILENAME_MAX, path_fmt, pid); \
+        full_filename = strndup(file_path, n);                                \
     } while (0)
 
 struct process_status *new_process_status(pid_t pid, struct xm_mempool_s *xmp) {

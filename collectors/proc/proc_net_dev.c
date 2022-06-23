@@ -214,7 +214,7 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
 
     // not found, create new
     m = (struct net_dev_metric *)calloc(1, sizeof(struct net_dev_metric));
-    strncpy(m->name, name, XM_DEV_NAME_MAX - 1);
+    strlcpy(m->name, name, XM_DEV_NAME_MAX);
     m->hash = simple_hash(m->name);
     debug("[PLUGIN_PROC:proc_net_dev] Adding network device metric: '%s' hash: %u", name, m->hash);
 
@@ -223,7 +223,7 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
 
     const char *cfg_net_dev_mtu =
         appconfig_get_member_str(config_path, "path_get_net_dev_mtu", "/sys/class/net/%s/mtu");
-    snprintf(filename, FILENAME_MAX - 1, cfg_net_dev_mtu, name);
+    snprintf(filename, FILENAME_MAX, cfg_net_dev_mtu, name);
     read_file_to_int64(filename, &m->mtu);
     debug("[PLUGIN_PROC:proc_net_dev] network interface '%s' mtu file: '%s' mtu: %ld", name,
           filename, m->mtu);
@@ -233,7 +233,7 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
     // 判断是否是虚拟网卡
     const char *cfg_net_dev_is_virtual = appconfig_get_member_str(
         config_path, "path_get_net_dev_is_virtual", "/sys/devices/virtual/net/%s");
-    snprintf(filename, FILENAME_MAX - 1, cfg_net_dev_is_virtual, name);
+    snprintf(filename, FILENAME_MAX, cfg_net_dev_is_virtual, name);
     // 判断目录是否存在
     if (likely(access(filename, F_OK) == 0)) {
         m->virtual = 1;

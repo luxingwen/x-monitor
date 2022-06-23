@@ -27,7 +27,7 @@ char *procfile_filename(struct proc_file *pf) {
 
     char    filename[XM_FILENAME_SIZE] = { 0 };
     char    linkname[FILENAME_MAX + 1] = { 0 };
-    int32_t ret = snprintf(filename, XM_FILENAME_SIZE - 1, "/proc/self/fd/%d", pf->fd);
+    int32_t ret = snprintf(filename, XM_FILENAME_SIZE, "/proc/self/fd/%d", pf->fd);
     filename[ret] = '\0';
 
     ssize_t l_size = readlink(filename, linkname, FILENAME_MAX);

@@ -78,7 +78,7 @@ const char *get_macaddr_by_iface(const char *iface, char *mac_buf, size_t mac_bu
 
     uint8_t *mac = (uint8_t *)ifr.ifr_hwaddr.sa_data;
 
-    snprintf(mac_buf, mac_buf_size - 1, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", mac[0], mac[1], mac[2],
+    snprintf(mac_buf, mac_buf_size, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", mac[0], mac[1], mac[2],
              mac[3], mac[4], mac[5]);
     mac_buf[mac_buf_size - 1] = '\0';
 
@@ -323,8 +323,8 @@ int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
     char  f_smaps_rollup_path[XM_PROC_FILENAME_MAX] = { 0 };
     FILE *fp = NULL;
 
-    snprintf(f_smaps_path, XM_PROC_FILENAME_MAX - 1, __proc_pid_smaps_fmt, pid);
-    snprintf(f_smaps_rollup_path, XM_PROC_FILENAME_MAX - 1, __proc_pid_smaps_rollup_fmt, pid);
+    snprintf(f_smaps_path, XM_PROC_FILENAME_MAX, __proc_pid_smaps_fmt, pid);
+    snprintf(f_smaps_rollup_path, XM_PROC_FILENAME_MAX, __proc_pid_smaps_rollup_fmt, pid);
 
     // 判断文件是否存在
     if (file_exists(f_smaps_rollup_path)) {

@@ -78,7 +78,7 @@ int32_t write_int64_to_file(const char *file_name, int64_t number) {
     int32_t fd = open(file_name, O_WRONLY, 0666);
     if (likely(-1 != fd)) {
         char number_buffer[XM_NUMBER_BUFFER_SIZE] = { 0 };
-        snprintf(number_buffer, XM_NUMBER_BUFFER_SIZE - 1, "%ld", number);
+        snprintf(number_buffer, XM_NUMBER_BUFFER_SIZE, "%ld", number);
         ret = write(fd, number_buffer, strlen(number_buffer));
         if (unlikely(-1 == ret)) {
             error("write file %s failed, reason: %s", file_name, strerror(errno));
