@@ -131,7 +131,7 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    [root@VM-0-8-centos Program]# xz -d nft_chain_nat.ko.xz
    ```
 
-2. 找到module的.text地址，在目录/sys/module/<module_name>/sections
+2. 找到module的.text地址，在目录/sys/module/<module_name>/sections，**通常编译器将函数放在.text节**。
    
    ```
    [root@VM-0-8-centos sections]# cat .text

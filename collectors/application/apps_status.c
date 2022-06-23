@@ -36,7 +36,7 @@ static const char *__app_metric_name_tag = NULL;
 
 #define APP_METRIC_ADDTO_COLLECTOR(name, metric, collector, tag)                          \
     do {                                                                                  \
-        snprintf(__app_metric_name_buffer, XM_PROM_METRIC_NAME_LEN, "%s.%s", tag, #name); \
+        snprintf(__app_metric_name_buffer, XM_PROM_METRIC_NAME_LEN, "%s_%s", tag, #name); \
         metric = prom_gauge_new(__app_metric_name_buffer, __app_metric_##name##_help, 1,  \
                                 (const char *[]){ tag });                                 \
         prom_collector_add_metric(collector, metric);                                     \

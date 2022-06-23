@@ -76,7 +76,7 @@ void register_xmonitor_static_routine(struct xmonitor_static_routine *routine) {
             __xmonitor_static_routine_list.static_routine_count, routine->name);
 }
 
-void help() {
+static __attribute__((section(".calmwu"), used)) void __help() {
     int32_t num_opts = (int32_t)ARRAY_SIZE(option_definitions);
     int32_t i;
     int32_t max_len_arg = 0;
@@ -104,7 +104,7 @@ void help() {
             "\n"
             " Copyright (C) 2021-2100, Calm.wu\n"
             " Released under GNU General Public License v3 or later.\n"
-            " All rights reserved.\n");
+            " This is free software: you are free to change and redistribute it.\n");
 
     fprintf(stderr, " SYNOPSIS: x-monitor [options]\n");
     fprintf(stderr, "\n");
@@ -122,7 +122,6 @@ void help() {
             fprintf(stderr, "\n");
         }
     }
-
     fflush(stderr);
     return;
 }
@@ -212,14 +211,14 @@ int32_t main(int32_t argc, char *argv[]) {
                 return 0;
             case 'h':
             default:
-                help();
+                __help();
                 return 0;
             }
         }
     }
 
     if (!config_loaded) {
-        help();
+        __help();
     }
 
     uint16_t metrics_http_export_port =
