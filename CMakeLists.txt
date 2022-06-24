@@ -11,7 +11,16 @@ set(STATIC_LINKING OFF CACHE BOOL "Build ipftrace2 as a statically linked execut
 set(STATIC_LIBC OFF CACHE BOOL "Attempt to embed libc, only known to work with musl. Has issues with dlopen.")
 set(USE_ADDRSANITIZER OFF CACHE BOOL "AddressSanitizer (detects addressability issues) and LeakSanitizer (detects memory leaks).")
 
-set(APP_METRIC_TAG_NAME "app" CACHE STRING "Tag for AppMetrics.")
+set(APP_METRIC_TAG "" CACHE STRING "Tag for AppMetrics.")
+set(APP_METRIC_LABEL "app" CACHE STRING "Label for AppMetrics.")
+
+if(APP_METRIC_TAG)
+  message(STATUS "set APP_METRIC_LABEL = ${APP_METRIC_TAG}")
+  set(APP_METRIC_LABEL ${APP_METRIC_TAG} CACHE STRING "Label for AppMetrics." FORCE)
+endif()
+
+message(STATUS "APP_METRIC_LABEL: ${APP_METRIC_LABEL}")
+message(STATUS "APP_METRIC_TAG: ${APP_METRIC_TAG}")
 
 if(STATIC_LINKING)
   if(STATIC_LIBC)
@@ -194,6 +203,7 @@ target_compile_definitions(x-monitor PRIVATE
   -DDEBUG 
   -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" 
   -DLOG_DIR="/usr/log/x-monitor"
-  -DAPP_METRIC_TAG=${APP_METRIC_TAG_NAME})
+  -DAPP_METRIC_TAG=${APP_METRIC_TAG}
+  -DAPP_METRIC_LABEL=${APP_METRIC_LABEL})
 
 target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread dl z m)

@@ -31,11 +31,12 @@
 #include "prometheus-client-c/prom_metric_t.h"
 #include "prometheus-client-c/prom_metric_i.h"
 
-#define APP_METRIC_ADDTO_COLLECTOR(name, metric, collector)                                      \
-    do {                                                                                         \
-        metric = prom_gauge_new(TO_STRING(APP_METRIC_TAG) "_" #name, __app_metric_##name##_help, \
-                                1, (const char *[]){ TO_STRING(APP_METRIC_TAG) });               \
-        prom_collector_add_metric(collector, metric);                                            \
+#define APP_METRIC_ADDTO_COLLECTOR(name, metric, collector)                                       \
+    do {                                                                                          \
+        metric = prom_gauge_new(                                                                  \
+            sizeof(TO_STRING(APP_METRIC_TAG)) == 1 ? #name : TO_STRING(APP_METRIC_TAG) "_" #name, \
+            __app_metric_##name##_help, 1, (const char *[]){ TO_STRING(APP_METRIC_LABEL) });      \
+        prom_collector_add_metric(collector, metric);                                             \
     } while (0)
 
 // app_stat列表
