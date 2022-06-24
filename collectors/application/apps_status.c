@@ -31,13 +31,11 @@
 #include "prometheus-client-c/prom_metric_t.h"
 #include "prometheus-client-c/prom_metric_i.h"
 
-// static char        __app_metric_name_buffer[XM_PROM_METRIC_NAME_LEN] = { 0 };
-static const char *__app_metric_name_tag = NULL;
-
-#define APP_METRIC_ADDTO_COLLECTOR(name, metric, collector, tag)                                \
-    do {                                                                                        \
-        metric = prom_gauge_new(#name, __app_metric_##name##_help, 1, (const char *[]){ tag }); \
-        prom_collector_add_metric(collector, metric);                                           \
+#define APP_METRIC_ADDTO_COLLECTOR(name, metric, collector)                                      \
+    do {                                                                                         \
+        metric = prom_gauge_new(TO_STRING(APP_METRIC_TAG) "_" #name, __app_metric_##name##_help, \
+                                1, (const char *[]){ TO_STRING(APP_METRIC_TAG) });               \
+        prom_collector_add_metric(collector, metric);                                            \
     } while (0)
 
 // app_stat列表
@@ -142,71 +140,51 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
         }
 
         // 构造应用指标对象并添加到collector
-        APP_METRIC_ADDTO_COLLECTOR(minflt, as->metrics.metric_minflt, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(cminflt, as->metrics.metric_cminflt, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(majflt, as->metrics.metric_majflt, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(cmajflt, as->metrics.metric_cmajflt, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(utime, as->metrics.metric_utime, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(stime, as->metrics.metric_stime, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(cutime, as->metrics.metric_cutime, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(cstime, as->metrics.metric_cstime, as->app_prom_collector,
-                                   __app_metric_name_tag);
+        APP_METRIC_ADDTO_COLLECTOR(minflt, as->metrics.metric_minflt, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(cminflt, as->metrics.metric_cminflt, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(majflt, as->metrics.metric_majflt, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(cmajflt, as->metrics.metric_cmajflt, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(utime, as->metrics.metric_utime, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(stime, as->metrics.metric_stime, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(cutime, as->metrics.metric_cutime, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(cstime, as->metrics.metric_cstime, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(cpu_jiffies, as->metrics.metric_cpu_jiffies,
-                                   as->app_prom_collector, __app_metric_name_tag);
+                                   as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(num_threads, as->metrics.metric_num_threads,
-                                   as->app_prom_collector, __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(vmsize, as->metrics.metric_vmsize, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(vmrss, as->metrics.metric_vmrss, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(rssanon, as->metrics.metric_rssanon, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(rssfile, as->metrics.metric_rssfile, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(rssshmem, as->metrics.metric_rssshmem, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(vmswap, as->metrics.metric_vmswap, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(pss, as->metrics.metric_pss, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(pss_anon, as->metrics.metric_pss_anon, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(pss_file, as->metrics.metric_pss_file, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(pss_shmem, as->metrics.metric_pss_shmem, as->app_prom_collector,
-                                   __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(uss, as->metrics.metric_uss, as->app_prom_collector,
-                                   __app_metric_name_tag);
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(vmsize, as->metrics.metric_vmsize, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(vmrss, as->metrics.metric_vmrss, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(rssanon, as->metrics.metric_rssanon, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(rssfile, as->metrics.metric_rssfile, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(rssshmem, as->metrics.metric_rssshmem, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(vmswap, as->metrics.metric_vmswap, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(pss, as->metrics.metric_pss, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(pss_anon, as->metrics.metric_pss_anon, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(pss_file, as->metrics.metric_pss_file, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(pss_shmem, as->metrics.metric_pss_shmem, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(uss, as->metrics.metric_uss, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(io_logical_bytes_read, as->metrics.metric_io_logical_bytes_read,
-                                   as->app_prom_collector, __app_metric_name_tag);
+                                   as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(io_logical_bytes_written,
                                    as->metrics.metric_io_logical_bytes_written,
-                                   as->app_prom_collector, __app_metric_name_tag);
+                                   as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(io_read_calls, as->metrics.metric_io_read_calls,
-                                   as->app_prom_collector, __app_metric_name_tag);
+                                   as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(io_write_calls, as->metrics.metric_io_write_calls,
-                                   as->app_prom_collector, __app_metric_name_tag);
+                                   as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(io_storage_bytes_read, as->metrics.metric_io_storage_bytes_read,
-                                   as->app_prom_collector, __app_metric_name_tag);
+                                   as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(io_storage_bytes_written,
                                    as->metrics.metric_io_storage_bytes_written,
-                                   as->app_prom_collector, __app_metric_name_tag);
+                                   as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(io_cancelled_write_bytes,
                                    as->metrics.metric_io_cancelled_write_bytes,
-                                   as->app_prom_collector, __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(open_fds, as->metrics.metric_open_fds, as->app_prom_collector,
-                                   __app_metric_name_tag);
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(open_fds, as->metrics.metric_open_fds, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(max_oom_score, as->metrics.metric_max_oom_score,
-                                   as->app_prom_collector, __app_metric_name_tag);
+                                   as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(max_oom_score_adj, as->metrics.metric_max_oom_score_adj,
-                                   as->app_prom_collector, __app_metric_name_tag);
+                                   as->app_prom_collector);
 
         strlcpy(as->app_name, app_name, XM_APP_NAME_SIZE);
         INIT_LIST_HEAD(&as->l_member);
@@ -457,11 +435,6 @@ int32_t init_apps_collector() {
 
     if (!__app_assoc_process_xmp) {
         __app_assoc_process_xmp = xm_mempool_init(sizeof(struct app_assoc_process), 1024, 128);
-    }
-
-    if (likely(!__app_metric_name_tag)) {
-        __app_metric_name_tag =
-            appconfig_get_str("collector_plugin_appstatus.app_metric_name_tag", "app");
     }
     return 0;
 }

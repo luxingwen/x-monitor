@@ -11,6 +11,8 @@ set(STATIC_LINKING OFF CACHE BOOL "Build ipftrace2 as a statically linked execut
 set(STATIC_LIBC OFF CACHE BOOL "Attempt to embed libc, only known to work with musl. Has issues with dlopen.")
 set(USE_ADDRSANITIZER OFF CACHE BOOL "AddressSanitizer (detects addressability issues) and LeakSanitizer (detects memory leaks).")
 
+set(APP_METRIC_TAG_NAME "app" CACHE STRING "Tag for AppMetrics.")
+
 if(STATIC_LINKING)
   if(STATIC_LIBC)
     set(CMAKE_EXE_LINKER_FLAGS "-static")
@@ -188,6 +190,10 @@ add_executable(x-monitor main.c ${X-MONITOR_SRCS})
 #                        ${PROC_PLUGIN_FILES}
 #                        ${PROXY_FILES}
 #                        )
-target_compile_definitions(x-monitor PRIVATE -DDEBUG -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" -DLOG_DIR="/usr/log/x-monitor")
+target_compile_definitions(x-monitor PRIVATE 
+  -DDEBUG 
+  -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" 
+  -DLOG_DIR="/usr/log/x-monitor"
+  -DAPP_METRIC_TAG=${APP_METRIC_TAG_NAME})
 
 target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread dl z m)
