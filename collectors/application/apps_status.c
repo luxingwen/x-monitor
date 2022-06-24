@@ -31,15 +31,13 @@
 #include "prometheus-client-c/prom_metric_t.h"
 #include "prometheus-client-c/prom_metric_i.h"
 
-static char        __app_metric_name_buffer[XM_PROM_METRIC_NAME_LEN] = { 0 };
+// static char        __app_metric_name_buffer[XM_PROM_METRIC_NAME_LEN] = { 0 };
 static const char *__app_metric_name_tag = NULL;
 
-#define APP_METRIC_ADDTO_COLLECTOR(name, metric, collector, tag)                          \
-    do {                                                                                  \
-        snprintf(__app_metric_name_buffer, XM_PROM_METRIC_NAME_LEN, "%s_%s", tag, #name); \
-        metric = prom_gauge_new(__app_metric_name_buffer, __app_metric_##name##_help, 1,  \
-                                (const char *[]){ tag });                                 \
-        prom_collector_add_metric(collector, metric);                                     \
+#define APP_METRIC_ADDTO_COLLECTOR(name, metric, collector, tag)                                \
+    do {                                                                                        \
+        metric = prom_gauge_new(#name, __app_metric_##name##_help, 1, (const char *[]){ tag }); \
+        prom_collector_add_metric(collector, metric);                                           \
     } while (0)
 
 // app_stat列表
@@ -195,8 +193,7 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
                                    as->app_prom_collector, __app_metric_name_tag);
         APP_METRIC_ADDTO_COLLECTOR(io_write_calls, as->metrics.metric_io_write_calls,
                                    as->app_prom_collector, __app_metric_name_tag);
-        APP_METRIC_ADDTO_COLLECTOR(io_storage_bytes_read,
-                                   as->metrics.metric_io_storage_bytes_written,
+        APP_METRIC_ADDTO_COLLECTOR(io_storage_bytes_read, as->metrics.metric_io_storage_bytes_read,
                                    as->app_prom_collector, __app_metric_name_tag);
         APP_METRIC_ADDTO_COLLECTOR(io_storage_bytes_written,
                                    as->metrics.metric_io_storage_bytes_written,
