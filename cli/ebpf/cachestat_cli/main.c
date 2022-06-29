@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-11-03 11:23:12
- * @Last Modified by: CALM.WUU
- * @Last Modified time: 2022-05-16 15:01:55
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2022-06-28 14:22:35
  */
 
 #include "utils/common.h"
@@ -271,5 +271,8 @@ cleanup:
     xm_cachestat_bpf__destroy(obj);
 
     debug("cachestat_cli exit\n");
+
+    log_fini();
+
     return ret;
 }

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-05-16 14:53:52
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-05-16 15:54:08
+ * @Last Modified time: 2022-06-28 14:22:43
  */
 
 #include "utils/common.h"
@@ -178,6 +178,8 @@ cleanup:
     xm_mempool_fini(__bs_ev_xmp);
 
     debug("bootstrap say byebye!");
+
+    log_fini();
 
     return 0;
 }

@@ -130,6 +130,7 @@ add_subdirectory(cli/ebpf/cachestat_cli)
 #add_subdirectory(cli/ebpf/perf_event_stack_cli)
 add_subdirectory(cli/ebpf/xdp_libbpf_test)
 add_subdirectory(cli/ebpf/bootstrap_cli)
+add_subdirectory(cli/ebpf/readbtf_cli)
 
 # 子目录源代码
 #set(PLUGINSD_FILES
