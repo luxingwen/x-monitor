@@ -73,4 +73,5 @@ struct fb_monspecs {
 
 - [BTF (BPF Type Format): A Practical Guide (containiq.com)](https://www.containiq.com/post/btf-bpf-type-format)
 - [c - call printf using va_list - Stack Overflow](https://stackoverflow.com/questions/5977326/call-printf-using-va-list)
+- [BTF deduplication and Linux kernel BTF (nakryiko.com)](https://nakryiko.com/posts/btf-dedup/)
 
