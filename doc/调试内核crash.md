@@ -1,4 +1,4 @@
-# 内核调试
+# 调试内核crash
 
 ## 准备CentoOS8环境
 
@@ -241,6 +241,8 @@ PANIC：那种类型的crash发生在机器上。
 
 PID：是哪个进程导致的crash。
 
+COMMAND：进程名。
+
 ### 命令
 
 #### bt - backtrace
@@ -290,13 +292,209 @@ PID: 3370   TASK: ffff8d03f6c717c0  CPU: 3   COMMAND: "zsh"
     ORIG_RAX: 0000000000000001  CS: 0033  SS: 002b
 ```
 
+##### 输出说明
+
+- 指令指针Instruction pointer
+
+  可以在bt输出中看到[exception RIP: sysrq_handle_crash+18]，首先明白RIP是什么，RIP指令指针，在32位机器上被称为EIP。它指向内存地址，sysrq_handle_crash+18这就是引发crash内核函数的位置。
+
+- CS 代码段寄存器 - CPL/DPL/RPL
+
+  CS: 0033，Seemingly, we crashed the kernel in user mode。这里有4个数字组合，为了解释需要先了解下特权级别。特权级别有4种：0~3，0是最高级别，就是kernel mode。3就是最低级别，是User mode。大多数系统忽略中间两个级别，包括linux在内只有0和3。读取寄存器最低两位是CPU当前的**特权等级**（CPL），这里是33。通过3可以判断是用户态bug导致内核崩溃的。
+
 #### dmesg - log
 
 显示内核log_buf中的内容，也就是崩溃时的log。
 
-ps 
+#### ps 
 
-显示内核崩溃时，当时系统中所有进程的状态
+显示内核崩溃时，当时系统中所有进程的状态，可以看到进程的内存资源使用情况，VSZ、RSS
+
+```
+crash> ps
+   PID    PPID  CPU       TASK        ST  %MEM     VSZ    RSS  COMM
+  >3370   3366   3  ffff8d03f6c717c0  RU   0.0   65432   6704  zsh
+```
+
+#### dis - 反汇编
+
+反汇编，参数可以使用地址、符号（函数名、变量名），对齐反汇编得到改地址对应的源码。
+
+```
+crash> dis -s ffffffffba3affd2
+FILE: drivers/tty/sysrq.c
+LINE: 147
+
+  142            * complaint from the kernel before the panic.
+  143            */
+  144           rcu_read_unlock();
+  145           panic_on_oops = 1;      /* force panic */
+  146           wmb();
+* 147           *killer = 1;
+  148   }
+```
+
+dis -l 显示行号
+
+```
+crash> dis -l ffffffffba3affd2
+/usr/src/debug/kernel-4.18.0-348.7.1.el8_5/linux-4.18.0-348.7.1.el8_5.x86_64/drivers/tty/sysrq.c: 147
+0xffffffffba3affd2 <sysrq_handle_crash+18>:     movb   $0x1,0x0
+```
+
+#### rd - 读取相应的内存
+
+#### mod - 查看显示、加载模块符号
+
+crash使用的调试内核vmlinux是不包含ko的，所以调试内核模块需要加载-g编译后的ko里的符号信息。
+
+mod不带参数会显示当前系统安装的模块，以及加载符号
+
+```
+crash> mod
+     MODULE       NAME                                     BASE           SIZE  OBJECT FILE
+ffffffffc0090b00  fuse                               ffffffffc0070000   155648  (not loaded)  [CONFIG_KALLSYMS]
+```
+
+mod -S加载所有安装模块的符号调试信息
+
+```
+crash> mod -S
+     MODULE       NAME                                     BASE           SIZE  OBJECT FILE
+ffffffffc0090b00  fuse                               ffffffffc0070000   155648  /usr/lib/debug/usr/lib/modules/4.18.0-348.7.1.el8_5.x86_64/kernel/fs/fuse/fuse.ko.debug 
+ffffffffc00c4240  serio_raw                          ffffffffc00c2000    16384  /usr/lib/debug/usr/lib/modules/4.18.0-348.7.1.el8_5.x86_64/kernel/drivers/input/serio/serio_raw.ko.debug 
+ffffffffc00c9040  libcrc32c                          ffffffffc00c7000    16384  /usr/lib/debug/usr/lib/modules/4.18.0-348.7.1.el8_5.x86_64/kernel/lib/libcrc32c.ko.debug
+```
+
+mod -s 加载指定的模块和调试符号，在我一篇用bpftrace调试nftables的文章，需要加载nft_chain_nat模块，这里可以这样。
+
+```
+crash> mod -s nft_chain_nat
+     MODULE       NAME                                     BASE           SIZE  OBJECT FILE
+ffffffffc087f000  nft_chain_nat                      ffffffffc087d000    16384  /usr/lib/debug/usr/lib/modules/4.18.0-348.7.1.el8_5.x86_64/kernel/net/netfilter/nft_chain_nat.ko.debug 
+```
+
+然后用dis去看函数地址和代码
+
+```
+crash> dis -s nft_do_chain
+FILE: net/netfilter/nf_tables_core.c
+LINE: 152
+
+  147           expr->ops->eval(expr, regs, pkt);
+  148   }
+  149   
+  150   unsigned int
+  151   nft_do_chain(struct nft_pktinfo *pkt, void *priv)
+* 152   {
+  153           const struct nft_chain *chain = priv, *basechain = chain;
+
+```
+
+```
+crash> dis nft_do_chain
+0xffffffffc07e5080 <nft_do_chain>:      nopl   0x0(%rax,%rax,1) [FTRACE NOP]
+0xffffffffc07e5085 <nft_do_chain+5>:    push   %rbp
+0xffffffffc07e5086 <nft_do_chain+6>:    mov    %rsp,%rbp
+```
+
+#### x/FMT - 按格式查看内存数据。
+
+| x/nfu                                                        |
+| ------------------------------------------------------------ |
+| n表示要显示的内存单元的个数                                  |
+| f表示显示方式, 可取如下值 x 按十六进制格式显示变量。 d 按十进制格式显示变量。 u 按十进制格式显示无符号整型。 o 按八进制格式显示变量。 t 按二进制格式显示变量。 a 按十六进制格式显示变量。 i 指令地址格式 c 按字符格式显示变量。 f 按浮点数格式显示变量。 |
+| u表示一个地址单元的长度 b表示单字节， h表示双字节， w表示四字节， g表示八字节 |
+
+#### files - 查看某个进程打开的文件。
+
+```
+crash> files 3370
+PID: 3370   TASK: ffff8d03f6c717c0  CPU: 3   COMMAND: "zsh"
+ROOT: /    CWD: /home/calmwu
+ FD       FILE            DENTRY           INODE       TYPE PATH
+  0 ffff8d03f249bc00 ffff8d0439bb7e40 ffff8d0439a947b0 CHR  /dev/pts/1
+  1 ffff8d03ea16c800 ffff8d03e1241240 ffff8d03e1270e80 REG  /proc/sysrq-trigger
+  2 ffff8d03f249bc00 ffff8d0439bb7e40 ffff8d0439a947b0 CHR  /dev/pts/1
+ 10 ffff8d03fe59e300 ffff8d0439bb7e40 ffff8d0439a947b0 CHR  /dev/pts/1
+ 11 ffff8d045ddae500 ffff8d03d488e840 ffff8d03d4862bb0 REG  /var/lib/sss/mc/passwd
+ 12 ffff8d045ddaf500 ffff8d04398e00c0 ffff8d0439bcec30 SOCK UNIX
+ 13 ffff8d03f249bc00 ffff8d0439bb7e40 ffff8d0439a947b0 CHR  /dev/pts/1
+```
+
+#### vm - 查看进程的虚拟地址空间
+
+```
+crash> vm 3370
+PID: 3370   TASK: ffff8d03f6c717c0  CPU: 3   COMMAND: "zsh"
+       MM               PGD          RSS    TOTAL_VM
+ffff8d03c8de1200  ffff8d046aaf8000  6704k    65432k 
+      VMA           START       END     FLAGS FILE
+ffff8d0405324658 563d354e2000 563d355ab000 8000875 /usr/bin/zsh
+ffff8d0405325de8 563d357aa000 563d357ac000 8100871 /usr/bin/zsh
+ffff8d045dcbc488 563d357ac000 563d357b2000 8100873 /usr/bin/zsh
+ffff8d0405324ae0 563d357b2000 563d357c6000 8100073 
+ffff8d045dcbd308 563d372b4000 563d3743f000 8100073 
+ffff8d045695d6a8 7fc8a22ff000 7fc8a2310000 8000075 /usr/lib64/zsh/5.5.1/zsh/computil.so
+ffff8d045695cae0 7fc8a2310000 7fc8a250f000 8000070 /usr/lib64/zsh/5.5.1/zsh/computil.so
+ffff8d045695ce80 7fc8a250f000 7fc8a2510000 8100071 /usr/lib64/zsh/5.5.1/zsh/computil.so
+
+```
+
+#### task [pid] - 进程的task_struct和thread_info
+
+```
+crash> task 3370
+PID: 3370   TASK: ffff8d03f6c717c0  CPU: 3   COMMAND: "zsh"
+struct task_struct {
+  thread_info = {
+    flags = 2147483776, 
+    status = 0
+  }, 
+  state = 0, 
+  stack = 0xffff9a6fc487c000, 
+  {
+    usage = {
+      refs = {
+        counter = 1
+      }
+    }, 
+    rh_kabi_hidden_630 = {
+      usage = {
+        counter = 1
+      }
+    }, 
+    {<No data fields>}
+  }, 
+  flags = 4210944, 
+  ptrace = 0, 
+  wake_entry = {
+
+```
+
+#### kmem - 查看当时的内存使用情况
+
+```
+crash> kmem -i
+                 PAGES        TOTAL      PERCENTAGE
+    TOTAL MEM  3964370      15.1 GB         ----
+         FREE  3264661      12.5 GB   82% of TOTAL MEM
+         USED   699709       2.7 GB   17% of TOTAL MEM
+       SHARED   150276       587 MB    3% of TOTAL MEM
+      BUFFERS      540       2.1 MB    0% of TOTAL MEM
+       CACHED   340217       1.3 GB    8% of TOTAL MEM
+         SLAB    21131      82.5 MB    0% of TOTAL MEM
+
+   TOTAL HUGE        0            0         ----
+    HUGE FREE        0            0    0% of TOTAL HUGE
+
+   TOTAL SWAP        0            0         ----
+    SWAP USED        0            0    0% of TOTAL SWAP
+    SWAP FREE        0            0    0% of TOTAL SWAP
+
+ COMMIT LIMIT  1982185       7.6 GB         ----
+    COMMITTED  1101977       4.2 GB   55% of TOTAL LIMIT
+```
 
 ## 资料
 
