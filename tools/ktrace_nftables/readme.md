@@ -75,7 +75,7 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 
 安装的vmlinux位于：/usr/lib/debug/lib/modules/5.14.0-55.el9.x86_64+debug/vmlinux
 
-执行下面命令都可以获取函数nf_hook_slow的基地址，ffffffff82bbe0c0
+执行下面命令都可以获取函数nf_hook_slow的基地址，ffffffff82bbe0c0，**这是编译器确定的逻辑地址，不是实际运行内存的地址，这个和kdump的vmcore对比很明显**。
 
 - nm命令
   
