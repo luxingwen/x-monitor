@@ -496,10 +496,286 @@ crash> kmem -i
     COMMITTED  1101977       4.2 GB   55% of TOTAL LIMIT
 ```
 
+## 举例
+
+### kernel panic
+
+编写一个给空指针赋值导致kernel panic的module。
+
+```
+/*
+ * @Author: calmwu
+ * @Date: 2022-06-30 17:17:01
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-06-30 17:18:35
+ */
+
+#include <linux/module.h> /* Needed by all modules */
+#include <linux/kernel.h> /* Needed for KERN_INFO */
+#include <linux/init.h>   /* Needed for the macros */
+
+#define AUTHOR "calm.wu <wubo0067@hotmail.com>"
+#define DESC "Cause kernel crash"
+
+char *p = NULL;
+
+static int __init hello_init(void) {
+    printk(KERN_ALERT "Hello, world 1.\n");
+    *p = 1;
+    return 0;
+}
+
+static void __exit hello_exit(void) {
+    printk(KERN_ALERT "Goodbye, world 1.\n");
+}
+
+module_init(hello_init);
+module_exit(hello_exit);
+
+/*
+ * Get rid of taint message by declaring code as GPL.
+ */
+MODULE_LICENSE("GPL");
+
+/*
+ * Or with defines, like this:
+ */
+MODULE_AUTHOR(AUTHOR);    /* Who wrote this module? */
+MODULE_DESCRIPTION(DESC); /* What does this module do */
+```
+
+编译、安装mod，系统重启
+
+```
+ calmwu@localhost  ~/Program/x-monitor/tools/km/hellocrash   main ±  make
+make -C /lib/modules/4.18.0-348.7.1.el8_5.x86_64/build M=/home/calmwu/Program/x-monitor/tools/km/hellocrash modules
+make[1]: Entering directory '/usr/src/kernels/4.18.0-348.7.1.el8_5.x86_64'
+  CC [M]  /home/calmwu/Program/x-monitor/tools/km/hellocrash/hello-crash.o
+  Building modules, stage 2.
+  MODPOST 1 modules
+  CC      /home/calmwu/Program/x-monitor/tools/km/hellocrash/hello-crash.mod.o
+  LD [M]  /home/calmwu/Program/x-monitor/tools/km/hellocrash/hello-crash.ko
+make[1]: Leaving directory '/usr/src/kernels/4.18.0-348.7.1.el8_5.x86_64'
+ calmwu@localhost  ~/Program/x-monitor/tools/km/hellocrash   main ±  insmod hello-crash.ko
+```
+
+查看module的debug信息
+
+```
+ calmwu@localhost  ~/Program/x-monitor/tools/km/hellocrash   main ±  readelf -S hello-crash.ko|grep debug
+  [19] .debug_info       PROGBITS         0000000000000000  00000640
+  [20] .rela.debug_info  RELA             0000000000000000  0001f658
+  [21] .debug_abbrev     PROGBITS         0000000000000000  000115b9
+  [22] .debug_aranges    PROGBITS         0000000000000000  000121e0
+  [23] .rela.debug_arang RELA             0000000000000000  00037130
+  [24] .debug_ranges     PROGBITS         0000000000000000  00012240
+  [25] .rela.debug_range RELA             0000000000000000  00037190
+  [26] .debug_line       PROGBITS         0000000000000000  00012270
+  [27] .rela.debug_line  RELA             0000000000000000  000371f0
+  [28] .debug_str        PROGBITS         0000000000000000  0001320b
+  [31] .debug_frame      PROGBITS         0000000000000000  0001efb0
+  [32] .rela.debug_frame RELA             0000000000000000  00037220
+```
+
+### 分析
+
+#### 查看crash报告
+
+```
+      KERNEL: /usr/lib/debug/usr/lib/modules/4.18.0-348.7.1.el8_5.x86_64/vmlinux
+    DUMPFILE: /var/crash/127.0.0.1-2022-06-30-19:16:25/vmcore  [PARTIAL DUMP]
+        CPUS: 8
+        DATE: Thu Jun 30 19:16:16 PDT 2022
+      UPTIME: 12:53:43
+LOAD AVERAGE: 0.39, 0.46, 0.51
+       TASKS: 799
+    NODENAME: localhost.localdomain
+     RELEASE: 4.18.0-348.7.1.el8_5.x86_64
+     VERSION: #1 SMP Wed Dec 22 13:25:12 UTC 2021
+     MACHINE: x86_64  (4200 Mhz)
+      MEMORY: 16 GB
+       PANIC: "BUG: unable to handle kernel NULL pointer dereference at 0000000000000000"
+         PID: 24600
+     COMMAND: "insmod"
+        TASK: ffff9feae3b14740  [THREAD_INFO: ffff9feae3b14740]
+         CPU: 2
+       STATE: TASK_RUNNING (PANIC)
+```
+
+PANIC显示很清晰，引用了空地址导致的内核crash。COMMAND显示是由insmod命令导致的。
+
+#### bt输出
+
+```
+crash>               bt
+PID: 24600  TASK: ffff9feae3b14740  CPU: 2   COMMAND: "insmod"
+ #0 [ffffb08b06c739d8] machine_kexec at ffffffffa88641ce
+ #1 [ffffb08b06c73a30] __crash_kexec at ffffffffa899e67d
+ #2 [ffffb08b06c73af8] crash_kexec at ffffffffa899f56d
+ #3 [ffffb08b06c73b10] oops_end at ffffffffa882613d
+ #4 [ffffb08b06c73b30] no_context at ffffffffa887562f
+ #5 [ffffb08b06c73b88] __bad_area_nosemaphore at ffffffffa887598c
+ #6 [ffffb08b06c73bd0] do_page_fault at ffffffffa8876267
+ #7 [ffffb08b06c73c00] page_fault at ffffffffa920111e
+    [exception RIP: _MODULE_INIT_START_hello_crash+24]
+    RIP: ffffffffc0888018  RSP: ffffb08b06c73cb8  RFLAGS: 00010246
+    RAX: 0000000000000000  RBX: 0000000000000000  RCX: 0000000000000000
+    RDX: 0000000000000000  RSI: ffff9fed3de96858  RDI: ffff9fed3de96858
+    RBP: ffffffffc0888000   R8: 00000000000006bd   R9: 000000000000001e
+    R10: 0000000000000000  R11: ffffb08b06c73b68  R12: ffffffffc0885000
+    R13: ffffffffc0885018  R14: ffffffffc08851d0  R15: 0000000000000000
+    ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
+ #8 [ffffb08b06c73cb0] _MODULE_INIT_START_hello_crash at ffffffffc0888011 [hello_crash]
+ #9 [ffffb08b06c73cb8] do_one_initcall at ffffffffa88027f6
+#10 [ffffb08b06c73d28] do_init_module at ffffffffa8998fda
+#11 [ffffb08b06c73d48] load_module at ffffffffa899b415
+#12 [ffffb08b06c73e80] __do_sys_finit_module at ffffffffa899b9a8
+#13 [ffffb08b06c73f38] do_syscall_64 at ffffffffa88042bb
+#14 [ffffb08b06c73f50] entry_SYSCALL_64_after_hwframe at ffffffffa92000ad
+    RIP: 00007f8ed1c6052d  RSP: 00007ffe04c8dc98  RFLAGS: 00000246
+    RAX: ffffffffffffffda  RBX: 000055b5768817c0  RCX: 00007f8ed1c6052d
+    RDX: 0000000000000000  RSI: 000055b574b687d6  RDI: 0000000000000003
+    RBP: 000055b574b687d6   R8: 0000000000000000   R9: 00007f8ed1f2b5c0
+    R10: 0000000000000003  R11: 0000000000000246  R12: 0000000000000000
+    R13: 000055b576881770  R14: 0000000000000000  R15: 0000000000000000
+    ORIG_RAX: 0000000000000139  CS: 0033  SS: 002b
+```
+
+这里看到RIP的地址ffffffffc0888018，执行到_MODULE_INIT_START_hello_crash+24导致的crash。用mod -s命令加载模块符号。
+
+```
+crash> mod -s hello_crash /home/calmwu/Program/x-monitor/tools/km/hellocrash/hello-crash.ko
+     MODULE       NAME                                     BASE           SIZE  OBJECT FILE
+ffffffffc0885000  hello_crash                        ffffffffc0883000    16384  /home/calmwu/Program/x-monitor/tools/km/hellocrash/hello-crash.o
+```
+
+#### dis命令
+
+```
+crash> dis ffffffffc0888018
+0xffffffffc0888018 <_MODULE_INIT_START_hello_crash+24>: movb   $0x1,(%rax)
+crash> sym ffffffffc0888018
+ffffffffc0888018 (m) _MODULE_INIT_START_hello_crash+24 [hello_crash]
+```
+
+很明显，将1赋值给寄存器rax，可是rax指向的是RAX: 0000000000000000，这就踩了空指针了。
+
+#### 和代码对应
+
+使用dis -s，发现无法显示代码，可是前面加载了module symbols
+
+```
+crash> dis -s ffffffffc0888018
+dis: ffffffffc0888018: not a kernel text address
+```
+
+使用objdump命令
+
+```
+calmwu@localhost  ~/Program/x-monitor/tools/km/hellocrash   main ±  objdump -d -S ./hello-crash.ko 
+
+./hello-crash.ko:     file format elf64-x86-64
+
+
+Disassembly of section .init.text:
+
+0000000000000000 <init_module>:
+#define AUTHOR "calm.wu <wubo0067@hotmail.com>"
+#define DESC "Cause kernel crash"
+
+char *p = NULL;
+
+static int __init hello_init(void) {
+   0:	e8 00 00 00 00       	callq  5 <init_module+0x5>
+    printk(KERN_ALERT "Hello, world 1.\n");
+   5:	48 c7 c7 00 00 00 00 	mov    $0x0,%rdi
+   c:	e8 00 00 00 00       	callq  11 <init_module+0x11>
+    *p = 1;
+  11:	48 8b 05 00 00 00 00 	mov    0x0(%rip),%rax        # 18 <init_module+0x18>
+  18:	c6 00 01             	movb   $0x1,(%rax)
+    return 0;
+}
+  1b:	31 c0                	xor    %eax,%eax
+  1d:	c3                   	retq   
+
+Disassembly of section .exit.text:
+
+0000000000000000 <cleanup_module>:
+
+static void __exit hello_exit(void) {
+    printk(KERN_ALERT "Goodbye, world 1.\n");
+   0:	48 c7 c7 00 00 00 00 	mov    $0x0,%rdi
+   7:	e9 00 00 00 00       	jmpq   c <cleanup_module+0xc>
+```
+
+_MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
+
+```
+18:	c6 00 01             	movb   $0x1,(%rax)
+```
+
+这样就很明确具体是那一行导致的crash了。
+
+## Crash命令列表
+
+|  命令   |                功能                |
+| :-----: | :--------------------------------: |
+|    *    |             指针快捷健             |
+|  alias  |             命令快捷键             |
+|  ascii  |         ASCII码转换和码表          |
+|   bpf   |  eBPF - extended Berkeley Filter   |
+|   bt    |              堆栈查看              |
+|  btop   |            地址页表转换            |
+|   dev   |            设备数据查询            |
+|   dis   |               返汇编               |
+|  eval   |               计算器               |
+|  exit   |                退出                |
+| extend  |              命令扩展              |
+|  files  |           打开的文件查看           |
+| foreach |              循环查看              |
+|  fuser  |           文件使用者查看           |
+|   gdb   |          调用gdb执行命令           |
+|  help   |                帮助                |
+|  ipcs   |        查看system V IPC工具        |
+|   irq   |            查看irq数据             |
+|  kmem   |           查看Kernel内存           |
+|  list   |              查看链表              |
+|   log   |          查看系统消息缓存          |
+|  mach   |            查看平台信息            |
+|   mod   |             加载符号表             |
+|  mount  |         Mount文件系统数据          |
+|   net   |              网络命令              |
+|    p    |            查看数据结构            |
+|   ps    |          查看进程状态信息          |
+|   pte   |              查看页表              |
+|  ptob   |            页表地址转换            |
+|  ptov   |        物理地址虚拟地址转换        |
+|   rd    |              查看内存              |
+| repeat  |              重复执行              |
+|  runq   |       查看run queue上的线程        |
+| search  |              搜索内存              |
+|   set   |    设置线程环境和Crash内部变量     |
+|   sig   |            查询线程消息            |
+| struct  |             查询结构体             |
+|  swap   |            查看swap信息            |
+|   sym   |         符号和虚拟地址转换         |
+|   sys   |            查看系统信息            |
+|  task   | 查看task_struct和thread_thread信息 |
+|  timer  |           查看timer队列            |
+|  tree   |         查看radix树和rb树          |
+|  union  |          查看union结构体           |
+|   vm    |            查看虚拟内存            |
+|  vtop   |        虚拟地址物理地址转换        |
+|  waitq  |       查看wait queue上的进程       |
+| whatis  |             符号表查询             |
+|   wr    |              改写内存              |
+|    q    |                退出                |
+
 ## 资料
 
 - [Chapter 48. Installing and configuring kdump Red Hat Enterprise Linux 8 | Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/system_design_guide/installing-and-configuring-kdump_system-design-guide)
 - [kdump_usage_and_internals.pdf (linuxfound.org)](https://events.static.linuxfound.org/sites/events/files/slides/kdump_usage_and_internals.pdf)
 - [Kexec 和 Kdump | 系统分析和微调指南 | SUSE Linux Enterprise Desktop 15 SP3](https://documentation.suse.com/zh-cn/sled/15-SP3/html/SLED-all/cha-tuning-kexec.html)
 - [linux - centos 8: debuginfo-install can't find kernel-debuginfo package - Server Fault](https://serverfault.com/questions/1044899/centos-8-debuginfo-install-cant-find-kernel-debuginfo-package)
+- [系统崩溃 - crash工具介绍 - 简书 (jianshu.com)](https://www.jianshu.com/p/ad03152a0a53)
 
