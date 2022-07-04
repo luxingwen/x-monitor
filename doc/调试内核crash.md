@@ -778,4 +778,5 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 - [Kexec 和 Kdump | 系统分析和微调指南 | SUSE Linux Enterprise Desktop 15 SP3](https://documentation.suse.com/zh-cn/sled/15-SP3/html/SLED-all/cha-tuning-kexec.html)
 - [linux - centos 8: debuginfo-install can't find kernel-debuginfo package - Server Fault](https://serverfault.com/questions/1044899/centos-8-debuginfo-install-cant-find-kernel-debuginfo-package)
 - [系统崩溃 - crash工具介绍 - 简书 (jianshu.com)](https://www.jianshu.com/p/ad03152a0a53)
+- [Centos8 dnf命令 - chillax1314 - 博客园 (cnblogs.com)](https://www.cnblogs.com/chillax1314/articles/14627854.html)
 

@@ -82,6 +82,7 @@ link_directories("${PROJECT_SOURCE_DIR}/extra/libs")
 
 # 第三方库
 set(EXTRA_LIBS "libjson-c.a"
+              "libcurl.a"
               "libconfig.a"
               "libzlog.a"
               "libcollectc.a"
@@ -121,6 +122,7 @@ add_subdirectory(cli/simplepattern_test)
 add_subdirectory(cli/mempool_test)
 add_subdirectory(cli/arl_test)
 add_subdirectory(cli/prom_client_test)
+add_subdirectory(cli/prom_reg_test)
 add_subdirectory(cli/process_stat_test)
 add_subdirectory(cli/regex_cli)
 add_subdirectory(cli/config_test)
@@ -207,4 +209,4 @@ target_compile_definitions(x-monitor PRIVATE
   -DAPP_METRIC_TAG=${APP_METRIC_TAG}
   -DAPP_METRIC_LABEL=${APP_METRIC_LABEL})
 
-target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread dl z m)
+target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread dl zstd z m)
