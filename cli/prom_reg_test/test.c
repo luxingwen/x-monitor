@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-07-04 11:47:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-04 16:01:53
+ * @Last Modified time: 2022-07-04 17:19:38
  */
 
 #include "utils/common.h"
@@ -53,6 +53,7 @@ int32_t main(int32_t argc, char **argv) {
     char              *url = NULL;
     enum curl_action   action = CURL_GET;
     bool               verbose = false;
+    long               response_code = 0;
 
     if (log_init("../cli/log.cfg", "prom_reg_test") != 0) {
         fprintf(stderr, "log init failed\n");
@@ -106,6 +107,9 @@ int32_t main(int32_t argc, char **argv) {
             headers = curl_slist_append(headers, "Accept: application/json");
             // 构造json数据
             // 设置post数据
+
+            // curl_easy_setopt(curl, CURLOPT_POSTFIELDS,
+            // "{\"name\":\"test\",\"password\":\"123456\"}");
         } else {
             curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
         }
@@ -127,6 +131,9 @@ int32_t main(int32_t argc, char **argv) {
         if (unlikely(res != CURLE_OK)) {
             error("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
         }
+
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+        debug("response code: %ld", response_code);
 
         /* always cleanup */
         curl_easy_cleanup(curl);
