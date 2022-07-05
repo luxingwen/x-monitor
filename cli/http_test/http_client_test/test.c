@@ -27,9 +27,6 @@ int32_t main(int32_t argc, char **argv) {
         return -1;
     }
 
-    char *p_leak = malloc(1024);
-    p_leak = NULL;
-#if 0
     curl_global_init(CURL_GLOBAL_ALL);
 
     debug("url count: %ld", ARRAY_SIZE(__urls));
@@ -56,7 +53,7 @@ int32_t main(int32_t argc, char **argv) {
                 debug("http do success, response data: '%s'", resp->response_data);
             }
             free_http_response(resp);
-            debug("\n------------------\n");
+            debug("------------------\n");
         }
 
         sleep(3);
@@ -71,7 +68,7 @@ int32_t main(int32_t argc, char **argv) {
     }
 
     curl_global_cleanup();
-#endif
+
     log_fini();
     return 0;
 }
