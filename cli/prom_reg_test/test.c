@@ -11,10 +11,16 @@
 #include "utils/os.h"
 #include "utils/consts.h"
 #include "utils/strings.h"
+#include "utils/backoff_algorithm.h"
+#include "utils/clocks.h"
 
 #include "curl/curl.h"
 
 enum curl_action { CURL_GET = 0, CURL_POST = 1 };
+
+static const uint16_t __retry_backoff_base_ms = 1000;
+static const uint16_t __retry_max_backoff_delay_ms = 5000;
+static const uint32_t __retry_max_attempts = 3;
 
 static const struct option __opts[] = {
     { "url", required_argument, NULL, 'u' },
@@ -45,15 +51,28 @@ static size_t __write_response(void *ptr, size_t size, size_t nmemb, void *data)
     return bytes;
 }
 
+static __always_inline int32_t __check_dohttp_result(CURLcode code, long res) {
+    if (code != CURLE_OK || res != 200) {
+        error("http do failed, res:%d, error: '%s', response_code:%ld", code,
+              curl_easy_strerror(code), res);
+        return -1;
+    }
+    return 0;
+}
+
 int32_t main(int32_t argc, char **argv) {
-    int32_t            opt = 0;
-    CURL              *curl;
-    CURLcode           res;
-    struct curl_slist *headers = NULL;
-    char              *url = NULL;
-    enum curl_action   action = CURL_GET;
-    bool               verbose = false;
-    long               response_code = 0;
+    int32_t                   opt = 0;
+    CURL                     *curl;
+    CURLcode                  curl_code;
+    long                      http_res_code = 0;
+    int32_t                   do_http_ret = 0;
+    struct curl_slist        *headers = NULL;
+    char                     *url = NULL;
+    enum curl_action          action = CURL_GET;
+    bool                      verbose = false;
+    BackoffAlgorithmStatus_t  retryStatus = BackoffAlgorithmSuccess;
+    BackoffAlgorithmContext_t retryContext;
+    uint16_t                  nextRetryBackoff = 0;
 
     if (log_init("../cli/log.cfg", "prom_reg_test") != 0) {
         fprintf(stderr, "log init failed\n");
@@ -71,7 +90,7 @@ int32_t main(int32_t argc, char **argv) {
             } else if (strcmp(optarg, "post") == 0) {
                 action = CURL_POST;
             } else {
-                error("invalid action\n");
+                error("invalid action");
                 return -1;
             }
             break;
@@ -79,11 +98,16 @@ int32_t main(int32_t argc, char **argv) {
             verbose = true;
             break;
         default:
-            error("Unrecognized option '%c'\n", opt);
+            error("Unrecognized option '%c'", opt);
             usage(basename(argv[0]));
             return EXIT_FAILURE;
         }
     }
+
+    BackoffAlgorithm_InitializeParams(&retryContext, __retry_backoff_base_ms,
+                                      __retry_max_backoff_delay_ms, __retry_max_attempts);
+
+    srand(now_realtime_sec());
 
     curl_global_init(CURL_GLOBAL_ALL);
 
@@ -95,9 +119,9 @@ int32_t main(int32_t argc, char **argv) {
         headers = curl_slist_append(headers, "Content-Type: charset=UTF-8");
 
         // 设置连接超时，单位为秒
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 2);
         // 读写数据超时，单位为秒
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3);
 
         /* Now specify we want to POST data */
         if (action == CURL_POST) {
@@ -118,7 +142,7 @@ int32_t main(int32_t argc, char **argv) {
             curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
         }
 
-        // 设置响应输出回调函数
+        // 设置服务器返回回调函数
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, __write_response);
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, __write_header_tag);
@@ -126,14 +150,26 @@ int32_t main(int32_t argc, char **argv) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, __write_response);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, __write_data_tag);
 
-        // 执行请求
-        res = curl_easy_perform(curl);
-        if (unlikely(res != CURLE_OK)) {
-            error("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-        }
+        do {
+            // 执行请求
+            curl_code = curl_easy_perform(curl);
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_res_code);
 
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-        debug("response code: %ld", response_code);
+            do_http_ret = __check_dohttp_result(curl_code, http_res_code);
+            if (unlikely(0 != do_http_ret)) {
+
+                // 退避重试
+                retryStatus =
+                    BackoffAlgorithm_GetNextBackoff(&retryContext, rand(), &nextRetryBackoff);
+
+                debug("retryStatus: %d, nextRetryBackoff: %d", retryStatus, nextRetryBackoff);
+
+                if (retryStatus == BackoffAlgorithmSuccess) {
+                    usleep(nextRetryBackoff * 1000);
+                }
+            }
+
+        } while ((0 != do_http_ret) && retryStatus != BackoffAlgorithmRetriesExhausted);
 
         /* always cleanup */
         curl_easy_cleanup(curl);
@@ -145,6 +181,7 @@ int32_t main(int32_t argc, char **argv) {
         free(url);
         url = NULL;
     }
+    debug("prom_reg_test done");
 
     log_fini();
     return 0;
