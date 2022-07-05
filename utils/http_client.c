@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-07-05 14:21:27
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-05 15:36:24
+ * @Last Modified time: 2022-07-05 17:17:27
  */
 
 #include "http_client.h"
@@ -10,8 +10,14 @@
 #include "consts.h"
 #include "log.h"
 
-static int32_t __default_connect_timeout_secs = 2;
-static int32_t __default_transfer_timeout_secs = 3;
+static const int32_t __default_connect_timeout_secs = 2;
+static const int32_t __default_transfer_timeout_secs = 3;
+
+struct http_client_options default_http_client_options = {
+    .connect_timeout_secs = __default_connect_timeout_secs,
+    .transfer_timeout_secs = __default_transfer_timeout_secs,
+    .verbose = 0,
+};
 
 /**
  * It frees the memory allocated for the http_client struct
@@ -25,9 +31,9 @@ static void __free_http_client(struct http_client *client) {
             client->curl = NULL;
         }
 
-        if (likely(client->ctx.url)) {
-            free(client->ctx.url);
-            client->ctx.url = NULL;
+        if (likely(client->url)) {
+            free(client->url);
+            client->url = NULL;
         }
         free(client);
     }
@@ -69,7 +75,7 @@ static size_t __write_response(void *ptr, size_t size, size_t nmemb, void *data)
  *
  * @return A pointer to a struct http_client.
  */
-struct http_client *http_client_init(const char *url, http_client_ctx_init_fn_t fn) {
+struct http_client *http_client_create(const char *url, struct http_client_options *cfg) {
     struct http_client *hc = NULL;
 
     hc = calloc(1, sizeof(struct http_client));
@@ -84,17 +90,20 @@ struct http_client *http_client_init(const char *url, http_client_ctx_init_fn_t 
         goto failed_cleanup;
     }
 
-    hc->ctx.url = strdup(url);
-    hc->ctx.connect_timeout_secs = __default_connect_timeout_secs;
-    hc->ctx.transfer_timeout_secs = __default_transfer_timeout_secs;
+    hc->url = strdup(url);
+    memcpy(&hc->cfg, cfg, sizeof(struct http_client_options));
 
-    if (fn) {
-        fn(&hc->ctx);
+    if (cfg->connect_timeout_secs < __default_connect_timeout_secs) {
+        hc->cfg.connect_timeout_secs = __default_connect_timeout_secs;
+    }
+    if (cfg->transfer_timeout_secs < __default_transfer_timeout_secs) {
+        hc->cfg.transfer_timeout_secs = __default_transfer_timeout_secs;
     }
 
-    curl_easy_setopt(hc->curl, CURLOPT_URL, hc->ctx.url);
-    curl_easy_setopt(hc->curl, CURLOPT_CONNECTTIMEOUT, hc->ctx.connect_timeout_secs);
-    curl_easy_setopt(hc->curl, CURLOPT_TIMEOUT, hc->ctx.transfer_timeout_secs);
+    // 全局设置
+    curl_easy_setopt(hc->curl, CURLOPT_URL, hc->url);
+    curl_easy_setopt(hc->curl, CURLOPT_CONNECTTIMEOUT, hc->cfg.connect_timeout_secs);
+    curl_easy_setopt(hc->curl, CURLOPT_TIMEOUT, hc->cfg.transfer_timeout_secs);
 
     return hc;
 
@@ -109,7 +118,7 @@ failed_cleanup:
  *
  * @param client The client object.
  */
-void http_client_fini(struct http_client *client) {
+void http_client_destory(struct http_client *client) {
     if (likely(client)) {
         __free_http_client(client);
     }
@@ -122,22 +131,18 @@ void http_client_fini(struct http_client *client) {
  * @param url The URL to connect to.
  * @param fn A function that will be called to initialize the context.
  */
-void http_client_reset(struct http_client *client, const char *url, http_client_ctx_init_fn_t fn) {
+void http_client_reset(struct http_client *client, const char *url) {
     if (likely(NULL != client && NULL != client->curl)) {
         curl_easy_reset(client->curl);
 
-        if (client->ctx.url) {
-            free(client->ctx.url);
-            client->ctx.url = strdup(url);
+        if (client->url) {
+            free(client->url);
+            client->url = strdup(url);
         }
 
-        if (fn) {
-            fn(&client->ctx);
-        }
-
-        curl_easy_setopt(client->curl, CURLOPT_URL, client->ctx.url);
-        curl_easy_setopt(client->curl, CURLOPT_CONNECTTIMEOUT, client->ctx.connect_timeout_secs);
-        curl_easy_setopt(client->curl, CURLOPT_TIMEOUT, client->ctx.transfer_timeout_secs);
+        curl_easy_setopt(client->curl, CURLOPT_URL, client->url);
+        curl_easy_setopt(client->curl, CURLOPT_CONNECTTIMEOUT, client->cfg.connect_timeout_secs);
+        curl_easy_setopt(client->curl, CURLOPT_TIMEOUT, client->cfg.transfer_timeout_secs);
     }
 }
 
@@ -150,7 +155,7 @@ void http_client_reset(struct http_client *client, const char *url, http_client_
  */
 const char *get_url(struct http_client *client) {
     if (likely(client)) {
-        return client->ctx.url;
+        return client->url;
     }
     return NULL;
 }
@@ -161,15 +166,7 @@ void http_add_header(struct http_request *request, const char *header) {
     }
 }
 
-/**
- * It sends a POST request to the server and returns the response
- *
- * @param client The http client object.
- * @param request The request object, which contains the request header and request body.
- *
- * @return A pointer to a struct http_response.
- */
-struct http_response *http_post(struct http_client *client, struct http_request *request) {
+struct http_response *http_do(struct http_client *client, struct http_request *request) {
     struct http_response *resp = NULL;
     CURLcode              ret = CURLE_OK;
 
@@ -179,15 +176,24 @@ struct http_response *http_post(struct http_client *client, struct http_request 
         return NULL;
     }
 
-    curl_easy_setopt(client->curl, CURLOPT_POST, 1);
+    // 默认是get
+    curl_easy_setopt(client->curl, CURLOPT_HTTPGET, 1);
+
+    if (request->action == HTTP_ACTION_POST) {
+        curl_easy_setopt(client->curl, CURLOPT_POST, 1);
+
+        if (likely(NULL != request->data && request->data_len > 0)) {
+            curl_easy_setopt(client->curl, CURLOPT_POSTFIELDS, request->data);
+            curl_easy_setopt(client->curl, CURLOPT_POSTFIELDSIZE, request->data_len);
+        }
+    }
+
     curl_easy_setopt(client->curl, CURLOPT_WRITEFUNCTION, __write_response);
     curl_easy_setopt(client->curl, CURLOPT_WRITEDATA, resp);
 
     if (likely(request->headers)) {
         curl_easy_setopt(client->curl, CURLOPT_HTTPHEADER, request->headers);
     }
-    curl_easy_setopt(client->curl, CURLOPT_POSTFIELDS, request->post_data);
-    curl_easy_setopt(client->curl, CURLOPT_POSTFIELDSIZE, request->post_data_len);
 
     ret = curl_easy_perform(client->curl);
     if (unlikely(CURLE_OK != ret)) {
@@ -236,9 +242,9 @@ void free_http_response(struct http_response *response) {
  */
 void free_http_request(struct http_request *request) {
     if (likely(request)) {
-        if (likely(request->post_data)) {
-            free(request->post_data);
-            request->post_data = NULL;
+        if (likely(request->data)) {
+            free(request->data);
+            request->data = NULL;
         }
         free(request);
         request = NULL;
