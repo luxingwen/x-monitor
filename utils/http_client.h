@@ -25,18 +25,18 @@ struct http_client {
 };
 
 enum http_action {
-    HTTP_ACTION_GET = 0,
-    HTTP_ACTION_POST,
-    HTTP_ACTION_PUT,
-    HTTP_ACTION_DELETE,
+    HTTP_GET = 0,
+    HTTP_POST,
+    HTTP_PUT,
+    HTTP_DELETE,
 };
 
 struct http_request {
     enum http_action action;
     struct curl_slist
-         *headers;   // use curl_slist_free_all() after the *perform() call to free this list again
-    char *data;
-    long  data_len;
+        *headers;   // use curl_slist_free_all() after the *perform() call to free this list again
+    const char *data;
+    long        data_len;
 };
 
 struct http_response {
@@ -60,5 +60,8 @@ extern void http_add_header(struct http_request *request, const char *header);
 extern struct http_response *http_do(struct http_client *client, struct http_request *request);
 
 extern void free_http_response(struct http_response *response);
+
+extern struct http_request *http_request_create(enum http_action action, const char *req_data,
+                                                long req_data_len);
 
 extern void free_http_request(struct http_request *request);

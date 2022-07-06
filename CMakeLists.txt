@@ -112,7 +112,7 @@ set(EXTRA_LIBS "libjson-c.a"
 #         -DLOG_DIR="/usr/log/x-monitor"
 # )
 
-# 项目子目录
+# 项目子目录，让cmake去识别子目录下的CMakeLists.txt文件
 add_subdirectory(utils)
 add_subdirectory(collectors/process)
 
@@ -211,4 +211,4 @@ target_compile_definitions(x-monitor PRIVATE
   -DAPP_METRIC_TAG=${APP_METRIC_TAG}
   -DAPP_METRIC_LABEL=${APP_METRIC_LABEL})
 
-target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread dl zstd z m)
+target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread uuid dl zstd z m)

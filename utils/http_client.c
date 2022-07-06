@@ -179,7 +179,7 @@ struct http_response *http_do(struct http_client *client, struct http_request *r
     // 默认是get
     curl_easy_setopt(client->curl, CURLOPT_HTTPGET, 1);
 
-    if (request->action == HTTP_ACTION_POST) {
+    if (request->action == HTTP_POST) {
         curl_easy_setopt(client->curl, CURLOPT_POST, 1);
 
         if (likely(NULL != request->data && request->data_len > 0)) {
@@ -206,11 +206,6 @@ struct http_response *http_do(struct http_client *client, struct http_request *r
     // 获得服务器返回的状态码
     curl_easy_getinfo(client->curl, CURLINFO_RESPONSE_CODE, &resp->http_code);
 
-    // 释放headers
-    if (likely(request->headers)) {
-        curl_slist_free_all(request->headers);
-    }
-
     return resp;
 }
 
@@ -235,6 +230,19 @@ void free_http_response(struct http_response *response) {
     }
 }
 
+struct http_request *http_request_create(enum http_action action, const char *req_data,
+                                         long req_data_len) {
+    struct http_request *request = NULL;
+
+    request = calloc(1, sizeof(struct http_request));
+    if (likely(request)) {
+        request->action = action;
+        request->data = req_data;
+        request->data_len = req_data_len;
+    }
+    return request;
+}
+
 /**
  * It frees the memory allocated for the http_request struct
  *
@@ -242,9 +250,9 @@ void free_http_response(struct http_response *response) {
  */
 void free_http_request(struct http_request *request) {
     if (likely(request)) {
-        if (likely(request->data)) {
-            free(request->data);
-            request->data = NULL;
+        // 释放headers
+        if (likely(request->headers)) {
+            curl_slist_free_all(request->headers);
         }
         free(request);
         request = NULL;
