@@ -14,7 +14,7 @@
 #include "utils/consts.h"
 #include "utils/log.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 #include "apps_filter_rule.h"
 #include "apps_status.h"

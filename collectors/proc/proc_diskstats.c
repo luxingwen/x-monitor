@@ -13,7 +13,7 @@
 #include "utils/procfile.h"
 #include "utils/strings.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 static const char       *__def_proc_diskstat_filename = "/proc/diskstats";
 static const char       *__cfg_proc_diskstat_filename = NULL;

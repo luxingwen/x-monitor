@@ -15,7 +15,7 @@
 #include "utils/procfile.h"
 #include "utils/strings.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 // http://brytonlee.github.io/blog/2014/05/07/linux-kernel-load-average-calc/
 

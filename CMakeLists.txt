@@ -148,8 +148,8 @@ add_subdirectory(cli/ebpf/readbtf_cli)
 #        )
 #
 #set(APPCONFIG_FILES
-#        appconfig/appconfig.h
-#        appconfig/appconfig.c
+#        app_config/app_config.h
+#        app_config/app_config.c
 #        )
 #
 #set(PROC_PLUGIN_FILES
@@ -188,8 +188,8 @@ file(GLOB_RECURSE X-MONITOR_SRCS
         "collectors/application/*.h" 
         "collectors/diskspace/*.c" 
         "collectors/diskspace/*.h"                 
-        "appconfig/*.c" 
-        "appconfig/*.h" 
+        "app_config/*.c" 
+        "app_config/*.h" 
         "plugins.d/*.c" 
         "plugins.d/*.h" 
         "plugin_proxy/*.c" 

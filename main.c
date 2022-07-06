@@ -18,7 +18,7 @@
 #include "utils/popen.h"
 #include "utils/signals.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 #include "plugins.d/plugins_d.h"
 
 #include "prometheus-client-c/promhttp.h"

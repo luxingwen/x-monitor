@@ -26,7 +26,7 @@ IO）压力造成的任务执行停顿。PSI
 #include "utils/procfile.h"
 #include "utils/strings.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 // linux calculates this every 2 seconds, see kernel/sched/psi.c PSI_FREQ
 #define MIN_PRESSURE_UPDATE_EVERY 2

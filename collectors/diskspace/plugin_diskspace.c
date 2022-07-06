@@ -16,7 +16,7 @@
 #include "utils/mountinfo.h"
 #include "utils/simple_pattern.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 #define DEFAULT_EXCLUDED_PATHS \
     "/proc/* /sys/* /var/run/user/* /run/user/* /snap/* /var/lib/docker/*"

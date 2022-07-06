@@ -21,7 +21,7 @@
 #include "utils/os.h"
 #include "utils/strings.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 static const char       *__def_proc_stat_filename = "/proc/stat";
 static const char       *__cfg_proc_stat_filename = NULL;

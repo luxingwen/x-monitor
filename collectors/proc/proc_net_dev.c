@@ -44,7 +44,7 @@ Indicates the current physical link state of the interface.
 #include "utils/files.h"
 #include "utils/strings.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 static const char       *__def_proc_net_dev_filename = "/proc/net/dev";
 static const char       *__cfg_proc_net_dev_filename = NULL;

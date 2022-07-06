@@ -18,7 +18,7 @@
 #include "utils/strings.h"
 #include "utils/adaptive_resortable_list.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 // https://billtian.github.io/digoal.blog/2016/08/06/03.html
 // https://www.sunliaodong.cn/2021/02/05/Linux-proc-vmstat%E8%AF%A6%E8%A7%A3/

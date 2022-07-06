@@ -15,7 +15,7 @@
 #include "utils/clocks.h"
 #include "utils/files.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 static const char *__def_proc_net_stat_nf_conntrack_filename = "/proc/net/stat/nf_conntrack";
 static const char *__cfg_proc_net_stat_nf_conntrack_filename = NULL;

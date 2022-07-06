@@ -15,7 +15,7 @@
 #include "utils/os.h"
 #include "utils/strings.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 // https://www.kernel.org/doc/html/latest/scheduler/sched-stats.html
 

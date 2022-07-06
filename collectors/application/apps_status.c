@@ -21,7 +21,7 @@
 #include "utils/files.h"
 #include "utils/os.h"
 #include "utils/numbers.h"
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 #include "collectors/process/process_status.h"
 

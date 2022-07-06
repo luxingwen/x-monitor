@@ -20,7 +20,7 @@
 #include "utils/clocks.h"
 #include "utils/adaptive_resortable_list.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 static const char       *__def_proc_netstat_filename = "/proc/net/netstat";
 static const char       *__cfg_proc_netstat_filename = NULL;

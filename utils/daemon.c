@@ -10,7 +10,7 @@
 #include "files.h"
 #include "log.h"
 
-#include "appconfig/appconfig.h"
+//#include "app_config/app_config.h"
 
 const int32_t process_nice_level = 19;
 const int32_t process_oom_score = 1000;

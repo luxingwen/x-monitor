@@ -16,7 +16,7 @@
 #include "utils/popen.h"
 #include "utils/strings.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 #define PLUGINSD_FILE_SUFFIX ".plugin"
 #define PLUGINSD_FILE_SUFFIX_LEN strlen(PLUGINSD_FILE_SUFFIX)

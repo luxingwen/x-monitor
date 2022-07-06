@@ -14,7 +14,7 @@
 #include "utils/strings.h"
 #include "utils/files.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 static struct app_process_filter_rule *
 __fill_filter_rule(int32_t enable, const char *content, struct xm_regex *re,

@@ -16,7 +16,7 @@
 #include "utils/consts.h"
 #include "utils/log.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 static const char *__name = "PLUGIN_PROC";
 static const char *__config_name = "collector_plugin_proc";

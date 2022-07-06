@@ -22,7 +22,7 @@
 #include "utils/strings.h"
 #include "utils/adaptive_resortable_list.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 static const char       *__def_proc_meminfo_filename = "/proc/meminfo";
 static const char       *__cfg_proc_meminfo_filename = NULL;

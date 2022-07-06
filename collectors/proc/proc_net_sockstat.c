@@ -16,7 +16,7 @@
 #include "utils/adaptive_resortable_list.h"
 #include "utils/os.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 static const char       *__proc_net_socksat_filename = "/proc/net/sockstat";
 static const char       *__cfg_proc_net_socksat_filename = NULL;

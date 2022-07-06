@@ -11,7 +11,7 @@
 #include "utils/strings.h"
 #include "utils/compiler.h"
 #include "utils/files.h"
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 #include "collectors/application/apps_filter_rule.h"
 
 int32_t main(int32_t argc, char **argv) {

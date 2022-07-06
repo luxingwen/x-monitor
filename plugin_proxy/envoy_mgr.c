@@ -16,7 +16,7 @@
 #include "utils/files.h"
 #include "utils/consts.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 static const char *__name = "PROXY_ENVOY_MGR";
 static const char *__config_name = "plugin_proxy";
@@ -64,8 +64,7 @@ int32_t envoy_manager_routine_init() {
         return -1;
     }
 
-    snprintf(__proxy_envoy_mgr.exec_cmd_line, XM_CMD_LINE_MAX, "exec %s %s", envoy_bin,
-               envoy_args);
+    snprintf(__proxy_envoy_mgr.exec_cmd_line, XM_CMD_LINE_MAX, "exec %s %s", envoy_bin, envoy_args);
     debug("routine '%s' exec cmd: '%s'", __name, __proxy_envoy_mgr.exec_cmd_line);
 
     debug("routine '%s' init successed", __name);

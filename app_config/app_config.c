@@ -5,7 +5,7 @@
  * @Last Modified time: 2022-01-18 14:13:42
  */
 
-#include "appconfig.h"
+#include "app_config.h"
 #include "utils/common.h"
 #include "utils/compiler.h"
 #include "utils/log.h"

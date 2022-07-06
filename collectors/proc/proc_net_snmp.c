@@ -17,7 +17,7 @@
 #include "utils/clocks.h"
 #include "utils/adaptive_resortable_list.h"
 
-#include "appconfig/appconfig.h"
+#include "app_config/app_config.h"
 
 // https://www.rfc-editor.org/rfc/rfc1213
 // https://www.ibm.com/docs/sl/zvm/7.1?topic=objects-ip-group
