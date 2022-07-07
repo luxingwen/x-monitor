@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-07-05 11:34:16
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-05 17:16:50
+ * @Last Modified time: 2022-07-07 18:06:22
  */
 
 #pragma
@@ -31,12 +31,16 @@ enum http_action {
     HTTP_DELETE,
 };
 
+struct http_request;
+typedef void (*http_request_custom_free_fn_t)(struct http_request *req);
+
 struct http_request {
     enum http_action action;
     struct curl_slist
         *headers;   // use curl_slist_free_all() after the *perform() call to free this list again
-    const char *data;
-    long        data_len;
+    const char                   *data;
+    long                          data_len;
+    http_request_custom_free_fn_t free_fn;
 };
 
 struct http_response {
@@ -53,15 +57,16 @@ extern void http_client_destory(struct http_client *client);
 
 extern void http_client_reset(struct http_client *client, const char *url);
 
-extern const char *get_url(struct http_client *client);
+extern const char *http_url(struct http_client *client);
 
-extern void http_add_header(struct http_request *request, const char *header);
+extern void http_header_add(struct http_request *request, const char *header);
 
 extern struct http_response *http_do(struct http_client *client, struct http_request *request);
 
-extern void free_http_response(struct http_response *response);
+extern void http_response_free(struct http_response *response);
 
 extern struct http_request *http_request_create(enum http_action action, const char *req_data,
-                                                long req_data_len);
+                                                long                          req_data_len,
+                                                http_request_custom_free_fn_t fn);
 
-extern void free_http_request(struct http_request *request);
+extern void http_request_free(struct http_request *request);

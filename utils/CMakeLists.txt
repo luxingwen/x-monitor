@@ -5,6 +5,8 @@ file(GLOB_RECURSE X-MONITOR_UTILS_SRCS
         "*.h" 
         "json/*.c" 
         "json/*.h" 
+        "sds/*.c"
+        "sds/*.h"
         )
 
 

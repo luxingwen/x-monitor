@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-07-05 14:21:27
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-05 17:17:27
+ * @Last Modified time: 2022-07-07 17:31:46
  */
 
 #include "http_client.h"
@@ -153,14 +153,14 @@ void http_client_reset(struct http_client *client, const char *url) {
  *
  * @return The URL of the client.
  */
-const char *get_url(struct http_client *client) {
+const char *http_url(struct http_client *client) {
     if (likely(client)) {
         return client->url;
     }
     return NULL;
 }
 
-void http_add_header(struct http_request *request, const char *header) {
+void http_header_add(struct http_request *request, const char *header) {
     if (likely(request && header)) {
         request->headers = curl_slist_append(request->headers, header);
     }
@@ -215,7 +215,7 @@ struct http_response *http_do(struct http_client *client, struct http_request *r
  *
  * @param response The response object that will be returned to the caller.
  */
-void free_http_response(struct http_response *response) {
+void http_response_free(struct http_response *response) {
     if (likely(response)) {
         if (likely(response->response_data)) {
             free(response->response_data);
@@ -231,7 +231,7 @@ void free_http_response(struct http_response *response) {
 }
 
 struct http_request *http_request_create(enum http_action action, const char *req_data,
-                                         long req_data_len) {
+                                         long req_data_len, http_request_custom_free_fn_t fn) {
     struct http_request *request = NULL;
 
     request = calloc(1, sizeof(struct http_request));
@@ -239,6 +239,7 @@ struct http_request *http_request_create(enum http_action action, const char *re
         request->action = action;
         request->data = req_data;
         request->data_len = req_data_len;
+        request->free_fn = fn;
     }
     return request;
 }
@@ -248,11 +249,14 @@ struct http_request *http_request_create(enum http_action action, const char *re
  *
  * @param request The request object to free.
  */
-void free_http_request(struct http_request *request) {
+void http_request_free(struct http_request *request) {
     if (likely(request)) {
         // 释放headers
         if (likely(request->headers)) {
             curl_slist_free_all(request->headers);
+        }
+        if (likely(request->free_fn)) {
+            request->free_fn(request);
         }
         free(request);
         request = NULL;

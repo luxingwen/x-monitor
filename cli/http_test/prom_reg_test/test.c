@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-07-04 11:47:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-04 17:19:38
+ * @Last Modified time: 2022-07-07 15:16:03
  */
 
 #include "utils/common.h"
@@ -15,6 +15,8 @@
 #include "utils/clocks.h"
 
 #include "curl/curl.h"
+
+// https://github.com/FreeRTOS/backoffAlgorithm
 
 enum curl_action { CURL_GET = 0, CURL_POST = 1 };
 

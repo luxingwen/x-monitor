@@ -190,6 +190,8 @@ file(GLOB_RECURSE X-MONITOR_SRCS
         "collectors/diskspace/*.h"                 
         "app_config/*.c" 
         "app_config/*.h" 
+        "app_register/*.c" 
+        "app_register/*.h"         
         "plugins.d/*.c" 
         "plugins.d/*.h" 
         "plugin_proxy/*.c" 

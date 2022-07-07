@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-22 11:57:56
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-11 14:44:34
+ * @Last Modified time: 2022-07-07 11:28:01
  */
 
 #pragma once
@@ -15,7 +15,6 @@
 #define XM_DEV_NAME_MAX 128
 #define XM_MAC_BUF_SIZE 18
 #define XM_IP_BUF_SIZE 16
-#define XM_HOSTNAME_BUF_SIZE 32
 #define XM_PROM_METRIC_NAME_LEN 32
 #define XM_PPROM_METRIC_LABEL_VALUE_LEN 128
 #define XM_ITF_NAME_SIZE 64

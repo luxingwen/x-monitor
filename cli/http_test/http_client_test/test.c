@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-07-05 15:49:52
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-05 18:33:00
+ * @Last Modified time: 2022-07-07 11:28:06
  */
 
 #include "utils/common.h"
@@ -33,7 +33,7 @@ struct simple_http_request {
 
 struct export_register_params {
     char    ip[XM_IP_BUF_SIZE];
-    char    endpoint[XM_HOSTNAME_BUF_SIZE];
+    char    endpoint[HOST_NAME_MAX];
     char    port[MAX_PORT_LEN];
     char    zone[MAX_ZONE_NAME_LEN];
     int16_t scrape_interval_secs;
@@ -106,10 +106,10 @@ static void __do_get(struct http_client *hc) {
         } else {
             debug("http do success, response data: '%s'", resp->response_data);
         }
-        free_http_response(resp);
+        http_response_free(resp);
     }
 
-    free_http_request(req);
+    http_request_free(req);
 }
 
 static void __do_post(struct http_client *hc) {
@@ -121,11 +121,11 @@ static void __do_post(struct http_client *hc) {
     char *json_str_erps = __marshal_register_params();
 
     req = http_request_create(HTTP_POST, json_str_erps, strlen(json_str_erps));
-    http_add_header(req, "Content-Type: application/json");
-    http_add_header(req, "X-Timestamp: 121323");
-    http_add_header(req, "X-AppKey: 12345");
-    http_add_header(req, "X-Signature: ssdafdasfasdfasdf");
-    http_add_header(req, "X-RequestID: 56564-434-343432-2323");
+    http_header_add(req, "Content-Type: application/json");
+    http_header_add(req, "X-Timestamp: 121323");
+    http_header_add(req, "X-AppKey: 12345");
+    http_header_add(req, "X-Signature: ssdafdasfasdfasdf");
+    http_header_add(req, "X-RequestID: 56564-434-343432-2323");
 
     struct http_response *resp = http_do(hc, req);
     if (resp) {
@@ -138,11 +138,11 @@ static void __do_post(struct http_client *hc) {
             cJSON *json_res = cJSON_Parse(resp->response_data);
             __unmarshal_register_params(json_res);
         }
-        free_http_response(resp);
+        http_response_free(resp);
     }
 
     cJSON_free(json_str_erps);
-    free_http_request(req);
+    http_request_free(req);
 }
 
 int32_t main(int32_t argc, char **argv) {

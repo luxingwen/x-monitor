@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 10:44:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-18 14:52:18
+ * @Last Modified time: 2022-07-07 17:43:41
  */
 
 #include "config.h"
@@ -20,6 +20,7 @@
 
 #include "app_config/app_config.h"
 #include "plugins.d/plugins_d.h"
+#include "app_register/exporter_register.h"
 
 #include "prometheus-client-c/promhttp.h"
 
@@ -152,6 +153,8 @@ static void on_signal(int32_t UNUSED(signo), enum signal_action_mode mode) {
         PROM_COLLECTOR_REGISTRY_DEFAULT = NULL;
         MHD_stop_daemon(__promhttp_daemon);
 
+        //
+        exporter_unregister();
         // free config
         appconfig_destroy();
         // free log
@@ -221,12 +224,15 @@ int32_t main(int32_t argc, char *argv[]) {
         __help();
     }
 
-    uint16_t metrics_http_export_port =
-        (uint16_t)appconfig_get_member_int("application.metrics_http_exporter", "port", 8000);
-    ret = snprintf(premetheus_instance_label, XM_PPROM_METRIC_LABEL_VALUE_LEN, "%s:%d",
-                   get_hostname(), metrics_http_export_port);
-    premetheus_instance_label[ret] = '\0';
-    debug("premetheus_instance_label: %s", premetheus_instance_label);
+    test_clock_monotonic_coarse();
+
+    get_system_cpus();
+    get_system_hz();
+    srand(now_realtime_sec());
+
+    if (unlikely(0 != exporter_register())) {
+        return 0;
+    }
 
     ret = prom_collector_registry_default_init();
     if (unlikely(0 != ret)) {
@@ -237,13 +243,6 @@ int32_t main(int32_t argc, char *argv[]) {
     // 信号初始化
     signals_block();
     signals_init();
-
-    test_clock_monotonic_coarse();
-
-    get_system_cpus();
-    get_system_hz();
-
-    info("---start mypopen running pid: %d---", getpid());
 
     // INIT routines
     struct xmonitor_static_routine *routine = __xmonitor_static_routine_list.root;
@@ -278,6 +277,8 @@ int32_t main(int32_t argc, char *argv[]) {
     become_daemon(dont_fork, pid_file, user);
 
     // 启动metrics http exporter
+    uint16_t metrics_http_export_port =
+        (uint16_t)appconfig_get_int("application.metrics_http_exporter.port", 8000);
     __promhttp_daemon =
         promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, metrics_http_export_port, NULL, NULL);
     if (unlikely(!__promhttp_daemon)) {

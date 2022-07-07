@@ -1,8 +1,8 @@
 /*
  * @Author: calmwu
  * @Date: 2022-03-16 10:11:21
- * @Last Modified by:   calmwu
- * @Last Modified time: 2022-03-16 10:11:21
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2022-07-07 11:07:41
  */
 
 #include "envoy_mgr.h"
@@ -40,7 +40,7 @@ __attribute__((constructor)) static void proxy_envoymgr_register_routine() {
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;
     xsr->config_name = __config_name;
-    xsr->enabled = 1;
+    xsr->enabled = 0;
     xsr->thread_id = &__proxy_envoy_mgr.thread_id;
     xsr->init_routine = envoy_manager_routine_init;
     xsr->start_routine = envoy_manager_routine_start;
