@@ -31,24 +31,23 @@ enum http_action {
     HTTP_DELETE,
 };
 
-struct http_request;
-typedef void (*http_request_custom_free_fn_t)(struct http_request *req);
+// struct http_request;
+// typedef void (*http_request_custom_free_fn_t)(struct http_request *req);
 
 struct http_request {
     enum http_action action;
     struct curl_slist
         *headers;   // use curl_slist_free_all() after the *perform() call to free this list again
-    const char                   *data;
-    long                          data_len;
-    http_request_custom_free_fn_t free_fn;
+    const char *data;
+    long        data_len;
 };
 
 struct http_response {
     int32_t ret;
     long    http_code;
     char   *err_msg;
-    char   *response_data;
-    size_t  response_data_len;
+    char   *data;
+    size_t  data_len;
 };
 
 extern struct http_client *http_client_create(const char *url, struct http_client_options *cfg);
@@ -66,7 +65,6 @@ extern struct http_response *http_do(struct http_client *client, struct http_req
 extern void http_response_free(struct http_response *response);
 
 extern struct http_request *http_request_create(enum http_action action, const char *req_data,
-                                                long                          req_data_len,
-                                                http_request_custom_free_fn_t fn);
+                                                size_t req_data_len);
 
 extern void http_request_free(struct http_request *request);

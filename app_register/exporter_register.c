@@ -23,6 +23,7 @@
 #define TOKEN_SIZE 128
 #define ZONE_BUF_LEN 8
 #define PROMETHEUS_MANAGER_URL_MAX_LEN 64
+#define MAX_HTTP_RESPONSE_BUF_LEN 64
 
 static const char *__register_config_path = "application.exporter_register";
 static const char *__iface_config_path = "application.metrics_http_exporter.iface";
@@ -45,6 +46,11 @@ struct register_mgr {
     uint32_t retry_max_attempts;
 
     struct http_client *hc;
+};
+
+struct http_common_resp_body {
+    int32_t code;
+    char    message[MAX_HTTP_RESPONSE_BUF_LEN];
 };
 
 static struct register_mgr __register_mgr = { .enabled = 0 };
@@ -110,53 +116,86 @@ static int32_t __init_register_config() {
     return 0;
 }
 
-static char *__make_request_json_body_str() {
+static char *__marshal_register_rerquest_body() {
     s2j_create_json_obj(j_req_body);
     s2j_json_set_basic_element(j_req_body, &__register_mgr, string, hostname);
     s2j_json_set_basic_element(j_req_body, &__register_mgr, string, ip);
     s2j_json_set_basic_element(j_req_body, &__register_mgr, int, port);
+    // TODO:
     s2j_json_set_basic_element(j_req_body, &__register_mgr, string, zone);
     s2j_json_set_basic_element(j_req_body, &__register_mgr, int, scrape_interval_secs);
-    cJSON_AddStringToObject(j_req_body, "rule_name", "");
+    // TODO:
+    cJSON_AddStringToObject(j_req_body, "rule_name", "rule.for.calmwu");
     cJSON_AddIntToObject(j_req_body, "is_cm", 1);
 
+    // j_str_req_body will free by cJSON_free
     char *j_str_req_body = cJSON_Print(j_req_body);
     debug("[app_register] request json body: %s", j_str_req_body);
+
     s2j_delete_json_obj(j_req_body);
     return j_str_req_body;
 }
 
-static void __free_request_json_body_str(struct http_request *req) {
-    if (req && req->data && req->data_len > 0) {
-        cJSON_free((char *)(req->data));
-        req->data_len = 0;
-    }
+static struct http_common_resp_body *__unmarshal_register_response_body(char *j_str_resp_body) {
+    cJSON *j_resp = cJSON_Parse(j_str_resp_body);
+    s2j_create_struct_obj(o_resp, struct http_common_resp_body);
+
+    // 反序列化
+    s2j_struct_get_basic_element(o_resp, j_resp, int, code);
+    s2j_struct_get_basic_element(o_resp, j_resp, string, message);
+
+    debug("[app_register] response code: %d, message: '%s'", o_resp->code, o_resp->message);
+
+    s2j_delete_json_obj(j_resp);
+    // need s2j_delete_struct_obj to free the memory
+    return o_resp;
+}
+
+static void __add_default_headers(struct http_request *req) {
+    uuid_t request_id;
+    char   out[UUID_STR_LEN] = { 0 };
+
+    uuid_generate_time(request_id);
+    uuid_unparse_lower(request_id, out);
+    time_t now_secs = now_realtime_sec();
+
+    sds header_timestamp = sdsnewlen("X-Timestamp: ", 13);
+    sds header_appkey = sdsnewlen("X-Appkey: ", 10);
+    sds header_signature = sdsnewlen("X-Signature: ", 13);
+    sds header_request_id = sdsnewlen("X-RequestID: ", 13);
+
+    header_request_id = sdscatlen(header_request_id, (char *)out, UUID_STR_LEN);
+    header_timestamp = sdscatfmt(header_timestamp, "%i", now_secs);
+    // curl_slist_append会调用strdup，所以sds可以释放
+    http_header_add(req, "Content-Type: application/json");
+    http_header_add(req, header_timestamp);
+    http_header_add(req, header_appkey);
+    http_header_add(req, header_signature);
+    http_header_add(req, header_request_id);
+
+    debug("[app_register] header_timestampd: '%s', header_appkey: '%s', header_signature: '%s', "
+          "header_request_id: '%s'",
+          header_timestamp, header_appkey, header_signature, header_request_id);
+
+    sdsfree(header_timestamp);
+    sdsfree(header_appkey);
+    sdsfree(header_signature);
+    sdsfree(header_request_id);
 }
 
 static struct http_request *__make_register_request() {
-    uuid_t               request_id;
-    time_t               now_secs;
     struct http_request *reg_req = NULL;
 
-    uuid_generate_time(request_id);
-    now_secs = now_realtime_sec();
-
-    char *j_str_req_body = __make_request_json_body_str();
+    char *j_str_req_body = __marshal_register_rerquest_body();
     if (likely(j_str_req_body)) {
-        reg_req = http_request_create(HTTP_POST, j_str_req_body, strlen(j_str_req_body),
-                                      __free_request_json_body_str);
+        reg_req = http_request_create(HTTP_POST, j_str_req_body, strlen(j_str_req_body));
         if (likely(reg_req)) {
-            // 添加header
-            http_header_add(reg_req, "Content-Type: application/json");
-            // TODO: ADD
-            // http_add_header(req, "X-Timestamp: 121323");
-            // http_add_header(req, "X-AppKey: 12345");
-            // http_add_header(req, "X-Signature: ssdafdasfasdfasdf");
-            // http_add_header(req, "X-RequestID: 56564-434-343432-2323");
-
+            // 添加header curl_slist_append会调用strdup，所以sds可以释放
+            __add_default_headers(reg_req);
         } else {
             error("[app_register] create http request failed");
         }
+        cJSON_free(j_str_req_body);
     }
 
     return reg_req;
@@ -168,6 +207,7 @@ static int32_t __do_register() {
 
     BackoffAlgorithmStatus_t  retryStatus = BackoffAlgorithmSuccess;
     BackoffAlgorithmContext_t retryContext;
+    uint16_t                  nextRetryBackoff = 0;
 
     reg_req = __make_register_request();
     if (likely(reg_req)) {
@@ -181,25 +221,45 @@ static int32_t __do_register() {
             if (likely(reg_resp)) {
                 if (likely(reg_resp->ret != -1 && reg_resp->http_code == 200)) {
                     // 解析response
-                    http_do_ret = 0;
-                } else {
+                    struct http_common_resp_body *o_resp =
+                        __unmarshal_register_response_body(reg_resp->data);
+
+                    if (likely(o_resp)) {
+                        if (o_resp->code == 0) {
+                            info("[app_register] exporter register to prometheus manager success");
+                            http_do_ret = 0;
+                        }
+                        s2j_delete_struct_obj(o_resp);
+                        o_resp = NULL;
+                    }
+                }
+
+                if (unlikely(-1 == http_do_ret)) {
+                    // 退避重试
+                    retryStatus =
+                        BackoffAlgorithm_GetNextBackoff(&retryContext, rand(), &nextRetryBackoff);
+
                     if (reg_resp->ret == -1) {
                         error("[app_register] http_do failed, error: '%s'", reg_resp->err_msg);
                     } else if (reg_resp->http_code != 200) {
                         error("http_code:%ld is HTTP_OK", reg_resp->http_code);
                     }
-                    http_do_ret = -1;
+
+                    if (retryStatus == BackoffAlgorithmSuccess) {
+                        usleep(nextRetryBackoff * 1000);
+                    }
                 }
 
                 http_response_free(reg_resp);
             }
-        } while ((0 != http_do_ret) && (BackoffAlgorithmRetriesExhausted != retryStatus));
+        } while ((-1 == http_do_ret) && (BackoffAlgorithmRetriesExhausted != retryStatus));
 
         http_request_free(reg_req);
-        return 0;
     }
-    error("[app_register] make register http request failed.");
-    return -1;
+    if (unlikely(-1 == http_do_ret)) {
+        error("[app_register] exporter register to prometheus manager failed");
+    }
+    return http_do_ret;
 }
 
 static void __do_unregister() {
@@ -219,8 +279,8 @@ int32_t exporter_register() {
 
         __register_mgr.hc =
             http_client_create(__register_mgr.prometheus_manager_url, &default_http_client_options);
-        if (unlikely(NULL == __register_mgr.hc)) {
-            return -1;
+        if (likely(__register_mgr.hc)) {
+            return __do_register();
         }
     } else {
         error("[app_register] exporter register init config failed");
@@ -238,6 +298,7 @@ void exporter_unregister() {
     debug("[app_register] start exporter unregister...");
 
     if (likely(__register_mgr.enabled)) {
+        __do_unregister();
 
         if (likely(__register_mgr.hc)) {
             http_client_destory(__register_mgr.hc);

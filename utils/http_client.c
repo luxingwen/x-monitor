@@ -53,16 +53,16 @@ static size_t __write_response(void *ptr, size_t size, size_t nmemb, void *data)
     size_t                real_size = size * nmemb;
     struct http_response *response = (struct http_response *)data;
 
-    char *new_data = realloc(response->response_data, response->response_data_len + real_size + 1);
+    char *new_data = realloc(response->data, response->data_len + real_size + 1);
     if (unlikely(NULL == new_data)) {
         error("not enough memory to allocate memory for response data");
         return 0;
     }
 
-    response->response_data = new_data;
-    memcpy(response->response_data + response->response_data_len, ptr, real_size);
-    response->response_data_len += real_size;
-    response->response_data[response->response_data_len] = '\0';
+    response->data = new_data;
+    memcpy(response->data + response->data_len, ptr, real_size);
+    response->data_len += real_size;
+    response->data[response->data_len] = '\0';
 
     return real_size;
 }
@@ -210,16 +210,16 @@ struct http_response *http_do(struct http_client *client, struct http_request *r
 }
 
 /**
- * It takes a pointer to a struct http_response, frees the memory allocated for the response_data
+ * It takes a pointer to a struct http_response, frees the memory allocated for the data
  * and err_msg fields, and then frees the struct itself
  *
  * @param response The response object that will be returned to the caller.
  */
 void http_response_free(struct http_response *response) {
     if (likely(response)) {
-        if (likely(response->response_data)) {
-            free(response->response_data);
-            response->response_data = NULL;
+        if (likely(response->data)) {
+            free(response->data);
+            response->data = NULL;
         }
         if (likely(response->err_msg)) {
             free(response->err_msg);
@@ -231,15 +231,16 @@ void http_response_free(struct http_response *response) {
 }
 
 struct http_request *http_request_create(enum http_action action, const char *req_data,
-                                         long req_data_len, http_request_custom_free_fn_t fn) {
+                                         size_t req_data_len) {
     struct http_request *request = NULL;
 
     request = calloc(1, sizeof(struct http_request));
     if (likely(request)) {
         request->action = action;
-        request->data = req_data;
-        request->data_len = req_data_len;
-        request->free_fn = fn;
+        if (likely(NULL != req_data && req_data_len > 0)) {
+            request->data = strndup(req_data, req_data_len);
+            request->data_len = (long)req_data_len;
+        }
     }
     return request;
 }
@@ -255,8 +256,9 @@ void http_request_free(struct http_request *request) {
         if (likely(request->headers)) {
             curl_slist_free_all(request->headers);
         }
-        if (likely(request->free_fn)) {
-            request->free_fn(request);
+        if (likely(request->data && request->data_len > 0)) {
+            free((char *)(request->data));
+            request->data = NULL;
         }
         free(request);
         request = NULL;

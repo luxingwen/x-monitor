@@ -104,7 +104,7 @@ static void __do_get(struct http_client *hc) {
         } else if (resp->http_code != 200) {
             error("http do failed, http_code:%ld", resp->http_code);
         } else {
-            debug("http do success, response data: '%s'", resp->response_data);
+            debug("http do success, response data: '%s'", resp->data);
         }
         http_response_free(resp);
     }
@@ -134,8 +134,8 @@ static void __do_post(struct http_client *hc) {
         } else if (resp->http_code != 200) {
             error("http do failed, http_code:%ld", resp->http_code);
         } else {
-            debug("http do success, response data: '%s'", resp->response_data);
-            cJSON *json_res = cJSON_Parse(resp->response_data);
+            debug("http do success, response data: '%s'", resp->data);
+            cJSON *json_res = cJSON_Parse(resp->data);
             __unmarshal_register_params(json_res);
         }
         http_response_free(resp);

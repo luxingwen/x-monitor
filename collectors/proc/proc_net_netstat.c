@@ -196,7 +196,7 @@ static void row_matching_analysis(size_t header_line, size_t values_line, ARL_BA
     for (size_t w = 1; w < value_words; w++) {
         const char *header_word = procfile_lineword(__pf_netstat, header_line, w);
         const char *value_word = procfile_lineword(__pf_netstat, values_line, w);
-        debug("netstat: header_word = '%s', value_word = '%s'", header_word, value_word);
+        // debug("netstat: header_word = '%s', value_word = '%s'", header_word, value_word);
 
         if (unlikely(arl_check(base, header_word, value_word))) {
             break;
