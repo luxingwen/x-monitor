@@ -213,4 +213,4 @@ target_compile_definitions(x-monitor PRIVATE
   -DAPP_METRIC_TAG=${APP_METRIC_TAG}
   -DAPP_METRIC_LABEL=${APP_METRIC_LABEL})
 
-target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread uuid dl zstd z m)
+target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread ssl crypto uuid dl zstd z m)

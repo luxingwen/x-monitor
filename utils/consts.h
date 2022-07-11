@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-22 11:57:56
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-07 11:28:01
+ * @Last Modified time: 2022-07-11 15:18:40
  */
 
 #pragma once
@@ -27,7 +27,6 @@
 #define XM_PID_BUF_SIZE 16
 #define XM_PROC_CHILDREN_FILENAME_SIZE 64
 #define XM_PROC_CHILDREN_LINE_SIZE 4096
+#define XM_MD5_BLOCK_SIZE 16
 
 extern char *DEFAULT_PIDFILE;
-
-extern char premetheus_instance_label[XM_PPROM_METRIC_LABEL_VALUE_LEN];

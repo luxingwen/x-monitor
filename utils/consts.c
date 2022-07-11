@@ -8,5 +8,3 @@
 #include "consts.h"
 
 char *DEFAULT_PIDFILE = "/tmp/x-monitor.pid";
-
-char premetheus_instance_label[XM_PPROM_METRIC_LABEL_VALUE_LEN] = { 0 };
