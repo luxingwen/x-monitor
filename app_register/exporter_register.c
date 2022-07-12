@@ -31,7 +31,9 @@
 #define MAX_HTTP_RESPONSE_BUF_LEN 64
 #define SECRET_KEY_LEN 64
 
-static const char *__register_config_path = "application.exporter_register";
+static const char *__exporter_register_config_base_path = "application.exporter_register";
+// static const char *__exporter_register_env_base_path_fmt =
+// "application.exporter_register.envs.%s";
 static const char *__iface_config_path = "application.metrics_http_exporter.iface";
 static const char *__port_config_path = "application.metrics_http_exporter.port";
 static const char *__default_iface_name = "eth0";
@@ -88,16 +90,33 @@ static sds __str_2_hexstr(uint8_t *c_str, int32_t c_str_len, int32_t dest_len) {
 }
 
 static int32_t __init_register_config() {
+    sds env_config_base_path = sdsnew(__exporter_register_config_base_path);
 
-    __register_mgr.enabled = appconfig_get_member_bool(__register_config_path, "enable", 0);
+    __register_mgr.enabled =
+        appconfig_get_member_bool(__exporter_register_config_base_path, "enable", 0);
     if (likely(__register_mgr.enabled)) {
-        //
+        // 获取配置网卡名称
         const char *iface_name = appconfig_get_str(__iface_config_path, __default_iface_name);
 
+        // 获取本机ip地址、端口号、endpoint
         get_ipaddr_by_iface(iface_name, __register_mgr.ip, XM_IP_BUF_SIZE);
         strlcpy(__register_mgr.endpoint, get_hostname(), HOST_NAME_MAX);
+        __register_mgr.port = (int16_t)appconfig_get_int(__port_config_path, 0);
+        if (unlikely(0 == __register_mgr.port)) {
+            error("[app_register] metrics_http_exporter port is 0");
+            return -1;
+        }
 
-        // TODO: 通过hostname获取zone
+        // 获取部署环境名
+        const char *env_name =
+            appconfig_get_member_str(__exporter_register_config_base_path, "env", NULL);
+        if (unlikely(!env_name)) {
+            error("[app_register] the env[%s.env] is not config. please check the config file.",
+                  __exporter_register_config_base_path);
+            goto FAILED_CLEANUP;
+        }
+
+        // 通过hostname获取zone
         int32_t index = 0;
         while (index < HOST_NAME_MAX) {
             char s_byte = __register_mgr.endpoint[index];
@@ -108,51 +127,53 @@ static int32_t __init_register_config() {
             __register_mgr.zone[index] = s_byte;
             index++;
         }
-        //
-        __register_mgr.port = (int16_t)appconfig_get_int(__port_config_path, 0);
-        if (unlikely(0 == __register_mgr.port)) {
-            error("[app_register] metrics_http_exporter port is 0");
-            return -1;
-        }
+        // 通过环境名获取对应的配置
+        env_config_base_path = sdscatfmt(env_config_base_path, ".envs.%s", env_name);
+        debug("[app_register] env_config_path: %s", env_config_base_path);
 
         //
-        const char *token = appconfig_get_member_str(__register_config_path, "token", NULL);
-        if (likely(token)) {
-            __register_mgr.header_app_key = sdsnewlen("X-Appkey: ", 10);
-            __register_mgr.header_app_key = sdscat(__register_mgr.header_app_key, token);
-
-        } else {
-            error("[app_register] the token[%s.token] is not config. please check the config file.",
-                  __register_config_path);
-            return -1;
-        }
-
-        const char *secret_key =
-            appconfig_get_member_str(__register_config_path, "secret_key", NULL);
-        if (likely(token)) {
-            __register_mgr.secret_key = sdsnew(secret_key);
-        } else {
-            error("[app_register] the secret_key[%s.token] is not config. please check the config "
-                  "file.",
-                  __register_config_path);
-            return -1;
-        }
-
         const char *prometheus_manager_url =
-            appconfig_get_member_str(__register_config_path, "prometheus_manager_url", NULL);
+            appconfig_get_member_str(env_config_base_path, "prometheus_manager_url", NULL);
         const char *url_register_path =
-            appconfig_get_member_str(__register_config_path, "register_path", NULL);
+            appconfig_get_member_str(__exporter_register_config_base_path, "register_path", NULL);
         const char *url_offline_path =
-            appconfig_get_member_str(__register_config_path, "offline_path", NULL);
+            appconfig_get_member_str(__exporter_register_config_base_path, "offline_path", NULL);
         if (unlikely(NULL == prometheus_manager_url || NULL == url_register_path
                      || NULL == url_offline_path)) {
             error("[app_register] the url_register_path[%s.url_register_path] or "
                   "url_offline_path[%s.url_offline_path] or "
                   "prometheus_manager_url[%s.prometheus_manager_url] is not config. please check "
                   "the config file.",
-                  __register_config_path, __register_config_path, __register_config_path);
-            return -1;
+                  __exporter_register_config_base_path, __exporter_register_config_base_path,
+                  env_config_base_path);
+            goto FAILED_CLEANUP;
         }
+
+        const char *app_key = appconfig_get_member_str(env_config_base_path, "app_key", NULL);
+        if (likely(app_key)) {
+            __register_mgr.header_app_key = sdsnewlen("X-Appkey: ", 10);
+            __register_mgr.header_app_key = sdscat(__register_mgr.header_app_key, app_key);
+
+        } else {
+            error(
+                "[app_register] the token[%s.app_key] is not config. please check the config file.",
+                env_config_base_path);
+            goto FAILED_CLEANUP;
+        }
+
+        const char *secret_key = appconfig_get_member_str(env_config_base_path, "secret_key", NULL);
+        if (likely(secret_key)) {
+            __register_mgr.secret_key = sdsnew(secret_key);
+        } else {
+            error("[app_register] the secret_key[%s.secret_key] is not config. please check the "
+                  "config file.",
+                  env_config_base_path);
+            goto FAILED_CLEANUP;
+        }
+
+        sdsfree(env_config_base_path);
+
+        //----------------------------------------------------------------------
 
         // 注册、注销 url-path
         __register_mgr.url_register_path = sdsnew(prometheus_manager_url);
@@ -162,15 +183,15 @@ static int32_t __init_register_config() {
         __register_mgr.url_offline_path = sdsnew(prometheus_manager_url);
         __register_mgr.url_offline_path = sdscat(__register_mgr.url_offline_path, url_offline_path);
 
-        __register_mgr.scrape_interval_secs =
-            (uint32_t)appconfig_get_member_int(__register_config_path, "scrape_interval_secs", 1);
+        __register_mgr.scrape_interval_secs = (uint32_t)appconfig_get_member_int(
+            __exporter_register_config_base_path, "scrape_interval_secs", 1);
 
-        __register_mgr.retry_max_attempts =
-            (uint32_t)appconfig_get_member_int(__register_config_path, "retry_max_attempts", 3);
+        __register_mgr.retry_max_attempts = (uint32_t)appconfig_get_member_int(
+            __exporter_register_config_base_path, "retry_max_attempts", 3);
         __register_mgr.retry_backoff_base_ms = (uint16_t)appconfig_get_member_int(
-            __register_config_path, "retry_backoff_base_ms", 1000);
+            __exporter_register_config_base_path, "retry_backoff_base_ms", 1000);
         __register_mgr.retry_max_backoff_delay_ms = (uint16_t)appconfig_get_member_int(
-            __register_config_path, "retry_max_backoff_delay_ms", 5000);
+            __exporter_register_config_base_path, "retry_max_backoff_delay_ms", 5000);
 
         debug("[app_register] exporter register info: enabled: %d, ip: '%s', endpoint: '%s', zone: "
               "'%s', header_app_key: '%s', secret_key: '%s', register_path: '%s',  offline_path: "
@@ -185,6 +206,12 @@ static int32_t __init_register_config() {
         info("[app_register] exporter register to prometheus manager is disabled");
     }
     return 0;
+
+FAILED_CLEANUP:
+    if (env_config_base_path) {
+        sdsfree(env_config_base_path);
+    }
+    return -1;
 }
 
 static char *__marshal_register_rerquest_body() {
@@ -261,7 +288,7 @@ static sds __generate_signature(const char *method, const char *url, const char 
         __str_2_hexstr((uint8_t *)md5_val, XM_MD5_BLOCK_SIZE, XM_MD5_BLOCK_SIZE * 2 + 1);
 
     // sha256计算的字符串
-    sds sign_str = sdscatfmt(sdsempty(), "%s\n%s\n%i\n%s", method, url, now_secs, md5_val_hex);
+    sds sign_str = sdscatfmt(sdsempty(), "%s\n%s\n%i\n%S", method, url, now_secs, md5_val_hex);
     debug("[app_register] sign_str: '%s'", sign_str);
 
     // 计算sha256
