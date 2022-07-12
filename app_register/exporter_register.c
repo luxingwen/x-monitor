@@ -40,7 +40,7 @@ struct register_mgr {
     int32_t enabled;
     char    ip[XM_IP_BUF_SIZE];
     int16_t port;
-    char    hostname[HOST_NAME_MAX];
+    char    endpoint[HOST_NAME_MAX];
     char    zone[ZONE_BUF_LEN];
 
     sds secret_key;
@@ -95,7 +95,19 @@ static int32_t __init_register_config() {
         const char *iface_name = appconfig_get_str(__iface_config_path, __default_iface_name);
 
         get_ipaddr_by_iface(iface_name, __register_mgr.ip, XM_IP_BUF_SIZE);
-        strlcpy(__register_mgr.hostname, get_hostname(), HOST_NAME_MAX);
+        strlcpy(__register_mgr.endpoint, get_hostname(), HOST_NAME_MAX);
+
+        // TODO: 通过hostname获取zone
+        int32_t index = 0;
+        while (index < HOST_NAME_MAX) {
+            char s_byte = __register_mgr.endpoint[index];
+            if (s_byte == '-' || s_byte == '\0') {
+                __register_mgr.zone[index] = '\0';
+                break;
+            }
+            __register_mgr.zone[index] = s_byte;
+            index++;
+        }
         //
         __register_mgr.port = (int16_t)appconfig_get_int(__port_config_path, 0);
         if (unlikely(0 == __register_mgr.port)) {
@@ -160,12 +172,12 @@ static int32_t __init_register_config() {
         __register_mgr.retry_max_backoff_delay_ms = (uint16_t)appconfig_get_member_int(
             __register_config_path, "retry_max_backoff_delay_ms", 5000);
 
-        debug("[app_register] exporter register info: enabled: %d, ip: '%s', hostname: '%s', "
-              "header_app_key: '%s', secret_key: '%s', register_path: '%s',  offline_path: '%s', "
-              "scrape_interval_secs: %d, retry_max_attempts: %d, retry_backoff_base_ms: %d, "
+        debug("[app_register] exporter register info: enabled: %d, ip: '%s', endpoint: '%s', zone: "
+              "'%s', header_app_key: '%s', secret_key: '%s', register_path: '%s',  offline_path: "
+              "'%s', scrape_interval_secs: %d, retry_max_attempts: %d, retry_backoff_base_ms: %d, "
               "retry_max_backoff_delay_ms: %d",
-              __register_mgr.enabled, __register_mgr.ip, __register_mgr.hostname,
-              __register_mgr.header_app_key, __register_mgr.secret_key,
+              __register_mgr.enabled, __register_mgr.ip, __register_mgr.endpoint,
+              __register_mgr.zone, __register_mgr.header_app_key, __register_mgr.secret_key,
               __register_mgr.url_register_path, __register_mgr.url_offline_path,
               __register_mgr.scrape_interval_secs, __register_mgr.retry_max_attempts,
               __register_mgr.retry_backoff_base_ms, __register_mgr.retry_max_backoff_delay_ms);
@@ -177,25 +189,24 @@ static int32_t __init_register_config() {
 
 static char *__marshal_register_rerquest_body() {
     s2j_create_json_obj(j_req_body);
-    s2j_json_set_basic_element(j_req_body, &__register_mgr, string, hostname);
+    s2j_json_set_basic_element(j_req_body, &__register_mgr, string, endpoint);
     s2j_json_set_basic_element(j_req_body, &__register_mgr, string, ip);
     s2j_json_set_basic_element(j_req_body, &__register_mgr, int, port);
-    // TODO:
     s2j_json_set_basic_element(j_req_body, &__register_mgr, string, zone);
     s2j_json_set_basic_element(j_req_body, &__register_mgr, int, scrape_interval_secs);
     // TODO:
     cJSON_AddStringToObject(j_req_body, "rule_name", "");
-    cJSON_AddIntToObject(j_req_body, "is_cm", 0);
+    cJSON_AddIntToObject(j_req_body, "is_cm", 1);
 
     // j_str_req_body will free by cJSON_free
     char *j_str_req_body = cJSON_Print(j_req_body);
-    debug("[app_register] request json body: %s", j_str_req_body);
+    debug("[app_register] request register json body: %s", j_str_req_body);
 
     s2j_delete_json_obj(j_req_body);
     return j_str_req_body;
 }
 
-static struct http_common_resp_body *__unmarshal_register_response_body(char *j_str_resp_body) {
+static struct http_common_resp_body *__unmarshal_common_response_body(char *j_str_resp_body) {
     cJSON *j_resp = cJSON_Parse(j_str_resp_body);
     s2j_create_struct_obj(o_resp, struct http_common_resp_body);
 
@@ -259,6 +270,8 @@ static sds __generate_signature(const char *method, const char *url, const char 
     // sha_res ---> hex
     sds sign_hex = __str_2_hexstr(sha_res, SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH * 2 + 1);
 
+    debug("[app_register] body_md5_hex: '%s', sign_hex: '%s'", md5_val_hex, sign_hex);
+
     sdsfree(sign_str);
     sdsfree(md5_val_hex);
 
@@ -284,10 +297,10 @@ static struct http_request *__make_register_request() {
 
                 sdsfree(sign_hex);
             } else {
-                error("[app_register] generate signature failed");
+                error("[app_register] register request generate signature failed");
             }
         } else {
-            error("[app_register] create http request failed");
+            error("[app_register] create http  register request failed");
         }
         cJSON_free(j_str_req_body);
     }
@@ -316,7 +329,7 @@ static int32_t __do_register() {
                 if (likely(reg_resp->ret != -1 && reg_resp->http_code == 200)) {
                     // 解析response
                     struct http_common_resp_body *o_resp =
-                        __unmarshal_register_response_body(reg_resp->data);
+                        __unmarshal_common_response_body(reg_resp->data);
 
                     if (likely(o_resp)) {
                         if (o_resp->code == 0) {
@@ -334,9 +347,10 @@ static int32_t __do_register() {
                         BackoffAlgorithm_GetNextBackoff(&retryContext, rand(), &nextRetryBackoff);
 
                     if (reg_resp->ret == -1) {
-                        error("[app_register] http_do failed, error: '%s'", reg_resp->err_msg);
+                        error("[app_register] register http_do failed, error: '%s'",
+                              reg_resp->err_msg);
                     } else if (reg_resp->http_code != 200) {
-                        error("http_code:%ld is HTTP_OK", reg_resp->http_code);
+                        error("[app_register] http_code:%ld is HTTP_OK", reg_resp->http_code);
                     }
 
                     if (retryStatus == BackoffAlgorithmSuccess) {
@@ -356,7 +370,83 @@ static int32_t __do_register() {
     return http_do_ret;
 }
 
+static struct http_request *__make_offline_request() {
+    struct http_request *reg_req = NULL;
+
+    s2j_create_json_obj(j_req_body);
+    s2j_json_set_basic_element(j_req_body, &__register_mgr, string, endpoint);
+    s2j_json_set_basic_element(j_req_body, &__register_mgr, string, ip);
+    s2j_json_set_basic_element(j_req_body, &__register_mgr, int, port);
+    s2j_json_set_basic_element(j_req_body, &__register_mgr, string, zone);
+    cJSON_AddIntToObject(j_req_body, "is_cm", 1);
+
+    // j_str_req_body will free by cJSON_free
+    char *j_str_req_body = cJSON_Print(j_req_body);
+    s2j_delete_json_obj(j_req_body);
+    debug("[app_register] request offline json body: %s", j_str_req_body);
+
+    if (likely(j_str_req_body)) {
+        // 创建http请求
+        reg_req = http_request_create(HTTP_POST, j_str_req_body, strlen(j_str_req_body));
+        if (likely(reg_req)) {
+            time_t now_secs = now_realtime_sec();
+            sds    sign_hex = __generate_signature("POST", __register_mgr.url_offline_path,
+                                                   j_str_req_body, now_secs);
+            if (likely(sign_hex)) {
+                // 添加headers curl_slist_append会调用strdup，所以sds可以释放
+                __add_default_headers(reg_req, sign_hex, now_secs);
+
+                sdsfree(sign_hex);
+            } else {
+                error("[app_register] offline request generate signature failed.");
+            }
+        } else {
+            error("[app_register] create http offline request failed");
+        }
+        cJSON_free(j_str_req_body);
+    }
+
+    return reg_req;
+}
+
 static void __do_unregister() {
+    struct http_request *offline_req = NULL;
+    int32_t              http_do_ret = -1;
+
+    offline_req = __make_offline_request();
+    if (likely(offline_req)) {
+        struct http_response *offline_resp = http_do(__register_mgr.hc, offline_req);
+        if (likely(offline_resp)) {
+            if (likely(offline_resp->ret != -1 && offline_resp->http_code == 200)) {
+                // 解析response
+                struct http_common_resp_body *o_resp =
+                    __unmarshal_common_response_body(offline_resp->data);
+
+                if (likely(o_resp)) {
+                    if (o_resp->code == 0) {
+                        http_do_ret = 0;
+                        info("[app_register] exporter offline to prometheus manager success");
+                    }
+                    s2j_delete_struct_obj(o_resp);
+                    o_resp = NULL;
+                }
+            }
+
+            if (unlikely(-1 == http_do_ret)) {
+
+                if (offline_resp->ret == -1) {
+                    error("[app_register] offline http_do failed, error: '%s'",
+                          offline_resp->err_msg);
+                } else if (offline_resp->http_code != 200) {
+                    error("[app_register] offline http_code:%ld is HTTP_OK",
+                          offline_resp->http_code);
+                }
+            }
+            http_response_free(offline_resp);
+        }
+
+        http_request_free(offline_req);
+    }
     return;
 }
 
@@ -386,7 +476,8 @@ int32_t exporter_register() {
 }
 
 /**
- * It's a wrapper of the `http_client_destory` function, which is used to destroy the http client
+ * It's a wrapper of the `http_client_destory` function, which is used to destroy the http
+ * client
  */
 void exporter_unregister() {
     debug("[app_register] start exporter unregister...");
