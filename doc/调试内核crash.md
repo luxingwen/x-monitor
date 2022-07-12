@@ -342,6 +342,22 @@ crash> dis -l ffffffffba3affd2
 0xffffffffba3affd2 <sysrq_handle_crash+18>:     movb   $0x1,0x0
 ```
 
+```
+crash> dis -l skb_release_data
+/usr/src/debug/kernel-4.18.0-348.7.1.el8_5/linux-4.18.0-348.7.1.el8_5.x86_64/net/core/skbuff.c: 597
+0xffffffffa8fa6ff0 <skb_release_data>:  nopl   0x0(%rax,%rax,1) [FTRACE NOP]
+/usr/src/debug/kernel-4.18.0-348.7.1.el8_5/linux-4.18.0-348.7.1.el8_5.x86_64/./include/linux/skbuff.h: 1435
+0xffffffffa8fa6ff5 <skb_release_data+5>:        push   %r12
+0xffffffffa8fa6ff7 <skb_release_data+7>:        push   %rbp
+0xffffffffa8fa6ff8 <skb_release_data+8>:        push   %rbx
+0xffffffffa8fa6ff9 <skb_release_data+9>:        movzbl 0x8e(%rdi),%eax
+0xffffffffa8fa7000 <skb_release_data+16>:       mov    0xdc(%rdi),%r12d
+0xffffffffa8fa7007 <skb_release_data+23>:       add    0xe0(%rdi),%r12
+/usr/src/debug/kernel-4.18.0-348.7.1.el8_5/linux-4.18.0-348.7.1.el8_5.x86_64/net/core/skbuff.c: 601
+0xffffffffa8fa700e <skb_release_data+30>:       test   $0x1,%al
+0xffffffffa8fa7010 <skb_release_data+32>:       je     0xffffffffa8fa703d <skb_release_data+77>
+```
+
 #### rd - 读取相应的内存
 
 #### mod - 查看显示、加载模块符号
@@ -494,6 +510,26 @@ crash> kmem -i
 
  COMMIT LIMIT  1982185       7.6 GB         ----
     COMMITTED  1101977       4.2 GB   55% of TOTAL LIMIT
+```
+
+#### struct - 解析结构体
+
+[struct] <结构体名称> <结构体虚拟地址>
+
+```
+crash> sk_buff ffff8810dd32f280
+struct sk_buff {
+  next = 0x0,
+  prev = 0x0,
+  sk = 0xffff88114b4f0b40,
+  tstamp = {
+    tv64 = 0
+  },
+  dev = 0x0,
+  _skb_dst = 0,
+  sp = 0x0,
+  cb = "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000",
+struct sk_buff {
 ```
 
 ## 举例
@@ -779,4 +815,5 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 - [linux - centos 8: debuginfo-install can't find kernel-debuginfo package - Server Fault](https://serverfault.com/questions/1044899/centos-8-debuginfo-install-cant-find-kernel-debuginfo-package)
 - [系统崩溃 - crash工具介绍 - 简书 (jianshu.com)](https://www.jianshu.com/p/ad03152a0a53)
 - [Centos8 dnf命令 - chillax1314 - 博客园 (cnblogs.com)](https://www.cnblogs.com/chillax1314/articles/14627854.html)
+- [Crash工具实战-结构体解析 (qq.com)](https://mp.weixin.qq.com/s/oGlCg6FclbC21lKxN-Tkng)
 
