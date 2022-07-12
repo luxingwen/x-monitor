@@ -22,6 +22,7 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/md5.h>
 
 #include "app_config/app_config.h"
 
@@ -67,6 +68,7 @@ struct http_common_resp_body {
 static struct register_mgr __register_mgr = { .enabled = 0 };
 
 // https://gist.github.com/yoshiki/812d35a32bcf175f11cb952ed9d1582a
+// https://stackoverflow.com/questions/7627723/how-to-create-a-md5-hash-of-a-string-in-c
 
 static uint8_t *__hmac_sha256(const void *key, int32_t keylen, const uint8_t *data,
                               int32_t datalen) {
@@ -281,28 +283,35 @@ static void __add_default_headers(struct http_request *req, const char *sign, ti
 static sds __generate_signature(const char *method, const char *url, const char *j_str_body,
                                 time_t now_secs) {
     // 计算j_str_body的md5，16进制字符串
-    char md5_val[XM_MD5_BLOCK_SIZE] = { 0 };
-    md5_calc((const uint8_t *)j_str_body, strlen(j_str_body), (uint8_t *)md5_val);
+    uint8_t md5_digest[MD5_DIGEST_LENGTH] = { 0 };
+    // md5_calc((const uint8_t *)j_str_body, strlen(j_str_body), (uint8_t *)md5_val);
+    MD5_CTX ctx;
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, j_str_body, strlen(j_str_body));
+    MD5_Final(md5_digest, &ctx);
 
-    sds md5_val_hex =
-        __str_2_hexstr((uint8_t *)md5_val, XM_MD5_BLOCK_SIZE, XM_MD5_BLOCK_SIZE * 2 + 1);
+    sds md5_digest_hex =
+        __str_2_hexstr((uint8_t *)md5_digest, XM_MD5_BLOCK_SIZE, XM_MD5_BLOCK_SIZE * 2 + 1);
 
     // sha256计算的字符串
-    sds sign_str = sdscatfmt(sdsempty(), "%s\n%s\n%i\n%S", method, url, now_secs, md5_val_hex);
+    sds sign_str = sdscatfmt(sdsempty(), "%s\n%s\n%i\n%S", method, url, now_secs, md5_digest_hex);
     debug("[app_register] sign_str: '%s'", sign_str);
 
     // 计算sha256
-    uint8_t *sha_res = __hmac_sha256(__register_mgr.secret_key, sdslen(__register_mgr.secret_key),
-                                     (const uint8_t *)sign_str, sdslen(sign_str));
-    // sha_res ---> hex
-    sds sign_hex = __str_2_hexstr(sha_res, SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH * 2 + 1);
+    uint8_t *sha_digest =
+        __hmac_sha256(__register_mgr.secret_key, sdslen(__register_mgr.secret_key),
+                      (const uint8_t *)sign_str, sdslen(sign_str));
+    // sha_digest ---> hex
+    sds sha_digest_hex =
+        __str_2_hexstr(sha_digest, SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH * 2 + 1);
 
-    debug("[app_register] body_md5_hex: '%s', sign_hex: '%s'", md5_val_hex, sign_hex);
+    debug("[app_register] body_md5_digest_hex: '%s', sha_digest_hex: '%s'", md5_digest_hex,
+          sha_digest_hex);
 
     sdsfree(sign_str);
-    sdsfree(md5_val_hex);
+    sdsfree(md5_digest_hex);
 
-    return sign_hex;
+    return sha_digest_hex;
 }
 
 static struct http_request *__make_register_request() {
@@ -316,13 +325,13 @@ static struct http_request *__make_register_request() {
         if (likely(reg_req)) {
             time_t now_secs = now_realtime_sec();
             // TODO: 计算签名
-            sds sign_hex = __generate_signature("POST", __register_mgr.url_register_path,
-                                                j_str_req_body, now_secs);
-            if (likely(sign_hex)) {
+            sds sha_digest_hex = __generate_signature("POST", __register_mgr.url_register_path,
+                                                      j_str_req_body, now_secs);
+            if (likely(sha_digest_hex)) {
                 // 添加headers curl_slist_append会调用strdup，所以sds可以释放
-                __add_default_headers(reg_req, sign_hex, now_secs);
+                __add_default_headers(reg_req, sha_digest_hex, now_secs);
 
-                sdsfree(sign_hex);
+                sdsfree(sha_digest_hex);
             } else {
                 error("[app_register] register request generate signature failed");
             }
@@ -417,13 +426,13 @@ static struct http_request *__make_offline_request() {
         reg_req = http_request_create(HTTP_POST, j_str_req_body, strlen(j_str_req_body));
         if (likely(reg_req)) {
             time_t now_secs = now_realtime_sec();
-            sds    sign_hex = __generate_signature("POST", __register_mgr.url_offline_path,
-                                                   j_str_req_body, now_secs);
-            if (likely(sign_hex)) {
+            sds    sha_digest_hex = __generate_signature("POST", __register_mgr.url_offline_path,
+                                                         j_str_req_body, now_secs);
+            if (likely(sha_digest_hex)) {
                 // 添加headers curl_slist_append会调用strdup，所以sds可以释放
-                __add_default_headers(reg_req, sign_hex, now_secs);
+                __add_default_headers(reg_req, sha_digest_hex, now_secs);
 
-                sdsfree(sign_hex);
+                sdsfree(sha_digest_hex);
             } else {
                 error("[app_register] offline request generate signature failed.");
             }
@@ -477,6 +486,34 @@ static void __do_unregister() {
     return;
 }
 
+static void __test_digest() {
+    const char *str = "hello world";
+
+    // 计算j_str_body的md5，16进制字符串
+    uint8_t md5_digest[MD5_DIGEST_LENGTH] = { 0 };
+    // md5_calc((const uint8_t *)j_str_body, strlen(j_str_body), (uint8_t *)md5_val);
+    MD5_CTX ctx;
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, str, strlen(str));
+    MD5_Final(md5_digest, &ctx);
+
+    sds md5_digest_hex =
+        __str_2_hexstr((uint8_t *)md5_digest, XM_MD5_BLOCK_SIZE, XM_MD5_BLOCK_SIZE * 2 + 1);
+
+    uint8_t *sha_digest =
+        __hmac_sha256(__register_mgr.secret_key, sdslen(__register_mgr.secret_key),
+                      (const uint8_t *)str, strlen(str));
+    // sha_digest ---> hex
+    sds sha_digest_hex =
+        __str_2_hexstr(sha_digest, SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH * 2 + 1);
+
+    debug("[app_register] test 'hello world' md5_digest_hex: '%s', sha_digest_hex: '%s'",
+          md5_digest_hex, sha_digest_hex);
+
+    sdsfree(sha_digest_hex);
+    sdsfree(md5_digest_hex);
+}
+
 /**
  * It initializes the global variable `__register_mgr` and creates a `http_client` instance
  *
@@ -487,6 +524,8 @@ int32_t exporter_register() {
 
     if (likely(0 == __init_register_config())) {
         curl_global_init(CURL_GLOBAL_ALL);
+
+        __test_digest();
 
         __register_mgr.hc =
             http_client_create(__register_mgr.url_register_path, &default_http_client_options);
