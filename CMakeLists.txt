@@ -46,7 +46,14 @@ endif(USE_ADDRSANITIZER)
 
 
 # 设置c标准 cmake3.18只支持c11
-set(CMAKE_C_STANDARD 11)
+if (CMAKE_VERSION VERSION_LESS "3.1")
+  if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    set (CMAKE_C_FLAGS "-std=gnu99 ${CMAKE_C_FLAGS}")
+  endif ()
+else ()
+  set (CMAKE_C_STANDARD 11)
+endif ()
+#set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 # 这个是支持c11和extensions -std=gnu11
 set(CMAKE_C_EXTENSIONS ON)
@@ -82,8 +89,7 @@ include_directories("${PROJECT_SOURCE_DIR}"
 link_directories("${PROJECT_SOURCE_DIR}/extra/libs")
 
 # 第三方库
-set(EXTRA_LIBS "libjson-c.a"
-              "libcurl.a"
+set(EXTRA_LIBS "libcurl.a"
               "libconfig.a"
               "libzlog.a"
               "libcollectc.a"

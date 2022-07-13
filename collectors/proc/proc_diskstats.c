@@ -82,8 +82,12 @@ struct io_device {
 };
 
 //
+#if GCC_VERSION >= 50000
 static const int32_t __kernel_sector_size = 512;
-static const double  __kernel_sector_kb = (double)__kernel_sector_size / 1024.0;
+#else
+#define __kernel_sector_size 512;
+#endif
+static const double __kernel_sector_kb = (double)__kernel_sector_size / 1024.0;
 //
 static struct io_device *__iodev_list = NULL;
 

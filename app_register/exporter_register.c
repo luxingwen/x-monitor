@@ -29,7 +29,7 @@
 #define TOKEN_SIZE 128
 #define ZONE_BUF_LEN 8
 #define PROMETHEUS_MANAGER_URL_MAX_LEN 64
-#define MAX_HTTP_RESPONSE_BUF_LEN 64
+#define MAX_HTTP_RESPONSE_BUF_LEN 256
 #define SECRET_KEY_LEN 64
 
 static const char *__exporter_register_config_base_path = "application.exporter_register";
@@ -78,7 +78,7 @@ static uint8_t *__hmac_sha256(const void *key, int32_t keylen, const uint8_t *da
 static sds __str_2_hexstr(uint8_t *c_str, int32_t c_str_len, int32_t dest_len) {
     int32_t    i, j = 0;
     char const hex_chars[16] = { '0', '1', '2', '3', '4', '5', '6', '7',
-                                 '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+                                 '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     sds        hex_str = sdsnewlen(SDS_NOINIT, dest_len);
 
     for (i = 0; i < c_str_len; i++) {
@@ -228,7 +228,7 @@ static char *__marshal_register_rerquest_body() {
     cJSON_AddIntToObject(j_req_body, "is_cm", 1);
 
     // j_str_req_body will free by cJSON_free
-    char *j_str_req_body = cJSON_Print(j_req_body);
+    char *j_str_req_body = cJSON_PrintUnformatted(j_req_body);
     debug("[app_register] request register json body: %s", j_str_req_body);
 
     s2j_delete_json_obj(j_req_body);
@@ -294,7 +294,7 @@ static sds __generate_signature(const char *method, const char *url, const char 
         __str_2_hexstr((uint8_t *)md5_digest, XM_MD5_BLOCK_SIZE, XM_MD5_BLOCK_SIZE * 2 + 1);
 
     // sha256计算的字符串
-    sds sign_str = sdscatfmt(sdsempty(), "%s\n%s\n%i\n%S", method, url, now_secs, md5_digest_hex);
+    sds sign_str = sdscatfmt(sdsempty(), "%s\n%s\n%i\n%s", method, url, now_secs, md5_digest_hex);
     debug("[app_register] sign_str: '%s'", sign_str);
 
     // 计算sha256
@@ -417,7 +417,7 @@ static struct http_request *__make_offline_request() {
     cJSON_AddIntToObject(j_req_body, "is_cm", 1);
 
     // j_str_req_body will free by cJSON_free
-    char *j_str_req_body = cJSON_Print(j_req_body);
+    char *j_str_req_body = cJSON_PrintUnformatted(j_req_body);
     s2j_delete_json_obj(j_req_body);
     debug("[app_register] request offline json body: %s", j_str_req_body);
 
@@ -486,6 +486,7 @@ static void __do_unregister() {
     return;
 }
 
+#if 0
 static void __test_digest() {
     const char *str = "hello world";
 
@@ -513,6 +514,7 @@ static void __test_digest() {
     sdsfree(sha_digest_hex);
     sdsfree(md5_digest_hex);
 }
+#endif
 
 /**
  * It initializes the global variable `__register_mgr` and creates a `http_client` instance
@@ -525,7 +527,7 @@ int32_t exporter_register() {
     if (likely(0 == __init_register_config())) {
         curl_global_init(CURL_GLOBAL_ALL);
 
-        __test_digest();
+        //__test_digest();
 
         __register_mgr.hc =
             http_client_create(__register_mgr.url_register_path, &default_http_client_options);
