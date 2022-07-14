@@ -1,4 +1,4 @@
-module go_clis.calmwu
+module go_xmonitor.calmwu
 
 go 1.18
 
