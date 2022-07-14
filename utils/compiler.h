@@ -8,14 +8,13 @@
 #pragma once
 
 #if __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #if __x86_64__ || __ppc64__
 #define LONG_BITS 64
 #else
 #define LONG_BITS 64
 #endif
 #endif
-
-#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)

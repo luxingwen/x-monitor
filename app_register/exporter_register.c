@@ -551,6 +551,8 @@ void exporter_unregister() {
     debug("[app_register] start exporter unregister...");
 
     if (likely(__register_mgr.enabled)) {
+        http_client_reset(__register_mgr.hc, __register_mgr.url_offline_path);
+
         __do_unregister();
 
         if (likely(__register_mgr.hc)) {
