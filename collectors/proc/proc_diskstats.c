@@ -82,7 +82,7 @@ struct io_device {
 };
 
 //
-#if GCC_VERSION >= 50000
+#if GCC_VERSION >= 50100
 static const int32_t __kernel_sector_size = 512;
 #else
 #define __kernel_sector_size 512;

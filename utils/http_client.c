@@ -10,7 +10,7 @@
 #include "consts.h"
 #include "log.h"
 
-#if __GNUC__ >= 5
+#if GCC_VERSION >= 50100
 static const int32_t __default_connect_timeout_secs = 2;
 static const int32_t __default_transfer_timeout_secs = 3;
 #else

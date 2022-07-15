@@ -312,6 +312,7 @@ enum smaps_line_type {
     LINE_IS_SWAP,
 };
 // https://www.jianshu.com/p/8203457a11cc
+// https://www.kernel.org/doc/Documentation/ABI/testing/procfs-smaps_rollup
 
 // TODO: read /proc/self/smaps_rollup
 

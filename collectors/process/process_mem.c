@@ -54,8 +54,9 @@ USS是单个进程私有的内存大小，即该进程独占的内存部分。US
 
 // static pm_kernel_t      *__pm_ker = NULL;
 // static pthread_once_t    __init_pm_ker_once = PTHREAD_ONCE_INIT;
-static const char *const __rss_tags[] = { "RssAnon:", "RssFile:", "RssShmem:", NULL };
-static const int32_t     __rss_tags_len[] = { 8, 8, 9, 0 };
+static const char *const __status_tags[] = { "VmSize:",   "RssAnon:", "RssFile:",
+                                             "RssShmem:", "VmSwap:",  NULL };
+static const int32_t     __status_tags_len[] = { 7, 8, 8, 9, 7, 0 };
 
 // static void __process_mem_init_pm_kernel() {
 //     int32_t ret = pm_kernel_create(&__pm_ker);
@@ -131,15 +132,16 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
 
     proc_stauts_buff[proc_stauts_buff_len] = '\0';
 
-    uint64_t *rss_mem[] = { &(ps->rssanon), &(ps->rssfile), &(ps->rssshmem) };
-    int32_t   num_found = 0;
+    uint64_t *status_mem[] = { &(ps->vmsize), &(ps->rssanon), &(ps->rssfile), &(ps->rssshmem),
+                               &(ps->vmswap) };
+    size_t    num_found = 0;
 
     char *p = proc_stauts_buff;
-    while (*p && num_found < 3) {
+    while (*p && num_found < ARRAY_SIZE(status_mem)) {
         int i = 0;
-        while (__rss_tags[i]) {
-            if (strncmp(p, __rss_tags[i], __rss_tags_len[i]) == 0) {
-                p += __rss_tags_len[i];
+        while (__status_tags[i]) {
+            if (strncmp(p, __status_tags[i], __status_tags_len[i]) == 0) {
+                p += __status_tags_len[i];
                 while (*p == ' ' || *p == '\t')
                     p++;
                 char *num = p;
@@ -149,7 +151,7 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
                     *p = 0;
                     p++;
                 }
-                *(rss_mem[i]) = str2uint64_t(num);
+                *(status_mem[i]) = str2uint64_t(num);
                 num_found++;
                 break;
             }
