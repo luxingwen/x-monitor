@@ -13,7 +13,7 @@ RssFile                     size of resident file mappings
 RssShmem                    size of resident shmem memory (includes SysV shm,
                             mapping of tmpfs and shared anonymous mappings)
 
-/proc/<pid>/statm
+/proc/<pid>/statm  单位是PAGE
  Field    Content
  size     total program size (pages)            (same as VmSize in status)
  resident size of memory portions (pages)       (same as VmRSS in status)

@@ -92,7 +92,8 @@ static sds __str_2_hexstr(uint8_t *c_str, int32_t c_str_len, int32_t dest_len) {
 }
 
 static int32_t __init_register_config() {
-    sds env_config_base_path = sdsnew(__exporter_register_config_base_path);
+    int32_t ret = 0;
+    sds     env_config_base_path = sdsnew(__exporter_register_config_base_path);
 
     __register_mgr.enabled =
         appconfig_get_member_bool(__exporter_register_config_base_path, "enable", 0);
@@ -106,7 +107,8 @@ static int32_t __init_register_config() {
         __register_mgr.port = (int16_t)appconfig_get_int(__port_config_path, 0);
         if (unlikely(0 == __register_mgr.port)) {
             error("[app_register] metrics_http_exporter port is 0");
-            return -1;
+            ret = -1;
+            goto FAILED_CLEANUP;
         }
 
         // 获取部署环境名
@@ -115,6 +117,7 @@ static int32_t __init_register_config() {
         if (unlikely(!env_name)) {
             error("[app_register] the env[%s.env] is not config. please check the config file.",
                   __exporter_register_config_base_path);
+            ret = -1;
             goto FAILED_CLEANUP;
         }
 
@@ -148,6 +151,7 @@ static int32_t __init_register_config() {
                   "the config file.",
                   __exporter_register_config_base_path, __exporter_register_config_base_path,
                   env_config_base_path);
+            ret = -1;
             goto FAILED_CLEANUP;
         }
 
@@ -160,6 +164,7 @@ static int32_t __init_register_config() {
             error(
                 "[app_register] the token[%s.app_key] is not config. please check the config file.",
                 env_config_base_path);
+            ret = -1;
             goto FAILED_CLEANUP;
         }
 
@@ -170,10 +175,9 @@ static int32_t __init_register_config() {
             error("[app_register] the secret_key[%s.secret_key] is not config. please check the "
                   "config file.",
                   env_config_base_path);
+            ret = -1;
             goto FAILED_CLEANUP;
         }
-
-        sdsfree(env_config_base_path);
 
         //----------------------------------------------------------------------
 
@@ -206,14 +210,14 @@ static int32_t __init_register_config() {
               __register_mgr.retry_backoff_base_ms, __register_mgr.retry_max_backoff_delay_ms);
     } else {
         info("[app_register] exporter register to prometheus manager is disabled");
+        ret = -2;
     }
-    return 0;
 
 FAILED_CLEANUP:
     if (env_config_base_path) {
         sdsfree(env_config_base_path);
     }
-    return -1;
+    return ret;
 }
 
 static char *__marshal_register_rerquest_body() {
@@ -523,8 +527,10 @@ static void __test_digest() {
  */
 int32_t exporter_register() {
     debug("[app_register] start exporter register...");
+    int32_t ret = 0;
 
-    if (likely(0 == __init_register_config())) {
+    ret = __init_register_config();
+    if (likely(0 == ret)) {
         curl_global_init(CURL_GLOBAL_ALL);
 
         //__test_digest();
@@ -534,6 +540,8 @@ int32_t exporter_register() {
         if (likely(__register_mgr.hc)) {
             return __do_register();
         }
+    } else if (-2 == ret) {
+        return 0;
     } else {
         error("[app_register] exporter register init config failed");
         return -1;

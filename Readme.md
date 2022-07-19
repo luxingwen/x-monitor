@@ -203,48 +203,41 @@
 
    7. Buffer和Cache的区别
 
-      - 从两者的字面上解释，前者是缓冲区后者是缓存。man free手册可看到Buffer对应的是/proc/meminfo中的Buffers值，Cache是page cache和Slab用到的内存，对应/proc/meminfo中的Cached和SReclaimable
-
-
-      - 可以近似认为是一样的东西。cache 对应块对象，底层是 block 结构，4k；buffer 对应文件对象，底层是 dfs 结构。可以粗略的认为 cache+buffer 是总的缓存。
-    
-        解释下Page Cache和Buffer Cache：The term, Buffer Cache, is often used for the Page Cache. Linux kernels up to version 2.2 had both a Page Cache as well as a Buffer Cache. As of the 2.4 kernel, these two caches have been combined. Today, there is only one cache, the Page Cache
-    
-        在命令free -m输出中，cached字段标识的就是page cache。
-    
-        - 当在写数据的时候，可见cache在递增，dirty page也在递增。直到数据写入磁盘，dirty page才会清空，但cache没有变化。
-    
-        ```
-        [calmwu@192 Downloads]$ dd if=/dev/zero of=testfile.txt bs=1M count=100
-        100+0 records in
-        100+0 records out
-        104857600 bytes (105 MB, 100 MiB) copied, 0.354432 s, 296 MB/s
-        [calmwu@192 Downloads]$ free -m -w
-                      total        used        free      shared     buffers       cache   available
-        Mem:          15829         883       13994          18           3         948       14582
-        Swap:          5119           0        5119
-        [calmwu@192 Downloads]$ dd if=/dev/zero of=testfile1.txt bs=1M count=100
-        100+0 records in
-        100+0 records out
-        104857600 bytes (105 MB, 100 MiB) copied, 0.040854 s, 2.6 GB/s
-        [calmwu@192 Downloads]$ free -m -w
-                      total        used        free      shared     buffers       cache   available
-        Mem:          15829         883       13894          18           3        1048       14582
-        Swap:          5119           0        5119
-        [calmwu@192 Downloads]$ cat /proc/meminfo | grep Dirty
-        Dirty:            102420 kB
-        [calmwu@192 Downloads]$ sync
-        [calmwu@192 Downloads]$ cat /proc/meminfo | grep Dirty
-        Dirty:                 0 kB
-        [calmwu@192 Downloads]$ free -m -w
-                      total        used        free      shared     buffers       cache   available
-        Mem:          15829         882       13893          18           3        1049       14583
-        Swap:          5119           0        5119
-        ```
-    
-        - Reading，读取的数据同样会缓存在page cache中，cache字段也会增大。
-    
-        **直白的说，Page Cache就是内核对磁盘文件内容在内存中的缓存**。
+      从两者的字面上解释，前者是缓冲区后者是缓存。man free手册可看到Buffer对应的是/proc/meminfo中的Buffers值，Cache是page cache和Slab用到的内存，对应/proc/meminfo中的Cached和SReclaimable。可以近似认为是一样的东西。cache 对应块对象，底层是 block 结构，4k；buffer 对应文件对象，底层是 dfs 结构。可以粗略的认为 cache+buffer 是总的缓存。
+      
+      解释下Page Cache和Buffer Cache：The term, Buffer Cache, is often used for the Page Cache. Linux kernels up to version 2.2 had both a Page Cache as well as a Buffer Cache. As of the 2.4 kernel, these two caches have been combined. Today, there is only one cache, the Page Cache。
+      
+      在命令free -m输出中，cached字段标识的就是page cache。当在写数据的时候，可见cache在递增，dirty page也在递增。直到数据写入磁盘，dirty page才会清空，但cache没有变化。
+      
+      ```
+          [calmwu@192 Downloads]$ dd if=/dev/zero of=testfile.txt bs=1M count=100
+          100+0 records in
+          100+0 records out
+          104857600 bytes (105 MB, 100 MiB) copied, 0.354432 s, 296 MB/s
+          [calmwu@192 Downloads]$ free -m -w
+                        total        used        free      shared     buffers       cache   available
+          Mem:          15829         883       13994          18           3         948       14582
+          Swap:          5119           0        5119
+          [calmwu@192 Downloads]$ dd if=/dev/zero of=testfile1.txt bs=1M count=100
+          100+0 records in
+          100+0 records out
+          104857600 bytes (105 MB, 100 MiB) copied, 0.040854 s, 2.6 GB/s
+          [calmwu@192 Downloads]$ free -m -w
+                        total        used        free      shared     buffers       cache   available
+          Mem:          15829         883       13894          18           3        1048       14582
+          Swap:          5119           0        5119
+          [calmwu@192 Downloads]$ cat /proc/meminfo | grep Dirty
+          Dirty:            102420 kB
+          [calmwu@192 Downloads]$ sync
+          [calmwu@192 Downloads]$ cat /proc/meminfo | grep Dirty
+          Dirty:                 0 kB
+          [calmwu@192 Downloads]$ free -m -w
+                        total        used        free      shared     buffers       cache   available
+          Mem:          15829         882       13893          18           3        1049       14583
+          Swap:          5119           0        5119
+      ```
+      
+      **直白的说，Page Cache就是内核对磁盘文件内容在内存中的缓存**
 
    8. SWAP。当系统内存需求超过一定水平时，内核中 kswapd 就开始寻找可以释放的内存。
 
@@ -282,50 +275,50 @@
 
    10. 进程内存使用和cgroup的内存统计的差异
 
-      一般来说，业务进程使用的内存主要有以下几种情况：
-    
-      - 用户空间的匿名映射页，比如调用malloc分配的内存，以及使用MAP_ANONYMOUS的mmap；当系统内存不够时，内核可以将这部分内存交换出去。
-      - 用户空间的文件映射（Mapped pages in User Mode address spaces），包含**map file**和**map tmpfs**，前者比如指定文件的mmap，后者比如**IPC共享内存**；当前内存不够时，内核可以回收这些页，但回收之前要先与文件同步数据。**共享库文件占用（代码段、数据段）的内存归属这类**。
-      - 文件缓存，也称为**页缓存**（page in page cache of disk file），发生在文件read/write读写文件时，当系统内存不够时，内核可以回收这些页，但回收之前可能需要与文件同步数据。缓存的内容包括文件的内容，以及I/O缓冲的信息，该缓存的主要作用是提高文件性能和目录I/O性能。页缓存相比其他缓存来说尺寸是最大的，因为它不仅仅缓存文件的内容，还包括哪些被修改过但是还没有写回磁盘的页内容
-      - buffer page，输入page cache，比如读取块设备文件。
-    
-      其中，1、2算作进程的RSS，3、4输入**page cache**。
-    
-      进程rss和cgroup rss的区别
-    
-      - 进程的rss = file_rss + filepage + shmmempage，cgroup_rss为每个cpu的vmstats_local->stat[NR_ANON_MAPPED]，其不包含共享内存，如果cgroup只包含匿名的，那么limit仅仅限制malloc分配的内存。
-        
-        ```
-        static const unsigned int memcg1_stats[] = {
-            NR_FILE_PAGES,
-            NR_ANON_MAPPED,
-        #ifdef CONFIG_TRANSPARENT_HUGEPAGE
-            NR_ANON_THPS,
-        #endif
-            NR_SHMEM,
-            NR_FILE_MAPPED,
-            NR_FILE_DIRTY,
-            NR_WRITEBACK,
-            MEMCG_SWAP,
-        };
-        
-        static const char *const memcg1_stat_names[] = {
-            "cache",
-            "rss",
-        #ifdef CONFIG_TRANSPARENT_HUGEPAGE
-            "rss_huge",
-        #endif
-            "shmem",
-            "mapped_file",
-            "dirty",
-            "writeback",
-            "swap",
-        };
-        
-        memcg_page_state_local(memcg, memcg1_stats[i]);
-        
-        for_each_possible_cpu(cpu)
-            x += per_cpu(memcg->vmstats_local->stat[idx], cpu);
-        ```
-        
-        - cgroup cache包含file cache和共享内存。
+         一般来说，业务进程使用的内存主要有以下几种情况：
+
+         - 用户空间的匿名映射页，比如调用malloc分配的内存，以及使用MAP_ANONYMOUS的mmap；当系统内存不够时，内核可以将这部分内存交换出去。
+         - 用户空间的文件映射（Mapped pages in User Mode address spaces），包含**map file**和**map tmpfs**，前者比如指定文件的mmap，后者比如**IPC共享内存**；当前内存不够时，内核可以回收这些页，但回收之前要先与文件同步数据。**共享库文件占用（代码段、数据段）的内存归属这类**。
+         - 文件缓存，也称为**页缓存**（page in page cache of disk file），发生在文件read/write读写文件时，当系统内存不够时，内核可以回收这些页，但回收之前可能需要与文件同步数据。缓存的内容包括文件的内容，以及I/O缓冲的信息，该缓存的主要作用是提高文件性能和目录I/O性能。页缓存相比其他缓存来说尺寸是最大的，因为它不仅仅缓存文件的内容，还包括哪些被修改过但是还没有写回磁盘的页内容
+         - buffer page，输入page cache，比如读取块设备文件。
+
+         其中，1、2算作进程的RSS，3、4输入**page cache**。
+
+         进程rss和cgroup rss的区别
+
+         - 进程的rss = file_rss + filepage + shmmempage，cgroup_rss为每个cpu的vmstats_local->stat[NR_ANON_MAPPED]，其不包含共享内存，如果cgroup只包含匿名的，那么limit仅仅限制malloc分配的内存。
+           
+           ```
+           static const unsigned int memcg1_stats[] = {
+               NR_FILE_PAGES,
+               NR_ANON_MAPPED,
+           #ifdef CONFIG_TRANSPARENT_HUGEPAGE
+               NR_ANON_THPS,
+           #endif
+               NR_SHMEM,
+               NR_FILE_MAPPED,
+               NR_FILE_DIRTY,
+               NR_WRITEBACK,
+               MEMCG_SWAP,
+           };
+           
+           static const char *const memcg1_stat_names[] = {
+               "cache",
+               "rss",
+           #ifdef CONFIG_TRANSPARENT_HUGEPAGE
+               "rss_huge",
+           #endif
+               "shmem",
+               "mapped_file",
+               "dirty",
+               "writeback",
+               "swap",
+           };
+           
+           memcg_page_state_local(memcg, memcg1_stats[i]);
+           
+           for_each_possible_cpu(cpu)
+               x += per_cpu(memcg->vmstats_local->stat[idx], cpu);
+           ```
+           
+           - cgroup cache包含file cache和共享内存。
