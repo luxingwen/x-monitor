@@ -198,16 +198,16 @@ int32_t collector_proc_vmstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     }
 
     // 更新采集数值
-    prom_gauge_set(__metric_pgfault, __pgfault, (const char *[]){ "pgfaults" });
-    prom_gauge_set(__metric_pgmajfault, __pgmajfault, (const char *[]){ "pgfaults" });
+    prom_gauge_set(__metric_pgfault, __pgfault, (const char *[]){ "page" });
+    prom_gauge_set(__metric_pgmajfault, __pgmajfault, (const char *[]){ "page" });
 
-    prom_gauge_set(__metric_pgpgin, __pgpgin, (const char *[]){ "pgpgio" });
-    prom_gauge_set(__metric_pgpgout, __pgpgout, (const char *[]){ "pgpgio" });
+    prom_gauge_set(__metric_pgpgin, __pgpgin, (const char *[]){ "page" });
+    prom_gauge_set(__metric_pgpgout, __pgpgout, (const char *[]){ "page" });
 
     __pswpin = __pswpin / sysconf(_SC_PAGESIZE) * 1024,
-    prom_gauge_set(__metric_pswpin, __pswpin, (const char *[]){ "swapio" });
+    prom_gauge_set(__metric_pswpin, __pswpin, (const char *[]){ "page" });
     __pswpout = __pswpout / sysconf(_SC_PAGESIZE) * 1024,
-    prom_gauge_set(__metric_pswpout, __pswpout, (const char *[]){ "swapio" });
+    prom_gauge_set(__metric_pswpout, __pswpout, (const char *[]){ "page" });
 
     prom_gauge_set(__metric_nr_dirty, __nr_dirty, (const char *[]){ "page" });
     prom_gauge_set(__metric_nr_writeback, __nr_writeback, (const char *[]){ "page" });

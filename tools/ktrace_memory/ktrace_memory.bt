@@ -1,0 +1,41 @@
+#include <linux/mm_types.h>
+#include <linux/mm_types_task.h>
+#include <linux/sched.h>
+
+BEGIN {
+    @nm_pagetype_str[0] = "MM_FILEPAGES";
+    @nm_pagetype_str[1] = "MM_ANONPAGES";
+    @nm_pagetype_str[2] = "MM_SWAPENTS";
+    @nm_pagetype_str[3] = "MM_SHMEMPAGES";
+}
+
+END {
+    clear(@nm_pagetype_str);
+}
+
+kprobe:add_mm_counter_fast /comm == "x-monitor"/
+{
+    $mm_s = (struct mm_struct *)arg0;
+    $nm_page_type = (int32)arg1;
+    $add_page_count = (int32)arg2;
+
+    // curtask - Current task struct as a u64
+    $task = (struct task_struct *)curtask;
+    if($task->mm == $mm_s) {
+        //printf("get task: %s\n", $task->comm);
+
+        $current_pagetype_count = 0;
+        if($nm_page_type == 0) {
+            $current_pagetype_count = $task->rss_stat.count[0];
+        } else if($nm_page_type == 1) {
+            $current_pagetype_count = $task->rss_stat.count[1];
+        } else if($nm_page_type == 2) {
+            $current_pagetype_count = $task->rss_stat.count[2];
+        } else if($nm_page_type == 3) {
+            $current_pagetype_count = $task->rss_stat.count[3];
+        }
+
+        printf("process 'x-monitor' nm_pagetype: '%s', current page count '%d' will add '%d' pages\n", @nm_pagetype_str[$nm_page_type], $current_pagetype_count, $add_page_count);
+        printf("call stack>>>\t%s\n", kstack);
+    }
+}
