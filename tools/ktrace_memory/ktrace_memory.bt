@@ -1,41 +1,69 @@
 #include <linux/mm_types.h>
 #include <linux/mm_types_task.h>
 #include <linux/sched.h>
+#include <linux/types.h>
 
 BEGIN {
-    @nm_pagetype_str[0] = "MM_FILEPAGES";
-    @nm_pagetype_str[1] = "MM_ANONPAGES";
-    @nm_pagetype_str[2] = "MM_SWAPENTS";
-    @nm_pagetype_str[3] = "MM_SHMEMPAGES";
+    @mm_pagetype_str[0] = "MM_FILEPAGES";
+    @mm_pagetype_str[1] = "MM_ANONPAGES";
+    @mm_pagetype_str[2] = "MM_SWAPENTS";
+    @mm_pagetype_str[3] = "MM_SHMEMPAGES";
 }
 
 END {
-    clear(@nm_pagetype_str);
+    clear(@mm_pagetype_str);
 }
 
 kprobe:add_mm_counter_fast /comm == "x-monitor"/
 {
-    $mm_s = (struct mm_struct *)arg0;
-    $nm_page_type = (int32)arg1;
+    $mm = (struct mm_struct *)arg0;
+    $mm_page_type = (int32)arg1;
     $add_page_count = (int32)arg2;
 
     // curtask - Current task struct as a u64
     $task = (struct task_struct *)curtask;
-    if($task->mm == $mm_s) {
+    if($task->mm == $mm) {
         //printf("get task: %s\n", $task->comm);
 
         $current_pagetype_count = 0;
-        if($nm_page_type == 0) {
+        if($mm_page_type == 0) {
             $current_pagetype_count = $task->rss_stat.count[0];
-        } else if($nm_page_type == 1) {
+        } else if($mm_page_type == 1) {
             $current_pagetype_count = $task->rss_stat.count[1];
-        } else if($nm_page_type == 2) {
+        } else if($mm_page_type == 2) {
             $current_pagetype_count = $task->rss_stat.count[2];
-        } else if($nm_page_type == 3) {
+        } else if($mm_page_type == 3) {
             $current_pagetype_count = $task->rss_stat.count[3];
         }
 
-        printf("process 'x-monitor' nm_pagetype: '%s', current page count '%d' will add '%d' pages\n", @nm_pagetype_str[$nm_page_type], $current_pagetype_count, $add_page_count);
+        printf("process 'x-monitor', pid: %d, nm_pagetype: '%s', current page count '%d' will add '%d' pages\n", pid, @mm_pagetype_str[$mm_page_type], $current_pagetype_count, $add_page_count);
         printf("call stack>>>\t%s\n", kstack);
+    } else {
+        printf("$task->mm != $mm");
+    }
+}
+
+kprobe:sync_mm_rss /comm == "x-monitor"/ 
+{
+    $task = (struct task_struct *)curtask;
+    $mm = (struct mm_struct *)arg0;
+    $mm_page_type = 0;
+
+    while($mm_page_type < 4) {
+        if($mm_page_type == 0) {
+            $task_rss_count = $task->rss_stat.count[0];
+            //$mm_rss_count = $mm->rss_stat.count[0];
+            printf("sync_mm_rss process 'x-monitor', pid: %d, nm_pagetype: 'MM_FILEPAGES', task_rss_count '%d'\n", pid, $task_rss_count);
+        } else if($mm_page_type == 1) {
+            $task_rss_count = $task->rss_stat.count[1];
+            printf("sync_mm_rss process 'x-monitor', pid: %d, nm_pagetype: 'MM_ANONPAGES', task_rss_count '%d'\n", pid, $task_rss_count);
+        } else if($mm_page_type == 2) {
+            $task_rss_count = $task->rss_stat.count[2];
+            printf("sync_mm_rss process 'x-monitor', pid: %d, nm_pagetype: 'MM_SWAPENTS', task_rss_count '%d'\n", pid, $task_rss_count);
+        } else if($mm_page_type == 3) {
+            $task_rss_count = $task->rss_stat.count[3];
+            printf("sync_mm_rss process 'x-monitor', pid: %d, nm_pagetype: 'MM_SHMEMPAGES', task_rss_count '%d'\n", pid, $task_rss_count);
+        }
+        $mm_page_type++;
     }
 }
