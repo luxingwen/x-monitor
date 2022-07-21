@@ -141,9 +141,113 @@ call stack>>>
 
 ![process_rss](./process_rss.jpg)
 
+### 进程内存、物理page、mem_cg如何关联
+
+- struct page *page
+- struct mm_struct *mm
+- struct mem_cgroup
+
+在内存分配过程中，**do_swap_page**、**do_anonymous_page**、**do_cow_fault**、**wp_page_copy**、**shmem_add_to_page_cache**都会调用mem_cgroup_charge将page放入mem_cgroup中。
+
+```
+/**
+ * mem_cgroup_charge - charge a newly allocated page to a cgroup
+ * @page: page to charge
+ * @mm: mm context of the victim
+ * @gfp_mask: reclaim mode
+ *
+ * Try to charge @page to the memcg that @mm belongs to, reclaiming
+ * pages according to @gfp_mask if necessary.
+ *
+ * Returns 0 on success. Otherwise, an error code is returned.
+ */
+int mem_cgroup_charge(struct page *page, struct mm_struct *mm, gfp_t gfp_mask)
+{
+	unsigned int nr_pages = thp_nr_pages(page);
+	struct mem_cgroup *memcg = NULL;
+	int ret = 0;
+
+	if (mem_cgroup_disabled())
+```
+
+thp_nr_pages会计算下page的个数，默认是1，如果是hugepage需要计算。然后调用try_charge函数
+
+```
+static int try_charge(struct mem_cgroup *memcg, gfp_t gfp_mask,
+		      unsigned int nr_pages)
+{
+	unsigned int batch = max(MEMCG_CHARGE_BATCH, nr_pages);
+	int nr_retries = MAX_RECLAIM_RETRIES;
+	struct mem_cgroup *mem_over_limit;
+	struct page_counter *counter;
+	unsigned long nr_reclaimed;
+	bool may_swap = true;
+	bool drained = false;
+	enum oom_status oom_status;
+
+	if (mem_cgroup_is_root(memcg))
+		return 0;
+retry:
+	if (consume_stock(memcg, nr_pages))
+		return 0;
+
+	// 会关闭memsw，不计算swap的使用量
+	if (!do_memsw_account() ||
+	    page_counter_try_charge(&memcg->memsw, batch, &counter)) {
+		if (page_counter_try_charge(&memcg->memory, batch, &counter))
+			goto done_restock;
+		if (do_memsw_account())
+			page_counter_uncharge(&memcg->memsw, batch);
+		// 通过struct page_counter memory获得父对象struct mem_cgroup
+		mem_over_limit = mem_cgroup_from_counter(counter, memory);
+	} else {
+		mem_over_limit = mem_cgroup_from_counter(counter, memsw);
+		may_swap = false;
+	}
+```
+
+最后调用page_counter_try_charge来改变struct mem_cgroup的counter成员数值。**atomic_long_add_return(nr_pages, &c->usage);**
+
+```
+bool page_counter_try_charge(struct page_counter *counter,
+			     unsigned long nr_pages,
+			     struct page_counter **fail)
+{
+	struct page_counter *c;
+
+	for (c = counter; c; c = c->parent) {
+		long new;
+		/*
+		 * Charge speculatively to avoid an expensive CAS.  If
+		 * a bigger charge fails, it might falsely lock out a
+		 * racing smaller charge and send it into reclaim
+		 * early, but the error is limited to the difference
+		 * between the two sizes, which is less than 2M/4M in
+		 * case of a THP locking out a regular page charge.
+		 *
+		 * The atomic_long_add_return() implies a full memory
+		 * barrier between incrementing the count and reading
+		 * the limit.  When racing with page_counter_limit(),
+		 * we either see the new limit or the setter sees the
+		 * counter has changed and retries.
+		 */
+		new = atomic_long_add_return(nr_pages, &c->usage);
+```
+
 ### cgroup memory.stat中rss的统计
 
-可见cgroup的rss是统计的NR_ANON_MAPPED
+首先从seq_file得到对应的struct mem_cgroup对象，cgroup的rss是统计的NR_ANON_MAPPED，当前进程的stat.rss输出如下
+
+```
+ ⚡ root@localhost  /sys/fs/cgroup/memory/x-monitor  cat memory.stat 
+cache 333053952
+rss 32378880
+rss_huge 0
+shmem 0
+mapped_file 0
+```
+
+结合下面的代码，rss、cache单位都是字节，是page count * page_size。
 
 ```
 static const unsigned int memcg1_stats[] = {
