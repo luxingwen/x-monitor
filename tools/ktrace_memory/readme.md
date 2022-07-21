@@ -104,7 +104,7 @@ static inline void add_mm_counter(struct mm_struct *mm, int member, long value)
 
 #### bpftrace脚本验证
 
-脚本：[ktrace_memory.bt](./ktrace_memory.bt)
+脚本：[ktrace_process_rss.bt](./ktrace_process_rss.bt)
 
 我使用bpftrace脚本来跟踪下进程匿名内存分配，并输出堆栈，匿名页分配
 
