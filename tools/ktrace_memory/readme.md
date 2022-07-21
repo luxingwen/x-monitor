@@ -47,7 +47,9 @@ memsw是memory+swap的意思。cgroup限制进程所使用的内存总量实际�
 
 ## 统计
 
-### memory.usage_in_bytes
+### 进程角度和CGroup角度对rss的统计差异
+
+#### CGroup memory.usage_in_bytes和stat
 
 通用的解释是显示当前已用的内存，如果cgroup中只有一个进程，那么是该进程的内存使用量，但是和进程角度的内存使用是不同的（pidstat）。可以看到usage_in_bytes接近等于**rss + pagecache**，可以认为memory resource controller主要限制的是RSS和Page Cache。
 
@@ -59,9 +61,9 @@ cache 24195072
 rss 28147712
 ```
 
-### RSS的差异
+#### process的rss
 
-用pidstat或top看进程的rss才115736，cgroup.memory.stat.rss和/proc/pid/stat.rss区别。
+用pidstat或top看进程的rss才115736，/proc/<pid>/stat.rss的24列。
 
 ```
 # Time        UID      TGID       TID    %usr %system  %guest   %wait    %CPU   CPU  minflt/s  majflt/s     VSZ     RSS   %MEM   kB_rd/s   kB_wr/s kB_ccwr/s iodelay   cswch/s nvcswch/s  Command
