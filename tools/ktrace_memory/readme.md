@@ -1,18 +1,18 @@
-# cgroup memory controller
+# Process memory rss  vs  Process CGroup memory rss
 
-## 目的
+## CG目的
 
 - 隔离一个或一组应用
 - 限制内存的使用量。
 
-## 特性
+## CG特性
 
 - 统计匿名页、file cache、swap cache使用情况并加以限制。
 - 统计memory+swap使用情况并加以限制。
 - 使用量阈值通知。
 - 内存压力通知。
 
-## 设计
+## CG设计
 
 内存控制器的核心就是page_counter，它追踪添加到控制器里的进程当前内存使用情况以及使用限制，每个cgroup都有一个独立的内存控制器数据结构mem_cgroup。memcontrol.h
 
