@@ -106,7 +106,7 @@ static inline void add_mm_counter(struct mm_struct *mm, int member, long value)
 
 脚本：[ktrace_memory.bt](./ktrace_memory.bt)
 
-我使用bpftrace脚本来跟踪下进程匿名内存分配，并输出堆栈
+我使用bpftrace脚本来跟踪下进程匿名内存分配，并输出堆栈，匿名页分配
 
 ```
 process 'x-monitor', pid: 60426, nm_pagetype: 'MM_ANONPAGES', current page count '25' will add '1' pages
@@ -114,6 +114,23 @@ call stack>>>
         add_mm_counter_fast+1
         do_anonymous_page+351
         __handle_mm_fault+2022
+        handle_mm_fault+190
+        __do_page_fault+493
+        do_page_fault+55
+        page_fault+30
+```
+
+文件映射页
+
+```
+process 'x-monitor', pid: 62567, nm_pagetype: 'MM_FILEPAGES', current page count '161' will add '1' pages
+call stack>>>	
+        add_mm_counter_fast+1
+        alloc_set_pte+264
+        filemap_map_pages+975
+        xfs_filemap_map_pages+68
+        do_fault+650
+        __handle_mm_fault+1237
         handle_mm_fault+190
         __do_page_fault+493
         do_page_fault+55
@@ -230,7 +247,10 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 
 - [Linux processes in memory and memory cgroup statistics - linux - newfreesoft.com](http://www.newfreesoft.com/linux/linux_processes_in_memory_and_memory_cgroup_statistics_747/)
 
-### 判断
+### 小结
 
 判断memory cgroup的真实内存使用量，不能看memory.usage_in_bytes，而需要用memory.stat.rss字段，这类似于free命令看到的，要看除去Page Cache之后的available字段。
 
+## 疑问
+
+1. 进程分配的page其属性是什么，具体怎么和cgroup的对应上。
