@@ -70,6 +70,8 @@ rss 28147712
 
 ### 进程rss的统计
 
+#### 内核相关代码
+
 从struct task_struct视角来统计进程的物理内存使用量，使用mm_struct结构对象。
 
 ```
@@ -89,7 +91,7 @@ static inline unsigned long get_mm_rss(struct mm_struct *mm)
 }
 ```
 
-外部使用add_mm_counter来增加计数
+外部使用add_mm_counter来增加计数，下面编写bpftrace脚本来验证下内核对进程rss的统计。
 
 ```
 static inline void add_mm_counter(struct mm_struct *mm, int member, long value)
@@ -97,6 +99,28 @@ static inline void add_mm_counter(struct mm_struct *mm, int member, long value)
 	atomic_long_add(value, &mm->rss_stat.count[member]);
 }
 ```
+
+#### bpftrace脚本验证
+
+脚本：[ktrace_memory.bt](./ktrace_memory.bt)
+
+我使用bpftrace脚本来跟踪下进程匿名内存分配，并输出堆栈
+
+```
+process 'x-monitor', pid: 60426, nm_pagetype: 'MM_ANONPAGES', current page count '25' will add '1' pages
+call stack>>>	
+        add_mm_counter_fast+1
+        do_anonymous_page+351
+        __handle_mm_fault+2022
+        handle_mm_fault+190
+        __do_page_fault+493
+        do_page_fault+55
+        page_fault+30
+```
+
+脚本统计和/proc/<pid>/stat.rss的完全吻合
+
+![process_rss](./process_rss.jpg)
 
 ### cgroup memory.stat中rss的统计
 
