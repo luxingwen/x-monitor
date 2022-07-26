@@ -147,7 +147,7 @@ call stack>>>
 - struct mm_struct *mm
 - struct mem_cgroup
 
-在内存分配过程中，**do_swap_page**、**do_anonymous_page**、**do_cow_fault**、**wp_page_copy**、**shmem_add_to_page_cache**都会调用mem_cgroup_charge将page放入mem_cgroup中。
+在内存分配过程中，**do_swap_page**（从交换区入页）、**do_anonymous_page**（第一次访问匿名页时分配的物理页）、**do_cow_fault**（执行cow写时复制时，分配的物理页）、**wp_page_copy**（访问文件时分配物理页）、**shmem_add_to_page_cache**都会调用mem_cgroup_charge将page放入mem_cgroup中。
 
 ```
 /**
@@ -167,7 +167,41 @@ int mem_cgroup_charge(struct page *page, struct mm_struct *mm, gfp_t gfp_mask)
 	struct mem_cgroup *memcg = NULL;
 	int ret = 0;
 
+	......
+		if (!memcg)
+		// 通过进程的mm获取对应的memcg
+		memcg = get_mem_cgroup_from_mm(mm);
+```
+
+通过进程的mm_struct获取mem_cgroup。
+
+```
+struct mem_cgroup *get_mem_cgroup_from_mm(struct mm_struct *mm)
+{
+	struct mem_cgroup *memcg;
+
 	if (mem_cgroup_disabled())
+		return NULL;
+
+	rcu_read_lock();
+	do {
+		/*
+		 * Page cache insertions can happen withou an
+		 * actual mm context, e.g. during disk probing
+		 * on boot, loopback IO, acct() writes etc.
+		 */
+		if (unlikely(!mm))
+			memcg = root_mem_cgroup;
+		else {
+			memcg = mem_cgroup_from_task(
+				rcu_dereference(mm->owner));
+			if (unlikely(!memcg))
+				memcg = root_mem_cgroup;
+		}
+	} while (!css_tryget(&memcg->css));
+	rcu_read_unlock();
+	return memcg;
+}
 ```
 
 thp_nr_pages会计算下page的个数，默认是1，如果是hugepage需要计算。然后调用try_charge函数
@@ -176,28 +210,7 @@ thp_nr_pages会计算下page的个数，默认是1，如果是hugepage需要计�
 static int try_charge(struct mem_cgroup *memcg, gfp_t gfp_mask,
 		      unsigned int nr_pages)
 {
-	unsigned int batch = max(MEMCG_CHARGE_BATCH, nr_pages);
-	int nr_retries = MAX_RECLAIM_RETRIES;
-	struct mem_cgroup *mem_over_limit;
-	struct page_counter *counter;
-	unsigned long nr_reclaimed;
-	bool may_swap = true;
-	bool drained = false;
-	enum oom_status oom_status;
-
-	if (mem_cgroup_is_root(memcg))
-		return 0;
-retry:
-	if (consume_stock(memcg, nr_pages))
-		return 0;
-
-	// 会关闭memsw，不计算swap的使用量
-	if (!do_memsw_account() ||
-	    page_counter_try_charge(&memcg->memsw, batch, &counter)) {
-		if (page_counter_try_charge(&memcg->memory, batch, &counter))
-			goto done_restock;
-		if (do_memsw_account())
-			page_counter_uncharge(&memcg->memsw, batch);
+	......
 		// 通过struct page_counter memory获得父对象struct mem_cgroup
 		mem_over_limit = mem_cgroup_from_counter(counter, memory);
 	} else {
@@ -217,21 +230,30 @@ bool page_counter_try_charge(struct page_counter *counter,
 
 	for (c = counter; c; c = c->parent) {
 		long new;
-		/*
-		 * Charge speculatively to avoid an expensive CAS.  If
-		 * a bigger charge fails, it might falsely lock out a
-		 * racing smaller charge and send it into reclaim
-		 * early, but the error is limited to the difference
-		 * between the two sizes, which is less than 2M/4M in
-		 * case of a THP locking out a regular page charge.
-		 *
-		 * The atomic_long_add_return() implies a full memory
-		 * barrier between incrementing the count and reading
-		 * the limit.  When racing with page_counter_limit(),
-		 * we either see the new limit or the setter sees the
-		 * counter has changed and retries.
-		 */
+		......
 		new = atomic_long_add_return(nr_pages, &c->usage);
+```
+
+### 查看cgroup信息
+
+列出所有的cgroup
+
+```
+ ⚡ root@localhost  /home/calmwu/program/cpp_space/x-monitor/tools/ktrace_process_rss  lscgroup|grep x-monitor   
+cpu,cpuacct:/x-monitor
+memory:/x-monitor
+```
+
+查看cgroup信息
+
+```
+ ⚡ root@localhost  /home/calmwu/program/cpp_space/x-monitor/tools/ktrace_process_rss  cgget -g memory:/x-monitor
+/x-monitor:
+memory.use_hierarchy: 1
+memory.kmem.tcp.usage_in_bytes: 0
+memory.soft_limit_in_bytes: 9223372036854771712
+memory.move_charge_at_immigrate: 0
+memory.kmem.tcp.max_usage_in_bytes: 0
 ```
 
 ### cgroup memory.stat中rss的统计
@@ -321,7 +343,6 @@ static inline unsigned long memcg_page_state_local(struct mem_cgroup *memcg,
 ### cgroup的memory stat文件内容解释
 
 ```
-# per-memory cgroup local status
 cache		- # of bytes of page cache memory.
 rss		- # of bytes of anonymous and swap cache memory (includes
 		transparent hugepages).
@@ -360,3 +381,5 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 - [Linux processes in memory and memory cgroup statistics - linux - newfreesoft.com](http://www.newfreesoft.com/linux/linux_processes_in_memory_and_memory_cgroup_statistics_747/)
 - [linux中/proc/stat和/proc/[pid\]/stat的解析说明_不开窍的笨笨的博客-CSDN博客](https://blog.csdn.net/qq_28302795/article/details/114371687?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2~default~CTRLIST~default-1-114371687-blog-8904110.pc_relevant_sortByAnswer&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2~default~CTRLIST~default-1-114371687-blog-8904110.pc_relevant_sortByAnswer&utm_relevant_index=2)
 - [str() call won't accept char * arguments · Issue #1010 · iovisor/bpftrace (github.com)](https://github.com/iovisor/bpftrace/issues/1010)
+- [linux - What are memory mapped page and anonymous page? - Stack Overflow](https://stackoverflow.com/questions/13024087/what-are-memory-mapped-page-and-anonymous-page)
+- [Why top and free inside containers don't show the correct container memory | OpsTips](https://ops.tips/blog/why-top-inside-container-wrong-memory/)
