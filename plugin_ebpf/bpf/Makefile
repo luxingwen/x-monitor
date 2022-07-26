@@ -9,7 +9,7 @@ BPF_KERN_OBJS  := $(patsubst %.bpf.c, $(OUTPUT)/%.bpf.o, $(SRCS))
 LIBBPF_SRC := $(abspath ../../extra/libbpf/libbpf_repo/src)
 LIBBPF_OBJ := $(abspath ../../extra/libbpf/libbpf.a)
 
-BPFTOOL_OUTPUT := $(abspath ../usr)
+BPFTOOL_OUTPUT := $(abspath ../skel)
 BPF_SEKL_HS = $(patsubst %.bpf.c, %.skel.h, $(SRCS))
 
 CLANG_BPF_SYS_INCLUDES = $(shell $(CLANG) -v -E - </dev/null 2>&1 \
@@ -54,8 +54,8 @@ else
   QUIET_GENSKEL  = @echo '  GEN-SKEL '$@;
   QUIET_CLEAN    = @printf '  CLEAN    %s\n' $1;
   QUIET_INSTALL  = @printf '  INSTALL  %s\n' $1;
-  QUIET_UNINST   = @printf '  UNINST   %s\n' $1; 
-  submake_extras := feature_display=0 
+  QUIET_UNINST   = @printf '  UNINST   %s\n' $1;
+  submake_extras := feature_display=0
 endif
 
 .PHONY: all clean skels
@@ -63,9 +63,9 @@ all: $(BPF_KERN_OBJS) skels
 
 $(BPF_KERN_OBJS): $(OUTPUT)/%.bpf.o: $(OUTPUT)/vmlinux.h $(LIBBPF_OBJ) %.bpf.c
 	$(call msg,BPF,$@)
-	$(Q)$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.bpf.c,$^) -o $@	
+	$(Q)$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.bpf.c,$^) -o $@
 	$(Q)$(LLVM_STRIP) -g $@ # strip useless DWARF info
-	
+
 
 # 两个变量写在一起，$@只是最后一个变量
 skels: $(patsubst $(OUTPUT)/%.bpf.o, $(BPFTOOL_OUTPUT)/%.skel.h, $(BPF_KERN_OBJS))
