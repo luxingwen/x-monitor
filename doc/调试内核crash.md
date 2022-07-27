@@ -59,9 +59,9 @@ kdump是内核崩溃的时候，用来转存运行内存的一个工具。系统
 
 为了实现双内核布局，kdump在内核崩溃后立即使用**kexec引导转储捕获内核（capture kernel）**，使用kexec引导“覆盖”当前运行的内核。kexec（kernel execution）是linux内核的一种机制，其允许从当前运行的内核启动新内核。kexec会跳过由系统固件执行的引导加载程序阶段和硬件初始化阶段，直接将新内核加载到主内存并立即开始执行。
 
-![kdump原理架构](./kdump原理架构.jpg)
+![kdump原理架构](./img/kdump原理架构.jpg)
 
-![kdump-complete-flow](./kdump-complete-flow.jpg)
+![kdump-complete-flow](./img/kdump-complete-flow.jpg)
 
 Kdump在内核学习时非常有用，如果我们需要了解内核运行状态或结构详情也可以使用kdump进行转储，后续使用Crash工具对照源码进行分析总结。
 
