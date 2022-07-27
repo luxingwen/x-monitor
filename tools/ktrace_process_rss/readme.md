@@ -273,15 +273,16 @@ mapped_file 0
 
 ```
 static const unsigned int memcg1_stats[] = {
-	NR_FILE_PAGES,
-	NR_ANON_MAPPED,
+	NR_FILE_PAGES, 
+	NR_ANON_MAPPED, /* Mapped anonymous pages */
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 	NR_ANON_THPS,
 #endif
-	NR_SHMEM,
-	NR_FILE_MAPPED,
+	NR_SHMEM, /* shmem pages (included tmpfs/GEM pages) */
+	NR_FILE_MAPPED, /* pagecache pages mapped into pagetables.
+			   only modified from process context */
 	NR_FILE_DIRTY,
-	NR_WRITEBACK,
+	NR_WRITEBACK, /* Writeback using temporary buffers */
 	MEMCG_SWAP,
 };
 
