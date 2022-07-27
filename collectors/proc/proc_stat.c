@@ -32,8 +32,9 @@ static prom_gauge_t *__metric_node_processes_running = NULL,
                     *__metric_node_interrupts_from_boot = NULL,
                     *__metric_node_context_switches_from_boot = NULL,
                     *__metric_node_processes_from_boot = NULL,
-                    *__metric_node_cpu_guest_jiffies = NULL,
-                    *__metric_node_cpus_jiffies_total = NULL, *__metric_node_cpu_jiffies = NULL;
+                    //*__metric_node_cpu_guest_jiffies = NULL,
+                    // *__metric_node_cpus_jiffies_total = NULL,
+                        *__metric_node_cpu_jiffies = NULL;
 
 int32_t init_collector_proc_stat() {
     // 设置prom指标
@@ -68,18 +69,18 @@ int32_t init_collector_proc_stat() {
                            (const char *[]){ "cpu" }));
     }
 
-    if (unlikely(!__metric_node_cpu_guest_jiffies)) {
-        __metric_node_cpu_guest_jiffies =
-            prom_collector_registry_must_register_metric(prom_gauge_new(
-                "node_cpu_guest_jiffies_total", "time spent running a virtual CPU for guest OS", 2,
-                (const char *[]){ "cpu", "mode" }));
-    }
+    // if (unlikely(!__metric_node_cpu_guest_jiffies)) {
+    //     __metric_node_cpu_guest_jiffies =
+    //         prom_collector_registry_must_register_metric(prom_gauge_new(
+    //             "node_cpu_guest_jiffies_total", "time spent running a virtual CPU for guest OS",
+    //             2, (const char *[]){ "cpu", "mode" }));
+    // }
 
-    if (unlikely(!__metric_node_cpus_jiffies_total)) {
-        __metric_node_cpus_jiffies_total = prom_collector_registry_must_register_metric(
-            prom_gauge_new("node_cpus_jiffies_total", "total jiffies of the cpus", 2,
-                           (const char *[]){ "cpu", "mode" }));
-    }
+    // if (unlikely(!__metric_node_cpus_jiffies_total)) {
+    //     __metric_node_cpus_jiffies_total = prom_collector_registry_must_register_metric(
+    //         prom_gauge_new("node_cpus_jiffies_total", "total jiffies of the cpus", 2,
+    //                        (const char *[]){ "cpu", "mode" }));
+    // }
 
     if (unlikely(!__metric_node_cpu_jiffies)) {
         __metric_node_cpu_jiffies = prom_collector_registry_must_register_metric(
@@ -135,10 +136,10 @@ static void __do_cpu_utilization(size_t line, const char *cpu_label) {
                    (const char *[]){ cpu_label, "softirq" });
     prom_gauge_set(__metric_node_cpu_jiffies, steal_jiffies,
                    (const char *[]){ cpu_label, "steal" });
-    prom_gauge_set(__metric_node_cpu_guest_jiffies, guest_jiffies,
-                   (const char *[]){ cpu_label, "user" });
-    prom_gauge_set(__metric_node_cpu_guest_jiffies, guest_nice_jiffies,
-                   (const char *[]){ cpu_label, "nice" });
+    prom_gauge_set(__metric_node_cpu_jiffies, guest_jiffies,
+                   (const char *[]){ cpu_label, "guest" });
+    prom_gauge_set(__metric_node_cpu_jiffies, guest_nice_jiffies,
+                   (const char *[]){ cpu_label, "guest_nice" });
 
     debug("[PLUGIN_PROC:proc_stat] core_index: '%s' user_jiffies: %lu, nice_jiffies: %lu, "
           "system_jiffies: %lu, idle_jiffies: %lu, io_wait_jiffies: %lu, irq_jiffies: %lu, "
@@ -150,7 +151,7 @@ static void __do_cpu_utilization(size_t line, const char *cpu_label) {
     uint64_t node_cpus_jiffies_total = 0;
     node_cpus_jiffies_total = user_jiffies + nice_jiffies + system_jiffies + idle_jiffies
                               + io_wait_jiffies + irq_jiffies + soft_irq_jiffies + steal_jiffies;
-    prom_gauge_set(__metric_node_cpus_jiffies_total, node_cpus_jiffies_total,
+    prom_gauge_set(__metric_node_cpu_jiffies, node_cpus_jiffies_total,
                    (const char *[]){ cpu_label, "total" });
 }
 
