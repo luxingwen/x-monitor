@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-11-30 14:59:18
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-24 11:22:18
+ * @Last Modified time: 2022-07-28 16:06:36
  */
 
 // https://man7.org/linux/man-pages/man5/proc.5.html
@@ -17,6 +17,8 @@
 #include "utils/log.h"
 
 #include "app_config/app_config.h"
+
+#include "proc_rdset.h"
 
 static const char *__name = "PLUGIN_PROC";
 static const char *__config_name = "collector_plugin_proc";
@@ -74,6 +76,10 @@ __attribute__((constructor)) static void collector_proc_register_routine() {
 
 int32_t proc_routine_init() {
     char proc_module_cfgname[XM_CONFIG_NAME_MAX + 1];
+
+    if (unlikely(init_proc_rdset() < 0)) {
+        return -1;
+    }
 
     // check the enabled status for each module
     for (int32_t i = 0; __proc_metrics_module.collectors[i].name; i++) {
@@ -152,6 +158,8 @@ void proc_routine_stop() {
             pmc->fini_func();
         }
     }
+
+    fini_proc_rdset();
 
     debug("[%s] has completely stopped", __name);
     return;
