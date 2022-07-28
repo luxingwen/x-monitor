@@ -31,10 +31,8 @@ static prom_gauge_t *__metric_node_processes_running = NULL,
                     *__metric_node_processes_blocked = NULL,
                     *__metric_node_interrupts_from_boot = NULL,
                     *__metric_node_context_switches_from_boot = NULL,
-                    *__metric_node_processes_from_boot = NULL,
-                    //*__metric_node_cpu_guest_jiffies = NULL,
-                    // *__metric_node_cpus_jiffies_total = NULL,
-                        *__metric_node_cpu_jiffies = NULL;
+                    *__metric_node_processes_from_boot = NULL, *__metric_node_cpu_jiffies = NULL,
+                    *__metric_node_cpus_count = NULL;
 
 int32_t init_collector_proc_stat() {
     // 设置prom指标
@@ -86,6 +84,13 @@ int32_t init_collector_proc_stat() {
         __metric_node_cpu_jiffies = prom_collector_registry_must_register_metric(
             prom_gauge_new("node_cpu_jiffies", "jiffies the cpus spent in each mode", 2,
                            (const char *[]){ "cpu", "mode" }));
+    }
+
+    if (unlikely(!__metric_node_cpus_count)) {
+        __metric_node_cpus_count = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "node_cpus_count",
+            " The count of CPUs per node, useful for getting CPU time as a percent of total.", 1,
+            (const char *[]){ "cpu" }));
     }
 
     debug("[PLUGIN_PROC:proc_stat] init successed");
@@ -187,6 +192,7 @@ int32_t collector_proc_stat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     uint64_t processes_from_boot = 0;
     uint64_t processes_running = 0;
     uint64_t processes_blocked = 0;
+    uint16_t cpus_count = 0;
 
     debug("[PLUGIN_PROC:proc_stat] lines: %lu", lines);
 
@@ -206,6 +212,7 @@ int32_t collector_proc_stat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                 __do_cpu_utilization(index, row_name);
             } else {
                 __do_cpu_utilization(index, &row_name[3]);
+                cpus_count++;
             }
         } else if (unlikely(strncmp(row_name, "intr", 4) == 0)) {
             // “intr”这行给出中断的信息，第一个为自系统启动以来，发生的所有的中断的次数；然后每个数对应一个特定的中断自系统启动以来所发生的次数。
@@ -257,6 +264,9 @@ int32_t collector_proc_stat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
             prom_gauge_set(__metric_node_processes_blocked, (double)processes_blocked,
                            (const char *[]){ "procs_blocked" });
         }
+
+        prom_gauge_set(__metric_node_cpus_count, (double)cpus_count,
+                       (const char *[]){ "core_count" });
     }
 
     return 0;
