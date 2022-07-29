@@ -291,7 +291,7 @@ int32_t collector_proc_stat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         }
 
         prom_gauge_set(__metric_node_cpus_count, (double)cpus_count,
-                       (const char *[]){ "core_count", "core_count" });
+                       (const char *[]){ "cpu", "core_count" });
     }
 
     return 0;
