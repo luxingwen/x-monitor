@@ -31,6 +31,8 @@
 #include "prometheus-client-c/prom_metric_t.h"
 #include "prometheus-client-c/prom_metric_i.h"
 
+#define APP_METRIC_LABELINFO_CPU
+
 #define APP_METRIC_ADDTO_COLLECTOR(name, metric, collector)                                       \
     do {                                                                                          \
         metric = prom_gauge_new(                                                                  \
