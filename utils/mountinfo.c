@@ -70,7 +70,7 @@ static int32_t is_readonly(const char *mount_options) {
 static char *strdup_decoding_octal(const char *string) {
     char *buffer = strdup(string);
 
-    char *      d = buffer;
+    char       *d = buffer;
     const char *s = string;
 
     while (*s) {
@@ -224,7 +224,7 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
             last->next = mi;
         }
 
-        last     = mi;
+        last = mi;
         mi->next = NULL;
 
         // debug("MOUNTINFO: %d %d %u:%u root '%s', mount point '%s', mount options '%s', "
