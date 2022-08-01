@@ -1,5 +1,10 @@
 # Process memory rss  vs  Process CGroup memory rss
 
+## 进程角度和CGroup的角度
+
+- 进程角度：process实际使用的物理内存
+- CGroup角度：CGroup本身是一个容量概念，容量就会有范围了。
+
 ## CG目的
 
 - 隔离一个或一组应用
@@ -34,7 +39,7 @@ struct mem_cgroup {
 CONFIG_MEMCG_SWAP=y
 ```
 
-页交换扩展使得cgroup能记录交换的页。交换页被记录统计时，会增加如下文件
+页交换扩展使得cgroup**能记录交换的页**。交换页被记录统计时，会增加如下文件
 
 - memory.memsw.usage_in_bytes
 - memory.memsw.limit_in_bytes
@@ -71,6 +76,22 @@ rss 28147712
 ```
 
 ### 进程rss的统计
+
+#### 进程内存的分类
+
+通常，进程使用的内存分为下面四种
+
+- anonymous user space map pages (Anonymous pages in User Mode address spaces), like calling malloc allocation of memory, and the use of MAP_ANONYMOUS mmap; when the system memory is not enough, this part of the kernel can be swapped out of memory。这段话说明就是程序中的malloc，calloc这种调用分配的内存。
+
+- user space file mapping page (**Mapped pages in User Mode address spaces**), contains the map file and map tmpfs; former such as mmap specified file, the latter such as IPC shared memory; when the system is not enough memory, the kernel can reclaim these pages, but you may need to synchronize data files before recovery。这段话最关键的地方是用户地址空间，说明是由用户调用mmap、shmget等方法做的文件映射而分配的内存。我觉得应该也会包括动态库的加载。这里千万别和page cache搞混了，page cache是内核行为，是内核地址空间。
+
+- file cache (page in page cache of disk file); occurs in the program through the normal read / write to read and write files when the system is not enough memory, the kernel can recycle these pages, but may need to synchronize data files prior to recovery 。这块就是内核管理的内存了，直白的解释就是下图，加速read、write的调用。
+
+  ![page-cache](./page-cache.png)
+
+- buffer pages, belong to the page cache; such as reading block device file. 这就是块设备使用的内存。新内核已经将buffer + page cache合并了。
+
+所以，进程的rss实际是1和2的和。在4.18内核代码中，可见第二项是等于MM_FILEPAGES + MM_SHMEMPAGES的。
 
 #### 内核相关代码
 
@@ -173,7 +194,7 @@ int mem_cgroup_charge(struct page *page, struct mm_struct *mm, gfp_t gfp_mask)
 		memcg = get_mem_cgroup_from_mm(mm);
 ```
 
-通过进程的mm_struct获取mem_cgroup。
+通过如下关系mm_struct --- > task_struct ---> struct css_set --->  mem_cgroup。
 
 ```
 struct mem_cgroup *get_mem_cgroup_from_mm(struct mm_struct *mm)
@@ -346,7 +367,7 @@ static inline unsigned long memcg_page_state_local(struct mem_cgroup *memcg,
 ```
 cache		- # of bytes of page cache memory.
 rss		- # of bytes of anonymous and swap cache memory (includes
-		transparent hugepages).
+		transparent hugepages). -------------- 这里我不认为是交换分区的大小，而是可交换内存的大小，例如page cacache，file mapping这类。前面config_memcg_swap说的也是可交换的页数量。
 rss_huge	- # of bytes of anonymous transparent hugepages.
 mapped_file	- # of bytes of mapped file (includes tmpfs/shmem)
 pgpgin		- # of charging events to the memory cgroup. The charging
@@ -384,3 +405,4 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 - [str() call won't accept char * arguments · Issue #1010 · iovisor/bpftrace (github.com)](https://github.com/iovisor/bpftrace/issues/1010)
 - [linux - What are memory mapped page and anonymous page? - Stack Overflow](https://stackoverflow.com/questions/13024087/what-are-memory-mapped-page-and-anonymous-page)
 - [Why top and free inside containers don't show the correct container memory | OpsTips](https://ops.tips/blog/why-top-inside-container-wrong-memory/)
+- [Linux processes in memory and memory cgroup statistics - linux - newfreesoft.com](http://www.newfreesoft.com/linux/linux_processes_in_memory_and_memory_cgroup_statistics_747/)
