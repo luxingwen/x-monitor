@@ -10,6 +10,7 @@
 // https://biscuitos.github.io/blog/HISTORY-PERCPU/
 // http://calimeroteknik.free.fr/blag/?article20/really-used-memory-on-gnu-linux
 // https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/deployment_guide/s2-proc-meminfo
+// https://blog.51cto.com/u_13434336/2488970
 
 #include "plugin_proc.h"
 

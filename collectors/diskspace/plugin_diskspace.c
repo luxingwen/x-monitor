@@ -93,6 +93,17 @@ static void __collector_diskspace_stats(struct mountinfo *mi, int32_t UNUSED(upd
         return;
     }
 
+    struct stat sb;
+    char        disk_full_name[XM_DEV_NAME_MAX] = { 0 };
+    char       *disk_name = mi->mount_source_name;
+    if (0 == stat(mi->mount_source, &sb) && sb.st_nlink > 0) {
+        // 如果是链接，读取链接具体的设备名
+        ssize_t bytes = readlink(mi->mount_source, disk_full_name, XM_DEV_NAME_MAX - 1);
+        if (likely(-1 != bytes)) {
+            disk_name = basename(disk_full_name);
+        }
+    }
+
     // 基本文件系统块大小，磁盘的块大小是扇区
     // f_frsize The size in bytes of the minimum unit of allocation on this file
     // system
@@ -119,10 +130,11 @@ static void __collector_diskspace_stats(struct mountinfo *mi, int32_t UNUSED(upd
     // 已经使用的inode数量
     fsblkcnt_t inode_used = inode_total - inode_free;
 
-    debug("[PLUGIN_DISKSPACE] FileSystem:%s mounted on:%s size:%luMB used:%luMB free:%luMB "
-          "reserver_root:%luMB inode-total:%lu inode-used:%lu inode-free:%lu "
+    debug("[PLUGIN_DISKSPACE] Device: '%s', FileSystem:%s mounted on:%s size:%luMB used:%luMB "
+          "free:%luMB reserver_root:%luMB inode-total:%lu inode-used:%lu inode-free:%lu "
           "inode-reserver_root:%lu",
-          mi->filesystem, mi->mount_point, (unsigned long)block_total * block_size / 1024 / 1024,
+          disk_name, mi->filesystem, mi->mount_point,
+          (unsigned long)block_total * block_size / 1024 / 1024,
           (unsigned long)block_used * block_size / 1024 / 1024,
           (unsigned long)block_free * block_size / 1024 / 1024,
           (unsigned long)block_reserve_root * block_size / 1024 / 1024, (unsigned long)inode_total,
