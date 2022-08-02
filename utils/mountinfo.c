@@ -181,7 +181,7 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
             mi->filesystem = strdup(procfile_lineword(pf, l, w));
             w++;
             mi->filesystem_hash = bkrd_hash(mi->filesystem, strlen(mi->filesystem));
-            // 一个具体的device /dev/sda1
+            // example: /dev/mapper/ol-root /dev/nvme0n1p1
             mi->mount_source = strdup_decoding_octal(procfile_lineword(pf, l, w));
             w++;
             mi->mount_source_hash = bkrd_hash(mi->mount_source, strlen(mi->mount_source));
