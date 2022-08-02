@@ -66,6 +66,8 @@ struct process_descendant_pids {
 // 获得进程所有的后代进程pid
 extern int32_t get_process_descendant_pids(pid_t pid, struct process_descendant_pids *pd_pids);
 
+extern int32_t get_block_device_sector_size(const char *disk);
+
 #ifdef __cplusplus
 }
 #endif

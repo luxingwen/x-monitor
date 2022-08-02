@@ -9,8 +9,9 @@
 #include "consts.h"
 #include "files.h"
 #include "log.h"
+#include "strings.h"
 
-// 返回读取的字节数
+// 返回读取的字节数，失败返回-1
 int32_t read_file(const char *file_name, char *buffer, size_t buffer_size) {
     if (unlikely(0 == buffer_size)) {
         return -EINVAL;
@@ -41,12 +42,12 @@ int32_t read_file_to_uint64(const char *file_name, uint64_t *number) {
 
     char    number_buffer[XM_NUMBER_BUFFER_SIZE] = { 0 };
     int32_t read_size = read_file(file_name, number_buffer, XM_NUMBER_BUFFER_SIZE - 1);
-    if (unlikely(read_size <= 0)) {
+    if (unlikely(read_size < 0)) {
         *number = 0;
         return read_size;
     }
 
-    *number = strtoull(number_buffer, NULL, 10);
+    *number = str2uint64_t(number_buffer);
     return 0;
 }
 
@@ -58,13 +59,12 @@ int32_t read_file_to_int64(const char *file_name, int64_t *number) {
     }
 
     int32_t read_size = read_file(file_name, number_buffer, XM_NUMBER_BUFFER_SIZE - 1);
-    if (unlikely(read_size <= 0)) {
+    if (unlikely(read_size < 0)) {
         *number = 0;
         return read_size;
     }
 
-    char *endptr = NULL;
-    *number = strtoll(number_buffer, &endptr, 10);
+    *number = str2int64_t(number_buffer, NULL);
     return 0;
 }
 

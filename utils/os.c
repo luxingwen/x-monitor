@@ -466,3 +466,24 @@ int32_t get_process_descendant_pids(pid_t pid, struct process_descendant_pids *p
 
     return pd_pids->pids_size;
 }
+
+int32_t get_block_device_sector_size(const char *disk) {
+    char *block_size_full_path = NULL;
+
+    int32_t ret = asprintf(&block_size_full_path, "/sys/block/%s/queue/logical_block_size", disk);
+    if (likely(-1 != ret)) {
+        // 判断文件是否存在
+        if (likely(file_exists(block_size_full_path))) {
+            // 读取文件
+            int64_t sector_size = 0;
+            if (likely(0 == read_file_to_int64(block_size_full_path, &sector_size))) {
+                ret = (int32_t)sector_size;
+            }
+        } else {
+            ret = -ENOENT;
+            error("file %s not exists", block_size_full_path);
+        }
+        free(block_size_full_path);
+    }
+    return ret;
+}
