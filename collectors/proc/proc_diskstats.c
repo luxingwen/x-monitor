@@ -100,20 +100,20 @@ static const int32_t __kernel_sector_size = 512;
 //
 static struct io_device *__iodev_list = NULL;
 
-static prom_counter_t *__metric_node_disk_reads_completed_total = NULL,
-                      *__metric_node_disk_reads_merged_total = NULL,
-                      *__metric_node_disk_read_bytes_total = NULL,
-                      *__metric_node_disk_read_time_seconds_total = NULL,
-                      *__metric_node_disk_writes_completed_total = NULL,
-                      *__metric_node_disk_writes_merged_total = NULL,
-                      *__metric_node_disk_written_bytes_total = NULL,
-                      *__metric_node_disk_write_time_seconds_total = NULL,
-                      *__metric_node_disk_io_time_seconds_total = NULL,
-                      *__metric_node_disk_io_time_weighted_seconds_total = NULL,
-                      *__metric_node_disk_discards_completed_total = NULL,
-                      *__metric_node_disk_discards_merged_total = NULL,
-                      *__metric_node_discarded_sectors_total = NULL,
-                      *__metric_node_disk_discard_time_seconds_total = NULL,
+static prom_counter_t *__metric_node_disk_reads_completed_total_count = NULL,
+                      *__metric_node_disk_reads_merged_total_count = NULL,
+                      *__metric_node_disk_read_total_bytes = NULL,
+                      *__metric_node_disk_read_spent_total_seconds = NULL,
+                      *__metric_node_disk_writes_completed_total_count = NULL,
+                      *__metric_node_disk_writes_merged_total_count = NULL,
+                      *__metric_node_disk_writes_total_bytes = NULL,
+                      *__metric_node_disk_write_spent_total_seconds = NULL,
+                      *__metric_node_disk_io_spent_total_seconds = NULL,
+                      *__metric_node_disk_io_time_weighted_total_seconds = NULL,
+                      *__metric_node_disk_discards_completed_total_count = NULL,
+                      *__metric_node_disk_discards_merged_total_count = NULL,
+                      *__metric_node_discarded_sectors_total_count = NULL,
+                      *__metric_node_disk_discard_spent_total_seconds = NULL,
                       *UNUSED(__metric_node_disk_end) = NULL;
 
 static prom_gauge_t *__metric_node_disk_io_now = NULL, *__metric_node_disk_iostat_tps = NULL,
@@ -213,41 +213,41 @@ static struct io_device *__get_device(char *device_name, uint32_t major, uint32_
 }
 
 int32_t init_collector_proc_diskstats() {
-    __metric_node_disk_reads_completed_total =
+    __metric_node_disk_reads_completed_total_count =
         prom_collector_registry_must_register_metric(prom_counter_new(
-            "node_disk_reads_completed_total", "The total number of reads completed successfully.",
-            1, (const char *[]){ "device" }));
+            "node_disk_reads_completed_total_count",
+            "The total number of reads completed successfully.", 1, (const char *[]){ "device" }));
 
-    __metric_node_disk_reads_merged_total = prom_collector_registry_must_register_metric(
-        prom_counter_new("node_disk_reads_merged_total", "The total number of reads merged.", 1,
-                         (const char *[]){ "device" }));
+    __metric_node_disk_reads_merged_total_count = prom_collector_registry_must_register_metric(
+        prom_counter_new("node_disk_reads_merged_total_count", "The total number of reads merged.",
+                         1, (const char *[]){ "device" }));
 
-    __metric_node_disk_read_bytes_total =
+    __metric_node_disk_read_total_bytes =
         prom_collector_registry_must_register_metric(prom_counter_new(
-            "node_disk_read_bytes_total", "The total number of bytes read successfully.", 1,
+            "node_disk_read_total_bytes", "The total number of bytes read successfully.", 1,
             (const char *[]){ "device" }));
 
-    __metric_node_disk_read_time_seconds_total =
+    __metric_node_disk_read_spent_total_seconds =
         prom_collector_registry_must_register_metric(prom_counter_new(
-            "node_disk_read_time_seconds_total", "The total number of seconds spent by all reads.",
+            "node_disk_read_spent_total_seconds", "The total number of seconds spent by all reads.",
             1, (const char *[]){ "device" }));
 
-    __metric_node_disk_writes_completed_total =
+    __metric_node_disk_writes_completed_total_count =
         prom_collector_registry_must_register_metric(prom_counter_new(
-            "node_disk_writes_completed_total",
+            "node_disk_writes_completed_total_count",
             "The total number of writes completed successfully.", 1, (const char *[]){ "device" }));
 
-    __metric_node_disk_writes_merged_total = prom_collector_registry_must_register_metric(
-        prom_counter_new("node_disk_writes_merged_total", "The number of writes merged.", 1,
+    __metric_node_disk_writes_merged_total_count = prom_collector_registry_must_register_metric(
+        prom_counter_new("node_disk_writes_merged_total_count", "The number of writes merged.", 1,
                          (const char *[]){ "device" }));
 
-    __metric_node_disk_written_bytes_total =
+    __metric_node_disk_writes_total_bytes =
         prom_collector_registry_must_register_metric(prom_counter_new(
-            "node_disk_written_bytes_total", "The total number of bytes written successfully.", 1,
+            "node_disk_writes_total_bytes", "The total number of bytes written successfully.", 1,
             (const char *[]){ "device" }));
 
-    __metric_node_disk_write_time_seconds_total = prom_collector_registry_must_register_metric(
-        prom_counter_new("node_disk_write_time_seconds_total",
+    __metric_node_disk_write_spent_total_seconds = prom_collector_registry_must_register_metric(
+        prom_counter_new("node_disk_write_spent_total_seconds",
                          "This is the total number of seconds spent by all writes.", 1,
                          (const char *[]){ "device" }));
 
@@ -255,31 +255,32 @@ int32_t init_collector_proc_diskstats() {
         prom_gauge_new("node_disk_io_now", "The number of I/Os currently in progress.", 1,
                        (const char *[]){ "device" }));
 
-    __metric_node_disk_io_time_seconds_total = prom_collector_registry_must_register_metric(
-        prom_counter_new("node_disk_io_time_seconds_total", "Total seconds spent doing I/Os.", 1,
+    __metric_node_disk_io_spent_total_seconds = prom_collector_registry_must_register_metric(
+        prom_counter_new("node_disk_io_spent_total_seconds", "Total seconds spent doing I/Os.", 1,
                          (const char *[]){ "device" }));
 
-    __metric_node_disk_io_time_weighted_seconds_total =
+    __metric_node_disk_io_time_weighted_total_seconds =
         prom_collector_registry_must_register_metric(prom_counter_new(
-            "node_disk_io_time_weighted_seconds_total",
+            "node_disk_io_time_weighted_total_seconds",
             "The weighted # of seconds spent doing I/Os.", 1, (const char *[]){ "device" }));
 
-    __metric_node_disk_discards_completed_total = prom_collector_registry_must_register_metric(
-        prom_counter_new("node_disk_discards_completed_total",
-                         "The total number of discards completed successfully.", 1,
+    __metric_node_disk_discards_completed_total_count =
+        prom_collector_registry_must_register_metric(
+            prom_counter_new("node_disk_discards_completed_total_count",
+                             "The total number of discards completed successfully.", 1,
+                             (const char *[]){ "device" }));
+
+    __metric_node_disk_discards_merged_total_count = prom_collector_registry_must_register_metric(
+        prom_counter_new("node_disk_discards_merged_total_count",
+                         "The total number of discards merged.", 1, (const char *[]){ "device" }));
+
+    __metric_node_discarded_sectors_total_count = prom_collector_registry_must_register_metric(
+        prom_counter_new("node_discarded_sectors_total_count",
+                         "The total number of sectors discarded successfully.", 1,
                          (const char *[]){ "device" }));
 
-    __metric_node_disk_discards_merged_total = prom_collector_registry_must_register_metric(
-        prom_counter_new("node_disk_discards_merged_total", "The total number of discards merged.",
-                         1, (const char *[]){ "device" }));
-
-    __metric_node_discarded_sectors_total =
-        prom_collector_registry_must_register_metric(prom_counter_new(
-            "node_discarded_sectors_total", "The total number of sectors discarded successfully.",
-            1, (const char *[]){ "device" }));
-
-    __metric_node_disk_discard_time_seconds_total = prom_collector_registry_must_register_metric(
-        prom_counter_new("node_disk_discard_time_seconds_total",
+    __metric_node_disk_discard_spent_total_seconds = prom_collector_registry_must_register_metric(
+        prom_counter_new("node_disk_discard_spent_total_seconds",
                          "This is the total number of seconds spent by all discards.", 1,
                          (const char *[]){ "device" }));
 
@@ -478,44 +479,44 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
             //       major, minor, dev_name, dev->prev_stats_id,
             //       dev->curr_stats_id);
             // 设置指标
-            prom_counter_add(__metric_node_disk_reads_completed_total,
+            prom_counter_add(__metric_node_disk_reads_completed_total_count,
                              (double)curr_devstats->rd_ios, (const char *[]){ dev_name });
-            prom_counter_add(__metric_node_disk_reads_merged_total,
+            prom_counter_add(__metric_node_disk_reads_merged_total_count,
                              (double)curr_devstats->rd_merges, (const char *[]){ dev_name });
-            prom_counter_add(__metric_node_disk_read_bytes_total,
+            prom_counter_add(__metric_node_disk_read_total_bytes,
                              (double)(curr_devstats->rd_sectors * dev->sector_size),
                              (const char *[]){ dev_name });
             // 毫秒转换为秒
-            prom_counter_add(__metric_node_disk_read_time_seconds_total,
+            prom_counter_add(__metric_node_disk_read_spent_total_seconds,
                              (double)curr_devstats->rd_ticks * 0.001, (const char *[]){ dev_name });
 
-            prom_counter_add(__metric_node_disk_writes_completed_total,
+            prom_counter_add(__metric_node_disk_writes_completed_total_count,
                              (double)curr_devstats->wr_ios, (const char *[]){ dev_name });
-            prom_counter_add(__metric_node_disk_writes_merged_total,
+            prom_counter_add(__metric_node_disk_writes_merged_total_count,
                              (double)curr_devstats->wr_merges, (const char *[]){ dev_name });
-            prom_counter_add(__metric_node_disk_written_bytes_total,
+            prom_counter_add(__metric_node_disk_writes_total_bytes,
                              (double)(curr_devstats->wr_sectors * dev->sector_size),
                              (const char *[]){ dev_name });
             // 毫秒转换为秒
-            prom_counter_add(__metric_node_disk_write_time_seconds_total,
+            prom_counter_add(__metric_node_disk_write_spent_total_seconds,
                              (double)curr_devstats->wr_ticks * 0.001, (const char *[]){ dev_name });
 
             prom_gauge_set(__metric_node_disk_io_now, (double)curr_devstats->ios_pgr,
                            (const char *[]){ dev_name });
-            prom_counter_add(__metric_node_disk_io_time_seconds_total,
+            prom_counter_add(__metric_node_disk_io_spent_total_seconds,
                              (double)curr_devstats->ios_total_ticks * 0.001,
                              (const char *[]){ dev_name });
-            prom_counter_add(__metric_node_disk_io_time_weighted_seconds_total,
+            prom_counter_add(__metric_node_disk_io_time_weighted_total_seconds,
                              (double)curr_devstats->weighted_io_ticks * 0.001,
                              (const char *[]){ dev_name });
 
-            prom_counter_add(__metric_node_disk_discards_completed_total,
+            prom_counter_add(__metric_node_disk_discards_completed_total_count,
                              (double)curr_devstats->dc_ios, (const char *[]){ dev_name });
-            prom_counter_add(__metric_node_disk_discards_merged_total,
+            prom_counter_add(__metric_node_disk_discards_merged_total_count,
                              (double)curr_devstats->dc_merges, (const char *[]){ dev_name });
-            prom_counter_add(__metric_node_discarded_sectors_total,
+            prom_counter_add(__metric_node_discarded_sectors_total_count,
                              (double)curr_devstats->dc_sectors, (const char *[]){ dev_name });
-            prom_counter_add(__metric_node_disk_discard_time_seconds_total,
+            prom_counter_add(__metric_node_disk_discard_spent_total_seconds,
                              (double)curr_devstats->dc_ticks * 0.001, (const char *[]){ dev_name });
             continue;
         }
@@ -636,57 +637,57 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
         }
 
         // 设置指标
-        prom_counter_add(__metric_node_disk_reads_completed_total,
+        prom_counter_add(__metric_node_disk_reads_completed_total_count,
                          (double)(curr_devstats->rd_ios - prev_devstats->rd_ios),
                          (const char *[]){ dev_name });
-        prom_counter_add(__metric_node_disk_reads_merged_total,
+        prom_counter_add(__metric_node_disk_reads_merged_total_count,
                          (double)(curr_devstats->rd_merges - prev_devstats->rd_merges),
                          (const char *[]){ dev_name });
         prom_counter_add(
-            __metric_node_disk_read_bytes_total,
+            __metric_node_disk_read_total_bytes,
             (double)((curr_devstats->rd_sectors - prev_devstats->rd_sectors) * dev->sector_size),
             (const char *[]){ dev_name });
         // 毫秒转换为秒
-        prom_counter_add(__metric_node_disk_read_time_seconds_total,
+        prom_counter_add(__metric_node_disk_read_spent_total_seconds,
                          (double)(curr_devstats->rd_ticks - prev_devstats->rd_ticks) * 0.001,
                          (const char *[]){ dev_name });
 
-        prom_counter_add(__metric_node_disk_writes_completed_total,
+        prom_counter_add(__metric_node_disk_writes_completed_total_count,
                          (double)(curr_devstats->wr_ios - prev_devstats->wr_ios),
                          (const char *[]){ dev_name });
-        prom_counter_add(__metric_node_disk_writes_merged_total,
+        prom_counter_add(__metric_node_disk_writes_merged_total_count,
                          (double)(curr_devstats->wr_merges - prev_devstats->wr_merges),
                          (const char *[]){ dev_name });
         prom_counter_add(
-            __metric_node_disk_written_bytes_total,
+            __metric_node_disk_writes_total_bytes,
             (double)((curr_devstats->wr_sectors - prev_devstats->wr_sectors) * dev->sector_size),
             (const char *[]){ dev_name });
         // 毫秒转换为秒
-        prom_counter_add(__metric_node_disk_write_time_seconds_total,
+        prom_counter_add(__metric_node_disk_write_spent_total_seconds,
                          (double)(curr_devstats->wr_ticks - prev_devstats->wr_ticks) * 0.001,
                          (const char *[]){ dev_name });
 
         prom_gauge_set(__metric_node_disk_io_now, (double)curr_devstats->ios_pgr,
                        (const char *[]){ dev_name });
-        prom_counter_add(__metric_node_disk_io_time_seconds_total,
+        prom_counter_add(__metric_node_disk_io_spent_total_seconds,
                          (double)(curr_devstats->ios_total_ticks - prev_devstats->ios_total_ticks)
                              * 0.001,
                          (const char *[]){ dev_name });
         prom_counter_add(
-            __metric_node_disk_io_time_weighted_seconds_total,
+            __metric_node_disk_io_time_weighted_total_seconds,
             (double)(curr_devstats->weighted_io_ticks - prev_devstats->weighted_io_ticks) * 0.001,
             (const char *[]){ dev_name });
 
-        prom_counter_add(__metric_node_disk_discards_completed_total,
+        prom_counter_add(__metric_node_disk_discards_completed_total_count,
                          (double)(curr_devstats->dc_ios - prev_devstats->dc_ios),
                          (const char *[]){ dev_name });
-        prom_counter_add(__metric_node_disk_discards_merged_total,
+        prom_counter_add(__metric_node_disk_discards_merged_total_count,
                          (double)(curr_devstats->dc_merges - prev_devstats->dc_merges),
                          (const char *[]){ dev_name });
-        prom_counter_add(__metric_node_discarded_sectors_total,
+        prom_counter_add(__metric_node_discarded_sectors_total_count,
                          (double)(curr_devstats->dc_sectors - prev_devstats->dc_sectors),
                          (const char *[]){ dev_name });
-        prom_counter_add(__metric_node_disk_discard_time_seconds_total,
+        prom_counter_add(__metric_node_disk_discard_spent_total_seconds,
                          (double)(curr_devstats->dc_ticks - prev_devstats->dc_ticks) * 0.001,
                          (const char *[]){ dev_name });
 
