@@ -207,24 +207,24 @@ int32_t init_collector_proc_meminfo() {
 
     // 初始化指标
     __metric_memtotal = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_total_kilobytes",
+        prom_gauge_new("node_memory_MemTotal_kilobytes",
                        "Total amount of usable RAM, in kilobytes, which is physical RAM minus a "
                        "number of reserved bits and the kernel binary code.",
                        1, (const char *[]){ "meminfo" }));
     __metric_memfree = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_free_kilobytes",
+        prom_gauge_new("node_memory_MemFree_kilobytes",
                        "The amount of physical RAM, in kilobytes, left unused by the system.", 1,
                        (const char *[]){ "meminfo" }));
     __metric_memused = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_used_kilobytes", "System RAM Used", 1, (const char *[]){ "meminfo" }));
+        "node_memory_MemUsed_kilobytes", "System RAM Used", 1, (const char *[]){ "meminfo" }));
     __metric_memcached = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_cached_kilobytes", "System RAM Cached", 1, (const char *[]){ "meminfo" }));
+        "node_memory_Cached_kilobytes", "System RAM Cached", 1, (const char *[]){ "meminfo" }));
     __metric_buffers = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_buffers_kilobytes",
+        prom_gauge_new("node_memory_Buffers_kilobytes",
                        "The amount, in kilobytes, of temporary storage for raw disk blocks.", 1,
                        (const char *[]){ "meminfo" }));
     __metric_memavailable = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_available_kilobytes",
+        prom_gauge_new("node_memory_MemAvailable_kilobytes",
                        "The amount of physical RAM, in kilobytes, used as cache memory.", 1,
                        (const char *[]){ "meminfo" }));
 
