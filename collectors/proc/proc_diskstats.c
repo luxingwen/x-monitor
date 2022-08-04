@@ -117,12 +117,12 @@ static prom_counter_t *__metric_node_disk_reads_completed_total_count = NULL,
                       *UNUSED(__metric_node_disk_end) = NULL;
 
 static prom_gauge_t *__metric_node_disk_io_now = NULL, *__metric_node_disk_iostat_tps = NULL,
-                    *__metric_node_disk_iostat_read_requests_second = NULL,
-                    *__metric_node_disk_iostat_write_requests_second = NULL,
-                    *__metric_node_disk_iostat_read_kilobytes_second = NULL,
-                    *__metric_node_disk_iostat_write_kilobytes_second = NULL,
-                    *__metric_node_disk_iostat_read_requests_merged_second = NULL,
-                    *__metric_node_disk_iostat_write_requests_merged_second = NULL,
+                    *__metric_node_disk_iostat_read_requests_per_sec = NULL,
+                    *__metric_node_disk_iostat_write_requests_per_sec = NULL,
+                    *__metric_node_disk_iostat_read_kilobytes_per_sec = NULL,
+                    *__metric_node_disk_iostat_write_kilobytes_per_sec = NULL,
+                    *__metric_node_disk_iostat_read_requests_merged_per_sec = NULL,
+                    *__metric_node_disk_iostat_write_requests_merged_per_sec = NULL,
                     *__metric_node_disk_iostat_r_await_msecs = NULL,
                     *__metric_node_disk_iostat_w_await_msecs = NULL,
                     *__metric_node_disk_iostat_await_msecs = NULL,
@@ -289,37 +289,38 @@ int32_t init_collector_proc_diskstats() {
         "Indicate the number of transfers per second that were issued to the device.", 1,
         (const char *[]){ "device" }));
 
-    __metric_node_disk_iostat_read_requests_second =
+    __metric_node_disk_iostat_read_requests_per_sec =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_disk_iostat_read_requests_second",
+            "node_disk_iostat_read_requests_per_sec",
             "The number (after merges) of read requests completed per second for the device.", 1,
             (const char *[]){ "device" }));
 
-    __metric_node_disk_iostat_write_requests_second =
+    __metric_node_disk_iostat_write_requests_per_sec =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_disk_iostat_write_requests_second",
+            "node_disk_iostat_write_requests_per_sec",
             "The number (after merges) of write requests completed per second for the device.", 1,
             (const char *[]){ "device" }));
 
-    __metric_node_disk_iostat_read_kilobytes_second = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_disk_iostat_read_kbytes_second",
+    __metric_node_disk_iostat_read_kilobytes_per_sec = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_disk_iostat_read_kilobytes_per_sec",
                        "The number of kilobytes read from the device per second.", 1,
                        (const char *[]){ "device" }));
 
-    __metric_node_disk_iostat_write_kilobytes_second = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_disk_iostat_write_kbytes_second",
-                       "The number of kilobytes written to the device per second.", 1,
-                       (const char *[]){ "device" }));
+    __metric_node_disk_iostat_write_kilobytes_per_sec =
+        prom_collector_registry_must_register_metric(
+            prom_gauge_new("node_disk_iostat_write_kilobytes_per_sec",
+                           "The number of kilobytes written to the device per second.", 1,
+                           (const char *[]){ "device" }));
 
-    __metric_node_disk_iostat_read_requests_merged_second =
+    __metric_node_disk_iostat_read_requests_merged_per_sec =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_disk_iostat_read_request_merged_second",
+            "node_disk_iostat_read_request_merged_per_sec",
             "The number of read requests merged per second that were queued to the device.", 1,
             (const char *[]){ "device" }));
 
-    __metric_node_disk_iostat_write_requests_merged_second =
+    __metric_node_disk_iostat_write_requests_merged_per_sec =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_disk_iostat_write_request_merged_second",
+            "node_disk_iostat_write_request_merged_per_sec",
             "The number of write requests merged per second that were queued to the device.", 1,
             (const char *[]){ "device" }));
 
@@ -350,19 +351,19 @@ int32_t init_collector_proc_diskstats() {
                        1, (const char *[]){ "device" }));
 
     __metric_node_disk_iostat_areq_sz = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_disk_iostat_avg_request_kbytes",
+        "node_disk_iostat_avg_request_kilobytes",
         "The average size (in kilobytes) of the I/O requests that were issued to the device.", 1,
         (const char *[]){ "device" }));
 
     __metric_node_disk_iostat_rareq_sz =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_disk_iostat_avg_request_read_kbytes",
+            "node_disk_iostat_avg_request_read_kilobytes",
             "The average size (in kilobytes) of the read requests that were issued to the device.",
             1, (const char *[]){ "device" }));
 
     __metric_node_disk_iostat_wareq_sz =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_disk_iostat_avg_request_write_kbytes",
+            "node_disk_iostat_avg_request_write_kilobytes",
             "The average size (in kilobytes) of the write requests that were issued to the device.",
             1, (const char *[]){ "device" }));
 
@@ -692,17 +693,17 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
                          (const char *[]){ dev_name });
 
         prom_gauge_set(__metric_node_disk_iostat_tps, tps_per_sec, (const char *[]){ dev_name });
-        prom_gauge_set(__metric_node_disk_iostat_read_requests_second, rd_ios_per_sec,
+        prom_gauge_set(__metric_node_disk_iostat_read_requests_per_sec, rd_ios_per_sec,
                        (const char *[]){ dev_name });
-        prom_gauge_set(__metric_node_disk_iostat_write_requests_second, wr_ios_per_sec,
+        prom_gauge_set(__metric_node_disk_iostat_write_requests_per_sec, wr_ios_per_sec,
                        (const char *[]){ dev_name });
-        prom_gauge_set(__metric_node_disk_iostat_read_kilobytes_second, rd_kb_per_sec,
+        prom_gauge_set(__metric_node_disk_iostat_read_kilobytes_per_sec, rd_kb_per_sec,
                        (const char *[]){ dev_name });
-        prom_gauge_set(__metric_node_disk_iostat_write_kilobytes_second, wr_kb_per_sec,
+        prom_gauge_set(__metric_node_disk_iostat_write_kilobytes_per_sec, wr_kb_per_sec,
                        (const char *[]){ dev_name });
-        prom_gauge_set(__metric_node_disk_iostat_read_requests_merged_second, rd_merges_per_sec,
+        prom_gauge_set(__metric_node_disk_iostat_read_requests_merged_per_sec, rd_merges_per_sec,
                        (const char *[]){ dev_name });
-        prom_gauge_set(__metric_node_disk_iostat_write_requests_merged_second, wr_merges_per_sec,
+        prom_gauge_set(__metric_node_disk_iostat_write_requests_merged_per_sec, wr_merges_per_sec,
                        (const char *[]){ dev_name });
         prom_gauge_set(__metric_node_disk_iostat_r_await_msecs, r_await,
                        (const char *[]){ dev_name });
