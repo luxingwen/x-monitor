@@ -10,7 +10,7 @@
 // https://biscuitos.github.io/blog/HISTORY-PERCPU/
 // http://calimeroteknik.free.fr/blag/?article20/really-used-memory-on-gnu-linux
 // https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/deployment_guide/s2-proc-meminfo
-// https://blog.51cto.com/u_13434336/2488970
+// http://linuxperf.com/?p=142
 
 #include "plugin_proc.h"
 
@@ -79,9 +79,9 @@ static uint64_t
     // 内核数据结构缓存
     __slab = 0,
     // 可收回slab内存
-    __slab_reclaimable = 0,
+    __slab_reclaimble = 0,
     // 不可收回slab内存
-    __slab_unreclaimable = 0,
+    __slab_unreclaim = 0,
     // 内核消耗的内存
     __kernel_stack = 0,
     // 管理内存分页的索引表的大小
@@ -140,14 +140,15 @@ static prom_gauge_t *__metric_memtotal = NULL, *__metric_memfree = NULL, *__metr
                     *__metric_inactive = NULL, *__metric_active_anon = NULL,
                     *__metric_inactive_anon = NULL, *__metric_active_file = NULL,
                     *__metric_inactive_file = NULL, *__metric_unevictable = NULL,
-                    *__metric_mlocked = NULL, *__metric_swapused = NULL, *__metric_swapfree = NULL,
-                    *__metric_hardwarecorrupted = NULL, *__metric_committedas = NULL,
+                    *__metric_mlocked = NULL, *__metric_swaptotal = NULL, *__metric_swapused = NULL,
+                    *__metric_swapfree = NULL, *__metric_hardwarecorrupted = NULL,
+                    *__metric_commit_limit = NULL, *__metric_committed_as = NULL,
                     *__metric_dirty = NULL, *__metric_writeback = NULL, *__metric_anonpages = NULL,
                     *__metric_mapped = NULL, *__metric_shmem = NULL, *__metric_writebacktmp = NULL,
                     *__metric_nfsunstable = NULL, *__metric_bounce = NULL, *__metric_slab = NULL,
                     *__metric_kernelstack = NULL, *__metric_pagetables = NULL,
                     *__metric_vmallocused = NULL, *__metric_percpu = NULL,
-                    *__metric_slabreclaimable = NULL, *__metric_slabunreclaimable = NULL,
+                    *__metric_slabreclaimable = NULL, *__metric_slabunreclaim = NULL,
                     *__metric_hugepagesfree = NULL, *__metric_hugepagesused = NULL,
                     *__metric_hugepagesrsvd = NULL, *__metric_hugepagessurp = NULL,
                     *__metric_anonhugepages = NULL, *__metric_shmemhugepages = NULL;
@@ -180,8 +181,8 @@ int32_t init_collector_proc_meminfo() {
     arl_expect(__arl_base, "Mapped", &__mapped);
     arl_expect(__arl_base, "Shmem", &__shmem);
     arl_expect(__arl_base, "Slab", &__slab);
-    arl_expect(__arl_base, "SRecliaimable", &__slab_reclaimable);
-    arl_expect(__arl_base, "SUnreclaimable", &__slab_unreclaimable);
+    arl_expect(__arl_base, "SReclaimable", &__slab_reclaimble);
+    arl_expect(__arl_base, "SUnreclaim", &__slab_unreclaim);
     arl_expect(__arl_base, "KernelStack", &__kernel_stack);
     arl_expect(__arl_base, "PageTables", &__page_tables);
     arl_expect(__arl_base, "NFS_Unstable", &__nfs_unstable);
@@ -229,148 +230,157 @@ int32_t init_collector_proc_meminfo() {
                        (const char *[]){ "meminfo" }));
 
     __metric_active = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_active_kilobytes",
+        prom_gauge_new("node_memory_Active_kilobytes",
                        "The amount of memory, in kilobytes, that has been used more recently and "
                        "is usually not reclaimed unless absolutely necessary",
                        1, (const char *[]){ "meminfo" }));
     __metric_inactive = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_inactive_kilobytes",
+        prom_gauge_new("node_memory_Inactive_kilobytes",
                        "The amount of memory, in kilobytes, that has been used less recently and "
                        "is more eligible to be reclaimed for other purposes",
                        1, (const char *[]){ "meminfo" }));
     __metric_active_anon = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_active_anon_kilobytes",
+        "node_memory_Active_anon_kilobytes",
         "The amount of anonymous and tmpfs/shmem memory, in kilobytes, that is in active use, or "
         "was in active use since the last time the system moved something to swap.",
         1, (const char *[]){ "meminfo" }));
     __metric_inactive_anon = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_inactive_anon_kilobytes",
+        prom_gauge_new("node_memory_Inactive_anon_kilobytes",
                        "The amount of anonymous and tmpfs/shmem memory, in kilobytes, that is a "
                        "candidate for eviction.",
                        1, (const char *[]){ "meminfo" }));
     __metric_active_file = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_active_file_kilobytes",
+        prom_gauge_new("node_memory_Active_file_kilobytes",
                        "The amount of file cache memory, in kilobytes, that is in active use, or "
                        "was in active use since the last time the system reclaimed memory.",
                        1, (const char *[]){ "meminfo" }));
     __metric_inactive_file = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_inactive_file_kilobytes",
+        prom_gauge_new("node_memory_Inactive_file_kilobytes",
                        "The amount of file cache memory, in kilobytes, that is newly loaded from "
                        "the disk, or is a candidate for reclaiming.",
                        1, (const char *[]){ "meminfo" }));
     __metric_unevictable = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_unevictable_kilobytes",
+        prom_gauge_new("node_memory_Unevictable_kilobytes",
                        " The amount of memory, in kilobytes, discovered by the pageout code, that "
                        "is not evictable because it is locked into memory by user programs.",
                        1, (const char *[]){ "meminfo" }));
     __metric_mlocked = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_mlocked_kilobytes",
+        prom_gauge_new("node_memory_Mlocked_kilobytes",
                        " The amount of memory, in kilobytes, discovered by the pageout code, that "
                        "is not evictable because it is locked into memory by user programs.",
                        1, (const char *[]){ "meminfo" }));
 
+    __metric_swaptotal = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_memory_SwapTotal_kilobytes", "Total amount of swap space available.",
+                       1, (const char *[]){ "meminfo" }));
     __metric_swapused = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_swap_used_kilobytes", "System Swap Used", 1, (const char *[]){ "meminfo" }));
+        "node_memory_SwapUsed_kilobytes", "Amount of swap space that is currently used.", 1,
+        (const char *[]){ "meminfo" }));
     __metric_swapfree = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_swap_free_kilobytes", "System Swap Free", 1, (const char *[]){ "meminfo" }));
+        "node_memory_SwapFree_kilobytes", "Amount of swap space that is currently unused.", 1,
+        (const char *[]){ "meminfo" }));
 
     __metric_hardwarecorrupted = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_hardware_corrupted_kilobytes",
+        prom_gauge_new("node_memory_HardwareCorrupted_kilobytes",
                        "Corrupted Memory, detected by ECC", 1, (const char *[]){ "meminfo" }));
 
-    __metric_committedas = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_commited_as_kilobytes", "Committed (Allocated) Memory", 1,
+    __metric_commit_limit = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_memory_CommitLimit_kilobytes",
+                       "The amount of memory, in kilobytes, that can be used by the kernel.", 1,
+                       (const char *[]){ "meminfo" }));
+    __metric_committed_as = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_memory_Committed_AS_kilobytes", "Committed (Allocated) Memory", 1,
                        (const char *[]){ "meminfo" }));
 
     __metric_dirty = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_dirty_kilobytes",
+        "node_memory_Dirty_kilobytes",
         "The total amount of memory, in kilobytes, waiting to be written back to the disk.", 1,
         (const char *[]){ "meminfo" }));
 
     __metric_writeback = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_writeback_kilobytes",
+        "node_memory_Writeback_kilobytes",
         "The total amount of memory, in kilobytes, actively being written back to the disk.", 1,
         (const char *[]){ "meminfo" }));
 
     __metric_anonpages = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_anon_pages_kilobytes",
+        prom_gauge_new("node_memory_AnonPages_kilobytes",
                        " The amount of memory, in kilobytes, discovered by the pageout code, that "
                        "is not evictable because it is locked into memory by user programs.",
                        1, (const char *[]){ "meminfo" }));
     __metric_mapped = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_mapped_kilobytes",
+        "node_memory_Mapped_kilobytes",
         "The memory, in kilobytes, used for files that have been mmaped, such as libraries.", 1,
         (const char *[]){ "meminfo" }));
     __metric_shmem = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_shmem_kilobytes",
+        "node_memory_Shmem_kilobytes",
         "The total amount of memory, in kilobytes, used by shared memory (shmem) and tmpfs.", 1,
         (const char *[]){ "meminfo" }));
 
     __metric_writebacktmp = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_writeback_tmp_kilobytes",
+        "node_memory_WritebackTmp_kilobytes",
         "The amount of memory, in kilobytes, used by FUSE for temporary writeback buffers.", 1,
         (const char *[]){ "meminfo" }));
     __metric_nfsunstable = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_nfs_unstable_kilobytes",
+        prom_gauge_new("node_memory_NFS_Unstable_kilobytes",
                        "The amount, in kilobytes, of NFS pages sent to the server but not yet "
                        "committed to the stable storage.",
                        1, (const char *[]){ "meminfo" }));
     __metric_bounce = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_bounce_kilobytes",
+        "node_memory_Bounce_kilobytes",
         "The amount of memory, in kilobytes, used for the block device \"bounce buffers\".", 1,
         (const char *[]){ "meminfo" }));
 
     __metric_slab = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_slab_kilobytes",
+        prom_gauge_new("node_memory_Slab_kilobytes",
                        "The total amount of memory, in kilobytes, used by the kernel to cache data "
                        "structures for its own use.",
                        1, (const char *[]){ "meminfo" }));
     __metric_kernelstack = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_kernelstack_kilobytes",
+        prom_gauge_new("node_memory_KernelStack_kilobytes",
                        "The amount of memory, in kilobytes, used by the kernel stack allocations "
                        "done for each task in the system.",
                        1, (const char *[]){ "meminfo" }));
     __metric_pagetables = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_pagetables_kilobytes",
+        "node_memory_PageTables_kilobytes",
         "The total amount of memory, in kilobytes, dedicated to the lowest page table level.", 1,
         (const char *[]){ "meminfo" }));
     __metric_vmallocused = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_vmalloc_used_kilobytes",
+        prom_gauge_new("node_memory_VmallocUsed_kilobytes",
                        "The total amount of memory, in kilobytes, of used virtual address space.",
                        1, (const char *[]){ "meminfo" }));
     __metric_percpu = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_percpu_kilobytes", "Per-CPU Memory Used by Kernel", 1,
+        prom_gauge_new("node_memory_Percpu_kilobytes", "Per-CPU Memory Used by Kernel", 1,
                        (const char *[]){ "meminfo" }));
 
     __metric_slabreclaimable = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_slab_reclaimable_kilobytes", "Slab Reclaimable Kernel Memory",
-                       1, (const char *[]){ "meminfo" }));
-    __metric_slabunreclaimable = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_slab_unreclaimable_kilobytes",
-                       "Slab Unreclaimable Kernel Memory", 1, (const char *[]){ "meminfo" }));
+        prom_gauge_new("node_memory_SReclaimable_kilobytes", "Slab Reclaimable Kernel Memory", 1,
+                       (const char *[]){ "meminfo" }));
+    __metric_slabunreclaim = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_memory_SUnreclaim_kilobytes", "Slab sunreclaim Kernel Memory", 1,
+                       (const char *[]){ "meminfo" }));
 
     __metric_hugepagesused = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_hugepages_used", "Dedicated HugePages Used Memory", 1,
+        prom_gauge_new("node_memory_HugePages_used", "Dedicated HugePages Used Memory", 1,
                        (const char *[]){ "meminfo" }));
     __metric_hugepagesfree = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_hugepages_free",
+        prom_gauge_new("node_memory_HugePages_free",
                        "The total number of hugepages available for the system. This statistic "
                        "only appears on the x86, Itanium, and AMD64 architectures.",
                        1, (const char *[]){ "meminfo" }));
     __metric_hugepagesrsvd = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_memory_hugepages_rsvd", "The number of unused huge pages reserved for hugetlbfs.", 1,
+        "node_memory_HugePages_rsvd", "The number of unused huge pages reserved for hugetlbfs.", 1,
         (const char *[]){ "meminfo" }));
     __metric_hugepagessurp = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_hugepages_surp", " The number of surplus huge pages.", 1,
+        prom_gauge_new("node_memory_HugePages_surp", " The number of surplus huge pages.", 1,
                        (const char *[]){ "meminfo" }));
 
     __metric_anonhugepages = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_anon_hugepages_kilobytes",
+        prom_gauge_new("node_memory_AnonHugePages_kilobytes",
                        "The total amount of memory, in kilobytes, used by huge pages that are not "
                        "backed by files and are mapped into userspace page tables.",
                        1, (const char *[]){ "meminfo" }));
     __metric_shmemhugepages = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_memory_shmem_hugepages_kilobytes",
+        prom_gauge_new("node_memory_ShmemHugePages_kilobytes",
                        "Transparent HugePages Shared Memory", 1, (const char *[]){ "meminfo" }));
 
     debug("[PLUGIN_PROC:proc_meminfo] init successed");
@@ -420,7 +430,7 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     // 设置指标
 
     // MemFree MemUsed MemCached Buffers
-    uint64_t mem_cached = __cached + __slab_reclaimable - __shmem;
+    uint64_t mem_cached = __cached + __slab_reclaimble - __shmem;
     uint64_t mem_used = __mem_total - __mem_free - mem_cached - __buffers;
     prom_gauge_set(__metric_memtotal, __mem_total, (const char *[]){ "mem" });
     prom_gauge_set(__metric_memfree, __mem_free, (const char *[]){ "mem" });
@@ -453,6 +463,7 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
 
     // SwapUsed SwapFree
     uint64_t swap_used = __swap_total - __swap_free;
+    prom_gauge_set(__metric_swaptotal, __swap_total, (const char *[]){ "swap" });
     prom_gauge_set(__metric_swapused, swap_used, (const char *[]){ "swap" });
     prom_gauge_set(__metric_swapfree, __swap_free, (const char *[]){ "swap" });
     debug("[PLUGIN_PROC:proc_meminfo] swap_used:%lu kB, swap_free:%lu kB", swap_used, __swap_free);
@@ -461,8 +472,9 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     prom_gauge_set(__metric_hardwarecorrupted, __hardware_corrupted,
                    (const char *[]){ "hwcorrupt" });
 
+    prom_gauge_set(__metric_commit_limit, __commit_limit, (const char *[]){ "kernel" });
     // Committed_AS Committed (Allocated) Memory
-    prom_gauge_set(__metric_committedas, __committed_as, (const char *[]){ "committed" });
+    prom_gauge_set(__metric_committed_as, __committed_as, (const char *[]){ "kernel" });
 
     debug(
         "[PLUGIN_PROC:proc_meminfo] hardware_corrupted:%lu kB, Committed (Allocated) Memory:%lu kB",
@@ -481,22 +493,18 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     // Slab KernelStack PageTables VmallocUsed Percpu
     prom_gauge_set(__metric_slab, __slab, (const char *[]){ "kernel" });
     prom_gauge_set(__metric_kernelstack, __kernel_stack, (const char *[]){ "kernel" });
-    prom_gauge_set(__metric_pagetables, __page_tables,
-                   (const char *[]){
-
-                       "kernel",
-                   });
+    prom_gauge_set(__metric_pagetables, __page_tables, (const char *[]){ "kernel" });
     prom_gauge_set(__metric_vmallocused, __vmalloc_used, (const char *[]){ "kernel" });
     prom_gauge_set(__metric_percpu, __mem_percpu, (const char *[]){ "kernel" });
     debug("[PLUGIN_PROC:proc_meminfo] Slab:%lu kB, KernelStack:%lu kB, PageTables:%lu kB, "
           "VmallocUsed:%lu kB, Percpu:%lu kB",
           __slab, __kernel_stack, __page_tables, __vmalloc_used, __mem_percpu);
 
-    // reclaimable unreclaimable
-    prom_gauge_set(__metric_slabreclaimable, __slab_reclaimable, (const char *[]){ "slab" });
-    prom_gauge_set(__metric_slabunreclaimable, __slab_unreclaimable, (const char *[]){ "slab" });
-    debug("[PLUGIN_PROC:proc_meminfo] SlabReclaimable:%lu kB, SlabUnreclaimable:%lu kB",
-          __slab_reclaimable, __slab_unreclaimable);
+    // reclaimable reclaim
+    prom_gauge_set(__metric_slabreclaimable, __slab_reclaimble, (const char *[]){ "slab" });
+    prom_gauge_set(__metric_slabunreclaim, __slab_unreclaim, (const char *[]){ "slab" });
+    debug("[PLUGIN_PROC:proc_meminfo] SlabReclaimable:%lu kB, Slabsunreclaim:%lu kB",
+          __slab_reclaimble, __slab_unreclaim);
 
     // HugePages_Total - HugePages_Free - HugePages_Rsvd HugePages_Free HugePages_Rsvd
     // HugePages_Surp
