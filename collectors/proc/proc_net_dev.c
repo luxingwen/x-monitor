@@ -10,7 +10,7 @@
 // struct rtnl_link_stats64
 // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-net
 // https://code-examples.net/en/q/35bc8e
-//
+
 /*
 /sys/class/net/<iface>/operstate
 Indicates the interface RFC2863 operational state as a string.
@@ -43,6 +43,7 @@ Indicates the current physical link state of the interface.
 #include "utils/clocks.h"
 #include "utils/files.h"
 #include "utils/strings.h"
+#include "utils/sds/sds.h"
 
 #include "app_config/app_config.h"
 
@@ -116,10 +117,13 @@ static prom_gauge_t *__metric_node_network_transmit_bytes_total = NULL,
                     *__metric_node_network_receive_compressed_total = NULL,
                     *__metric_node_network_receive_multicast_total = NULL,
                     *__metric_node_network_mtu_bytes = NULL,
-                    *__metric_node_network_virtual_device = NULL;
+                    *__metric_node_network_virtual_device = NULL,
+                    *__metric_node_network_info = NULL,
+                    *__metric_node_network_transmit_queue_length = NULL,
+                    *__metric_node_network_speed = NULL, *__metric_node_network_up = NULL;
 
 static struct net_dev_metric {
-    char     name[XM_DEV_NAME_MAX];
+    char     dev_name[XM_DEV_NAME_MAX];
     uint32_t hash;
 
     int32_t virtual;   // 是不是虚拟设备
@@ -178,27 +182,25 @@ static struct net_dev_metric {
     // Specific values depends on the lower-level interface protocol used. Ethernet devices will
     // show a 'mtu' attribute value of 1500 unless changed.
     int64_t mtu;
-
-    // // Indicates the interface latest or current duplex value
-    // int64_t       duplex;
-    // // Indicates the interface latest or current speed value. Value is an integer representing
-    // the
-    // // link speed in Mbits/sec
-    // int64_t       speed;
+    int64_t speed;
+    sds     duplex;
+    sds     address;
+    sds     broadcast;
+    sds     operstate;
 
     struct net_dev_metric *next;
 } *__net_dev_metric_root = NULL, *__net_dev_metric_last_used = NULL;
 
 static uint32_t __net_dev_added = 0, __net_dev_found = 0;
 
-static struct net_dev_metric *__get_net_dev_metric(const char *name, const char *config_path) {
+static struct net_dev_metric *__get_net_dev_metric(const char *dev_name, const char *config_path) {
     struct net_dev_metric *m = NULL;
 
-    uint32_t hash = simple_hash(name);
+    uint32_t hash = simple_hash(dev_name);
 
     // search from last used
     for (m = __net_dev_metric_last_used; m; m = m->next) {
-        if (hash == m->hash && strcmp(m->name, name) == 0) {
+        if (hash == m->hash && strcmp(m->dev_name, dev_name) == 0) {
             __net_dev_metric_last_used = m->next;
             return m;
         }
@@ -206,7 +208,7 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
 
     // search from begin
     for (m = __net_dev_metric_root; m != __net_dev_metric_last_used; m = m->next) {
-        if (hash == m->hash && strcmp(m->name, name) == 0) {
+        if (hash == m->hash && strcmp(m->dev_name, dev_name) == 0) {
             __net_dev_metric_last_used = m->next;
             return m;
         }
@@ -214,35 +216,107 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
 
     // not found, create new
     m = (struct net_dev_metric *)calloc(1, sizeof(struct net_dev_metric));
-    strlcpy(m->name, name, XM_DEV_NAME_MAX);
-    m->hash = simple_hash(m->name);
-    debug("[PLUGIN_PROC:proc_net_dev] Adding network device metric: '%s' hash: %u", name, m->hash);
+    strlcpy(m->dev_name, dev_name, XM_DEV_NAME_MAX);
+    m->hash = simple_hash(m->dev_name);
+    debug("[PLUGIN_PROC:proc_net_dev] Adding network device metric: '%s' hash: %u", dev_name,
+          m->hash);
 
     // 获取mtu
-    char filename[FILENAME_MAX] = { 0 };
+    char net_dev_property_file[FILENAME_MAX] = { 0 };
 
-    const char *cfg_net_dev_mtu =
-        appconfig_get_member_str(config_path, "path_get_net_dev_mtu", "/sys/class/net/%s/mtu");
-    snprintf(filename, FILENAME_MAX, cfg_net_dev_mtu, name);
-    read_file_to_int64(filename, &m->mtu);
-    debug("[PLUGIN_PROC:proc_net_dev] network interface '%s' mtu file: '%s' mtu: %ld", name,
-          filename, m->mtu);
+    const char *net_dev_file_fmt =
+        appconfig_get_member_str(config_path, "path_netclass_dev_mtu", "/sys/class/net/%s/mtu");
+    snprintf(net_dev_property_file, FILENAME_MAX, net_dev_file_fmt, dev_name);
+    read_file_to_int64(net_dev_property_file, &m->mtu);
 
-    prom_gauge_set(__metric_node_network_mtu_bytes, m->mtu, (const char *[]){ name });
+    prom_gauge_set(__metric_node_network_mtu_bytes, (double)m->mtu, (const char *[]){ dev_name });
 
     // 判断是否是虚拟网卡
-    const char *cfg_net_dev_is_virtual = appconfig_get_member_str(
-        config_path, "path_get_net_dev_is_virtual", "/sys/devices/virtual/net/%s");
-    snprintf(filename, FILENAME_MAX, cfg_net_dev_is_virtual, name);
+    net_dev_file_fmt =
+        appconfig_get_member_str(config_path, "path_dev_is_virtual", "/sys/devices/virtual/net/%s");
+    snprintf(net_dev_property_file, FILENAME_MAX, net_dev_file_fmt, dev_name);
     // 判断目录是否存在
-    if (likely(access(filename, F_OK) == 0)) {
+    if (likely(access(net_dev_property_file, F_OK) == 0)) {
         m->virtual = 1;
     } else {
         m->virtual = 0;
     }
-    prom_counter_add(__metric_node_network_virtual_device, m->virtual, (const char *[]){ name });
-    debug("[PLUGIN_PROC:proc_net_dev] network interface '%s' is_virtual file: '%s' is_virtual: %d",
-          name, filename, m->virtual);
+    prom_counter_add(__metric_node_network_virtual_device, m->virtual,
+                     (const char *[]){ dev_name });
+
+    // 获取speed
+    net_dev_file_fmt =
+        appconfig_get_member_str(config_path, "path_netclass_dev_speed", "/sys/class/net/%s/speed");
+    snprintf(net_dev_property_file, FILENAME_MAX, net_dev_file_fmt, dev_name);
+    if (read_file_to_int64(net_dev_property_file, &m->speed) == 0) {
+        prom_gauge_set(__metric_node_network_speed, (double)m->speed, (const char *[]){ dev_name });
+    }
+
+    // 读取operstate
+    char    net_dev_property_content[128] = { 0 };
+    int32_t net_dev_property_content_len = 0;
+
+    net_dev_file_fmt = appconfig_get_member_str(config_path, "path_netclass_dev_operstate",
+                                                "/sys/class/net/%s/operstate");
+    snprintf(net_dev_property_file, FILENAME_MAX, net_dev_file_fmt, dev_name);
+    net_dev_property_content_len = read_file(net_dev_property_file, net_dev_property_content,
+                                             sizeof(net_dev_property_content));
+    if (net_dev_property_content_len > 0) {
+        if (strncmp(net_dev_property_content, "up", 2) == 0) {
+            prom_gauge_set(__metric_node_network_up, 1, (const char *[]){ dev_name });
+        } else {
+            prom_gauge_set(__metric_node_network_up, 0, (const char *[]){ dev_name });
+        }
+        net_dev_property_content[net_dev_property_content_len - 1] = '\0';
+        m->operstate = sdsnew(net_dev_property_content);
+    }
+
+    // 读取address
+    net_dev_file_fmt = appconfig_get_member_str(config_path, "path_netclass_dev_address",
+                                                "/sys/class/net/%s/address");
+    snprintf(net_dev_property_file, FILENAME_MAX, net_dev_file_fmt, dev_name);
+    net_dev_property_content_len = read_file(net_dev_property_file, net_dev_property_content,
+                                             sizeof(net_dev_property_content));
+    if (net_dev_property_content_len > 0) {
+        net_dev_property_content[net_dev_property_content_len - 1] = '\0';
+        m->address = sdsnew(net_dev_property_content);
+    } else {
+        m->address = sdsempty();
+    }
+
+    // 读取broadcast
+    net_dev_file_fmt = appconfig_get_member_str(config_path, "path_netclass_dev_broadcast",
+                                                "/sys/class/net/%s/broadcast");
+    snprintf(net_dev_property_file, FILENAME_MAX, net_dev_file_fmt, dev_name);
+    net_dev_property_content_len = read_file(net_dev_property_file, net_dev_property_content,
+                                             sizeof(net_dev_property_content));
+    if (net_dev_property_content_len > 0) {
+        net_dev_property_content[net_dev_property_content_len - 1] = '\0';
+        m->broadcast = sdsnew(net_dev_property_content);
+    } else {
+        m->broadcast = sdsempty();
+    }
+
+    // 读取度duplex
+    net_dev_file_fmt = appconfig_get_member_str(config_path, "path_netclass_dev_duplex",
+                                                "/sys/class/net/%s/duplex");
+    snprintf(net_dev_property_file, FILENAME_MAX, net_dev_file_fmt, dev_name);
+    net_dev_property_content_len = read_file(net_dev_property_file, net_dev_property_content,
+                                             sizeof(net_dev_property_content));
+    if (net_dev_property_content_len > 0) {
+        net_dev_property_content[net_dev_property_content_len - 1] = '\0';
+        m->duplex = sdsnew(net_dev_property_content);
+    } else {
+        m->duplex = sdsempty();
+    }
+
+    debug("[PLUGIN_PROC:proc_net_dev] network interface:'%s' mtu:%ld, speed:%ld, virtual:%d, "
+          "operstate:'%s', address:'%s', broadcast:'%s', duplex:'%s'",
+          dev_name, m->mtu, m->speed, m->virtual, m->operstate, m->address, m->broadcast,
+          m->duplex);
+
+    prom_gauge_set(__metric_node_network_info, 1,
+                   (const char *[]){ dev_name, m->address, m->broadcast, m->operstate, m->duplex });
 
     // 插入链表
     if (__net_dev_metric_root) {
@@ -261,13 +335,17 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
 static void __free_net_dev_metric(struct net_dev_metric *d) {
     if (likely(d)) {
 
-        debug("[PLUGIN_PROC:proc_net_dev] free network interface metric '%s'", d->name);
+        debug("[PLUGIN_PROC:proc_net_dev] free network interface metric '%s'", d->dev_name);
 
         // prom_collector_t *default_collector = (prom_collector_t *)prom_map_get(
         //     PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, "default");
-        // prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_duplex)->name);
-        // prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_speed)->name);
-
+        // prom_map_delete(default_collector->metrics, ((prom_metric_t
+        // *)d->metric_duplex)->dev_name); prom_map_delete(default_collector->metrics,
+        // ((prom_metric_t *)d->metric_speed)->dev_name);
+        sdsfree(d->duplex);
+        sdsfree(d->address);
+        sdsfree(d->broadcast);
+        sdsfree(d->operstate);
         free(d);
         d = NULL;
         __net_dev_added--;
@@ -286,7 +364,7 @@ static void __cleanup_net_dev_metric() {
             // 如果这个设备没有被检测到
             debug("[PLUGIN_PROC:proc_net_dev] Removing network device metric: '%s', linked after "
                   "'%s'",
-                  d->name, last ? last->name : "ROOT");
+                  d->dev_name, last ? last->dev_name : "ROOT");
 
             if (__net_dev_metric_last_used == d)
                 __net_dev_metric_last_used = last;
@@ -362,6 +440,7 @@ int32_t init_collector_proc_net_dev() {
         prom_gauge_new("node_network_transmit_compressed_total",
                        __metric_help_net_dev_tx_compressed, 1, (const char *[]){ "device" }));
 
+    // ---------------------网络设备的属性---------------------
     __metric_node_network_mtu_bytes = prom_collector_registry_must_register_metric(prom_gauge_new(
         "node_network_mtu_bytes",
         "Indicates the interface currently configured MTU value, in bytes, and in decimal format.",
@@ -370,6 +449,23 @@ int32_t init_collector_proc_net_dev() {
         prom_collector_registry_must_register_metric(prom_counter_new(
             "node_network_virtual_device", "Indicates whether the interface is a virtual device.",
             1, (const char *[]){ "device" }));
+
+    __metric_node_network_info = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_network_info", "Non-numeric data from /sys/class/net/<iface>, value is always 1.", 5,
+        (const char *[]){ "device", "address", "broadcast", "operstate", "duplex" }));
+
+    __metric_node_network_transmit_queue_length = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_transmit_queue_length",
+                       "transmit_queue_length value of /sys/class/net/<iface>.", 1,
+                       (const char *[]){ "device" }));
+
+    __metric_node_network_speed = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_speed", "speed value of /sys/class/net/<iface>.", 1,
+                       (const char *[]){ "device" }));
+
+    __metric_node_network_up = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_up", "Value is 1 if operstate is 'up', 0 otherwise.", 1,
+                       (const char *[]){ "device" }));
 
     debug("[PLUGIN_PROC:proc_net_dev] init successed");
     return 0;
@@ -413,7 +509,7 @@ int32_t collector_proc_net_dev(int32_t UNUSED(update_every), usec_t UNUSED(dt),
             dev_name[dev_name_len - 1] = 0;
         }
         // prometheus的指标名不支持中杠字符，在此进行替换
-        strreplace(dev_name, '-', '_');
+        // strreplace(dev_name, '-', '_');
 
         struct net_dev_metric *d = __get_net_dev_metric(dev_name, config_path);
 
