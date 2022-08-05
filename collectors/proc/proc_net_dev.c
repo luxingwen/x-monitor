@@ -183,6 +183,7 @@ static struct net_dev_metric {
     // show a 'mtu' attribute value of 1500 unless changed.
     int64_t mtu;
     int64_t speed;
+    int64_t tx_queue_len;
     sds     duplex;
     sds     address;
     sds     broadcast;
@@ -310,10 +311,19 @@ static struct net_dev_metric *__get_net_dev_metric(const char *dev_name, const c
         m->duplex = sdsempty();
     }
 
+    // 读取tx_queue_len
+    net_dev_file_fmt = appconfig_get_member_str(config_path, "path_netclass_dev_tx_queue_len",
+                                                "/sys/class/net/%s/tx_queue_len");
+    snprintf(net_dev_property_file, FILENAME_MAX, net_dev_file_fmt, dev_name);
+    if (read_file_to_int64(net_dev_property_file, &m->tx_queue_len) == 0) {
+        prom_gauge_set(__metric_node_network_transmit_queue_length, (double)m->tx_queue_len,
+                       (const char *[]){ dev_name });
+    }
+
     debug("[PLUGIN_PROC:proc_net_dev] network interface:'%s' mtu:%ld, speed:%ld, virtual:%d, "
-          "operstate:'%s', address:'%s', broadcast:'%s', duplex:'%s'",
-          dev_name, m->mtu, m->speed, m->virtual, m->operstate, m->address, m->broadcast,
-          m->duplex);
+          "operstate:'%s', address:'%s', broadcast:'%s', duplex:'%s', tx_queue_len:%ld",
+          dev_name, m->mtu, m->speed, m->virtual, m->operstate, m->address, m->broadcast, m->duplex,
+          m->tx_queue_len);
 
     prom_gauge_set(__metric_node_network_info, 1,
                    (const char *[]){ dev_name, m->address, m->broadcast, m->operstate, m->duplex });
@@ -456,8 +466,10 @@ int32_t init_collector_proc_net_dev() {
 
     __metric_node_network_transmit_queue_length = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_network_transmit_queue_length",
-                       "transmit_queue_length value of /sys/class/net/<iface>.", 1,
-                       (const char *[]){ "device" }));
+                       "Indicates the interface transmit queue len in number of packets, as an "
+                       "integer value. Value depend on the type of interface, Ethernet network "
+                       "adapters have a default value of 1000 unless configured otherwise",
+                       1, (const char *[]){ "device" }));
 
     __metric_node_network_speed = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_network_speed", "speed value of /sys/class/net/<iface>.", 1,
