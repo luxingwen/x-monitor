@@ -406,3 +406,6 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 - [linux - What are memory mapped page and anonymous page? - Stack Overflow](https://stackoverflow.com/questions/13024087/what-are-memory-mapped-page-and-anonymous-page)
 - [Why top and free inside containers don't show the correct container memory | OpsTips](https://ops.tips/blog/why-top-inside-container-wrong-memory/)
 - [Linux processes in memory and memory cgroup statistics - linux - newfreesoft.com](http://www.newfreesoft.com/linux/linux_processes_in_memory_and_memory_cgroup_statistics_747/)
+- [Linux 内存占用分析的几个方法，你知道几个？ | HeapDump性能社区](https://heapdump.cn/article/3680789)
+- [你是什么内存: PageAnon 与 PageSwapBacked - 温暖的电波 - 博客园 (cnblogs.com)](https://www.cnblogs.com/liuhailong0112/p/14426096.html)
+- [软件开发|剖析内存中的程序之秘 (linux.cn)](https://linux.cn/article-9255-1.html)
