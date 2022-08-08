@@ -57,33 +57,26 @@ static uint64_t
     __nr_writeback = 0,
     //
     __oom_kill = 0,
-    // 计划使用其他节点内存但是却使用本地内存次数
-    __numa_foreign = 0,
-    // Hinting faults to local nodes
-    __numa_hint_faults_local = 0,
-    // NUMA hint faults trapped
-    __numa_hint_faults = 0,
     //
-    __numa_huge_pte_updates = 0,
+    __numa_hit = 0,
+    //
+    __numa_miss = 0,
+    //
+    __numa_foreign = 0,
     // 交叉分配使用的内存中使用本节点的内存次数
     __numa_interleave = 0,
     // 在本节点运行的程序使用本节点内存次数
     __numa_local = 0,
     // 在其他节点运行的程序使用本节点内存次数
-    __numa_other = 0,
-    //
-    __numa_pages_migrated = 0,
-    // NUMA page table entry updates
-    __numa_pte_updates = 0;
+    __numa_other = 0;
 
 static prom_gauge_t *__metric_pgfault = NULL, *__metric_pgmajfault = NULL, *__metric_pgpgin = NULL,
                     *__metric_pgpgout = NULL, *__metric_pswpin = NULL, *__metric_pswpout = NULL,
                     *__metric_nr_dirty = NULL, *__metric_nr_writeback = NULL,
                     *__metric_oom_kill = NULL, *__metric_numa_foreign = NULL,
-                    *__metric_numa_hint_faults_local = NULL, *__metric_numa_hint_faults = NULL,
-                    *__metric_numa_huge_pte_updates = NULL, *__metric_numa_interleave = NULL,
-                    *__metric_numa_local = NULL, *__metric_numa_other = NULL,
-                    *__metric_numa_pages_migrated = NULL, *__metric_numa_pte_updates = NULL;
+                    *__metric_numa_hit = NULL, *__metric_numa_miss = NULL,
+                    *__metric_numa_interleave = NULL, *__metric_numa_local = NULL,
+                    *__metric_numa_other = NULL;
 
 int32_t init_collector_proc_vmstat() {
     __arl_vmstat = arl_create("proc_vmstat", NULL, 3);
@@ -101,57 +94,73 @@ int32_t init_collector_proc_vmstat() {
     arl_expect(__arl_vmstat, "nr_writeback", &__nr_writeback);
     arl_expect(__arl_vmstat, "oom_kill", &__oom_kill);
     arl_expect(__arl_vmstat, "numa_foreign", &__numa_foreign);
-    arl_expect(__arl_vmstat, "numa_hint_faults_local", &__numa_hint_faults_local);
-    arl_expect(__arl_vmstat, "numa_hint_faults", &__numa_hint_faults);
-    arl_expect(__arl_vmstat, "numa_huge_pte_updates", &__numa_huge_pte_updates);
     arl_expect(__arl_vmstat, "numa_interleave", &__numa_interleave);
     arl_expect(__arl_vmstat, "numa_local", &__numa_local);
     arl_expect(__arl_vmstat, "numa_other", &__numa_other);
-    arl_expect(__arl_vmstat, "numa_pages_migrated", &__numa_pages_migrated);
-    arl_expect(__arl_vmstat, "numa_pte_updates", &__numa_pte_updates);
+    arl_expect(__arl_vmstat, "numa_hit", &__numa_hit);
+    arl_expect(__arl_vmstat, "numa_miss", &__numa_miss);
 
     // 初始化指标
-    __metric_pgfault = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_pgfaults", "Memory Page Faults(faults/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_pgfault = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_pgfaults",
+                       "Number of page faults the system has made since last boot (minor + major).",
+                       1, (const char *[]){ "vmstat" }));
     __metric_pgmajfault = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_vmstat_pgmajfaults", "Memory Major Page Faults(faults/s)", 1,
-                       (const char *[]){ "vmstat" }));
+        prom_gauge_new("node_vmstat_pgmajfaults",
+                       "Number of major faults since last boot the system required loading a "
+                       "memory page from disk.",
+                       1, (const char *[]){ "vmstat" }));
+
     __metric_pgpgin = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_pgpgin", "Memory Paged from/to disk(KiB/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_pgpgout = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_vmstat_pgpgout", "Memory Paged from/to disk(KiB/s)", 1,
-                       (const char *[]){ "vmstat" }));
+        "node_vmstat_pgpgin", "Number of pages that are read from disk since last boot", 1,
+        (const char *[]){ "vmstat" }));
+    __metric_pgpgout = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_vmstat_pgpgout", "Number of pages that are write to disk since last boot", 1,
+        (const char *[]){ "vmstat" }));
+
     __metric_pswpin = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_vmstat_pswpin", "Swap I/O(KiB/s)", 1, (const char *[]){ "vmstat" }));
+        prom_gauge_new("node_vmstat_pswpin", "Number of pages the system has swapped in from disk",
+                       1, (const char *[]){ "vmstat" }));
     __metric_pswpout = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_vmstat_pswpout", "Swap I/O(KiB/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_nr_dirty = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_nr_dirty", "Dirty pages(pages)", 1, (const char *[]){ "vmstat" }));
-    __metric_nr_writeback = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_nr_writeback", "Writeback pages(pages)", 1, (const char *[]){ "vmstat" }));
+        prom_gauge_new("node_vmstat_pswpout", "Number of pages the system has swapped out to disk",
+                       1, (const char *[]){ "vmstat" }));
+
+    __metric_nr_dirty = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_nr_dirty", "dirty pages waiting to be written to disk", 1,
+                       (const char *[]){ "vmstat" }));
+    __metric_nr_writeback = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_nr_writeback", "dirty pages currently being written to disk", 1,
+                       (const char *[]){ "vmstat" }));
+
     __metric_oom_kill = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_oom_kill", "Out of Memory Kills(kills/s)", 1, (const char *[]){ "vmstat" }));
+        "node_vmstat_oom_kill", "Out of Memory Kills count", 1, (const char *[]){ "vmstat" }));
+
     __metric_numa_foreign = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_numa_foreign", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_numa_hint_faults_local = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_vmstat_numa_hint_faults_local", "NUMA events(events/s)", 1,
-                       (const char *[]){ "vmstat" }));
-    __metric_numa_hint_faults = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_numa_hint_faults", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_numa_huge_pte_updates = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_vmstat_numa_huge_pte_updates", "NUMA events(events/s)", 1,
-                       (const char *[]){ "vmstat" }));
-    __metric_numa_interleave = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_numa_interleave", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+        "node_vmstat_numa_foreign",
+        "A process wanted to allocate on this node, but ended up with memory from another node.", 1,
+        (const char *[]){ "vmstat" }));
+
+    __metric_numa_interleave = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_numa_interleave",
+                       "The number of interleave policy pages successfully allocated to this node.",
+                       1, (const char *[]){ "vmstat" }));
     __metric_numa_local = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_numa_local", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_numa_other = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_numa_other", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_numa_pages_migrated = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_vmstat_numa_pages_migrated", "NUMA events(events/s)", 1,
+        "node_vmstat_numa_local",
+        "The number of pages successfully allocated on this node by a process on this node.", 1,
+        (const char *[]){ "vmstat" }));
+    __metric_numa_other = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_numa_other",
+                       "The number of pages allocated on this node by a process on another node.",
+                       1, (const char *[]){ "vmstat" }));
+    __metric_numa_miss = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_numa_miss",
+                       "The number of pages that were allocated on this node because of low memory "
+                       "on the intended node.",
+                       1, (const char *[]){ "vmstat" }));
+    __metric_numa_hit = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_numa_hit",
+                       "The number of pages that were successfully allocated to this node.", 1,
                        (const char *[]){ "vmstat" }));
-    __metric_numa_pte_updates = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_vmstat_numa_pte_updates", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
 
     debug("[PLUGIN_PROC:proc_vmstat] init successed");
     return 0;
@@ -204,9 +213,9 @@ int32_t collector_proc_vmstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     prom_gauge_set(__metric_pgpgin, __pgpgin, (const char *[]){ "page" });
     prom_gauge_set(__metric_pgpgout, __pgpgout, (const char *[]){ "page" });
 
-    __pswpin = __pswpin / sysconf(_SC_PAGESIZE) * 1024,
+    //__pswpin = __pswpin / sysconf(_SC_PAGESIZE) * 1024,
     prom_gauge_set(__metric_pswpin, __pswpin, (const char *[]){ "page" });
-    __pswpout = __pswpout / sysconf(_SC_PAGESIZE) * 1024,
+    //__pswpout = __pswpout / sysconf(_SC_PAGESIZE) * 1024,
     prom_gauge_set(__metric_pswpout, __pswpout, (const char *[]){ "page" });
 
     prom_gauge_set(__metric_nr_dirty, __nr_dirty, (const char *[]){ "page" });
@@ -214,29 +223,21 @@ int32_t collector_proc_vmstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
 
     prom_gauge_set(__metric_oom_kill, __oom_kill, (const char *[]){ "oom_kill" });
 
-    debug(
-        "[PLUGIN_PROC:proc_vmstat] pgfault:%lu, pgmajfault:%lu, pgpgin:%lu KiB/s, pgpgout:%lu "
-        "KiB/s, pswpin:%lu KiB/s, pswpout:%lu KiB/s, nr_dirty:%lu, nr_writeback:%lu, oom_kill:%lu",
-        __pgfault, __pgmajfault, __pgpgin, __pgpgout, __pswpin, __pswpout, __nr_dirty,
-        __nr_writeback, __oom_kill);
+    debug("[PLUGIN_PROC:proc_vmstat] pgfault:%lu, pgmajfault:%lu, pgpgin:%lu, pgpgout:%lu, "
+          "pswpin:%lu, pswpout:%lu, nr_dirty:%lu, nr_writeback:%lu, oom_kill:%lu",
+          __pgfault, __pgmajfault, __pgpgin, __pgpgout, __pswpin, __pswpout, __nr_dirty,
+          __nr_writeback, __oom_kill);
 
     prom_gauge_set(__metric_numa_foreign, __numa_foreign, (const char *[]){ "numa" });
-    prom_gauge_set(__metric_numa_hint_faults_local, __numa_hint_faults_local,
-                   (const char *[]){ "numa" });
-    prom_gauge_set(__metric_numa_hint_faults, __numa_hint_faults, (const char *[]){ "numa" });
-    prom_gauge_set(__metric_numa_huge_pte_updates, __numa_huge_pte_updates,
-                   (const char *[]){ "numa" });
+    prom_gauge_set(__metric_numa_hit, __numa_hit, (const char *[]){ "numa" });
+    prom_gauge_set(__metric_numa_miss, __numa_miss, (const char *[]){ "numa" });
     prom_gauge_set(__metric_numa_interleave, __numa_interleave, (const char *[]){ "numa" });
     prom_gauge_set(__metric_numa_local, __numa_local, (const char *[]){ "numa" });
     prom_gauge_set(__metric_numa_other, __numa_other, (const char *[]){ "numa" });
-    prom_gauge_set(__metric_numa_pages_migrated, __numa_pages_migrated, (const char *[]){ "numa" });
-    prom_gauge_set(__metric_numa_pte_updates, __numa_pte_updates, (const char *[]){ "numa" });
 
-    debug("[PLUGIN_PROC:proc_vmstat] numa_foreign:%lu, numa_hint_faults_local:%lu, "
-          "numa_hint_faults:%lu, numa_huge_pte_updates:%lu, numa_interleave:%lu, "
-          "numa_local:%lu, numa_other:%lu, numa_pages_migrated:%lu, numa_pte_updates:%lu",
-          __numa_foreign, __numa_hint_faults_local, __numa_hint_faults, __numa_huge_pte_updates,
-          __numa_interleave, __numa_local, __numa_other, __numa_pages_migrated, __numa_pte_updates);
+    debug("[PLUGIN_PROC:proc_vmstat] numa_foreign:%lu, num_hit:%lu, numa_miss:%lu, "
+          "numa_interleave:%lu, numa_local:%lu, numa_other:%lu",
+          __numa_foreign, __numa_hit, __numa_miss, __numa_interleave, __numa_local, __numa_other);
 
     return 0;
 }
