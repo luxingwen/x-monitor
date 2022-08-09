@@ -24,10 +24,15 @@ int32_t init_proc_rdset() {
 
         // 得到系统的cpu数量
         int32_t node_cpu_count = get_system_cpus();
+
         proc_rds->stat_rdset.core_rdsets =
             (struct proc_cpu_rdset *)calloc(node_cpu_count, sizeof(struct proc_cpu_rdset));
-        if (unlikely(!proc_rds->stat_rdset.core_rdsets)) {
-            error("calloc struct proc_cpu_rdset object failed");
+
+        proc_rds->schedstats =
+            (struct proc_schedstat *)calloc(node_cpu_count, sizeof(struct proc_schedstat));
+
+        if (unlikely(!proc_rds->stat_rdset.core_rdsets || !proc_rds->schedstats)) {
+            error("calloc struct proc_cpu_rdset or proc_schedstat object failed");
             goto INIT_FAILED;
         }
     }
@@ -45,15 +50,12 @@ void fini_proc_rdset() {
             free(proc_rds->stat_rdset.core_rdsets);
             proc_rds->stat_rdset.core_rdsets = NULL;
         }
+        if (proc_rds->schedstats) {
+            free(proc_rds->schedstats);
+            proc_rds->schedstats = NULL;
+        }
         free(proc_rds);
         proc_rds = NULL;
     }
     debug("fini proc_raw_data_set successed.");
 }
-
-// void set_proc_rdset_init_success() {
-//     if (likely(proc_rds && !proc_rds->init_flag)) {
-//         proc_rds->init_flag ^= 1;
-//         debug("proc_raw_data_set init flag is ok.");
-//     }
-// }

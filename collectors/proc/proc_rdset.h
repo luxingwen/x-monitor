@@ -26,6 +26,12 @@ struct proc_cpu_rdset {
     uint64_t total;
 };
 
+struct proc_schedstat {
+    double   schedstat_running_secs;
+    double   schedstat_waiting_secs;
+    uint64_t schedstat_timeslices;
+};
+
 struct proc_stat_rdset {
     struct proc_cpu_rdset *core_rdsets;
     struct proc_cpu_rdset  cpu_rdset;
@@ -40,6 +46,7 @@ struct proc_stat_rdset {
 
 struct proc_rdset {
     struct proc_stat_rdset stat_rdset;
+    struct proc_schedstat *schedstats;
 };
 
 extern struct proc_rdset *proc_rds;
