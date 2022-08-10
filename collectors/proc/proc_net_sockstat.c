@@ -114,20 +114,36 @@ int32_t init_collector_proc_net_sockstat() {
 
     // 初始化指标
     __metric_sockstat_sockets_used = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_sockets_used", "IPv4 Sockets Used", 1, (const char *[]){ "sockstat" }));
-    __metric_sockstat_tcp_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_TCP_inuse", "IPv4 TCP Sockets inuse", 1, (const char *[]){ "sockstat" }));
-    __metric_sockstat_tcp_orphan = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_TCP_orphan", "IPv4 TCP Sockets orphan", 1, (const char *[]){ "sockstat" }));
-    __metric_sockstat_tcp_tw = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_TCP_tw", "IPv4 TCP Sockets timewait", 1, (const char *[]){ "sockstat" }));
+        "node_sockstat_sockets_used", "the total amount of all protocol sockets used", 1,
+        (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_inuse = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_sockstat_TCP_inuse",
+                       "The number of TCP sockets in use (listening). Its value ≤ netstat -lnt | "
+                       "grep ^tcp | wc -l",
+                       1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_orphan = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_sockstat_TCP_orphan",
+                       "The number of unowned (not belonging to any process) TCP connections (the "
+                       "number of useless TCP sockets to be destroyed)",
+                       1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_tw = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_sockstat_TCP_tw",
+                       "The number of TCP connections waiting to be closed. Its value is equal to "
+                       "netstat -ant | grep TIME_WAIT | wc -l",
+                       1, (const char *[]){ "sockstat" }));
     __metric_sockstat_tcp_alloc = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_TCP_alloc", "IPv4 TCP Sockets alloc", 1, (const char *[]){ "sockstat" }));
-    __metric_sockstat_tcp_mem = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_sockstat_TCP_mem", "IPv4 TCP Sockets Memory, KiB", 1,
+        "node_sockstat_TCP_alloc",
+        "alloc(allocated): The number of TCP sockets that have been allocated (established and "
+        "applied to sk_buff). Its value is equal to netstat -ant | grep ^tcp | wc -l",
+        1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_mem = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_sockstat_TCP_mem",
+        "socket buffer usage (unit unknown. Measured with scp, when the speed is 4803.9kB/s: its "
+        "value = 11, the corresponding 22 port in netstat -ant Recv-Q = 0, Send-Q ≈400)",
+        1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_udp_inuse = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_sockstat_UDP_inuse", "the number of UDP sockets in use", 1,
                        (const char *[]){ "sockstat" }));
-    __metric_sockstat_udp_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_UDP_inuse", "IPv4 UDP Sockets inuse", 1, (const char *[]){ "sockstat" }));
     __metric_sockstat_udp_mem = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_sockstat_UDP_mem", "IPv4 UDP Sockets Memory, KiB", 1,
                        (const char *[]){ "sockstat" }));
@@ -136,8 +152,9 @@ int32_t init_collector_proc_net_sockstat() {
     __metric_sockstat_frag_memory = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_sockstat_FRAG_memory", "IPv4 FRAG Sockets Memory, KiB", 1,
                        (const char *[]){ "sockstat" }));
-    __metric_sockstat_frag_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_FRAG_inuse", "IPv4 FRAG Sockets inuse", 1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_frag_inuse = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_sockstat_FRAG_inuse", "Number of IP segments used", 1,
+                       (const char *[]){ "sockstat" }));
 
     __metric_sockstat_tcp_mem_low_threshold = prom_collector_registry_must_register_metric(
         prom_gauge_new("tcp_mem_low_threshold", "IPv4 TCP Sockets Memory Low Threshold, KiB", 1,

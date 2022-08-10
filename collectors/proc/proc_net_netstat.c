@@ -268,16 +268,16 @@ int32_t init_collector_proc_netstat() {
     // IP Input Errors
     __metric_ipext_InNoRoutes = prom_collector_registry_must_register_metric(prom_gauge_new(
         "node_netstat_IpExt_InNoRoutes",
-        "IP Input Errors, Number of IP datagrams discarded due to no routes in forwarding path", 1,
+        "IP Input Errors, Number of IP datagrams discarded due to no routes in forwarding path.", 1,
         (const char *[]){ "netstat" }));
     __metric_ipext_InTruncatedPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
         "node_netstat_IpExt_inTruncatedPkts",
-        "IP Input Errors, Number of IP datagrams discarded due to frame not carrying enough data",
+        "IP Input Errors, Number of IP datagrams discarded due to frame not carrying enough data.",
         1, (const char *[]){ "netstat" }));
     __metric_ipext_InCsumErrors = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_netstat_IpExt_InCsumErrors",
-                       "IP Input Errors, Number of IP datagrams discarded due to checksum error", 1,
-                       (const char *[]){ "netstat" }));
+                       "IP Input Errors, Number of IP datagrams discarded due to checksum error.",
+                       1, (const char *[]){ "netstat" }));
 
     // IP Multicast Bandwidth
     __metric_ipext_InMcastOctets = prom_collector_registry_must_register_metric(
@@ -287,7 +287,7 @@ int32_t init_collector_proc_netstat() {
         prom_gauge_new("node_netstat_IpExt_OutMcastOctets", "Number of sent IP multicast octets", 1,
                        (const char *[]){ "netstat" }));
     __metric_ipext_InMcastPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_netstat_IpExt_InMcastPkts", "Number of received IP multicast datagrams", 1,
+        "node_netstat_IpExt_InMcastPkts", "Number of received IP multicast datagrams.", 1,
         (const char *[]){ "netstat" }));
     __metric_ipext_OutMcastPkts = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_netstat_IpExt_OutMcastPkts", "Number of sent IP multicast datagrams",
@@ -302,16 +302,17 @@ int32_t init_collector_proc_netstat() {
                        (const char *[]){ "netstat" }));
     // bcastpkts IP Broadcast Packets packets/s
     __metric_ipext_InBcastPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_netstat_IpExt_InBcastPkts", "Number of received IP broadcast datagrams", 1,
+        "node_netstat_IpExt_InBcastPkts", "Number of received IP broadcast datagrams.", 1,
         (const char *[]){ "netstat" }));
     __metric_ipext_OutBcastPkts = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_netstat_IpExt_OutBcastPkts", "Number of sent IP broadcast datagrams",
                        1, (const char *[]){ "netstat" }));
 
     // IP ECN Statistics
-    __metric_ipext_InNoECTPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_netstat_IpExt_InNoECTPkts", "Number of received IP datagrams discarded due to no ECT",
-        1, (const char *[]){ "netstat" }));
+    __metric_ipext_InNoECTPkts = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_IpExt_InNoECTPkts",
+                       "Number of received IP datagrams discarded due to no ECT.", 1,
+                       (const char *[]){ "netstat" }));
     __metric_ipext_InECT1Pkts = prom_collector_registry_must_register_metric(prom_gauge_new(
         "node_netstat_IpExt_InECT1Pkts", "Number of received IP datagrams discarded due to ECT=1",
         1, (const char *[]){ "netstat" }));
