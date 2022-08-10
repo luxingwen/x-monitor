@@ -44,7 +44,7 @@ static struct proc_net_sockstat {
                         // user space yet).
 
     uint64_t udp_inuse;   // 正在使用的UDP套接字数量
-    uint64_t udp_mem;
+    uint64_t udp_mem;     // 单位是page
 
     uint64_t raw_inuse;
 
@@ -138,14 +138,14 @@ int32_t init_collector_proc_net_sockstat() {
         1, (const char *[]){ "sockstat" }));
     __metric_sockstat_tcp_mem = prom_collector_registry_must_register_metric(prom_gauge_new(
         "node_sockstat_TCP_mem",
-        "socket buffer usage (unit unknown. Measured with scp, when the speed is 4803.9kB/s: its "
+        "socket buffer usage, (unit pages. Measured with scp, when the speed is 4803.9kB/s: its "
         "value = 11, the corresponding 22 port in netstat -ant Recv-Q = 0, Send-Q ≈400)",
         1, (const char *[]){ "sockstat" }));
     __metric_sockstat_udp_inuse = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_sockstat_UDP_inuse", "the number of UDP sockets in use", 1,
                        (const char *[]){ "sockstat" }));
     __metric_sockstat_udp_mem = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_sockstat_UDP_mem", "IPv4 UDP Sockets Memory, KiB", 1,
+        prom_gauge_new("node_sockstat_UDP_mem", "IPv4 UDP Sockets Memory, unit pages", 1,
                        (const char *[]){ "sockstat" }));
     __metric_sockstat_raw_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
         "node_sockstat_RAW_inuse", "IPv4 RAW Sockets inuse", 1, (const char *[]){ "sockstat" }));
