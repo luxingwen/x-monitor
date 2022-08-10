@@ -326,7 +326,7 @@ int32_t init_collector_proc_net_snmp() {
         "node_netstat_Tcp_OutRsts", "The number of segments sent containing the RST flag.", 1,
         (const char *[]){ "snmp" }));
     __metric_netstat_tcp_incsumerrors = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_netstat_Tcp_incsumerrors", "Number of packets received with checksum problems.", 1,
+        "node_netstat_Tcp_InCsumErrors", "Number of packets received with checksum problems.", 1,
         (const char *[]){ "snmp" }));
 
     __metric_netstat_udp_indatagrams = prom_collector_registry_must_register_metric(prom_gauge_new(

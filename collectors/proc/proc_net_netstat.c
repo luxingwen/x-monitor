@@ -351,22 +351,26 @@ int32_t init_collector_proc_netstat() {
     __metric_tcpext_TCPOFOQueue = prom_collector_registry_must_register_metric(prom_gauge_new(
         "node_netstat_TcpExt_TCPOFOQueue", "TCP Out of Order queue inqueue packets/s", 1,
         (const char *[]){ "netstat" }));
-    __metric_tcpext_TCPOFODrop = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_netstat_TcpExt_TCPOFODrop", "TCP Out of Order queue drop packets/s", 1,
-                       (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPOFODrop = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_TcpExt_TCPOFODrop",
+        "Number of packets meant to be queued in OFO but dropped because socket rcvbuf limit hit.",
+        1, (const char *[]){ "netstat" }));
     __metric_tcpext_TCPOFOMerge = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_netstat_TcpExt_TCPOFOMerge", "TCP Out of Order queue merge packets/s",
-                       1, (const char *[]){ "netstat" }));
-    __metric_tcpext_OfoPruned = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_netstat_TcpExt_OfoPruned", "TCP Out of Order queue pruned packets/s",
-                       1, (const char *[]){ "netstat" }));
+        prom_gauge_new("node_netstat_TcpExt_TCPOFOMerge",
+                       "Number of packets in OFO that were merged with other packets", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_tcpext_OfoPruned = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_TcpExt_OfoPruned",
+        "Number of packets dropped from out-of-order queue because of socket buffer overrun", 1,
+        (const char *[]){ "netstat" }));
 
     // tcpconnaborts 对应连接关闭情况
     // https://satori-monitoring.readthedocs.io/zh/latest/builtin-metrics/tcpext.html?highlight=TCPAbortOnData#id6
-    __metric_tcpext_TCPAbortOnData = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_netstat_TcpExt_TCPAbortOnData",
-        "TCP Connection Aborts, Number of times the socket was closed due to unknown data received",
-        1, (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPAbortOnData = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPAbortOnData",
+                       "TCP Connection Aborts, Number of times the socket was closed due to "
+                       "unknown data received.",
+                       1, (const char *[]){ "netstat" }));
     // 用户态程序在缓冲区内还有数据时关闭 socket 的次数
     __metric_tcpext_TCPAbortOnClose = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_netstat_TcpExt_TCPAbortOnClose",
@@ -385,37 +389,37 @@ int32_t init_collector_proc_netstat() {
                        "keepalive) exceeds the upper limit",
                        1, (const char *[]){ "netstat" }));
     __metric_tcpext_TCPAbortOnLinger = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_netstat_TcpExt_TCPAbortOnLinger", "TCP Connection Aborts, linger", 1,
+        prom_gauge_new("node_netstat_TcpExt_TCPAbortOnLinger", "TCP Connection Aborts, linger.", 1,
                        (const char *[]){ "netstat" }));
     __metric_tcpext_TCPAbortFailed = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_netstat_TcpExt_TCPAbortFailed",
-                       "TCP Connection Aborts, Number of failed attempts to end the connection", 1,
+                       "TCP Connection Aborts, Number of failed attempts to end the connection.", 1,
                        (const char *[]){ "netstat" }));
 
     // tcp_accept_queue
     __metric_tcpext_ListenOverflows = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_netstat_TcpExt_TCPAcceptQueue", "TCP Accept Queue Issues, overflows packets/s", 1,
-        (const char *[]){ "netstat" }));
-    __metric_tcpext_ListenDrops = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_netstat_TcpExt_TCPAcceptQueueDrop", "TCP Accept Queue Issues, drops packets/s", 1,
-        (const char *[]){ "netstat" }));
+        "node_netstat_TcpExt_TCPAcceptQueueOverflows",
+        "times the listen queue of a socket overflowed", 1, (const char *[]){ "netstat" }));
+    __metric_tcpext_ListenDrops = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPAcceptQueueDrop",
+                       "times SYNs to LISTEN sockets ignored", 1, (const char *[]){ "netstat" }));
 
     // tcpmemorypressures
     __metric_tcpext_TCPMemoryPressures = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_netstat_TcpExt_TCPMemoryPressures",
                        "TCP Memory Pressures, Number of times a socket was put in \"memory "
-                       "pressure\" due to a non fatal memory allocation failure, events/s",
+                       "pressure\" due to a non fatal memory allocation failure.",
                        1, (const char *[]){ "netstat" }));
 
     // tcp_syn_queue
-    __metric_tcpext_TCPReqQFullDrop = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_netstat_TcpExt_TCPBacklogDrop",
-        "TCP SYN Queue Issues, syn_table overload, number of times SYN is lost, packets/s", 1,
-        (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPReqQFullDrop = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPBacklogDrop",
+                       "TCP SYN Queue Issues, syn_table overload, number of times SYN is lost", 1,
+                       (const char *[]){ "netstat" }));
     __metric_tcpext_TCPReqQFullDoCookies = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_netstat_TcpExt_TCPBacklogDoCookies",
-                       "TCP SYN Queue Issues, syn_table overload, number of syn cookies, packets/s",
-                       1, (const char *[]){ "netstat" }));
+                       "TCP SYN Queue Issues, syn_table overload, number of syn cookies", 1,
+                       (const char *[]){ "netstat" }));
 
     debug("[PLUGIN_PROC:proc_netstat] init successed");
     return 0;
