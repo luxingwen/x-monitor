@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-23 16:19:17
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-13 16:43:51
+ * @Last Modified time: 2022-08-11 15:49:49
  */
 
 // https://www.cnblogs.com/songhaibin/p/13885403.html
@@ -60,9 +60,13 @@ int32_t collector_process_cpu_usage(struct process_status *ps) {
     ps->majflt_raw = str2uint64_t(procfile_lineword(ps->pf_proc_pid_stat, 0, 11));
     ps->cmajflt_raw = str2uint64_t(procfile_lineword(ps->pf_proc_pid_stat, 0, 12));
 
+    // 该任务在用户态运行的时间，单位为 jiffies。
     ps->utime_raw = str2uint64_t(procfile_lineword(ps->pf_proc_pid_stat, 0, 13));
+    // 该任务在核心态运行的时间，单位为 jiffies。
     ps->stime_raw = str2uint64_t(procfile_lineword(ps->pf_proc_pid_stat, 0, 14));
+    //  累计的该任务的所有的 waited-for 进程曾经在用户态运行的时间，单位为 jiffies。
     ps->cutime_raw = str2uint64_t(procfile_lineword(ps->pf_proc_pid_stat, 0, 15));
+    // 累计的该任务的所有的 waited-for 进程曾经在核心态运行的时间，单位为 jiffies。
     ps->cstime_raw = str2uint64_t(procfile_lineword(ps->pf_proc_pid_stat, 0, 16));
 
     gtime = str2uint64_t(procfile_lineword(ps->pf_proc_pid_stat, 0, 42));
