@@ -2,10 +2,15 @@
  * @Author: CALM.WU
  * @Date: 2022-02-10 16:37:40
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-15 15:19:27
+ * @Last Modified time: 2022-08-11 14:23:59
  */
 
 #include <vmlinux.h>
+#include <bpf/bpf_endian.h>
+
+#ifndef ETH_HLEN
+#define ETH_HLEN 14 /* Total octets in header.	 */
+#endif
 
 #ifndef ETH_P_8021Q
 #define ETH_P_8021Q 0x8100 /* 802.1Q VLAN Extended Header  */
@@ -22,6 +27,9 @@
 #ifndef ETH_P_IPV6
 #define ETH_P_IPV6 0x86DD /* Internet Protocol Version 6 packet */
 #endif
+
+#define ETH_P_MPLS_UC 0x8847 /* MPLS Unicast traffic		*/
+#define ETH_P_MPLS_MC 0x8848 /* MPLS Multicast traffic	*/
 
 struct hdr_cursor {
     void *pos;
