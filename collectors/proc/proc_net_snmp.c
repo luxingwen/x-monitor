@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-02-21 11:10:03
- * @Last Modified by: CALM.WUU
- * @Last Modified time: 2022-03-24 16:30:20
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2022-08-11 14:45:10
  */
 
 // https://www.codeleading.com/article/87784845826/
@@ -355,10 +355,10 @@ int32_t init_collector_proc_net_snmp() {
         "fit in the application socket buffer.",
         1, (const char *[]){ "snmp" }));
     __metric_netstat_udp_incsumerrors = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_netstat_udp_incsumerrors", "Number of packets received with checksum problems.", 1,
+        "node_netstat_udp_InCsumErrors", "Number of packets received with checksum problems.", 1,
         (const char *[]){ "snmp" }));
     __metric_netstat_udp_ignoredmulti = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_netstat_udp_ignoredmulti",
+        prom_gauge_new("node_netstat_udp_IgnoredMulti",
                        "The number of received UDP datagrams for which there was no "
                        "application at the destination port and the destination address was a "
                        "multicast address.",
