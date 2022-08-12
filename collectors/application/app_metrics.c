@@ -31,9 +31,9 @@ const char *__app_metric_vmsize_help = "The number of kilobytes of virtual memor
 const char *__app_metric_vmrss_help =
     "The number of kilobytes of resident memory, the value here is the sum of "
     "RssAnon, RssFile, and RssShmem.";
-const char *__app_metric_rssanon_help = "The number of kilobytes of resident anonymous memory";
-const char *__app_metric_rssfile_help = "The number of kilobytes of resident file mappings";
-const char *__app_metric_rssshmem_help =
+const char *__app_metric_rss_anon_help = "The number of kilobytes of resident anonymous memory";
+const char *__app_metric_rss_file_help = "The number of kilobytes of resident file mappings";
+const char *__app_metric_rss_shmem_help =
     "The number of kilobytes of resident shared memory (includes System V "
     "shared memory, mappings from tmpfs(5), and shared anonymous mappings)";
 const char *__app_metric_vmswap_help =

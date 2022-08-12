@@ -132,7 +132,7 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
 
     proc_stauts_buff[proc_stauts_buff_len] = '\0';
 
-    uint64_t *status_mem[] = { &(ps->vmsize), &(ps->rssanon), &(ps->rssfile), &(ps->rssshmem),
+    uint64_t *status_mem[] = { &(ps->vmsize), &(ps->rss_anon), &(ps->rss_file), &(ps->rss_shmem),
                                &(ps->vmswap) };
     size_t    num_found = 0;
 
@@ -168,7 +168,7 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
           "kB, pss_anon: %lu kB, pss_file: %lu, pss_shmem: %lu, uss: %lu kB, rss_anon: %lu kB, "
           "rss_file: %lu kB, rsss_hmem: %lu kB",
           ps->pid, ps->vmsize, ps->vmrss, ps->vmswap, ps->pss, ps->pss_anon, ps->pss_file,
-          ps->pss_shmem, ps->uss, ps->rssanon, ps->rssfile, ps->rssshmem);
+          ps->pss_shmem, ps->uss, ps->rss_anon, ps->rss_file, ps->rss_shmem);
 
     return 0;
 }

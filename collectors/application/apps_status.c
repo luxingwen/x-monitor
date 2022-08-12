@@ -86,9 +86,9 @@ static int32_t __zero_all_appstatus() {
         as->num_threads = 0;
         as->vmsize = 0;
         as->vmrss = 0;
-        as->rssanon = 0;
-        as->rssfile = 0;
-        as->rssshmem = 0;
+        as->rss_anon = 0;
+        as->rss_file = 0;
+        as->rss_shmem = 0;
         as->vmswap = 0;
         as->pss = 0;
         as->uss = 0;
@@ -157,9 +157,9 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
                                    as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(vmsize, as->metrics.metric_vmsize, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(vmrss, as->metrics.metric_vmrss, as->app_prom_collector);
-        APP_METRIC_ADDTO_COLLECTOR(rssanon, as->metrics.metric_rssanon, as->app_prom_collector);
-        APP_METRIC_ADDTO_COLLECTOR(rssfile, as->metrics.metric_rssfile, as->app_prom_collector);
-        APP_METRIC_ADDTO_COLLECTOR(rssshmem, as->metrics.metric_rssshmem, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(rss_anon, as->metrics.metric_rss_anon, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(rss_file, as->metrics.metric_rss_file, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(rss_shmem, as->metrics.metric_rss_shmem, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(vmswap, as->metrics.metric_vmswap, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(pss, as->metrics.metric_pss, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(pss_anon, as->metrics.metric_pss_anon, as->app_prom_collector);
@@ -534,9 +534,9 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
                 as->num_threads += ps->num_threads;
                 as->vmsize += ps->vmsize;
                 as->vmrss += ps->vmrss;
-                as->rssanon += ps->rssanon;
-                as->rssfile += ps->rssfile;
-                as->rssshmem += ps->rssshmem;
+                as->rss_anon += ps->rss_anon;
+                as->rss_file += ps->rss_file;
+                as->rss_shmem += ps->rss_shmem;
                 as->vmswap += ps->vmswap;
                 as->pss += ps->pss;
                 as->pss_anon += ps->pss_anon;
@@ -624,9 +624,9 @@ again:
                        (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_vmsize, as->vmsize, (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_vmrss, as->vmrss, (const char *[]){ app_name });
-        prom_gauge_set(as->metrics.metric_rssanon, as->rssanon, (const char *[]){ app_name });
-        prom_gauge_set(as->metrics.metric_rssfile, as->rssfile, (const char *[]){ app_name });
-        prom_gauge_set(as->metrics.metric_rssshmem, as->rssshmem, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_rss_anon, as->rss_anon, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_rss_file, as->rss_file, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_rss_shmem, as->rss_shmem, (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_vmswap, as->vmswap, (const char *[]){ app_name });
 
         prom_gauge_set(as->metrics.metric_pss, as->pss, (const char *[]){ app_name });
@@ -658,16 +658,17 @@ again:
         debug(
             "[PLUGIN_APPSTATUS] app '%s' minflt: %lu, cminflt: %lu, "
             "majflt: %lu  cmajflt: %lu, utime: %lu, stime: %lu, cutime: %lu, cstime: %lu, "
-            "app_cpu_jiffies: %lu, app_num_threads: %d, vmsize: %lu, vmrss: %lu, rssanon: %lu, "
-            "rssfile: %lu, rssshmem: %lu, pss: %lu kB, pss_anon: %lu kB, pss_file %lu kB, pss_shem "
+            "app_cpu_jiffies: %lu, app_num_threads: %d, vmsize: %lu, vmrss: %lu, rss_anon: %lu, "
+            "rss_file: %lu, rss_shmem: %lu, pss: %lu kB, pss_anon: %lu kB, pss_file %lu kB, "
+            "pss_shem "
             "%lu kB, uss: %lu kB, io_logical_bytes_read: %lu, "
             "io_logical_bytes_written: %lu, io_read_calls: %lu, io_write_calls: %lu, "
             "io_storage_bytes_read: %lu, io_storage_bytes_written: %lu, "
             "io_cancelled_write_bytes: %d, open_fds: %d, max_oom_score: %d, max_oom_score_adj: %d",
             as->app_name, as->minflt_raw, as->cminflt_raw, as->majflt_raw, as->cmajflt_raw,
             as->utime_raw, as->stime_raw, as->cutime_raw, as->cstime_raw, as->app_cpu_jiffies,
-            as->num_threads, as->vmsize, as->vmrss, as->rssanon, as->rssfile, as->rssshmem, as->pss,
-            as->pss_anon, as->pss_file, as->pss_shmem, as->uss, as->io_logical_bytes_read,
+            as->num_threads, as->vmsize, as->vmrss, as->rss_anon, as->rss_file, as->rss_shmem,
+            as->pss, as->pss_anon, as->pss_file, as->pss_shmem, as->uss, as->io_logical_bytes_read,
             as->io_logical_bytes_written, as->io_read_calls, as->io_write_calls,
             as->io_storage_bytes_read, as->io_storage_bytes_written, as->io_cancelled_write_bytes,
             as->open_fds, as->max_oom_score, as->max_oom_score_adj);

@@ -54,10 +54,10 @@ struct process_status {
     // /proc/<pid>/status
     uint64_t vmsize;   // 当前虚拟内存的实际使用量。
     uint64_t vmrss;   // 应用程序实际占用的物理内存大小，但。。。。更确切应该看pss和uss
-    uint64_t rssanon;    // 匿名RSS内存大小 kB
-    uint64_t rssfile;    // 文件RSS内存大小 kB
-    uint64_t rssshmem;   // 共享内存RSS内存大小。
-    uint64_t vmswap;     // 进程swap使用量
+    uint64_t rss_anon;    // 匿名RSS内存大小 kB
+    uint64_t rss_file;    // 文件RSS内存大小 kB
+    uint64_t rss_shmem;   // 共享内存RSS内存大小。
+    uint64_t vmswap;      // 进程swap使用量
     // /proc/<pid>/pmaps
     uint64_t
         pss;   // **  Proportional Set Size, is a much more useful memory management metric, It
