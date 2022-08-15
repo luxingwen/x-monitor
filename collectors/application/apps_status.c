@@ -143,10 +143,26 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
         }
 
         // 构造应用指标对象并添加到collector
-        APP_METRIC_ADDTO_COLLECTOR(minflt, as->metrics.metric_minflt, as->app_prom_collector);
+        as->metrics.metric_majflt = prom_gauge_new(
+            sizeof(TO_STRING(APP_METRIC_TAG)) == 1 ?
+                "major_page_faults_total" :
+                TO_STRING(APP_METRIC_TAG) "_major_page_faults_total",
+            __app_metric_majflt_help, 1, (const char *[]){ TO_STRING(APP_METRIC_LABEL) });
+        prom_collector_add_metric(as->app_prom_collector, as->metrics.metric_majflt);
+
+        as->metrics.metric_minflt = prom_gauge_new(
+            sizeof(TO_STRING(APP_METRIC_TAG)) == 1 ?
+                "minor_page_faults_total" :
+                TO_STRING(APP_METRIC_TAG) "_minor_page_faults_total",
+            __app_metric_minflt_help, 1, (const char *[]){ TO_STRING(APP_METRIC_LABEL) });
+        prom_collector_add_metric(as->app_prom_collector, as->metrics.metric_minflt);
+
+        // APP_METRIC_ADDTO_COLLECTOR(majflt, as->metrics.metric_majflt, as->app_prom_collector);
+        // APP_METRIC_ADDTO_COLLECTOR(minflt, as->metrics.metric_minflt, as->app_prom_collector);
+
         APP_METRIC_ADDTO_COLLECTOR(cminflt, as->metrics.metric_cminflt, as->app_prom_collector);
-        APP_METRIC_ADDTO_COLLECTOR(majflt, as->metrics.metric_majflt, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(cmajflt, as->metrics.metric_cmajflt, as->app_prom_collector);
+
         APP_METRIC_ADDTO_COLLECTOR(utime, as->metrics.metric_utime, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(stime, as->metrics.metric_stime, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(cutime, as->metrics.metric_cutime, as->app_prom_collector);
@@ -188,6 +204,21 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
                                    as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(max_oom_score_adj, as->metrics.metric_max_oom_score_adj,
                                    as->app_prom_collector);
+
+        as->metrics.metric_nvcsw = prom_gauge_new(
+            sizeof(TO_STRING(APP_METRIC_TAG)) == 1 ?
+                "voluntary_ctxt_switches_total" :
+                TO_STRING(APP_METRIC_TAG) "_voluntary_ctxt_switches_total",
+            __app_metric_nvcsw_help, 1, (const char *[]){ TO_STRING(APP_METRIC_LABEL) });
+        prom_collector_add_metric(as->app_prom_collector, as->metrics.metric_nvcsw);
+
+        as->metrics.metric_nivcsw = prom_gauge_new(
+            sizeof(TO_STRING(APP_METRIC_TAG)) == 1 ?
+                "novoluntary_ctxt_switches_total" :
+                TO_STRING(APP_METRIC_TAG) "_novoluntary_ctxt_switches_total",
+            __app_metric_nivcsw_help, 1, (const char *[]){ TO_STRING(APP_METRIC_LABEL) });
+
+        prom_collector_add_metric(as->app_prom_collector, as->metrics.metric_nivcsw);
 
         strlcpy(as->app_name, app_name, XM_APP_NAME_SIZE);
         INIT_LIST_HEAD(&as->l_member);
@@ -552,6 +583,9 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
                 as->io_cancelled_write_bytes += ps->io_cancelled_write_bytes;
                 as->open_fds += ps->process_open_fds;
 
+                as->nvcsw += ps->nvcsw;
+                as->nivcsw += ps->nivcsw;
+
                 if ((ps->oom_score + ps->oom_score_adj)
                     > (as->max_oom_score + as->max_oom_score_adj)) {
                     as->max_oom_score = ps->oom_score;
@@ -655,13 +689,15 @@ again:
         prom_gauge_set(as->metrics.metric_max_oom_score_adj, as->max_oom_score_adj,
                        (const char *[]){ app_name });
 
+        prom_gauge_set(as->metrics.metric_nvcsw, as->nvcsw, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_nivcsw, as->nivcsw, (const char *[]){ app_name });
+
         debug(
             "[PLUGIN_APPSTATUS] app '%s' minflt: %lu, cminflt: %lu, "
             "majflt: %lu  cmajflt: %lu, utime: %lu, stime: %lu, cutime: %lu, cstime: %lu, "
-            "app_cpu_jiffies: %lu, app_num_threads: %d, vmsize: %lu, vmrss: %lu, rss_anon: %lu, "
-            "rss_file: %lu, rss_shmem: %lu, pss: %lu kB, pss_anon: %lu kB, pss_file %lu kB, "
-            "pss_shem "
-            "%lu kB, uss: %lu kB, io_logical_bytes_read: %lu, "
+            "app_cpu_jiffies: %lu, app_num_threads: %d, vmsize: %lu kB, vmrss: %lu kB, rss_anon: "
+            "%lu kB, rss_file: %lu kB, rss_shmem: %lu kB, pss: %lu kB, pss_anon: %lu kB, pss_file "
+            "%lu kB, pss_shem %lu kB, uss: %lu kB, io_logical_bytes_read: %lu, "
             "io_logical_bytes_written: %lu, io_read_calls: %lu, io_write_calls: %lu, "
             "io_storage_bytes_read: %lu, io_storage_bytes_written: %lu, "
             "io_cancelled_write_bytes: %d, open_fds: %d, max_oom_score: %d, max_oom_score_adj: %d",

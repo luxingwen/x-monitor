@@ -40,6 +40,8 @@ extern const char *__app_metric_io_cancelled_write_bytes_help;
 extern const char *__app_metric_open_fds_help;
 extern const char *__app_metric_max_oom_score_help;
 extern const char *__app_metric_max_oom_score_adj_help;
+extern const char *__app_metric_nvcsw_help;
+extern const char *__app_metric_nivcsw_help;
 
 struct app_metrics {
     prom_gauge_t *metric_minflt;
@@ -73,4 +75,6 @@ struct app_metrics {
     prom_gauge_t *metric_open_fds;
     prom_gauge_t *metric_max_oom_score;
     prom_gauge_t *metric_max_oom_score_adj;
+    prom_gauge_t *metric_nvcsw;
+    prom_gauge_t *metric_nivcsw;
 };

@@ -118,13 +118,19 @@ struct process_status {
     // 由于截断pagecache导致应该发生而没有发生的写入字节数（可能为负数）
     int32_t io_cancelled_write_bytes;
 
-    //
+    // 进程打开文件句柄数
     int32_t process_open_fds;
 
-    //
+    // oom
     int16_t oom_score;
     int16_t oom_score_adj;
     int16_t oom_adj;
+
+    /* Context switch counts: /proc/[pid]/status  voluntary_ctxt_switches,
+     * nonvoluntary_ctxt_switches
+     */
+    uint64_t nvcsw;
+    uint64_t nivcsw;
 };
 
 extern struct process_status *new_process_status(pid_t pid, struct xm_mempool_s *xmp);

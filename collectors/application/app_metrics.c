@@ -78,3 +78,6 @@ const char *__app_metric_max_oom_score_help =
 const char *__app_metric_max_oom_score_adj_help =
     "This file can be used to adjust the badness heuristic used to select which process gets "
     "killed in out-of-memory conditions.";
+
+const char *__app_metric_nvcsw_help = "The number of voluntary context switches";
+const char *__app_metric_nivcsw_help = "The number of involuntary context switches";

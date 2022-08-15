@@ -61,6 +61,9 @@ struct app_status {
     int16_t max_oom_score;
     int16_t max_oom_score_adj;
 
+    uint64_t nvcsw;
+    uint64_t nivcsw;
+
     prom_collector_t  *app_prom_collector;
     struct app_metrics metrics;
 };

@@ -54,9 +54,15 @@ USS是单个进程私有的内存大小，即该进程独占的内存部分。US
 
 // static pm_kernel_t      *__pm_ker = NULL;
 // static pthread_once_t    __init_pm_ker_once = PTHREAD_ONCE_INIT;
-static const char *const __status_tags[] = { "VmSize:",   "RssAnon:", "RssFile:",
-                                             "RssShmem:", "VmSwap:",  NULL };
-static const int32_t     __status_tags_len[] = { 7, 8, 8, 9, 7, 0 };
+static const char *const __status_tags[] = { "VmSize:",
+                                             "RssAnon:",
+                                             "RssFile:",
+                                             "RssShmem:",
+                                             "VmSwap:",
+                                             "voluntary_ctxt_switches:",
+                                             "nonvoluntary_ctxt_switches:",
+                                             NULL };
+static const int32_t     __status_tags_len[] = { 7, 8, 8, 9, 7, 24, 27, 0 };
 
 // static void __process_mem_init_pm_kernel() {
 //     int32_t ret = pm_kernel_create(&__pm_ker);
@@ -132,12 +138,12 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
 
     proc_stauts_buff[proc_stauts_buff_len] = '\0';
 
-    uint64_t *status_mem[] = { &(ps->vmsize), &(ps->rss_anon), &(ps->rss_file), &(ps->rss_shmem),
-                               &(ps->vmswap) };
+    uint64_t *status[] = { &(ps->vmsize), &(ps->rss_anon), &(ps->rss_file), &(ps->rss_shmem),
+                           &(ps->vmswap), &(ps->nvcsw),    &(ps->nivcsw) };
     size_t    num_found = 0;
 
     char *p = proc_stauts_buff;
-    while (*p && num_found < ARRAY_SIZE(status_mem)) {
+    while (*p && num_found < ARRAY_SIZE(status)) {
         int i = 0;
         while (__status_tags[i]) {
             if (strncmp(p, __status_tags[i], __status_tags_len[i]) == 0) {
@@ -151,7 +157,7 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
                     *p = 0;
                     p++;
                 }
-                *(status_mem[i]) = str2uint64_t(num);
+                *(status[i]) = str2uint64_t(num);
                 num_found++;
                 break;
             }
@@ -166,9 +172,10 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
 
     debug("[PROCESS:mem] process: '%d', vmsize: %lu kB, vmrss: %lu kB, vmswap: %lu kB, pss: %lu "
           "kB, pss_anon: %lu kB, pss_file: %lu, pss_shmem: %lu, uss: %lu kB, rss_anon: %lu kB, "
-          "rss_file: %lu kB, rsss_hmem: %lu kB",
+          "rss_file: %lu kB, rss_shmem: %lu kB, voluntary_ctxt_switches: %lu, "
+          "involuntary_ctxt_switches: %lu",
           ps->pid, ps->vmsize, ps->vmrss, ps->vmswap, ps->pss, ps->pss_anon, ps->pss_file,
-          ps->pss_shmem, ps->uss, ps->rss_anon, ps->rss_file, ps->rss_shmem);
+          ps->pss_shmem, ps->uss, ps->rss_anon, ps->rss_file, ps->rss_shmem, ps->nvcsw, ps->nivcsw);
 
     return 0;
 }
