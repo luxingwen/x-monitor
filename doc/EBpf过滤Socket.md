@@ -1,6 +1,6 @@
 # EBPF过滤Socket
 
-## 尾调
+## Tail Call
 
 ## RawSocket
 
