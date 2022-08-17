@@ -120,6 +120,7 @@
 
 - https://www.thegeekstuff.com/2012/07/elf-object-file-format/
 - [Linux Objdump Command Examples (Disassemble a Binary File) (thegeekstuff.com)](https://www.thegeekstuff.com/2012/09/objdump-examples/)
+- [14. objdump 二进制文件分析 — Linux Tools Quick Tutorial (linuxtools-rst.readthedocs.io)](https://linuxtools-rst.readthedocs.io/zh_CN/latest/tool/objdump.html)
 
 
 
