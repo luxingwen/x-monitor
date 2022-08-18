@@ -213,7 +213,7 @@ int32_t diskspace_routine_init() {
         (const char *[]){ "device", "fstype", "mountpoint" }));
 
     __metric_node_filesystem_files_free = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_filesystem_free_files",
+        prom_gauge_new("node_filesystem_files_free",
                        "node_filesystem_files_free Filesystem total free file nodes.", 3,
                        (const char *[]){ "device", "fstype", "mountpoint" }));
 
