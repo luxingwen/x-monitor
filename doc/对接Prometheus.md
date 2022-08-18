@@ -86,11 +86,11 @@ node_load5{loadavg="load"} 0.040000000000000001
 
   计算20秒的cpu总共增长了多少jiffies，expr：increase(node_cpu_jiffies{mode="total", cpu="cpu"}[20s])，查询结果15978≈16000（jiffies），**这也符合理论值：20 * 8 * 100 = 16000**。
 
-  ![prometheus-increase](./img/prometheus-increase-16607909162101.jpg)
+  ![prometheus-increase](./img/prometheus-increase.jpg)
 
 - 计算**cpu system**的占用率，计算结果是0.2%，公式：increase(node_cpu_jiffies{mode="system", cpu="cpu"}[20s])/16000。
 
-  ![prometheus-system-usage](E:\develope\x-monitor\doc\prometheus-system-usage.jpg)
+  ![prometheus-system-usage](./img/prometheus-system-usage.jpg)
 
   这个是符合top的统计输出。
 
