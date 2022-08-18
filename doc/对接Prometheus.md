@@ -80,13 +80,13 @@ node_load5{loadavg="load"} 0.040000000000000001
   100
   ```
 
-  ![prometheus-timerange](E:\develope\x-monitor\doc\prometheus-timerange.jpg)
+  ![prometheus-timerange](./img/prometheus-timerange.jpg)
 
 - increase函数，它的返回值的单位是 per-provided-time-window，计算结构就是单位时间内增长的数量。
 
   计算20秒的cpu总共增长了多少jiffies，expr：increase(node_cpu_jiffies{mode="total", cpu="cpu"}[20s])，查询结果15978≈16000（jiffies），**这也符合理论值：20 * 8 * 100 = 16000**。
 
-  ![prometheus-increase](E:\develope\x-monitor\doc\prometheus-increase.jpg)
+  ![prometheus-increase](./img/prometheus-increase-16607909162101.jpg)
 
 - 计算**cpu system**的占用率，计算结果是0.2%，公式：increase(node_cpu_jiffies{mode="system", cpu="cpu"}[20s])/16000。
 
@@ -94,13 +94,13 @@ node_load5{loadavg="load"} 0.040000000000000001
 
   这个是符合top的统计输出。
 
-  ![top-cpu-sys-usage](E:\develope\x-monitor\doc\top-cpu-sys-usage.jpg)
+  ![top-cpu-sys-usage](./img/top-cpu-sys-usage.jpg)
 
 - rate函数，计算每一秒增长率(per-second)，是所提供tw内的平均值。
 
   expr：rate(node_cpu_jiffies{mode="system", cpu="cpu"}[1m])/800，除以**800**是因为cpu有8个core，1s等于100jiffies，除以的结构就是相对于一个core的占有率百分比。
 
-  ![prometheus-cpu-sys-usage-rate](E:\develope\x-monitor\doc\prometheus-cpu-sys-usage-rate.jpg)
+  ![prometheus-cpu-sys-usage-rate](./img/prometheus-cpu-sys-usage-rate.jpg)
 
 - irate函数，它也是per-second增长率，是瞬时增长率。它只使用所提供tw内的最后两个采样，忽略掉前面的所有采样。
 
@@ -110,4 +110,4 @@ node_load5{loadavg="load"} 0.040000000000000001
 
 - 查看主机cpu每秒的jiffies数量，expr：rate(node_cpu_jiffies{mode="total", cpu="cpu"}[20s]) ≈ 800
 
-  ![prometheus-node-cpu-jiffies-1s](E:\develope\x-monitor\doc\prometheus-node-cpu-jiffies-1s.jpg)
+  ![prometheus-node-cpu-jiffies-1s](./img/prometheus-node-cpu-jiffies-1s.jpg)
