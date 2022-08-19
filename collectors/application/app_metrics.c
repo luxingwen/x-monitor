@@ -10,44 +10,47 @@
 const char *__app_metric_minflt_help =
     "The number of minor faults the app has made which have not required "
     "loading a memory page from disk.";
-const char *__app_metric_cminflt_help =
+const char *__app_metric_vm_cminflt_help =
     "The number of minor faults that the app's waited-for children have made.";
 const char *__app_metric_majflt_help =
     "The number of major faults the app has made which have required loading a "
     "memory page from disk.";
-const char *__app_metric_cmajflt_help =
+const char *__app_metric_vm_cmajflt_help =
     "The number of major faults that the app's waited-for children have made.";
-const char *__app_metric_utime_help =
+const char *__app_metric_cpu_utime_help =
     "The number of jiffies the app has been scheduled in user mode.";
-const char *__app_metric_stime_help =
+const char *__app_metric_cpu_stime_help =
     "The number of jiffies the app has been scheduled in kernel mode.";
-const char *__app_metric_cutime_help =
+const char *__app_metric_cpu_cutime_help =
     "The number of jiffies the app's waited-for children have been scheduled in user mode.";
-const char *__app_metric_cstime_help =
+const char *__app_metric_cpu_cstime_help =
     "The number of jiffies the app's waited-for children have been scheduled in kernel mode.";
-const char *__app_metric_cpu_jiffies_help = "The number of cpu jiffies the app has been scheduled";
+const char *__app_metric_cpu_total_jiffies_help =
+    "The number of cpu jiffies the app has been scheduled";
 const char *__app_metric_num_threads_help = "The number of threads the app has";
-const char *__app_metric_vmsize_help = "The number of kilobytes of virtual memory";
-const char *__app_metric_vmrss_help =
+const char *__app_metric_vmsize_kilobytes_help = "The number of kilobytes of virtual memory";
+const char *__app_metric_vmrss_kilobytes_help =
     "The number of kilobytes of resident memory, the value here is the sum of "
     "RssAnon, RssFile, and RssShmem.";
-const char *__app_metric_rss_anon_help = "The number of kilobytes of resident anonymous memory";
-const char *__app_metric_rss_file_help = "The number of kilobytes of resident file mappings";
-const char *__app_metric_rss_shmem_help =
+const char *__app_metric_mem_rss_anon_kilobytes_help =
+    "The number of kilobytes of resident anonymous memory";
+const char *__app_metric_mem_rss_file_kilobytes_help =
+    "The number of kilobytes of resident file mappings";
+const char *__app_metric_mem_rss_shmem_kilobytes_help =
     "The number of kilobytes of resident shared memory (includes System V "
     "shared memory, mappings from tmpfs(5), and shared anonymous mappings)";
-const char *__app_metric_vmswap_help =
+const char *__app_metric_mem_vmswap_kilobytes_help =
     "The number of kilobytes of Swapped-out virtual memory size by anonymous private pages";
-const char *__app_metric_pss_help =
+const char *__app_metric_mem_pss_kilobytes_help =
     "The number of kilobytes of Proportional Set memory size, It works exactly "
     "like RSS, but with the added difference of partitioning shared libraries";
-const char *__app_metric_pss_anon_help =
+const char *__app_metric_mem_pss_anon_kilobytes_help =
     "The number of kilobytes of Proportional Set memory size of anonymous private pages";
-const char *__app_metric_pss_file_help =
+const char *__app_metric_mem_pss_file_kilobytes_help =
     "The number of kilobytes of Proportional Set memory size of file mappings";
-const char *__app_metric_pss_shmem_help =
+const char *__app_metric_mem_pss_shmem_kilobytes_help =
     "The number of kilobytes of Proportional Set memory size of shared memory";
-const char *__app_metric_uss_help =
+const char *__app_metric_mem_uss_kilobytes_help =
     "The number of kilobytes of Unique Set memory size, represents the private memory of a "
     "process.  it shows libraries and pages allocated only to this process";
 const char *__app_metric_io_logical_bytes_read_help =

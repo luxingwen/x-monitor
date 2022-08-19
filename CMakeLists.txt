@@ -11,16 +11,18 @@ set(STATIC_LINKING OFF CACHE BOOL "Build ipftrace2 as a statically linked execut
 set(STATIC_LIBC OFF CACHE BOOL "Attempt to embed libc, only known to work with musl. Has issues with dlopen.")
 set(USE_ADDRSANITIZER OFF CACHE BOOL "AddressSanitizer (detects addressability issues) and LeakSanitizer (detects memory leaks).")
 
-set(APP_METRIC_TAG "" CACHE STRING "Tag for AppMetrics.")
-set(APP_METRIC_LABEL "app" CACHE STRING "Label for AppMetrics.")
+set(APP_METRIC_PREFIX "app" CACHE STRING "Prefix for AppMetrics.")
+set(APP_METRIC_LABEL_NAME "app" CACHE STRING "Label for AppMetrics.")
+set(COMMON_METRIC_PREFIX "" CACHE STRING "Prefix for CommonMetrics.")
 
-if(APP_METRIC_TAG)
-  message(STATUS "set APP_METRIC_LABEL = ${APP_METRIC_TAG}")
-  set(APP_METRIC_LABEL ${APP_METRIC_TAG} CACHE STRING "Label for AppMetrics." FORCE)
-endif()
+#if(APP_METRIC_PREFIX)
+#  message(STATUS "set APP_METRIC_LABEL_NAME = ${APP_METRIC_PREFIX}")
+#  set(APP_METRIC_LABEL_NAME ${APP_METRIC_PREFIX} CACHE STRING "Label for AppMetrics." FORCE)
+#endif()
 
-message(STATUS "APP_METRIC_LABEL: ${APP_METRIC_LABEL}")
-message(STATUS "APP_METRIC_TAG: ${APP_METRIC_TAG}")
+message(STATUS "APP_METRIC_LABEL_NAME: ${APP_METRIC_LABEL_NAME}")
+message(STATUS "APP_METRIC_PREFIX: ${APP_METRIC_PREFIX}")
+message(STATUS "COMMON_METRIC_PREFIX: ${COMMON_METRIC_PREFIX}")
 
 if(STATIC_LINKING)
   if(STATIC_LIBC)
@@ -207,16 +209,12 @@ message(STATUS "X-MONITOR_SRCS = ${X-MONITOR_SRCS}")
 
 # 编译的执行程序
 add_executable(x-monitor main.c ${X-MONITOR_SRCS})
-#                        ${PLUGINSD_FILES}
-#                        ${APPCONFIG_FILES}
-#                        ${PROC_PLUGIN_FILES}
-#                        ${PROXY_FILES}
-#                        )
 target_compile_definitions(x-monitor PRIVATE 
   -DDEBUG 
   -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" 
   -DLOG_DIR="/usr/log/x-monitor"
-  -DAPP_METRIC_TAG=${APP_METRIC_TAG}
-  -DAPP_METRIC_LABEL=${APP_METRIC_LABEL})
+  -DAPP_METRIC_PREFIX=${APP_METRIC_PREFIX}
+  -DAPP_METRIC_LABEL_NAME=${APP_METRIC_LABEL_NAME}
+  -DCOMMON_METRIC_PREFIX=${COMMON_METRIC_PREFIX})
 
 target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread ssl crypto uuid dl zstd z m)
