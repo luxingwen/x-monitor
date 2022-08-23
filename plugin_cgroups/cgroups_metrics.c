@@ -13,3 +13,7 @@
 const char *__sys_cgroup_metric_cpu_shares_help =
     "The relative share of CPU that this cgroup gets. This number is divided into the sum total of "
     "all cpu share values to determine the share any individual cgroup is entitled to.";
+const char *__sys_cgroup_metric_cpu_cfs_period_us_help =
+    "The period of time in microseconds for how regularly a cgroup's access to CPU resources "
+    "should be reallocated. This value is used by the Completely Fair Scheduler to determine how "
+    "to share CPU time between cgroups.";
