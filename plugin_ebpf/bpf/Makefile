@@ -88,7 +88,7 @@ $(LIBBPF_OBJ): $(wildcard $(LIBBPF_SRC)/*.[ch] $(LIBBPF_SRC)/Makefile)
 	$(call msg,LIB,$@)
 	$(Q)$(MAKE) $(submake_extras) -C $(LIBBPF_SRC) BUILD_STATIC_ONLY=1  \
 									OBJDIR=$(dir $@) DESTDIR=	\
-									INCLUDEDIR=$(abspath ../../../extra/include) LIBDIR=$(abspath ../../../extra/libs) UAPIDIR=	    \
+									INCLUDEDIR=$(abspath ../../extra/include) LIBDIR=$(abspath ../../extra/libs) UAPIDIR=	    \
 									install
 
 $(OUTPUT):
