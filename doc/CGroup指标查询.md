@@ -1,8 +1,8 @@
 # CGroup指标查询
 
 ## 限制CPU使用
-
-### CPUACCT目录详情
+### cpuacct控制器
+>>>>>>> c8dcc9498a9bcab27cdfe14694f55a8600cf5704
 
 自动生成控制组中任务对CPU资源使用情况的报告。
 
