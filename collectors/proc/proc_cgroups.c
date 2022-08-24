@@ -32,16 +32,18 @@ static prom_gauge_t *__metric_cgroup_subsys_hierarchy_count = NULL,
  * @return The return value is the exit code of the plugin.
  */
 int32_t init_collector_proc_cgroups() {
-    __metric_cgroup_subsys_hierarchy_count = prom_collector_registry_must_register_metric(
-        prom_gauge_new("cgroup_subsys_hierarchy_count", "cgroup subsystem hierarchy count", 1,
-                       (const char *[]){ "subsys_name" }));
+    __metric_cgroup_subsys_hierarchy_count =
+        prom_collector_registry_must_register_metric(prom_gauge_new(
+            "node_cgroup_subsys_hierarchy_count", "node cgroup subsystem hierarchy count", 1,
+            (const char *[]){ "subsys_name" }));
 
     __metric_cgroup_subsys_num_cgroups_count = prom_collector_registry_must_register_metric(
-        prom_gauge_new("cgroup_subsys_num_cgroups", "cgroup subsystem cgroup count", 1,
+        prom_gauge_new("node_cgroup_subsys_num_cgroups", "node cgroup subsystem cgroup count", 1,
                        (const char *[]){ "subsys_name" }));
 
-    __metric_cgroup_subsys_enabled = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "cgroup_subsys_enabled", "cgroup subsystem enabled", 1, (const char *[]){ "subsys_name" }));
+    __metric_cgroup_subsys_enabled = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_cgroup_subsys_enabled", "node cgroup subsystem enabled", 1,
+                       (const char *[]){ "subsys_name" }));
 
     debug("[PLUGIN_PROC:proc_cgroups] init successed");
     return 0;
