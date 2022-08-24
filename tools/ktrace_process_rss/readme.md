@@ -5,19 +5,19 @@
 - 进程角度：process实际使用的物理内存
 - CGroup角度：CGroup本身是一个容量概念，容量就会有范围了。
 
-## CG目的
+## CGroup目的
 
 - 隔离一个或一组应用
 - 限制内存的使用量。
 
-## CG特性
+## CGroup特性
 
 - 统计匿名页、file cache、swap cache使用情况并加以限制。
 - 统计memory+swap使用情况并加以限制。
 - 使用量阈值通知。
 - 内存压力通知。
 
-## CG设计
+## CGroup设计
 
 内存控制器的核心就是page_counter，它追踪添加到控制器里的进程当前内存使用情况以及使用限制，每个cgroup都有一个独立的内存控制器数据结构mem_cgroup。memcontrol.h
 
@@ -161,6 +161,8 @@ call stack>>>
 脚本统计和/proc/<pid>/stat.rss的完全吻合
 
 ![process_rss](./process_rss.jpg)
+
+通过堆栈可以发现，真正触发分配物理内存的行为是**缺页异常**。
 
 ### 进程内存、物理page、mem_cg如何关联
 

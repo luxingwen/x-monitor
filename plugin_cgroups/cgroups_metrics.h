@@ -115,8 +115,10 @@ struct sys_cgroup_metrics {
 
     prom_counter_t *cgroup_metric_memory_stat_total_pgpgin;
     prom_counter_t *cgroup_metric_memory_stat_total_pgpgout;
-    prom_counter_t *cgroup_metric_memory_stat_total_pgfault;
-    prom_counter_t *cgroup_metric_memory_stat_total_pgmajfault;
+    prom_counter_t *cgroup_metric_memory_stat_total_pgfault;   // 缺页异常
+    prom_counter_t *
+        cgroup_metric_memory_stat_total_pgmajfault;   // 该缺页异常伴随着磁盘I/O，例如访问访问的数据还在磁盘上，就会触发一次major
+                                                      // fault。
 
     prom_gauge_t *cgroup_metric_memory_stat_total_inactive_anon_bytes;
     prom_gauge_t *cgroup_metric_memory_stat_total_active_anon_bytes;
@@ -127,10 +129,11 @@ struct sys_cgroup_metrics {
     prom_gauge_t
         *cgroup_metric_memory_usage_in_bytes;   // 显示当前内存（进程内存 + 页面缓存）的使用量
     prom_gauge_t
-                 *cgroup_metric_memory_limit_in_bytes;   // 显示当前内存（进程内存 + 页面缓存）使用量的限制值
+        *cgroup_metric_memory_limit_in_bytes;   // 显示当前内存（进程内存 +
+                                                // 页面缓存）使用量的限制值，超过这个值进程会被oom
+                                                // killer干掉或者被暂停
     prom_gauge_t *cgroup_metric_memory_failcnt;   // 显示内存（进程内存 + 页面缓存）达到限制值的次数
-    prom_gauge_t *cgroup_metric_memory_max_usage_in_bytes;   // 显示记录的内存（进程内存 +
-                                                             // 页面缓存）使用量的最大值
+    prom_gauge_t *cgroup_metric_memory_max_usage_in_bytes;   // 历史内存最大使用量
     prom_gauge_t *
         cgroup_metric_memory_swappiness;   // 设置、显示针对分组的swappiness（相当于sysctl的vm.swappiness）
 };

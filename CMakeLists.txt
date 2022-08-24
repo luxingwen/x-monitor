@@ -203,7 +203,9 @@ file(GLOB_RECURSE X-MONITOR_SRCS
         "plugins.d/*.c" 
         "plugins.d/*.h" 
         "plugin_proxy/*.c" 
-        "plugin_proxy/*.h")
+        "plugin_proxy/*.h"
+        "plugin_cgroups/*.c"
+        "plugin_cgroups/*.h")
 
 message(STATUS "X-MONITOR_SRCS = ${X-MONITOR_SRCS}")        
 

@@ -89,11 +89,47 @@ Given a total cpu quota, we should firstly distribute the cpu.share of each cgro
   - nr_throttled：在上面这些周期中，有多少次是受到了限制（即cgroup中的进程在指定的时间周期中用光了它的配额）。
   - throttled_time：cgroup中的进程被限制使用CPU持续了多长时间，单位是ns。
 
+## 限制内存资源
+
+当限制内存时，我们最好想清楚如果内存超限了发生什么？该如何处理？业务是否可以接受这样的状态？
+
+### 内存控制能限制什么
+
+- 限制cgroup中所有进程所能使用的物理内存总量。
+- 限制cgroup中所有能使用的物理内存+交换空间总量（CONFIG_MEMCG_SWAP），一般在server不开启swap空间。
+
+### 压力通知机制
+
+当cgroup内的内存使用量达到某种压力状态的时候，内核可以通过eventfd的机制来通知用户程序，这个通知是通过cgroup.event_control和memory.pressure_level来实现的。使用步骤如下：
+
+1. 使用eventfd()创建一个eventfd，假设叫做efd。
+2. 然后open()打开memory.pressure_level的文件路径，产生一个fd，暂且称为pfd。
+3. 然后将这两个fd和我们要关注的内存压力级别告诉内核，让内核帮我们关注条件是否成立。
+4. 按这样的格式”<event_fd> <pressure_level_fd> <threshold>"写入cgroup.event_control。然后就等着efd是否可读。如果能读出信息，则代表内存使用已经触发了相关压力条件。
+
+压力级别的level有三个：
+
+1. low，表示内存使用已经达到触发内存回收的压力级别。
+2. medium，表示内存使用压力更大了，已经开始触发swap以及将活跃的cache写回文件等操作了。
+3. critical，意味内存已经达到上限，内核已经触发oom killer了。
+
+从efd读取的消息内容就是这三个级别的关键字。**多个level可能要创建多个event_fd**。
+
+### 内存阈值通知
+
+使用cgroup的事件通知机制来对内存阈值进行监控，当内存使用量穿过（高于或低于）设置的阈值时，就会收到通知，步骤如下。
+
+1. 使用eventfd()创建一个eventfd，假设叫做efd。
+2. 然后open()打开memory.usage_in_bytes，产生一个fd，暂且称为ufd。
+3. 往cgroup.event_control中写入这么一串：`<event_fd> <usage_in_bytes_fd> <threshold>`。
+4. 然后通过读取event_fd得到通知。
+
 ## 资料
 
 - [Linux Cgroup系列（05）：限制cgroup的CPU使用（subsystem之cpu） - SegmentFault 思否](https://segmentfault.com/a/1190000008323952?utm_source=sf-similar-article)
 - [容器CPU（1）：怎么限制容器的CPU使用？_富士康质检员张全蛋的博客-CSDN博客_容器cpu限制](https://blog.csdn.net/qq_34556414/article/details/120654931)
 - [3.2. cpu Red Hat Enterprise Linux 6 | Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-cpu)
+- [Index of /doc/Documentation/cgroup-v1/ (kernel.org)](https://www.kernel.org/doc/Documentation/cgroup-v1/)
 
 
 
