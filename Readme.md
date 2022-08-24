@@ -20,7 +20,7 @@
 
 4. [系统指标查询](doc/系统指标查询.md)
 
-5. [cgroup指标查询](./doc/cgroup指标查询.md)
+5. [cgroup指标查询](./doc/CGroup指标查询.md)
 
 6. [EBPF指标查询](./doc/EBPF指标查询)
 
