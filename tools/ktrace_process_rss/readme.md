@@ -1,23 +1,22 @@
-# Process memory rss  vs  Process CGroup memory rss
+# Process memory 和 Process CGroup memory
 
-## 进程角度和CGroup的角度
+进程角度：process实际使用的物理内存
 
-- 进程角度：process实际使用的物理内存
-- CGroup角度：CGroup本身是一个容量概念，容量就会有范围了。
+CGroup角度：CGroup本身是一个容量概念，容量就会有范围了。
 
-## CGroup目的
+## CGroup介绍
 
 - 隔离一个或一组应用
 - 限制内存的使用量。
 
-## CGroup特性
+### 特性
 
 - 统计匿名页、file cache、swap cache使用情况并加以限制。
 - 统计memory+swap使用情况并加以限制。
 - 使用量阈值通知。
 - 内存压力通知。
 
-## CGroup设计
+### CGroup设计
 
 内存控制器的核心就是page_counter，它追踪添加到控制器里的进程当前内存使用情况以及使用限制，每个cgroup都有一个独立的内存控制器数据结构mem_cgroup。memcontrol.h
 
@@ -32,7 +31,7 @@ struct mem_cgroup {
 	struct page_counter memory;		/* Both v1 & v2 */
 ```
 
-## 页交换扩展（CONFIG_MEMCG_SWAP）
+### 页交换扩展（CONFIG_MEMCG_SWAP）
 
 ```
 [root@VM-0-8-centos /]# cat /boot/config-5.14.0-86.el9.x86_64|grep CONFIG_MEMCG_SWAP
@@ -50,7 +49,7 @@ memsw是memory+swap的意思。cgroup限制进程所使用的内存总量实际�
 
 关闭方式：grubby --update-kernel=ALL --args=swapaccount=0，默认开启也可以通过内核引导参数"swapaccount=0"禁止此特性。**设置重启后memory.memsw.*文件就没有了**。
 
-## 统计
+## 统计方式
 
 ### 进程角度和CGroup角度对rss的统计差异
 
@@ -66,7 +65,7 @@ cache 24195072
 rss 28147712
 ```
 
-#### process的rss
+#### Process的RSS
 
 用pidstat或top看进程的rss才115736，/proc/<pid>/stat.rss的24列。
 
@@ -75,7 +74,7 @@ rss 28147712
 03:23:49 PM     0     10505         -    0.00    0.00    0.00    0.00    0.00     4    105.00      0.00 21474979248  115736   0.71      0.00     32.00      0.00       0      0.00      0.00  x-monitor
 ```
 
-### 进程rss的统计
+### 进程RSS的统计
 
 #### 进程内存的分类
 
@@ -83,7 +82,9 @@ rss 28147712
 
 - anonymous user space map pages (Anonymous pages in User Mode address spaces), like calling malloc allocation of memory, and the use of MAP_ANONYMOUS mmap; when the system memory is not enough, this part of the kernel can be swapped out of memory。这段话说明就是程序中的malloc，calloc这种调用分配的内存。
 
-- user space file mapping page (**Mapped pages in User Mode address spaces**), contains the map file and map tmpfs; former such as mmap specified file, the latter such as IPC shared memory; when the system is not enough memory, the kernel can reclaim these pages, but you may need to synchronize data files before recovery。这段话最关键的地方是用户地址空间，说明是由用户调用mmap、shmget等方法做的文件映射而分配的内存。我觉得应该也会包括动态库的加载。这里千万别和page cache搞混了，page cache是内核行为，是内核地址空间。
+- user space file mapping page (**Mapped pages in User Mode address spaces**), contains the map file and map tmpfs; former such as mmap specified file, the latter such as IPC shared memory; when the system is not enough memory, the kernel can reclaim these pages, but you may need to synchronize data files before recovery。**这段话最关键的地方是用户地址空间，说明是由用户调用mmap、shmget创建的共享内存或文件映射。根据资料10，mmap(MAP_SHARED)，shmget创建的共享内存都是基于tmpfs，而tmpfs也是使用的page cache，所以这块看到的还是cache的增长**。
+
+  简而言之，进程使用的共享内存时基于tmpfs，而tmpfs使用的page cache。这块物理内存会被统计到cache中。
 
 - file cache (page in page cache of disk file); occurs in the program through the normal read / write to read and write files when the system is not enough memory, the kernel can recycle these pages, but may need to synchronize data files prior to recovery 。这块就是内核管理的内存了，直白的解释就是下图，加速read、write的调用。
 
@@ -91,7 +92,7 @@ rss 28147712
 
 - buffer pages, belong to the page cache; such as reading block device file. 这就是块设备使用的内存。新内核已经将buffer + page cache合并了。
 
-所以，进程的rss实际是1和2的和。在4.18内核代码中，可见第二项是等于MM_FILEPAGES + MM_SHMEMPAGES的。
+所以，进程的rss实际是1和2的和。在4.18内核代码中，可见第二项是等于MM_FILEPAGES + MM_SHMEMPAGES（部分page cache）的。
 
 #### 内核相关代码
 
@@ -257,9 +258,9 @@ bool page_counter_try_charge(struct page_counter *counter,
 		new = atomic_long_add_return(nr_pages, &c->usage);
 ```
 
-### 查看cgroup信息
+### 查看Cgroup信息
 
-列出所有的cgroup
+列出所有的Cgroup
 
 ```
  ⚡ root@localhost  /home/calmwu/program/cpp_space/x-monitor/tools/ktrace_process_rss  lscgroup|grep x-monitor   
@@ -402,12 +403,21 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 
 ## 资料
 
-- [Linux processes in memory and memory cgroup statistics - linux - newfreesoft.com](http://www.newfreesoft.com/linux/linux_processes_in_memory_and_memory_cgroup_statistics_747/)
-- [linux中/proc/stat和/proc/[pid\]/stat的解析说明_不开窍的笨笨的博客-CSDN博客](https://blog.csdn.net/qq_28302795/article/details/114371687?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2~default~CTRLIST~default-1-114371687-blog-8904110.pc_relevant_sortByAnswer&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2~default~CTRLIST~default-1-114371687-blog-8904110.pc_relevant_sortByAnswer&utm_relevant_index=2)
-- [str() call won't accept char * arguments · Issue #1010 · iovisor/bpftrace (github.com)](https://github.com/iovisor/bpftrace/issues/1010)
-- [linux - What are memory mapped page and anonymous page? - Stack Overflow](https://stackoverflow.com/questions/13024087/what-are-memory-mapped-page-and-anonymous-page)
-- [Why top and free inside containers don't show the correct container memory | OpsTips](https://ops.tips/blog/why-top-inside-container-wrong-memory/)
-- [Linux processes in memory and memory cgroup statistics - linux - newfreesoft.com](http://www.newfreesoft.com/linux/linux_processes_in_memory_and_memory_cgroup_statistics_747/)
-- [Linux 内存占用分析的几个方法，你知道几个？ | HeapDump性能社区](https://heapdump.cn/article/3680789)
-- [你是什么内存: PageAnon 与 PageSwapBacked - 温暖的电波 - 博客园 (cnblogs.com)](https://www.cnblogs.com/liuhailong0112/p/14426096.html)
-- [软件开发|剖析内存中的程序之秘 (linux.cn)](https://linux.cn/article-9255-1.html)
+1. [Linux processes in memory and memory cgroup statistics - linux - newfreesoft.com](http://www.newfreesoft.com/linux/linux_processes_in_memory_and_memory_cgroup_statistics_747/)
+2. [linux中/proc/stat和/proc/[pid\]/stat的解析说明_不开窍的笨笨的博客-CSDN博客](https://blog.csdn.net/qq_28302795/article/details/114371687?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2~default~CTRLIST~default-1-114371687-blog-8904110.pc_relevant_sortByAnswer&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2~default~CTRLIST~default-1-114371687-blog-8904110.pc_relevant_sortByAnswer&utm_relevant_index=2)
+3. [str() call won't accept char * arguments · Issue #1010 · iovisor/bpftrace (github.com)](https://github.com/iovisor/bpftrace/issues/1010)
+4. [linux - What are memory mapped page and anonymous page? - Stack Overflow](https://stackoverflow.com/questions/13024087/what-are-memory-mapped-page-and-anonymous-page)
+5. [Why top and free inside containers don't show the correct container memory | OpsTips](https://ops.tips/blog/why-top-inside-container-wrong-memory/)
+6. [Linux processes in memory and memory cgroup statistics - linux - newfreesoft.com](http://www.newfreesoft.com/linux/linux_processes_in_memory_and_memory_cgroup_statistics_747/)
+7. [Linux 内存占用分析的几个方法，你知道几个？ | HeapDump性能社区](https://heapdump.cn/article/3680789)
+8. [你是什么内存: PageAnon 与 PageSwapBacked - 温暖的电波 - 博客园 (cnblogs.com)](https://www.cnblogs.com/liuhailong0112/p/14426096.html)
+9. [软件开发|剖析内存中的程序之秘 (linux.cn)](https://linux.cn/article-9255-1.html)
+10. [Linux内存中的Cache真的能被回收么？ | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/linuxnei-cun-zhong-de-cache-zhen-de-neng-bei-hui-shou-yao-ff1f.html)
+11. [/proc/meminfo之谜 (ssdfans.com)](http://www.ssdfans.com/?p=4334)
+
+### 共享内存和tmpfs的关系
+
+1. [浅析Linux的共享内存与tmpfs文件系统 (hustcat.github.io)](https://hustcat.github.io/shared-memory-tmpfs/)
+2. [Shared Memory Virtual Filesystem (kernel.org)](https://www.kernel.org/doc/gorman/html/understand/understand015.html)
+3. [Analysis of Linux Kernel tmpfs/shmem - actorsfit](https://blog.actorsfit.com/a?ID=01300-05ff3ee0-8619-4544-b922-bec1e813c373)
+4. [共享内存和tmpfs - 菜鸡的博客 | WTCL (bbkgl.github.io)](https://bbkgl.github.io/2020/07/26/共享内存和tmpfs/)
