@@ -11,7 +11,7 @@ CGroup角度：CGroup本身是一个容量概念，容量就会有范围了。
 
 ### 特性
 
-- 统计匿名页、file cache、swap cache使用情况并加以限制。
+- 统计匿名页、file cache、swap cache使用情况并加以限制。swap cache：用来加速交换的缓冲区，应为swap设备都是磁盘。
 - 统计memory+swap使用情况并加以限制。
 - 使用量阈值通知。
 - 内存压力通知。
@@ -74,7 +74,7 @@ rss 28147712
 03:23:49 PM     0     10505         -    0.00    0.00    0.00    0.00    0.00     4    105.00      0.00 21474979248  115736   0.71      0.00     32.00      0.00       0      0.00      0.00  x-monitor
 ```
 
-### 进程RSS的统计
+### 进程RSS的计算
 
 #### 进程内存的分类
 
@@ -92,7 +92,7 @@ rss 28147712
 
 - buffer pages, belong to the page cache; such as reading block device file. 这就是块设备使用的内存。新内核已经将buffer + page cache合并了。
 
-所以，进程的rss实际是1和2的和。在4.18内核代码中，可见第二项是等于MM_FILEPAGES + MM_SHMEMPAGES（部分page cache）的。
+所以，进程的rss实际是1和2的和，RSS = RssAnon + RssFile + RssShmem。在4.18内核代码中，可见第二项是等于MM_FILEPAGES + MM_SHMEMPAGES（部分page cache）的。
 
 #### 内核相关代码
 
@@ -165,7 +165,7 @@ call stack>>>
 
 通过堆栈可以发现，真正触发分配物理内存的行为是**缺页异常**。
 
-### 进程内存、物理page、mem_cg如何关联
+#### 进程内存、物理page、mem_cg如何关联
 
 - struct page *page
 - struct mm_struct *mm
@@ -258,7 +258,9 @@ bool page_counter_try_charge(struct page_counter *counter,
 		new = atomic_long_add_return(nr_pages, &c->usage);
 ```
 
-### 查看Cgroup信息
+### CGroup RSS的计算
+
+#### 统计输出
 
 列出所有的Cgroup
 
@@ -280,9 +282,11 @@ memory.move_charge_at_immigrate: 0
 memory.kmem.tcp.max_usage_in_bytes: 0
 ```
 
-### cgroup memory.stat中rss的统计
+#### 统计实现
 
-首先从seq_file得到对应的struct mem_cgroup对象，cgroup的rss是统计的NR_ANON_MAPPED，当前进程的stat.rss输出如下
+根据内核文档描述，memory.stat.rss统计定义为“of bytes of anonymous and swap cache memory (includes transparent hugepages).”
+
+首先从seq_file得到对应的struct mem_cgroup对象，cgroup的RSS是统计的NR_ANON_MAPPED，当前进程的stat.rss输出如下
 
 ```
  ⚡ root@localhost  /sys/fs/cgroup/memory/x-monitor  cat memory.stat 
@@ -342,7 +346,34 @@ static int memcg_stat_show(struct seq_file *m, void *v)
 	}
 ```
 
-实际的统计函数memcg_page_state_local
+实际的统计函数memcg_page_state_local。vmstat_local是个__percpu类型的变量，是动态分配创建的。
+
+创建vmstat_local对象
+
+```
+static struct mem_cgroup *mem_cgroup_alloc(void)
+{
+	....
+	memcg->vmstats_local = alloc_percpu_gfp(struct memcg_vmstats_percpu,
+						GFP_KERNEL_ACCOUNT);	
+```
+
+释放vmstat_local对象
+
+```
+static void __mem_cgroup_free(struct mem_cgroup *memcg)
+{
+	int node;
+
+	for_each_node (node)
+		free_mem_cgroup_per_node_info(memcg, node);
+	free_percpu(memcg->vmstats_percpu);
+	free_percpu(memcg->vmstats_local);
+	kfree(memcg);
+}
+```
+
+在输出统计的时候会汇总所有cpu的上累计值。
 
 ```
 /*
@@ -365,31 +396,37 @@ static inline unsigned long memcg_page_state_local(struct mem_cgroup *memcg,
 }
 ```
 
-### cgroup的memory stat文件内容解释
+修改vmstats_local统计数值代码，先读取出来，然后加上val，在写入。
 
 ```
-cache		- # of bytes of page cache memory.
-rss		- # of bytes of anonymous and swap cache memory (includes
-		transparent hugepages). -------------- 这里我不认为是交换分区的大小，而是可交换内存的大小，例如page cacache，file mapping这类。前面config_memcg_swap说的也是可交换的页数量。
-rss_huge	- # of bytes of anonymous transparent hugepages.
-mapped_file	- # of bytes of mapped file (includes tmpfs/shmem)
-pgpgin		- # of charging events to the memory cgroup. The charging
-		event happens each time a page is accounted as either mapped
-		anon page(RSS) or cache page(Page Cache) to the cgroup.
-pgpgout		- # of uncharging events to the memory cgroup. The uncharging
-		event happens each time a page is unaccounted from the cgroup.
-swap		- # of bytes of swap usage
-dirty		- # of bytes that are waiting to get written back to the disk.
-writeback	- # of bytes of file/anon cache that are queued for syncing to
-		disk.
-inactive_anon	- # of bytes of anonymous and swap cache memory on inactive
-		LRU list.
-active_anon	- # of bytes of anonymous and swap cache memory on active
-		LRU list.
-inactive_file	- # of bytes of file-backed memory on inactive LRU list.
-active_file	- # of bytes of file-backed memory on active LRU list.
-unevictable	- # of bytes of memory that cannot be reclaimed (mlocked etc).
+void __mod_memcg_state(struct mem_cgroup *memcg, int idx, int val)
+{
+	long x, threshold = MEMCG_CHARGE_BATCH;
+
+	if (mem_cgroup_disabled())
+		return;
+
+	if (memcg_stat_item_in_bytes(idx))
+		threshold <<= PAGE_SHIFT;
+
+	x = val + __this_cpu_read(memcg->vmstats_percpu->stat[idx]);
+	if (unlikely(abs(x) > threshold)) {
+		struct mem_cgroup *mi;
+
+		/*
+		 * Batch local counters to keep them in sync with
+		 * the hierarchical ones.
+		 */
+		__this_cpu_add(memcg->vmstats_local->stat[idx], x);
+		for (mi = memcg; mi; mi = parent_mem_cgroup(mi))
+			atomic_long_add(x, &mi->vmstats[idx]);
+		x = 0;
+	}
+	__this_cpu_write(memcg->vmstats_percpu->stat[idx], x);
+}
 ```
+
+#### 使用bpftrace来观察修改过程
 
 docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)](https://docs.docker.com.zh.xy2401.com/config/containers/runmetrics/#metrics-from-cgroups-memory-cpu-block-io)
 
@@ -415,6 +452,7 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 10. [Linux内存中的Cache真的能被回收么？ | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/linuxnei-cun-zhong-de-cache-zhen-de-neng-bei-hui-shou-yao-ff1f.html)
 11. [/proc/meminfo之谜 (ssdfans.com)](http://www.ssdfans.com/?p=4334)
 12. [Cgroup - Linux内存资源管理 | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/cgroup_linux_memory_control_group.html)
+13. [内核基础设施——per cpu变量 - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/kernel/percpu-var/)
 
 ### 共享内存和tmpfs的关系
 

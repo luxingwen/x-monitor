@@ -1,14 +1,15 @@
 # x-monitor
 
-系统观察服务，从三个层面来观察、收集指标：
+系统观察服务，从以下层面来观察OS、收集指标：
 
 - 传统指标
 
 - 应用指标
 
-- ebpf内核观察。
+- Cgroups指标
 
-  包括node-exporter、app-exporter，正在开发ebpf-exporter。
+- ebpf内核观察
+
 
 ## 详情
 

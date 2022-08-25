@@ -5,7 +5,6 @@
 #include <linux/memcontrol.h>
 #include <linux/seq_file.h>
 
-
 BEGIN {
     @mm_pagetype_str[0] = "MM_FILEPAGES";
     @mm_pagetype_str[1] = "MM_ANONPAGES";
@@ -50,6 +49,7 @@ kprobe:add_mm_counter_fast /comm == "x-monitor"/
 }
 */
 
+/*
 kprobe:sync_mm_rss /comm == "x-monitor"/ 
 {
     $task = (struct task_struct *)curtask;
@@ -81,21 +81,26 @@ kprobe:sync_mm_rss /comm == "x-monitor"/
     }
     printf("<===\n\n");
 }
+*/
 
-kprobe:try_charge /comm == "x-monitor"/ 
+kprobe:__mod_memcg_state
 {
     $mem_cg = (struct mem_cgroup *)arg0;
-    $charge_page_count = (int32)arg2;
+    $idx = (int32)arg1;
+    $delta_counter = (int32)arg2;
 
-    $soft_limit = $mem_cg->soft_limit;
-    $cgroup_memory_noswap = (int32)(*kaddr("cgroup_memory_noswap"));
+    time("%H:%M:%S ");
+    printf("mem_cg id:%d, cgroup_path:%s, idx:%d, delta_counter:%d\n", $mem_cg->id.id, cgroup_path($mem_cg->id.id), $idx, $delta_counter);
+    printf("call stack>>>\t%s\n", kstack);
+}
 
-    $page_counter = $mem_cg->memsw;
-    if($cgroup_memory_noswap == 1) {
-        $page_counter = $mem_cg->memory;
+// cat /sys/fs/cgroup/memory/x-monitor/memory.stat
+kprobe:memcg_stat_show /comm == "cat"/ {
+    $seq_file = (struct seq_file *)arg0;
+    $task = (struct task_struct *)curtask;
+    if($task != 0) {
+        time("%H:%M:%S ");
+        printf("memcg_stat_show process '%s', pid: %d, cgroup path: %s\n", $task->comm, pid, str($seq_file->file->f_path.dentry->d_name.name));
+        printf("call stack>>>\t%s\n", kstack);
     }
-
-    $current_page_count = $page_counter.usage.counter;
-
-    printf("cgroup: /sys/fs/cgroup/memory/x-monitor, current_page_count: %d, soft_limit: %d, request_page_count: %d, cgroup_memory_noswap: %d\n", $current_page_count, $soft_limit, $charge_page_count, $cgroup_memory_noswap);
 }
