@@ -414,6 +414,7 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 9. [软件开发|剖析内存中的程序之秘 (linux.cn)](https://linux.cn/article-9255-1.html)
 10. [Linux内存中的Cache真的能被回收么？ | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/linuxnei-cun-zhong-de-cache-zhen-de-neng-bei-hui-shou-yao-ff1f.html)
 11. [/proc/meminfo之谜 (ssdfans.com)](http://www.ssdfans.com/?p=4334)
+12. [Cgroup - Linux内存资源管理 | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/cgroup_linux_memory_control_group.html)
 
 ### 共享内存和tmpfs的关系
 

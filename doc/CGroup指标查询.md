@@ -102,6 +102,12 @@ Given a total cpu quota, we should firstly distribute the cpu.share of each cgro
 
 ![memory_cgroup_file](./img/memory_cgroup_file.jpg)
 
+memory.stat说明
+
+![cgroup_memory_stat](img/cgroup_memory_stat.jpg)
+
+![cgroup_memory_stat_cn](./img/cgroup_memory_stat_cn.jpg)
+
 ### 压力通知机制
 
 当cgroup内的内存使用量达到某种压力状态的时候，内核可以通过eventfd的机制来通知用户程序，这个通知是通过cgroup.event_control和memory.pressure_level来实现的。使用步骤如下：
@@ -134,6 +140,10 @@ Given a total cpu quota, we should firstly distribute the cpu.share of each cgro
 - [容器CPU（1）：怎么限制容器的CPU使用？_富士康质检员张全蛋的博客-CSDN博客_容器cpu限制](https://blog.csdn.net/qq_34556414/article/details/120654931)
 - [3.2. cpu Red Hat Enterprise Linux 6 | Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-cpu)
 - [Index of /doc/Documentation/cgroup-v1/ (kernel.org)](https://www.kernel.org/doc/Documentation/cgroup-v1/)
+- [详解Cgroup V2 | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/详解Cgroup V2.html)
+- [Linux内存中的Cache真的能被回收么？ | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/linuxnei-cun-zhong-de-cache-zhen-de-neng-bei-hui-shou-yao-ff1f.html)
+- [Cgroup - Linux内存资源管理 | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/cgroup_linux_memory_control_group.html)
+- [Memory Resource Controller — The Linux Kernel documentation](https://docs.kernel.org/admin-guide/cgroup-v1/memory.html)
 
 
 
