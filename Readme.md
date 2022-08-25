@@ -14,15 +14,15 @@
 
 1. [编译、运行](doc/编译、运行.md)
 
-2. [对接Prometheus](./doc/对接Prometheus.md)
+2. [对接Prometheus](doc/对接Prometheus.md)
 
 3. [应用指标查询](doc/应用指标查询.md)
 
 4. [系统指标查询](doc/系统指标查询.md)
 
-5. [cgroup指标查询](./doc/CGroup指标查询.md)
+5. [cgroup指标查询](doc/CGroup指标查询.md)
 
-6. [EBPF指标查询](./doc/EBPF指标查询)
+6. [EBPF指标查询](doc/EBPF指标查询)
 
 7. [系统参数说明](doc/系统参数说明.md)
 
