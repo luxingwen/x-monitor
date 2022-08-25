@@ -426,6 +426,27 @@ void __mod_memcg_state(struct mem_cgroup *memcg, int idx, int val)
 }
 ```
 
+memcg stat记账
+
+```
+static void mem_cgroup_charge_statistics(struct mem_cgroup *memcg,
+					 struct page *page,
+					 int nr_pages)
+{
+	/* pagein of a big page is an event. So, ignore page size */
+	if (nr_pages > 0)
+		__count_memcg_events(memcg, PGPGIN, 1);
+	else {
+		__count_memcg_events(memcg, PGPGOUT, 1);
+		nr_pages = -nr_pages; /* for event */
+	}
+
+	__this_cpu_add(memcg->vmstats_percpu->nr_page_events, nr_pages);
+}
+```
+
+
+
 #### 使用bpftrace来观察修改过程
 
 docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)](https://docs.docker.com.zh.xy2401.com/config/containers/runmetrics/#metrics-from-cgroups-memory-cpu-block-io)
@@ -453,6 +474,7 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 11. [/proc/meminfo之谜 (ssdfans.com)](http://www.ssdfans.com/?p=4334)
 12. [Cgroup - Linux内存资源管理 | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/cgroup_linux_memory_control_group.html)
 13. [内核基础设施——per cpu变量 - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/kernel/percpu-var/)
+14. [Linux 内存管理mem cgroup分析_Robin.Yin的博客-CSDN博客_mem_cgroup](https://blog.csdn.net/bin_linux96/article/details/84328294)
 
 ### 共享内存和tmpfs的关系
 
