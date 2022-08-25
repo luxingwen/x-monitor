@@ -98,6 +98,10 @@ Given a total cpu quota, we should firstly distribute the cpu.share of each cgro
 - 限制cgroup中所有进程所能使用的物理内存总量。
 - 限制cgroup中所有能使用的物理内存+交换空间总量（CONFIG_MEMCG_SWAP），一般在server不开启swap空间。
 
+### Memory Cgroup主要文件
+
+![memory_cgroup_file](./img/memory_cgroup_file.jpg)
+
 ### 压力通知机制
 
 当cgroup内的内存使用量达到某种压力状态的时候，内核可以通过eventfd的机制来通知用户程序，这个通知是通过cgroup.event_control和memory.pressure_level来实现的。使用步骤如下：
