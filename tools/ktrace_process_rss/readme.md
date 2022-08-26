@@ -348,7 +348,7 @@ static int memcg_stat_show(struct seq_file *m, void *v)
 
 实际的统计函数memcg_page_state_local。vmstat_local是个__percpu类型的变量，是动态分配创建的。
 
-创建vmstat_local对象
+创建vmstat_local percpu对象
 
 ```
 static struct mem_cgroup *mem_cgroup_alloc(void)
@@ -358,7 +358,7 @@ static struct mem_cgroup *mem_cgroup_alloc(void)
 						GFP_KERNEL_ACCOUNT);	
 ```
 
-释放vmstat_local对象
+释放vmstat_local percpu对象
 
 ```
 static void __mem_cgroup_free(struct mem_cgroup *memcg)
@@ -426,7 +426,7 @@ void __mod_memcg_state(struct mem_cgroup *memcg, int idx, int val)
 }
 ```
 
-memcg stat记账
+memcg stat记账，上面介绍的函数mem_cgroup_charge会调用下面的统计函数
 
 ```
 static void mem_cgroup_charge_statistics(struct mem_cgroup *memcg,
@@ -473,7 +473,6 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 10. [Linux内存中的Cache真的能被回收么？ | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/linuxnei-cun-zhong-de-cache-zhen-de-neng-bei-hui-shou-yao-ff1f.html)
 11. [/proc/meminfo之谜 (ssdfans.com)](http://www.ssdfans.com/?p=4334)
 12. [Cgroup - Linux内存资源管理 | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/cgroup_linux_memory_control_group.html)
-13. [内核基础设施——per cpu变量 - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/kernel/percpu-var/)
 14. [Linux 内存管理mem cgroup分析_Robin.Yin的博客-CSDN博客_mem_cgroup](https://blog.csdn.net/bin_linux96/article/details/84328294)
 
 ### 共享内存和tmpfs的关系
@@ -482,3 +481,8 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 2. [Shared Memory Virtual Filesystem (kernel.org)](https://www.kernel.org/doc/gorman/html/understand/understand015.html)
 3. [Analysis of Linux Kernel tmpfs/shmem - actorsfit](https://blog.actorsfit.com/a?ID=01300-05ff3ee0-8619-4544-b922-bec1e813c373)
 4. [共享内存和tmpfs - 菜鸡的博客 | WTCL (bbkgl.github.io)](https://bbkgl.github.io/2020/07/26/共享内存和tmpfs/)
+
+### PerCpu变量
+
+1. [per-CPU变量 - osc_96pr9g1m的个人空间 - OSCHINA - 中文开源技术交流社区](https://my.oschina.net/u/4277132/blog/3658485)
+2. [内核基础设施——per cpu变量 - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/kernel/percpu-var/)

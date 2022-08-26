@@ -81,16 +81,29 @@ kprobe:sync_mm_rss /comm == "x-monitor"/
     }
     printf("<===\n\n");
 }
+
+
+kprobe:mem_cgroup_charge_statistics.isra.74 {
+    $mem_cg = (struct mem_cgroup *)arg0;
+
+    printf("mem_cgroup_charge_statistics====>\n");
+    time("%H:%M:%S ");
+    printf("mem_cg id:%d\n", $mem_cg->id.id);
+    printf("cgroup_path:%s\n", cgroup_path($mem_cg->id.id));
+    printf("call stack>>>\t%s\n", kstack);
+}
 */
 
 kprobe:__mod_memcg_state
 {
     $mem_cg = (struct mem_cgroup *)arg0;
     $idx = (int32)arg1;
-    $delta_counter = (int32)arg2;
+    $val = (int32)arg2;
 
+    printf("__mod_memcg_state====>\n");
     time("%H:%M:%S ");
-    printf("mem_cg id:%d, cgroup_path:%s, idx:%d, delta_counter:%d\n", $mem_cg->id.id, cgroup_path($mem_cg->id.id), $idx, $delta_counter);
+    printf("mem_cg id:%d, idx:%d, val:%d\n", $mem_cg->id.id, $idx, $val);
+    printf("cgroup_path:%s\n", cgroup_path($mem_cg->id.id));
     printf("call stack>>>\t%s\n", kstack);
 }
 

@@ -116,6 +116,47 @@
       0x0000000000406568 <+0>:	push   %rbp
    ```
 
+6. 查看某个函数的反汇编
+
+   找到函数的入口地址
+
+   ```
+    ✘ calmwu@localhost  ~/program/cpp_space/x-monitor/bin  objdump -t ./x-monitor|grep -w main                      
+   0000000000000000 l    df *ABS*	0000000000000000              main.c
+   0000000000405c55 g     F .text	00000000000007e8              main
+   ```
+
+   执行命令
+
+   ```
+    calmwu@localhost  ~/program/cpp_space/x-monitor/bin  objdump -S -l --start-address=0x0000000000405c55 ./x-monitor| awk '{print $0} $3~/retq?/{exit}'
+   
+   ./x-monitor:     file format elf64-x86-64
+   
+   
+   Disassembly of section .text:
+   
+   0000000000405c55 <main>:
+   main():
+   /home/calmwu/program/cpp_space/x-monitor/main.c:167
+       } else if (E_SIGNAL_RELOADCONFIG == mode) {
+           appconfig_reload();
+       }
+   }
+   
+   int32_t main(int32_t argc, char *argv[]) {
+     405c55:	55                   	push   %rbp
+     405c56:	48 89 e5             	mov    %rsp,%rbp
+     405c59:	53                   	push   %rbx
+     405c5a:	48 81 ec 78 04 00 00 	sub    $0x478,%rsp
+     405c61:	89 bd 8c fb ff ff    	mov    %edi,-0x474(%rbp)
+     405c67:	48 89 b5 80 fb ff ff 	mov    %rsi,-0x480(%rbp)
+   ```
+
+7. 看内核函数的反汇编
+
+   ![objdump vmlinux](./img/objdump vmlinux.jpg)
+
 ## 参考资料
 
 - https://www.thegeekstuff.com/2012/07/elf-object-file-format/
