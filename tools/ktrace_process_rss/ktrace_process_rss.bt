@@ -94,6 +94,23 @@ kprobe:mem_cgroup_charge_statistics.isra.74 {
 }
 */
 
+kprobe:__mod_memcg_lruvec_state {
+    $pn = (struct mem_cgroup_per_node *)arg0;
+    $idx = (int32)arg1;
+    $val = (int32)arg2;
+
+    if($idx == (int32)NR_ANON_MAPPED ) {
+        $mem_cg = (struct mem_cgroup*)($pn->memcg);
+        $cg_ss_state = $mem_cg->css;
+        $cg_subsys = $cg_ss_state.ss;
+        printf("__mod_memcg_lruvec_state====>\n");
+        time("%H:%M:%S ");
+        printf("mem_cg.id:%d, mem_cg.cgroup_subsys_state.id:%d, idx:%d, val:%d\n", $mem_cg->id.id, $cg_ss_state.id, $idx, $val);
+        printf("mem_cg.cgroup_subsys_state.cgroup_subsys.id:%d, mem_cg.cgroup_subsys_state.cgroup_subsys.name:'%s'\n", $cg_subsys->id, str($cg_subsys->name));
+        printf("call stack>>>\t%s\n", kstack);
+    }
+}
+
 kprobe:__mod_memcg_state
 {
     $mem_cg = (struct mem_cgroup *)arg0;
@@ -103,6 +120,7 @@ kprobe:__mod_memcg_state
     printf("__mod_memcg_state====>\n");
     time("%H:%M:%S ");
     printf("mem_cg id:%d, idx:%d, val:%d\n", $mem_cg->id.id, $idx, $val);
+    // cgroup_path传入的是inode值，这样显示对应的路径
     printf("cgroup_path:%s\n", cgroup_path($mem_cg->id.id));
     printf("call stack>>>\t%s\n", kstack);
 }

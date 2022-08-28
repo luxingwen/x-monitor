@@ -426,6 +426,36 @@ void __mod_memcg_state(struct mem_cgroup *memcg, int idx, int val)
 }
 ```
 
+很奇怪，通过调用堆栈分析，始终不见__mod_memcg_state的调用，可是其调用方 __mod_memcg_lruvec_state函数是一直有调用的。
+
+```
+__mod_memcg_lruvec_state====>
+21:07:22 idx:17, val:1
+call stack>>>	
+        __mod_memcg_lruvec_state+1
+        __mod_lruvec_page_state+94
+        page_add_new_anon_rmap+103
+        do_anonymous_page+368
+        __handle_mm_fault+2022
+        handle_mm_fault+190
+        __do_page_fault+493
+        do_page_fault+55
+        page_fault+30
+
+__mod_memcg_lruvec_state====>
+21:07:22 idx:17, val:1
+call stack>>>	
+        __mod_memcg_lruvec_state+1
+        __mod_lruvec_page_state+94
+        page_add_new_anon_rmap+103
+        do_anonymous_page+368
+        __handle_mm_fault+2022
+        handle_mm_fault+190
+        __do_page_fault+493
+        do_page_fault+55
+        page_fault+30
+```
+
 memcg stat记账，上面介绍的函数mem_cgroup_charge会调用下面的统计函数
 
 ```
@@ -444,8 +474,6 @@ static void mem_cgroup_charge_statistics(struct mem_cgroup *memcg,
 	__this_cpu_add(memcg->vmstats_percpu->nr_page_events, nr_pages);
 }
 ```
-
-
 
 #### 使用bpftrace来观察修改过程
 
