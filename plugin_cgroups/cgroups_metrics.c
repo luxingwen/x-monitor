@@ -63,13 +63,14 @@ const char *__sys_cgroup_memory_stat_pgpgout_help =
     "page is unaccounted from the cgroup.";
 const char *__sys_cgroup_memory_stat_pgfault_help = "Total number of page faults incurred";
 const char *__sys_cgroup_memory_stat_pgmajfault_help = "Number of major page faults incurred";
+
 const char *__sys_cgroup_memory_stat_inactive_anon_help =
     "Bytes of anonymous and swap cache memory on inactive LRU list";
-const char *__sys_cgroup_memory_stat_inactive_file_help =
+const char *__sys_cgroup_memory_stat_active_anon_help =
     "Bytes of anonymous and swap cache memory on active LRU list";
-const char *__sys_cgroup_memory_stat_active_file_help =
+const char *__sys_cgroup_memory_stat_inactive_file_help =
     "Bytes of file-backed memory on inactive LRU list";
-const char *__sys_cgroup_memory_stat_total_active_file_help =
+const char *__sys_cgroup_memory_stat_active_file_help =
     "Bytes of file-backed memory on active LRU list";
 const char *__sys_cgroup_memory_stat_unevictable_help =
     "Bytes of memory that cannot be reclaimed (mlocked, etc).";

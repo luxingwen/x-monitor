@@ -9,6 +9,8 @@
 
 // https://docs.splunk.com/Observability/gdi/cgroups/cgroups.html
 
+#include "prometheus-client-c/prom.h"
+
 extern const char *__sys_cgroup_metric_cpu_shares_help;
 extern const char *__sys_cgroup_metric_cpu_cfs_period_us_help;
 extern const char *__sys_cgroup_metric_cpu_cfs_quota_us_help;   // microseconds
