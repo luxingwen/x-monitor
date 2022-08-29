@@ -10,5 +10,5 @@
 #include "utils/common.h"
 
 extern int32_t envoy_manager_routine_init();
-extern void *envoy_manager_routine_start(void *arg);
-extern void envoy_manager_routine_stop();
+extern void   *envoy_manager_routine_start(void *arg);
+extern void    envoy_manager_routine_stop();

@@ -87,6 +87,7 @@ static void __collector_diskspace_stats(struct mountinfo *mi, int32_t UNUSED(upd
         return;
     }
 
+    // 匹配上就直接忽略
     if (unlikely(
             simple_pattern_matches(__collector_diskspace.excluded_filesystems, mi->filesystem))) {
         return;
