@@ -15,11 +15,24 @@ BEGIN {
     @process_rssstat_pages[1] = 0;
     @process_rssstat_pages[2] = 0;
     @process_rssstat_pages[3] = 0;
+
+    @page_count[NR_ANON_MAPPED] = 0;
+    @page_count[NR_FILE_PAGES] = 0;
+
+    @xmonitor_pid = 0;
 }
+
+
+
+
+
 
 END {
     clear(@mm_pagetype_str);
+    clear(@process_rssstat_pages);
+    clear(@page_count);
 }
+
 /*
 kprobe:add_mm_counter_fast /comm == "x-monitor"/
 {
@@ -49,7 +62,7 @@ kprobe:add_mm_counter_fast /comm == "x-monitor"/
 }
 */
 
-/*
+
 kprobe:sync_mm_rss /comm == "x-monitor"/
 {
     $task = (struct task_struct *)curtask;
@@ -57,7 +70,9 @@ kprobe:sync_mm_rss /comm == "x-monitor"/
     $mm_page_type = 0;
     $mm_rss_count = 0;
 
-    printf("\n===>\n");
+    @xmonitor_pid = pid;
+
+    //printf("\n===>\n");
     while($mm_page_type < 4) {
         if($mm_page_type == 0) {
             $task_rss_count = $task->rss_stat.count[0];
@@ -76,13 +91,13 @@ kprobe:sync_mm_rss /comm == "x-monitor"/
             $mm_rss_count = $mm->rss_stat.count[3].counter;
             @process_rssstat_pages[3] = $task_rss_count + $mm_rss_count
         }
-        printf("sync_mm_rss process 'x-monitor', pid: %d, nm_pagetype: '%s', pages '%d'\n", pid, @mm_pagetype_str[$mm_page_type], @process_rssstat_pages[$mm_page_type]);
+        //printf("sync_mm_rss process 'x-monitor', pid: %d, nm_pagetype: '%s', pages '%d'\n", pid, @mm_pagetype_str[$mm_page_type], @process_rssstat_pages[$mm_page_type]);
         $mm_page_type++;
     }
-    printf("<===\n\n");
+    //printf("<===\n\n");
 }
 
-
+/*
 kprobe:mem_cgroup_charge_statistics.isra.74 {
     $mem_cg = (struct mem_cgroup *)arg0;
 
@@ -99,18 +114,37 @@ kprobe:__mod_memcg_lruvec_state {
     $idx = (int32)arg1;
     $val = (int32)arg2;
 
-    if($idx == (int32)NR_ANON_MAPPED ) {
+    if($idx == (int32)NR_ANON_MAPPED || $idx == (int32)NR_FILE_PAGES) {
         $mem_cg = (struct mem_cgroup*)($pn->memcg);
-        $cg_ss_state = $mem_cg->css;
-        $cg_subsys = $cg_ss_state.ss;
-        printf("__mod_memcg_lruvec_state====>\n");
-        time("%H:%M:%S ");
-        printf("mem_cg.id:%d, mem_cg.cgroup_subsys_state.id:%d, idx:%d, val:%d\n", $mem_cg->id.id, $cg_ss_state.id, $idx, $val);
-        printf("mem_cg.cgroup_subsys_state.cgroup_subsys.id:%d, mem_cg.cgroup_subsys_state.cgroup_subsys.name:'%s'\n", $cg_subsys->id, str($cg_subsys->name));
-        printf("call stack>>>\t%s\n", kstack);
+        $css = $mem_cg->css;
+        $cg_subsys = $css.ss;
+        $cg = $css.cgroup;
+
+        if(strncmp(str($cg->kn->name), "x-monitor", 9) == 0) {
+            @page_count[$idx] += $val;
+            //printf("__mod_memcg_lruvec_state====>\n");
+            //time("%H:%M:%S ");
+            //printf("mem_cg.id:%d, mem_cg.cgroup_subsys_state.id:%d, idx:%d, val:%d\n", $mem_cg->id.id, $css.id, $idx, $val);
+            //printf("mem_cg.cgroup_subsys_state.cgroup_subsys.id:%d, mem_cg.cgroup_subsys_state.cgroup_subsys.name:'%s'\n", $cg_subsys->id, str($cg_subsys->name));
+            //printf("mem_cg.cgroup_subsys_state.cgroup.kernfs_node.name:'%s'\n", str($cg->kn->name));
+            printf("call stack>>>\t%s\n", kstack);
+        }
     }
 }
 
+interval:s:1 {
+    time("%H:%M:%S ");
+    printf("memcg: 'x-monitor', rss: %d bytes, cache: %d bytes\n",  @page_count[NR_ANON_MAPPED] * 4096, @page_count[NR_FILE_PAGES] * 4096);
+    if(@xmonitor_pid != 0) {
+        printf("process 'x-monitor', pid: %d, \n", @xmonitor_pid);
+        printf("\tnm_pagetype: '%s', pages:%d, bytes:%d\n", @mm_pagetype_str[0], @process_rssstat_pages[0], @process_rssstat_pages[0] * 4096);
+        printf("\tnm_pagetype: '%s', pages:%d, bytes:%d\n", @mm_pagetype_str[1], @process_rssstat_pages[1], @process_rssstat_pages[1] * 4096);
+        printf("\tnm_pagetype: '%s', pages:%d, bytes:%d\n", @mm_pagetype_str[2], @process_rssstat_pages[2], @process_rssstat_pages[2] * 4096);
+        printf("\tnm_pagetype: '%s', pages:%d, bytes:%d\n\n", @mm_pagetype_str[3], @process_rssstat_pages[3], @process_rssstat_pages[3] * 4096);
+    }
+}
+
+/*
 kprobe:__mod_memcg_state
 {
     $mem_cg = (struct mem_cgroup *)arg0;
@@ -123,7 +157,7 @@ kprobe:__mod_memcg_state
     // cgroup_path传入的是inode值，这样显示对应的路径
     printf("cgroup_path:%s\n", cgroup_path($mem_cg->id.id));
     printf("call stack>>>\t%s\n", kstack);
-}
+}*/
 
 // cat /sys/fs/cgroup/memory/x-monitor/memory.stat
 kprobe:memcg_stat_show /comm == "cat"/ {
