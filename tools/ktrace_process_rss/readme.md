@@ -49,7 +49,7 @@ memsw是memory+swap的意思。cgroup限制进程所使用的内存总量实际�
 
 关闭方式：grubby --update-kernel=ALL --args=swapaccount=0，默认开启也可以通过内核引导参数"swapaccount=0"禁止此特性。**设置重启后memory.memsw.*文件就没有了**。
 
-## 统计方式
+## Memory统计方式
 
 ### 进程角度和CGroup角度对rss的统计差异
 
@@ -662,3 +662,11 @@ memory cgroup的memory.usage_in_bytes包括了rss和cache，但是cache是可以
 
 1. [per-CPU变量 - osc_96pr9g1m的个人空间 - OSCHINA - 中文开源技术交流社区](https://my.oschina.net/u/4277132/blog/3658485)
 2. [内核基础设施——per cpu变量 - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/kernel/percpu-var/)
+
+### Gcc，function part
+
+1. [compiling - Function symbol gets '.part' suffix after compilation - Unix & Linux Stack Exchange](https://unix.stackexchange.com/questions/223013/function-symbol-gets-part-suffix-after-compilation)
+
+### 内核自定义编译
+
+1. [build system - How to pass compiler options during Linux kernel compilation? - Stack Overflow](https://stackoverflow.com/questions/40442218/how-to-pass-compiler-options-during-linux-kernel-compilation)

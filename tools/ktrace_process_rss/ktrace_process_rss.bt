@@ -22,11 +22,6 @@ BEGIN {
     @xmonitor_pid = 0;
 }
 
-
-
-
-
-
 END {
     clear(@mm_pagetype_str);
     clear(@process_rssstat_pages);
