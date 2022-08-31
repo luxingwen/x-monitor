@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-11-30 14:59:18
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-28 16:06:36
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-08-31 20:47:56
  */
 
 // https://man7.org/linux/man-pages/man5/proc.5.html
@@ -33,7 +33,7 @@ struct proc_metric_collector {
 };
 
 struct proc_metrics_module {
-    int32_t                      exit_flag;
+    sig_atomic_t                 exit_flag;
     pthread_t                    thread_id;   // routine执行的线程id
     struct proc_metric_collector collectors[];
 };

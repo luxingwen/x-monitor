@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-08-22 15:03:50
  * @Last Modified by: calmwu
- * @Last Modified time: 2022-08-31 16:06:21
+ * @Last Modified time: 2022-08-31 20:52:40
  */
 
 #include "plugin_cgroups.h"
@@ -26,11 +26,11 @@ static const char *__plugin_cgroups_v1_ss_base_path = "collector_plugin_cgroups.
 static const char *__plugin_cgroups_v2_ss_base_path = "collector_plugin_cgroups.cg_base_path.v2";
 
 struct collector_cgroups {
-    int32_t   exit_flag;
-    pthread_t thread_id;   // routine执行的线程ids
-    int32_t   update_every;
-    int32_t   update_every_for_cgroups;
-    int32_t   max_cgroups_num;
+    sig_atomic_t exit_flag;
+    pthread_t    thread_id;   // routine执行的线程ids
+    int32_t      update_every;
+    int32_t      update_every_for_cgroups;
+    int32_t      max_cgroups_num;
 
     // cgroup subsystem enable
     bool cs_cpuacct_enable;
@@ -58,7 +58,7 @@ static struct collector_cgroups __collector_cgroups = {
     .exit_flag = 0,
     .thread_id = 0,
     .update_every = 1,
-    .update_every_for_cgroups = 10,
+    .update_all_cgroups_interval_secs = 10,
     .max_cgroups_num = 1000,
     .cs_cpuacct_enable = true,
     .cs_memory_enable = true,
@@ -95,13 +95,14 @@ int32_t cgroup_collector_routine_init() {
         __collector_cgroups.update_every =
             appconfig_get_member_int(__plugin_cgroups_config_base_path, "update_every", 1);
         __collector_cgroups.update_every_for_cgroups = appconfig_get_member_int(
-            __plugin_cgroups_config_base_path, "update_every_for_cgroups", 10);
+            __plugin_cgroups_config_base_path, "update_all_cgroups_interval_secs", 10);
         __collector_cgroups.max_cgroups_num =
             appconfig_get_member_int(__plugin_cgroups_config_base_path, "max_cgroups_num", 1000);
 
         debug("[PLUGIN_CGROUPS] cgroup_collector_routine_init: update_every=%d, "
-              "update_every_for_cgroups=%d, max_cgroups_num=%d",
-              __collector_cgroups.update_every, __collector_cgroups.update_every_for_cgroups,
+              "update_all_cgroups_interval_secs=%d, max_cgroups_num=%d",
+              __collector_cgroups.update_every,
+              __collector_cgroups.update_all_cgroups_interval_secs,
               __collector_cgroups.max_cgroups_num);
 
         __collector_cgroups.cs_cpuacct_enable =
@@ -175,6 +176,8 @@ void *cgroup_collector_routine_start(void *arg) {
     debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
     usec_t step_usecs = __collector_cgroups.update_every * USEC_PER_SEC;
+    uset_t step_usecs_for_update_every_cgroups =
+        __collector_cgroups.update_every_for_cgroups * USEC_PER_SEC;
 
     struct heartbeat hb;
     heartbeat_init(&hb);
@@ -183,6 +186,10 @@ void *cgroup_collector_routine_start(void *arg) {
         usec_t now_usecs = now_monotonic_usec();
         //等到下一个update周期
         heartbeat_next(&hb, step_usecs);
+
+        if (unlikely(__collector_cgroups.exit_flag)) {
+            break;
+        }
 
         if (likely(CGROUPS_FAILED != cg_type)) {
         }
