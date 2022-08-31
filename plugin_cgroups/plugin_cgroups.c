@@ -1,11 +1,12 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-08-22 15:03:50
- * @Last Modified by:   CALM.WU
- * @Last Modified time: 2022-08-22 15:03:50
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-08-31 16:06:21
  */
 
 #include "plugin_cgroups.h"
+#include "cgroups_utils.h"
 
 #include "routine.h"
 #include "utils/clocks.h"
@@ -21,6 +22,8 @@
 static const char *__name = "PLUGIN_CGROUPS";
 static const char *__config_name = "collector_plugin_cgroups";
 static const char *__plugin_cgroups_config_base_path = "collector_plugin_cgroups";
+static const char *__plugin_cgroups_v1_ss_base_path = "collector_plugin_cgroups.cg_base_path.v1";
+static const char *__plugin_cgroups_v2_ss_base_path = "collector_plugin_cgroups.cg_base_path.v2";
 
 struct collector_cgroups {
     int32_t   exit_flag;
@@ -29,19 +32,22 @@ struct collector_cgroups {
     int32_t   update_every_for_cgroups;
     int32_t   max_cgroups_num;
 
-    // cgroup sub system enable
-    bool css_cpuacct_enable;
-    bool css_memory_enable;
-    bool css_cpuset_enable;
-    bool css_blkio_enable;
-    bool css_device_enable;
+    // cgroup subsystem enable
+    bool cs_cpuacct_enable;
+    bool cs_memory_enable;
+    bool cs_cpuset_enable;
+    bool cs_blkio_enable;
+    bool cs_device_enable;
 
-    // cgroup sub system path
-    const char *css_cpuacct_path;
-    const char *css_memory_path;
-    const char *css_cpuset_path;
-    const char *css_blkio_path;
-    const char *css_device_path;
+    // cgroup subsystem path
+    // v1
+    const char *cs_cpuacct_path;
+    const char *cs_memory_path;
+    const char *cs_cpuset_path;
+    const char *cs_blkio_path;
+    const char *cs_device_path;
+    // v2
+    const char *unified_path;
 
     // matching pattern
     SIMPLE_PATTERN *cgroups_matching;
@@ -54,11 +60,11 @@ static struct collector_cgroups __collector_cgroups = {
     .update_every = 1,
     .update_every_for_cgroups = 10,
     .max_cgroups_num = 1000,
-    .css_cpuacct_enable = true,
-    .css_memory_enable = true,
-    .css_cpuset_enable = false,
-    .css_blkio_enable = false,
-    .css_device_enable = false,
+    .cs_cpuacct_enable = true,
+    .cs_memory_enable = true,
+    .cs_cpuset_enable = false,
+    .cs_blkio_enable = false,
+    .cs_device_enable = false,
     .cgroups_matching = NULL,
     .cgroups_subpaths_matching = NULL,
 };
@@ -78,61 +84,87 @@ __attribute__((constructor)) static void collector_cgroups_register_routine() {
 }
 
 int32_t cgroup_collector_routine_init() {
-    // 读取配置，初始化__collector_cgroups
-    __collector_cgroups.update_every =
-        appconfig_get_member_int(__plugin_cgroups_config_base_path, "update_every", 1);
-    __collector_cgroups.update_every_for_cgroups =
-        appconfig_get_member_int(__plugin_cgroups_config_base_path, "update_every_for_cgroups", 10);
-    __collector_cgroups.max_cgroups_num =
-        appconfig_get_member_int(__plugin_cgroups_config_base_path, "max_cgroups_num", 1000);
+    get_cgroups_type();
 
-    __collector_cgroups.css_cpuacct_enable =
-        appconfig_get_member_bool(__plugin_cgroups_config_base_path, "css_cpuacct_enable", true);
-    __collector_cgroups.css_memory_enable =
-        appconfig_get_member_bool(__plugin_cgroups_config_base_path, "css_memory_enable", true);
-    __collector_cgroups.css_cpuset_enable =
-        appconfig_get_member_bool(__plugin_cgroups_config_base_path, "css_cpuset_enable", false);
-    __collector_cgroups.css_blkio_enable =
-        appconfig_get_member_bool(__plugin_cgroups_config_base_path, "css_blkio_enable", false);
-    __collector_cgroups.css_device_enable =
-        appconfig_get_member_bool(__plugin_cgroups_config_base_path, "css_device_enable", false);
+    if (likely(CGROUPS_FAILED != cg_type)) {
+        // 判断系统是否使用了cgroup
 
-    __collector_cgroups.css_cpuacct_path = appconfig_get_member_str(
-        __plugin_cgroups_config_base_path, "css_cpuacct_path", "/sys/fs/cgroup/cpuacct");
-    __collector_cgroups.css_memory_path = appconfig_get_member_str(
-        __plugin_cgroups_config_base_path, "css_memory_path", "/sys/fs/cgroup/memory");
-    __collector_cgroups.css_cpuset_path = appconfig_get_member_str(
-        __plugin_cgroups_config_base_path, "css_cpuset_path", "/sys/fs/cgroup/cpuset");
-    __collector_cgroups.css_blkio_path = appconfig_get_member_str(
-        __plugin_cgroups_config_base_path, "css_blkio_path", "/sys/fs/cgroup/blkio");
-    __collector_cgroups.css_device_path = appconfig_get_member_str(
-        __plugin_cgroups_config_base_path, "css_device_path", "/sys/fs/cgroup/devices");
+        info("[PLUGIN_CGROUPS] CGroup type: [%s]", cg_type == CGROUPS_V1 ? "V1" : "V2");
 
-    debug("[PLUGIN_CGROUPS] cgroup_collector_routine_init: update_every=%d, "
-          "update_every_for_cgroups=%d, max_cgroups_num=%d",
-          __collector_cgroups.update_every, __collector_cgroups.update_every_for_cgroups,
-          __collector_cgroups.max_cgroups_num);
+        // 读取配置，初始化__collector_cgroups
+        __collector_cgroups.update_every =
+            appconfig_get_member_int(__plugin_cgroups_config_base_path, "update_every", 1);
+        __collector_cgroups.update_every_for_cgroups = appconfig_get_member_int(
+            __plugin_cgroups_config_base_path, "update_every_for_cgroups", 10);
+        __collector_cgroups.max_cgroups_num =
+            appconfig_get_member_int(__plugin_cgroups_config_base_path, "max_cgroups_num", 1000);
 
-    const char *cgroup_matching_pattern = appconfig_get_member_str(
-        __plugin_cgroups_config_base_path, "cgroups_subpaths_matching", NULL);
-    if (unlikely(!cgroup_matching_pattern)) {
-        error("[PLUGIN_CGROUPS] cgroups_subpaths_matching is not configured");
-        return -1;
-    } else {
-        debug("[PLUGIN_CGROUPS] cgroups_subpaths_matching: %s", cgroup_matching_pattern);
-        __collector_cgroups.cgroups_subpaths_matching =
-            simple_pattern_create(cgroup_matching_pattern, NULL, SIMPLE_PATTERN_EXACT);
-    }
+        debug("[PLUGIN_CGROUPS] cgroup_collector_routine_init: update_every=%d, "
+              "update_every_for_cgroups=%d, max_cgroups_num=%d",
+              __collector_cgroups.update_every, __collector_cgroups.update_every_for_cgroups,
+              __collector_cgroups.max_cgroups_num);
 
-    cgroup_matching_pattern =
-        appconfig_get_member_str(__plugin_cgroups_config_base_path, "cgroups_matching", NULL);
-    if (unlikely(!cgroup_matching_pattern)) {
-        error("[PLUGIN_CGROUPS] cgroups_matching is not configured");
-        return -1;
-    } else {
-        debug("[PLUGIN_CGROUPS] cgroups_matching: %s", cgroup_matching_pattern);
-        __collector_cgroups.cgroups_matching =
-            simple_pattern_create(cgroup_matching_pattern, NULL, SIMPLE_PATTERN_EXACT);
+        __collector_cgroups.cs_cpuacct_enable =
+            appconfig_get_member_bool(__plugin_cgroups_config_base_path, "cs_cpuacct_enable", true);
+        __collector_cgroups.cs_memory_enable =
+            appconfig_get_member_bool(__plugin_cgroups_config_base_path, "cs_memory_enable", true);
+        __collector_cgroups.cs_cpuset_enable =
+            appconfig_get_member_bool(__plugin_cgroups_config_base_path, "cs_cpuset_enable", false);
+        __collector_cgroups.cs_blkio_enable =
+            appconfig_get_member_bool(__plugin_cgroups_config_base_path, "cs_blkio_enable", false);
+        __collector_cgroups.cs_device_enable =
+            appconfig_get_member_bool(__plugin_cgroups_config_base_path, "cs_device_enable", false);
+
+        debug("[PLUGIN_CGROUPS] cs_cpuacct_enable: %d, cs_memory_enable: %d, "
+              "cs_cpuset_enable: %d, cs_blkio_enable: %d, cs_device_enable: %d",
+              __collector_cgroups.cs_cpuacct_enable, __collector_cgroups.cs_memory_enable,
+              __collector_cgroups.cs_cpuset_enable, __collector_cgroups.cs_blkio_enable,
+              __collector_cgroups.cs_device_enable);
+
+        if (CGROUPS_V1 == cg_type) {
+            __collector_cgroups.cs_cpuacct_path =
+                appconfig_get_member_str(__plugin_cgroups_v1_ss_base_path, "cs_cpuacct_path", NULL);
+            __collector_cgroups.cs_memory_path = appconfig_get_member_str(
+                __plugin_cgroups_v1_ss_base_path, "cs_memory_path", "/sys/fs/cgroup/memory");
+            __collector_cgroups.cs_cpuset_path = appconfig_get_member_str(
+                __plugin_cgroups_v1_ss_base_path, "cs_cpuset_path", "/sys/fs/cgroup/cpuset");
+            __collector_cgroups.cs_blkio_path = appconfig_get_member_str(
+                __plugin_cgroups_v1_ss_base_path, "cs_blkio_path", "/sys/fs/cgroup/blkio");
+            __collector_cgroups.cs_device_path = appconfig_get_member_str(
+                __plugin_cgroups_v1_ss_base_path, "cs_device_path", "/sys/fs/cgroup/devices");
+
+            debug("[PLUGIN_CGROUPS] cg_v1 cs_cpuacct_path:'%s', cs_memory_path:'%s', "
+                  "cs_cpuset_path:'%s', cs_blkio_path:'%s', cs_device_path:'%s'",
+                  __collector_cgroups.cs_cpuacct_path, __collector_cgroups.cs_memory_path,
+                  __collector_cgroups.cs_cpuset_path, __collector_cgroups.cs_blkio_path,
+                  __collector_cgroups.cs_device_path);
+        } else {
+            __collector_cgroups.unified_path = appconfig_get_member_str(
+                __plugin_cgroups_v2_ss_base_path, "unified_path", "/sys/fs/cgroup");
+            debug("[PLUGIN_CGROUPS] cg_v2 unified_path:'%s'", __collector_cgroups.unified_path);
+        }
+
+        const char *cgroup_matching_pattern = appconfig_get_member_str(
+            __plugin_cgroups_config_base_path, "cgroups_subpaths_matching", NULL);
+        if (unlikely(!cgroup_matching_pattern)) {
+            error("[PLUGIN_CGROUPS] cgroups_subpaths_matching is not configured");
+            return -1;
+        } else {
+            debug("[PLUGIN_CGROUPS] cgroups_subpaths_matching: %s", cgroup_matching_pattern);
+            __collector_cgroups.cgroups_subpaths_matching =
+                simple_pattern_create(cgroup_matching_pattern, NULL, SIMPLE_PATTERN_EXACT);
+        }
+
+        cgroup_matching_pattern =
+            appconfig_get_member_str(__plugin_cgroups_config_base_path, "cgroups_matching", NULL);
+        if (unlikely(!cgroup_matching_pattern)) {
+            error("[PLUGIN_CGROUPS] cgroups_matching is not configured");
+            return -1;
+        } else {
+            debug("[PLUGIN_CGROUPS] cgroups_matching: %s", cgroup_matching_pattern);
+            __collector_cgroups.cgroups_matching =
+                simple_pattern_create(cgroup_matching_pattern, NULL, SIMPLE_PATTERN_EXACT);
+        }
     }
 
     debug("[%s] routine init successed", __name);
@@ -151,6 +183,9 @@ void *cgroup_collector_routine_start(void *arg) {
         usec_t now_usecs = now_monotonic_usec();
         //等到下一个update周期
         heartbeat_next(&hb, step_usecs);
+
+        if (likely(CGROUPS_FAILED != cg_type)) {
+        }
     }
 
     debug("[%s] routine exit", __name);
@@ -158,6 +193,9 @@ void *cgroup_collector_routine_start(void *arg) {
 }
 
 void cgroup_collector_routine_stop() {
+    __collector_cgroups.exit_flag = 1;
+    pthread_join(__collector_cgroups.thread_id, NULL);
+
     if (likely(__collector_cgroups.cgroups_matching)) {
         simple_pattern_free(__collector_cgroups.cgroups_matching);
     }

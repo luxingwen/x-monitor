@@ -30,7 +30,7 @@ struct external_plugin {
     char    config_name[XM_CONFIG_NAME_MAX];
     char    file_name[XM_FILENAME_SIZE];
     char    full_file_name[XM_FILENAME_SIZE];
-    char    cmd[XM_CMD_LINE_MAX];   // the command that it executes
+    char    cmd[XM_PROC_CMD_LINE_MAX];   // the command that it executes
     int32_t exit_flag;
 
     volatile sig_atomic_t enabled;
@@ -283,7 +283,7 @@ void *pluginsd_routine_start(void *UNUSED(arg)) {
 
                 // 生成执行命令
                 char *def = "";
-                snprintf(ep->cmd, XM_CMD_LINE_MAX, "exec %s %d %s", ep->full_file_name,
+                snprintf(ep->cmd, XM_PROC_CMD_LINE_MAX, "exec %s %d %s", ep->full_file_name,
                          ep->update_every,
                          appconfig_get_member_str(external_plugin_cfgname, "command_options", def));
 

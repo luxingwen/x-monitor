@@ -17,7 +17,7 @@ struct xm_mempool_s;
 struct process_status {
     pid_t pid;
     pid_t ppid;
-    char  comm[XM_PROCESS_COMM_SIZE];
+    char  comm[XM_PROC_COMM_SIZE];
 
     char *stat_full_filename;
     char *status_full_filename;

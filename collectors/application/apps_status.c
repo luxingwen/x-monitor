@@ -363,10 +363,10 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
     uint8_t                   app_process_is_matched = 0;
     struct app_status        *as = NULL;
     struct app_assoc_process *aap = NULL;
-    char                      cmd_line[XM_CMD_LINE_MAX] = { 0 };
+    char                      cmd_line[XM_PROC_CMD_LINE_MAX] = { 0 };
 
     // 读取进程的命令行
-    ret = read_proc_pid_cmdline(pid, cmd_line, XM_CMD_LINE_MAX - 1);
+    ret = read_proc_pid_cmdline(pid, cmd_line, XM_PROC_CMD_LINE_MAX - 1);
     if (unlikely(ret < 0)) {
         // error("[PLUGIN_APPSTATUS] read pid:%d cmdline failed", pid);
         return -1;

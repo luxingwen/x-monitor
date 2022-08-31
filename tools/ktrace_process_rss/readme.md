@@ -666,6 +666,7 @@ memory cgroup的memory.usage_in_bytes包括了rss和cache，但是cache是可以
 ### Gcc，function part
 
 1. [compiling - Function symbol gets '.part' suffix after compilation - Unix & Linux Stack Exchange](https://unix.stackexchange.com/questions/223013/function-symbol-gets-part-suffix-after-compilation)
+2. [内核基础设施——static_key - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/kernel/static_key/)
 
 ### 内核自定义编译
 

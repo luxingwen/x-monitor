@@ -50,7 +50,7 @@ int32_t collector_process_cpu_usage(struct process_status *ps) {
     ps->ppid = (pid_t)str2uint32_t(procfile_lineword(ps->pf_proc_pid_stat, 0, 3));
 
     if (strcmp(comm, ps->comm) != 0) {
-        strlcpy(ps->comm, comm, XM_PROCESS_COMM_SIZE);
+        strlcpy(ps->comm, comm, XM_PROC_COMM_SIZE);
     }
 
     uint64_t gtime = 0, cgtime = 0;
