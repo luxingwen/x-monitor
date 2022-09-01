@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-04-13 15:18:43
  * @Last Modified by: calmwu
- * @Last Modified time: 2022-08-31 20:47:46
+ * @Last Modified time: 2022-08-31 22:45:22
  */
 
 #include "plugin_apps.h"
@@ -65,6 +65,7 @@ int32_t appstat_collector_routine_init() {
         appconfig_get_int("collector_plugin_appstatus.update_every_for_filter_rules", 60);
 
     __collector_appstat.last_update_for_app_usec = 0;
+    __collector_appstat.last_update_for_filter_rules_usecs = 0;
 
     debug("[%s] routine init successed", __name);
     return 0;
