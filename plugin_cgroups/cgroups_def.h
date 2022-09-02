@@ -46,10 +46,11 @@ struct sys_cgroup_counters {
     uint64_t cpu_stat_throttled_time_ns;
 
     uint64_t cpuacct_usage_ns;
-    uint64_t cpuacct_usage_ns_per_cpu;
     uint64_t cpuacct_usage_user_ns;
-    uint64_t cpuacct_usage_user_ns_per_cpu;
     uint64_t cpuacct_usage_system_ns;
+
+    uint64_t cpuacct_usage_ns_per_cpu;
+    uint64_t cpuacct_usage_user_ns_per_cpu;
     uint64_t cpuacct_usage_system_ns_per_cpu;
 
     uint64_t memory_stat_pgpgin;
@@ -72,4 +73,40 @@ struct xm_cgroup_obj {
     sds      cg_id;       // cgroup 目录名
     uint32_t cg_hash;     // cgroup 目录名的hash值
     char     find_flag;   // cgroup是否存在
+
+    // 需要采集的配置文件
+    // v1
+    sds cpuacct_cpu_stat_filename;
+
+    sds cpuacct_cpu_shares_filename;
+    sds cpuacct_cpu_cfs_period_us_filename;
+    sds cpuacct_cpu_cfs_quota_us_filename;
+
+    sds cpuacct_usage_percpu_filename;
+    sds cpuacct_usage_percpu_user_filename;
+    sds cpuacct_usage_percpu_sys_filename;
+
+    sds cpuacct_usage_filename;
+    sds cpuacct_usage_user_filename;
+    sds cpuacct_usage_sys_filename;
+
+    sds memory_stat_filename;
+    sds memory_usage_in_bytes_filename;
+    sds memory_limit_in_bytes_filename;
+    sds memory_failcnt_filename;
+    sds memory_max_usage_in_bytes_filename;
+
+    sds blkio_throttle_io_service_bytes_filename;
+    sds blkio_throttle_io_serviced_filename;
+    sds blkio_io_merged_filename;
+    sds blkio_io_queued_filename;
+
+    // v2 需要采集的文件
+    sds unified_io_stat_filename;
+    sds unified_cpu_stat_filename;
+    sds unified_memory_stat_filename;
+    sds unified_memory_current_filename;
+    sds unified_cpu_pressure;
+    sds unified_io_pressure;
+    sds unified_memory_pressure;
 };

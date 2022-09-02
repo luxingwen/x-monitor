@@ -8,7 +8,7 @@
 // http://man7.org/linux/man-pages/man7/cgroups.7.html
 // https://segmentfault.com/a/1190000008323952?utm_source=sf-similar-article
 
-#include "cgroups_metrics.h"
+#include "cgroup_metrics.h"
 
 const char *__sys_cgroup_metric_cpu_shares_help =
     "The relative share of CPU that this cgroup gets. This number is divided into the sum total of "

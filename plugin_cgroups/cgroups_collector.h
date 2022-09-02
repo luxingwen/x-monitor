@@ -10,3 +10,5 @@
 #include "cgroups_def.h"
 
 extern void collect_all_cgroups(struct plugin_cgroup_ctx *ctx);
+
+extern int32_t cgroups_count();
