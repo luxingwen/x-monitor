@@ -282,10 +282,9 @@ void *pluginsd_routine_start(void *UNUSED(arg)) {
                     appconfig_get_member_int(external_plugin_cfgname, "update_every", 5);
 
                 // 生成执行命令
-                char *def = "";
                 snprintf(ep->cmd, XM_PROC_CMD_LINE_MAX, "exec %s %d %s", ep->full_file_name,
                          ep->update_every,
-                         appconfig_get_member_str(external_plugin_cfgname, "command_options", def));
+                         appconfig_get_member_str(external_plugin_cfgname, "command_options", ""));
 
                 debug("file_name:'%s' full_file_name:'%s', cmd:'%s'", ep->file_name,
                       ep->full_file_name, ep->cmd);

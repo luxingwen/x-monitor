@@ -166,7 +166,7 @@ int32_t cgroup_collector_routine_init() {
     return 0;
 }
 
-void *cgroup_collector_routine_start(void *arg) {
+void *cgroup_collector_routine_start(void *UNUSED(arg)) {
     debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
     usec_t step_usecs = __collector_cgroups.update_every * USEC_PER_SEC;

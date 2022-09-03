@@ -61,7 +61,8 @@ static struct xm_cgroup_obj *__add_cgroup_obj(const char *cg_id, struct plugin_c
         info("[PLUGIN_CGROUPS] add new cgroup '%s', current cgroup object count:%d", cg_id,
              __xm_cgroups_mgr.curr_cgroup_count);
     } else {
-        info("[PLUGIN_CGROUPS] filter out cgroup '%s' according to the configure cgroups_matching");
+        info("[PLUGIN_CGROUPS] filter out cgroup '%s' according to the configure cgroups_matching",
+             cg_id);
     }
 
     return cg_obj;
@@ -81,9 +82,8 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
     // 从链表中删除
     list_del(&cg_obj->l_member);
     __xm_cgroups_mgr.curr_cgroup_count--;
-    __find_cgroup_obj debug(
-        "[PLUGIN_CGROUPS] remove cgroup '%s', find_flag:'%s', current cgroup object count:%d",
-        cg_obj->cg_id, cg_obj->find_flag ? "true" : "false", __xm_cgroups_mgr.curr_cgroup_count);
+    debug("[PLUGIN_CGROUPS] remove cgroup '%s', find_flag:'%s', current cgroup object count:%d",
+          cg_obj->cg_id, cg_obj->find_flag ? "true" : "false", __xm_cgroups_mgr.curr_cgroup_count);
 
     sdsfree(cg_obj->cg_id);
 
@@ -270,7 +270,7 @@ static void __found_cgroup_in_dir(const char *cg_id, struct plugin_cgroup_ctx *c
         cg_obj = __add_cgroup_obj(cg_id, ctx);
 
         // 配置cgroup指标文件
-        __make_cgroup_obj_metric_files(cg_obj);
+        __make_cgroup_obj_metric_files(cg_obj, ctx);
     } else {
         cg_obj->find_flag = 1;
     }
@@ -397,4 +397,7 @@ void collect_all_cgroups(struct plugin_cgroup_ctx *ctx) {
             error("[PLUGIN_CGROUPS] cannot find cgroup device subsystem");
         }
     }
+
+    // 清除不存在的cgroup对象
+    __cleanup_all_cgroup_objs();
 }
