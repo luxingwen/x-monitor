@@ -162,6 +162,9 @@ add_subdirectory(cli/ebpf/xdp_libbpf_test)
 add_subdirectory(cli/ebpf/bootstrap_cli)
 add_subdirectory(cli/ebpf/readbtf_cli)
 
+add_subdirectory(cli/libmill_test/chan_test)
+add_subdirectory(cli/libmill_test/coroutine_test)
+
 # 子目录源代码
 # set(PLUGINSD_FILES
 # plugins.d/plugins_d.c
