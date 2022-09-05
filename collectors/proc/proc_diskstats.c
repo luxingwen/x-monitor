@@ -135,7 +135,7 @@ static prom_gauge_t *__metric_node_disk_io_now = NULL, *__metric_node_disk_iosta
 static enum disk_type __get_device_type(const char *dev_name, uint32_t major, uint32_t minor) {
     enum disk_type dt = DISK_TYPE_UNKNOWN;
 
-    char buffer[XM_DEV_NAME_MAX + 1];
+    char buffer[XM_DEV_NAME_MAX] = { 0 };
     snprintf(buffer, XM_DEV_NAME_MAX, "/sys/block/%s", dev_name);
     if (likely(access(buffer, R_OK) == 0)) {
         // assign it here, but it will be overwritten if it is not a physical disk
@@ -145,7 +145,7 @@ static enum disk_type __get_device_type(const char *dev_name, uint32_t major, ui
         if (likely(access(buffer, R_OK) == 0)) {
             dt = DISK_TYPE_PARTITION;
         } else {
-            snprintf(buffer, FILENAME_MAX, "/sys/dev/block/%u:%u/slaves", major, minor);
+            snprintf(buffer, XM_DEV_NAME_MAX, "/sys/dev/block/%u:%u/slaves", major, minor);
             DIR *dirp = opendir(buffer);
             if (likely(dirp != NULL)) {
                 struct dirent *dp;
@@ -168,7 +168,7 @@ static enum disk_type __get_device_type(const char *dev_name, uint32_t major, ui
     return dt;
 }
 
-static struct io_device *__get_device(char *device_name, uint32_t major, uint32_t minor) {
+static struct io_device *__get_device(const char *device_name, uint32_t major, uint32_t minor) {
     struct io_device *dev = NULL;
 
     // 计算hash值
@@ -406,7 +406,7 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
 
     for (l = 0; l < pf_diskstats_lines; l++) {
         // 每一行都是一个磁盘设备
-        char *dev_name;
+        const char *dev_name;
         // 设备的主id，辅id
         uint32_t major, minor;
 

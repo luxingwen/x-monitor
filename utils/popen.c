@@ -30,7 +30,7 @@ static inline int custom_popene(const char *command, volatile pid_t *pidptr, cha
     int32_t                    pipefd[2] = { -1, -1 };
     int32_t                    error = 0;
     pid_t                      pid = 0;
-    char *const                spawn_argv[] = { "sh", "-c", command, NULL };
+    char *const                spawn_argv[] = { "sh", "-c", (char *)command, NULL };
     posix_spawnattr_t          attr;
     posix_spawn_file_actions_t actions;
 

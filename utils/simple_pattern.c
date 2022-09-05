@@ -339,7 +339,7 @@ int32_t simple_pattern_is_potential_name(SIMPLE_PATTERN *p) {
     return (alpha || wildcards) && !colon;
 }
 
-char *simple_pattern_iterate(SIMPLE_PATTERN **p) {
+const char *simple_pattern_iterate(SIMPLE_PATTERN **p) {
     struct simple_pattern  *root = (struct simple_pattern *)*p;
     struct simple_pattern **Proot = (struct simple_pattern **)p;
 

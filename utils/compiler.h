@@ -110,6 +110,11 @@ https://hackmd.io/@sysprog/c-bitfield
                         : UNCONST_HAX_(long double), const long double               \
                         : UNCONST_HAX_(long double)))
 */
+
+#ifndef typeof_member
+#define typeof_member(T, m) typeof(((T *)0)->m)
+#endif
+
 #ifndef container_of
 /**
  * container_of - cast a member of a structure out to the containing structure
@@ -120,7 +125,7 @@ https://hackmd.io/@sysprog/c-bitfield
  */
 #define container_of(ptr, type, member)                    \
     ({                                                     \
-        const typeof(((type *)0)->member) *__mptr = (ptr); \
+        const typeof_member(type, member) *__mptr = (ptr); \
         (type *)((char *)__mptr - offsetof(type, member)); \
     })
 #endif

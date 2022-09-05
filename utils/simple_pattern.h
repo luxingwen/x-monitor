@@ -25,7 +25,8 @@ typedef void SIMPLE_PATTERN;
 extern SIMPLE_PATTERN *simple_pattern_create(const char *list, const char *separators,
                                              enum SIMPLE_PREFIX_MODE default_mode);
 
-// test if string str is matched from the pattern and fill 'wildcarded' with the parts matched by '*'
+// test if string str is matched from the pattern and fill 'wildcarded' with the parts matched by
+// '*'
 extern int simple_pattern_matches_extract(SIMPLE_PATTERN *list, const char *str, char *wildcarded,
                                           size_t wildcarded_size);
 
@@ -36,9 +37,9 @@ extern int simple_pattern_matches_extract(SIMPLE_PATTERN *list, const char *str,
 // list can be NULL, in which case, this does nothing.
 extern void simple_pattern_free(SIMPLE_PATTERN *list);
 
-extern void  simple_pattern_dump(SIMPLE_PATTERN *p);
-extern int   simple_pattern_is_potential_name(SIMPLE_PATTERN *p);
-extern char *simple_pattern_iterate(SIMPLE_PATTERN **p);
+extern void        simple_pattern_dump(SIMPLE_PATTERN *p);
+extern int         simple_pattern_is_potential_name(SIMPLE_PATTERN *p);
+extern const char *simple_pattern_iterate(SIMPLE_PATTERN **p);
 
 // Auxiliary function to create a pattern
 char *simple_pattern_trim_around_equal(char *src);

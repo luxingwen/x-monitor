@@ -7,4 +7,4 @@
 
 #include "consts.h"
 
-char *DEFAULT_PIDFILE = "/tmp/x-monitor.pid";
+const char *DEFAULT_PIDFILE = "/tmp/x-monitor.pid";

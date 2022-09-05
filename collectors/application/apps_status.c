@@ -57,8 +57,8 @@ struct xm_mempool_s *__app_assoc_process_xmp = NULL;
  * @return The return value is the difference between the two values.
  */
 static int32_t __app_process_compare(const void *key1, const void *key2) {
-    pid_t *pid_1 = (pid_t *)key1;
-    pid_t *pid_2 = (pid_t *)key2;
+    const pid_t *pid_1 = (const pid_t *)key1;
+    const pid_t *pid_2 = (const pid_t *)key2;
     return !(*pid_1 == *pid_2);
 }
 
@@ -632,8 +632,9 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
           cc_hashtable_size(__app_assoc_process_table));
 
     // 清理应用统计对象
-again:
-    __list_for_each(iter_list, &__app_status_list) {
+    // again:
+    struct list_head *n = NULL;
+    list_for_each_safe(iter_list, n, &__app_status_list) {
         as = list_entry(iter_list, struct app_status, l_member);
         debug("[PLUGIN_APPSTATUS] app '%s' app_pid: %d current have %d processes.", as->app_name,
               as->app_pid, as->process_count);
@@ -644,10 +645,11 @@ again:
             // 删除应用指标收集对象
             prom_map_delete(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, as->app_name);
 
-            list_del(&as->l_member);
+            // list_del(&as->l_member);
+            list_del(iter_list);
             xm_mempool_free(__app_status_xmp, as);
             as = NULL;
-            goto again;
+            // goto again;
         }
     }
 

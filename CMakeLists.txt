@@ -4,10 +4,6 @@ project(x-monitor)
 set(CMAKE_C_COMPILER "/usr/bin/gcc")
 set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 
-# set(CMAKE_C_COMPILER "/usr/bin/clang")
-# set(CMAKE_CXX_COMPILER "/usr/bin/clang")
-# set(CMAKE_LINKER "/usr/bin/clang")
-
 # 编译输出目录
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
@@ -38,13 +34,13 @@ if(STATIC_LINKING)
 endif(STATIC_LINKING)
 
 # debug 、 release版本
-set(CMAKE_C_FLAGS_DEBUG "-Wall -g -ggdb3 -O0")
+set(CMAKE_C_FLAGS_DEBUG "-Wall -g -ggdb3")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 
 # 设置c编译参数
 # Position-Independent Code
 # set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -Wpedantic")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIE -Wno-unknown-pragmas -Wextra -fno-omit-frame-pointer -fstack-protector")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wno-unknown-pragmas -Wextra -fno-omit-frame-pointer -fstack-protector")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpointer-arith")
 
 # -Wredundant-decls 如果在同一个可见域某定义多次声明,编译器就发出警告,即使这些重复声明有效并且毫无差别.
@@ -60,8 +56,9 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wsuggest-attribute=noreturn -Wjump-misses-i
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wduplicated-cond -Wmisleading-indentation -Wnull-dereference")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wduplicated-branches -Wrestrict")
 
+#  -fsanitize=undefined
 if(USE_ADDRSANITIZER)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize-recover=address -fsanitize=undefined")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize-recover=address")
   message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
 endif(USE_ADDRSANITIZER)
 
@@ -167,10 +164,6 @@ add_subdirectory(cli/ebpf/xdp_libbpf_test)
 add_subdirectory(cli/ebpf/bootstrap_cli)
 add_subdirectory(cli/ebpf/readbtf_cli)
 
-add_subdirectory(cli/libmill_test/chan_test)
-add_subdirectory(cli/libmill_test/coroutine_test)
-add_subdirectory(cli/libmill_test/signal_test)
-
 # 子目录源代码
 # set(PLUGINSD_FILES
 # plugins.d/plugins_d.c
@@ -237,11 +230,10 @@ file(GLOB_RECURSE X-MONITOR_SRCS
 message(STATUS "X-MONITOR_SRCS = ${X-MONITOR_SRCS}")
 
 # 编译的执行程序
-# D_FORTIFY_SOURCE 还会在运行时添加检查(检测到缓冲区溢出会终止程序)
+# D_FORTIFY_SOURCE 还会在运行时添加检查(检测到缓冲区溢出会终止程序)   -D_FORTIFY_SOURCE=2
 add_executable(x-monitor main.c ${X-MONITOR_SRCS})
 target_compile_definitions(x-monitor PRIVATE
   -DDEBUG
-  -D_FORTIFY_SOURCE=2
   -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg"
   -DLOG_DIR="/usr/log/x-monitor"
   -DAPP_METRIC_PREFIX=${APP_METRIC_PREFIX}

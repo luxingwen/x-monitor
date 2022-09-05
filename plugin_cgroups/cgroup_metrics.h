@@ -69,7 +69,7 @@ extern const char *__sys_cgroup_memory_failcnt_help;
 extern const char *__sys_cgroup_memory_max_usage_in_bytes_help;
 extern const char *__sys_cgroup_memory_swappiness_help;
 
-struct sys_cgroup_metrics {
+struct xm_cgroup_metrics {
     prom_gauge_t   *cgroup_metric_cpu_shares;
     prom_gauge_t   *cgroup_metric_cpu_cfs_period_us;   // 单位：微秒
     prom_gauge_t   *cgroup_metric_cpu_cfs_quota_us;

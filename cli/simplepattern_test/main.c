@@ -50,6 +50,8 @@ int32_t main(int32_t argc, char **argv) {
     // match("/proc/* /sys/* /var/run/user/* /run/user/* /snap/* /var/lib/docker/*",
     //            "/sys/fs/cgroup/");
 
+    char *x = (char *)malloc(10 * sizeof(char *));
+
     match(argv[1], argv[2]);
 
     log_fini();

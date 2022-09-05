@@ -420,8 +420,8 @@ void procfile_set_open_close(struct proc_file *pf, const char *open, const char 
 }
 
 void procfile_print(struct proc_file *pf) {
-    size_t lines = procfile_lines(pf), l;
-    char  *s = NULL;
+    size_t      lines = procfile_lines(pf), l;
+    const char *s = NULL;
 
     debug("procfile '%s' has %lu lines and %lu words", procfile_filename(pf), lines,
           pf->words->len);

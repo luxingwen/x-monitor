@@ -15,6 +15,8 @@
 #include "utils/sds/sds.h"
 #include "utils/list.h"
 
+#include "cgroup_metrics.h"
+
 struct plugin_cgroup_ctx {
     int32_t max_cgroups_num;
 
@@ -109,4 +111,8 @@ struct xm_cgroup_obj {
     sds unified_cpu_pressure;
     sds unified_io_pressure;
     sds unified_memory_pressure;
+
+    // for prometheus metrics
+    prom_collector_t         *cg_prom_collector;
+    struct xm_cgroup_metrics *cg_metrics;
 };

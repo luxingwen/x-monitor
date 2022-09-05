@@ -194,6 +194,7 @@ void *cgroup_collector_routine_start(void *UNUSED(arg)) {
             }
 
             // 采集所有cgroup对象的指标
+            read_all_cgroups_metrics(&__collector_cgroups.ctx);
         }
     }
 

@@ -32,4 +32,4 @@
 #define XM_PID_BUF_SIZE 16
 #define XM_MD5_BLOCK_SIZE 16
 
-extern char *DEFAULT_PIDFILE;
+extern const char *DEFAULT_PIDFILE;
