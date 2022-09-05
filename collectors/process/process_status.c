@@ -16,7 +16,7 @@
 #include "utils/procfile.h"
 #include "utils/mempool.h"
 
-#define HASH_BUFFER_SIZE (XM_CMD_LINE_MAX + 10)
+#define HASH_BUFFER_SIZE (XM_PROC_CMD_LINE_MAX + 10)
 
 static const char *__proc_pid_stat_path_fmt = "/proc/%d/stat",
                   *__proc_pid_status_path_fmt = "/proc/%d/status",

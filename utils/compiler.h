@@ -75,7 +75,41 @@ https://hackmd.io/@sysprog/c-bitfield
 #define offsetof(TYPE, MEMBER) ((size_t) & ((TYPE *)0)->MEMBER)
 #endif
 #endif
-
+/*
+#define UNCONST_HAX_(TYPE)    \
+    ({                        \
+        TYPE _tmp_macro_var_; \
+        _tmp_macro_var_;      \
+    })
+#define UNCONST(x)                                                                   \
+    __typeof__(_Generic((x), signed char                                             \
+                        : UNCONST_HAX_(signed char), const signed char               \
+                        : UNCONST_HAX_(signed char), unsigned char                   \
+                        : UNCONST_HAX_(unsigned char), const unsigned char           \
+                        : UNCONST_HAX_(unsigned char), short                         \
+                        : UNCONST_HAX_(short), const short                           \
+                        : UNCONST_HAX_(short), unsigned short                        \
+                        : UNCONST_HAX_(unsigned short), const unsigned short         \
+                        : UNCONST_HAX_(unsigned short), int                          \
+                        : UNCONST_HAX_(int), const int                               \
+                        : UNCONST_HAX_(int), unsigned                                \
+                        : UNCONST_HAX_(unsigned), const unsigned                     \
+                        : UNCONST_HAX_(unsigned), long                               \
+                        : UNCONST_HAX_(long), const long                             \
+                        : UNCONST_HAX_(long), unsigned long                          \
+                        : UNCONST_HAX_(unsigned long), const unsigned long           \
+                        : UNCONST_HAX_(unsigned long), long long                     \
+                        : UNCONST_HAX_(long long), const long long                   \
+                        : UNCONST_HAX_(long long), unsigned long long                \
+                        : UNCONST_HAX_(unsigned long long), const unsigned long long \
+                        : UNCONST_HAX_(unsigned long long), float                    \
+                        : UNCONST_HAX_(float), const float                           \
+                        : UNCONST_HAX_(float), double                                \
+                        : UNCONST_HAX_(double), const double                         \
+                        : UNCONST_HAX_(double), long double                          \
+                        : UNCONST_HAX_(long double), const long double               \
+                        : UNCONST_HAX_(long double)))
+*/
 #ifndef container_of
 /**
  * container_of - cast a member of a structure out to the containing structure

@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-10-15 10:52:05
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-24 17:57:18
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-09-04 15:49:39
  */
 
 #pragma once
@@ -57,7 +57,7 @@ extern "C" {
 #include <uuid/uuid.h>
 //#include <uv.h>
 
-#define __new(T) (typeof(T)) calloc(1, sizeof(T))
+#define __new(T) (typeof(T))calloc(1, sizeof(T))
 #define __delete(P) free((void *)(P))
 #define __zero(P) memset((void *)(P), 0, sizeof(*(P)))
 

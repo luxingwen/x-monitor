@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-10-15 14:41:36
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-24 15:13:40
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-08-31 20:48:08
  */
 
 #include "plugins_d.h"
@@ -27,11 +27,11 @@ static const char *__name = "PLUGINSD";
 static const char *__config_name = "pluginsd";
 
 struct external_plugin {
-    char    config_name[XM_CONFIG_NAME_MAX];
-    char    file_name[XM_FILENAME_SIZE];
-    char    full_file_name[XM_FILENAME_SIZE];
-    char    cmd[XM_CMD_LINE_MAX];   // the command that it executes
-    int32_t exit_flag;
+    char         config_name[XM_CONFIG_NAME_MAX];
+    char         file_name[XM_FILENAME_SIZE];
+    char         full_file_name[XM_FILENAME_SIZE];
+    char         cmd[XM_PROC_CMD_LINE_MAX];   // the command that it executes
+    sig_atomic_t exit_flag;
 
     volatile sig_atomic_t enabled;
     int32_t               update_every;
@@ -47,7 +47,7 @@ struct external_plugin {
 struct pluginsd {
     struct external_plugin *external_plugins_root;
     int32_t                 scan_frequency;
-    int32_t                 exit_flag;
+    sig_atomic_t            exit_flag;
     pthread_t               thread_id;
 };
 
@@ -282,10 +282,9 @@ void *pluginsd_routine_start(void *UNUSED(arg)) {
                     appconfig_get_member_int(external_plugin_cfgname, "update_every", 5);
 
                 // 生成执行命令
-                char *def = "";
-                snprintf(ep->cmd, XM_CMD_LINE_MAX, "exec %s %d %s", ep->full_file_name,
+                snprintf(ep->cmd, XM_PROC_CMD_LINE_MAX, "exec %s %d %s", ep->full_file_name,
                          ep->update_every,
-                         appconfig_get_member_str(external_plugin_cfgname, "command_options", def));
+                         appconfig_get_member_str(external_plugin_cfgname, "command_options", ""));
 
                 debug("file_name:'%s' full_file_name:'%s', cmd:'%s'", ep->file_name,
                       ep->full_file_name, ep->cmd);

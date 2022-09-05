@@ -1,8 +1,8 @@
 /*
  * @Author: calmwu
  * @Date: 2022-03-16 10:11:21
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-07 11:07:41
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-08-31 20:48:04
  */
 
 #include "envoy_mgr.h"
@@ -22,10 +22,10 @@ static const char *__name = "PROXY_ENVOY_MGR";
 static const char *__config_name = "plugin_proxy";
 
 static struct proxy_envoy_mgr {
-    int32_t   exit_flag;
-    pthread_t thread_id;   // routine执行的线程ids
-    pid_t     child_pid;
-    char      exec_cmd_line[XM_CMD_LINE_MAX];
+    sig_atomic_t exit_flag;
+    pthread_t    thread_id;   // routine执行的线程ids
+    pid_t        child_pid;
+    char         exec_cmd_line[XM_PROC_CMD_LINE_MAX];
 
 } __proxy_envoy_mgr = {
     .exit_flag = 0,
@@ -64,7 +64,8 @@ int32_t envoy_manager_routine_init() {
         return -1;
     }
 
-    snprintf(__proxy_envoy_mgr.exec_cmd_line, XM_CMD_LINE_MAX, "exec %s %s", envoy_bin, envoy_args);
+    snprintf(__proxy_envoy_mgr.exec_cmd_line, XM_PROC_CMD_LINE_MAX, "exec %s %s", envoy_bin,
+             envoy_args);
     debug("routine '%s' exec cmd: '%s'", __name, __proxy_envoy_mgr.exec_cmd_line);
 
     debug("routine '%s' init successed", __name);

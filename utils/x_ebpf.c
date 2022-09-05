@@ -38,7 +38,7 @@ int32_t xm_bpf_printf(enum libbpf_print_level level, const char *fmt, va_list ar
 }
 
 static int32_t ksym_cmp(const void *p1, const void *p2) {
-    return ((struct ksym *)p1)->addr - ((struct ksym *)p2)->addr;
+    return ((const struct ksym *)p1)->addr - ((const struct ksym *)p2)->addr;
 }
 
 int32_t xm_load_kallsyms() {

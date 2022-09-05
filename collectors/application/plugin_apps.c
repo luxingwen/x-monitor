@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-04-13 15:18:43
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-05-19 18:26:42
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-08-31 22:45:22
  */
 
 #include "plugin_apps.h"
@@ -23,11 +23,11 @@ static const char *__name = "PLUGIN_APPSTATUS";
 static const char *__config_name = "collector_plugin_appstatus";
 
 struct collector_appstat {
-    int32_t   exit_flag;
-    pthread_t thread_id;                       // routine执行的线程ids
-    int32_t   update_every;                    // 指标采集时间间隔
-    int32_t   update_every_for_app;            // 应用更新时间间隔
-    int32_t   update_every_for_filter_rules;   //
+    sig_atomic_t exit_flag;
+    pthread_t    thread_id;                       // routine执行的线程ids
+    int32_t      update_every;                    // 指标采集时间间隔
+    int32_t      update_every_for_app;            // 应用更新时间间隔
+    int32_t      update_every_for_filter_rules;   //
 
     usec_t last_update_for_app_usec;
     usec_t last_update_for_filter_rules_usecs;
@@ -65,6 +65,7 @@ int32_t appstat_collector_routine_init() {
         appconfig_get_int("collector_plugin_appstatus.update_every_for_filter_rules", 60);
 
     __collector_appstat.last_update_for_app_usec = 0;
+    __collector_appstat.last_update_for_filter_rules_usecs = 0;
 
     debug("[%s] routine init successed", __name);
     return 0;

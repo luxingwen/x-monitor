@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-03-28 15:26:24
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-05-19 17:53:10
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-08-31 20:56:40
  */
 
 #pragma once
@@ -17,7 +17,7 @@ struct xm_mempool_s;
 struct process_status {
     pid_t pid;
     pid_t ppid;
-    char  comm[XM_PROCESS_COMM_SIZE];
+    char  comm[XM_PROC_COMM_SIZE];
 
     char *stat_full_filename;
     char *status_full_filename;

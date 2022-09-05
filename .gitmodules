@@ -1,6 +1,3 @@
 [submodule "extra/libbpf/libbpf_repo"]
 	path = extra/libbpf/libbpf_repo
 	url = https://github.com/libbpf/libbpf
-[submodule "extra/libmill"]
-	path = extra/libmill
-	url = https://github.com/sustrik/libmill.git

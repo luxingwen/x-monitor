@@ -49,7 +49,7 @@ memsw是memory+swap的意思。cgroup限制进程所使用的内存总量实际�
 
 关闭方式：grubby --update-kernel=ALL --args=swapaccount=0，默认开启也可以通过内核引导参数"swapaccount=0"禁止此特性。**设置重启后memory.memsw.*文件就没有了**。
 
-## 统计方式
+## Memory统计方式
 
 ### 进程角度和CGroup角度对rss的统计差异
 
@@ -426,7 +426,7 @@ void __mod_memcg_state(struct mem_cgroup *memcg, int idx, int val)
 }
 ```
 
-很奇怪，通过调用堆栈分析，始终不见__mod_memcg_state的调用，可是其调用方 __mod_memcg_lruvec_state函数是一直有调用的。
+很奇怪，通过调用堆栈分析，始终不见 __mod_memcg_state的调用，可是其调用方 __mod_memcg_lruvec_state函数是一直有调用的。
 
 ```
 __mod_memcg_lruvec_state====>
@@ -456,32 +456,180 @@ call stack>>>
         page_fault+30
 ```
 
-memcg stat记账，上面介绍的函数mem_cgroup_charge会调用下面的统计函数
+#### 消失的__mod_memcg_state调用
+
+这个函数去哪里了呢，这个问题困扰我几个月了，知道最近我用objdump反汇编函数才发现如下情况，首先找到__mod_memcg_lruvec_state的地址。
 
 ```
-static void mem_cgroup_charge_statistics(struct mem_cgroup *memcg,
-					 struct page *page,
-					 int nr_pages)
-{
-	/* pagein of a big page is an event. So, ignore page size */
-	if (nr_pages > 0)
-		__count_memcg_events(memcg, PGPGIN, 1);
-	else {
-		__count_memcg_events(memcg, PGPGOUT, 1);
-		nr_pages = -nr_pages; /* for event */
-	}
+ ✘ ⚡ root@localhost  /  objdump -t /lib/modules/4.18.0/build/vmlinux|grep __mod_memcg_lruvec_state 
+ffffffff81317aa0 g     F .text	00000000000000f9 __mod_memcg_lruvec_state
+```
 
-	__this_cpu_add(memcg->vmstats_percpu->nr_page_events, nr_pages);
+然后反汇编该函数，可以看到callq  ffffffff81314f70 <__mod_memcg_state.part.71>这条指令，为何有这个函数？
+
+```
+ ⚡ root@localhost  /  objdump -S -l --start-address=0xffffffff81317aa0 /lib/modules/4.18.0/build/vmlinux| awk '{print $0} $3~/retq?/{exit}'
+
+/lib/modules/4.18.0/build/vmlinux:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+ffffffff81317aa0 <__mod_memcg_lruvec_state>:
+__mod_memcg_lruvec_state():
+/usr/src/kernels/4.18.0-348.20.1.el8_5.x86_64/mm/memcontrol.c:810
+	return mem_cgroup_nodeinfo(parent, nid);
 }
+
+void __mod_memcg_lruvec_state(struct lruvec *lruvec, enum node_stat_item idx,
+			      int val)
+{
+ffffffff81317aa0:	e8 5b 9e 6e 00       	callq  ffffffff81a01900 <__fentry__>
+ffffffff81317aa5:	41 54                	push   %r12
+ffffffff81317aa7:	41 89 d4             	mov    %edx,%r12d
+ffffffff81317aaa:	55                   	push   %rbp
+ffffffff81317aab:	48 89 fd             	mov    %rdi,%rbp
+ffffffff81317aae:	53                   	push   %rbx
+ffffffff81317aaf:	89 f3                	mov    %esi,%ebx
+arch_static_branch():
+/usr/src/kernels/4.18.0-348.20.1.el8_5.x86_64/./arch/x86/include/asm/jump_label.h:38
+#include <linux/stringify.h>
+#include <linux/types.h>
+
+static __always_inline bool arch_static_branch(struct static_key *key, bool branch)
+{
+	asm_volatile_goto("1:"
+ffffffff81317ab1:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+__mod_memcg_state():
+/usr/src/kernels/4.18.0-348.20.1.el8_5.x86_64/./arch/x86/include/asm/jump_label.h:38
+ffffffff81317ab6:	48 8b bf 90 03 00 00 	mov    0x390(%rdi),%rdi
+ffffffff81317abd:	e8 ae d4 ff ff       	callq  ffffffff81314f70 <__mod_memcg_state.part.71>
+__mod_memcg_lruvec_state():
+/usr/src/kernels/4.18.0-348.20.1.el8_5.x86_64/mm/memcontrol.c:822 (discriminator 157)
+
+	/* Update memcg */
+	__mod_memcg_state(memcg, idx, val);
+
+	/* Update lruvec */
+	__this_cpu_add(pn->lruvec_stat_local->count[idx], val);
+ffffffff81317ac2:	89 d9                	mov    %ebx,%ecx
+ffffffff81317ac4:	48 8b 85 a8 02 00 00 	mov    0x2a8(%rbp),%rax
+vmstat_item_in_bytes():
+/usr/src/kernels/4.18.0-348.20.1.el8_5.x86_64/./include/linux/mmzone.h:257 (discriminator 157)
+
 ```
 
-#### 使用bpftrace来观察修改过程
+这里继续用objdump去找找__mod_memcg_state相关函数，发现是有两个类似函数的
 
-docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)](https://docs.docker.com.zh.xy2401.com/config/containers/runmetrics/#metrics-from-cgroups-memory-cpu-block-io)
+```
+ ⚡ root@localhost  /  objdump -t /lib/modules/4.18.0/build/vmlinux|grep __mod_memcg_state                                                  
+ffffffff81314f70 l     F .text	00000000000000b1 __mod_memcg_state.part.71
+ffffffff81317a90 g     F .text	0000000000000010 __mod_memcg_state
+```
+
+objdump Symbols table输出的含义如下，这样就可以理解l、g的含义了。
+
+```
+COLUMN ONE: the symbol's value
+COLUMN TWO: a set of characters and spaces indicating the flag bits that are set on the symbol. There are seven groupings which are listed below:
+group one: (l,g,,!) local, global, neither, both.
+group two: (w,) weak or strong symbol.
+group three: (C,) symbol denotes a constructor or an ordinary symbol.
+group four: (W,) symbol is warning or normal symbol.
+group five: (I,) indirect reference to another symbol or normal symbol.
+group six: (d,D,) debugging symbol, dynamic symbol or normal symbol.
+group seven: (F,f,O,) symbol is the name of function, file, object or normal symbol.
+COLUMN THREE: the section in which the symbol lives, ABS means not associated with a certain section
+COLUMN FOUR: the symbol's size or alignment.
+COLUMN FIVE: the symbol's name.
+```
+
+有兴趣可以反汇编这两个函数，看看实现的细节
+
+```
+objdump -S -l --start-address=0xffffffff81314f70 /lib/modules/4.18.0/build/vmlinux| awk '{print $0} $3~/retq?/{exit}'
+objdump -S -l --start-address=0xffffffff81317a90 /lib/modules/4.18.0/build/vmlinux| awk '{print $0} $3~/retq?/{exit}'
+```
+
+对比汇编发现__mod_memcg_state仅仅只有部分逻辑。
+
+而bpftrace -lv只能看到__mod_memcg_state这个函数，所以我想这就是为何一直看不到堆栈的原因吧。
+
+实际上修改memcg中rss，cache的是函数 __mod_memcg_state.part.71。
+
+为什么会有两个相同函数呢，这个和内核基础设施static_key有关。
+
+#### 使用bpftrace来观察memcg的统计过程
+
+bpftrace脚本：[ktrace_process_rss.bt](./ktrace_process_rss.bt)
+
+1. 先运行memory压测脚本，在指定cgroup中分配内存
+
+   ```
+   cgexec -g memory:/x-monitor -g cpu:/x-monitor stress-ng --vm 1 --vm-bytes 500000000 --vm-keep --timeout 10s --verbose
+   ```
+
+2. 运行脚本
+
+   ```
+   ../bin/bpftrace.0.15 -v ./ktrace_process_rss.bt
+   ```
+
+   脚本输出如下：
+
+   ```
+   call stack>>>	
+           __mod_memcg_lruvec_state+1
+           __mod_lruvec_page_state+94
+           __add_to_page_cache_locked+613
+           add_to_page_cache_lru+74
+           pagecache_get_page+278
+           grab_cache_page_write_begin+31
+           iomap_write_begin+486
+           iomap_write_actor+157
+           iomap_apply+251
+           iomap_file_buffered_write+98
+           xfs_file_buffered_aio_write+202
+           new_sync_write+274
+           vfs_write+165
+           ksys_write+79
+           do_syscall_64+91
+           entry_SYSCALL_64_after_hwframe+101
+   
+   call stack>>>	
+           __mod_memcg_lruvec_state+1
+           __mod_lruvec_page_state+94
+           page_add_new_anon_rmap+103
+           do_anonymous_page+368
+           __handle_mm_fault+2022
+           handle_mm_fault+190
+           __do_page_fault+493
+           do_page_fault+55
+           page_fault+30
+   ```
+
+3. 为了让脚本正确统计rss和cache，先将cgroup的cache清空。
+
+   ```
+   echo 1 > /proc/sys/vm/drop_caches
+   memory.stat: cache 0
+   	rss 0
+   ```
+
+   好了现在从0开始了。同时修改脚本，让其定时输出cgroup的rss、cache的字节数，以及x-monitor进程的物理内存信息
+
+   ```
+   04:47:40 memcg: 'x-monitor', rss: 24539136 bytes, cache: 7024640 bytes
+   process 'x-monitor', pid: 5031, 
+   	nm_pagetype: 'MM_FILEPAGES', pages:1160, bytes:4751360
+   	nm_pagetype: 'MM_ANONPAGES', pages:5954, bytes:24387584
+   	nm_pagetype: 'MM_SWAPENTS', pages:0, bytes:0
+   	nm_pagetype: 'MM_SHMEMPAGES', pages:0, bytes:0
+   ```
 
 ### 小结
 
-判断memory cgroup的真实内存使用量，不能看memory.usage_in_bytes，而需要用memory.stat.rss字段，这类似于free命令看到的，要看除去Page Cache之后的available字段。
+memory cgroup的memory.usage_in_bytes包括了rss和cache，但是cache是可以被回收的，如果在内存紧张的时候cache就会被交换出去，当然一般都把cgroup的swapness都关闭。
 
 ## 疑问
 
@@ -514,3 +662,12 @@ docker的文档也有详细说明：[运行时指标| Docker文档 (xy2401.com)]
 
 1. [per-CPU变量 - osc_96pr9g1m的个人空间 - OSCHINA - 中文开源技术交流社区](https://my.oschina.net/u/4277132/blog/3658485)
 2. [内核基础设施——per cpu变量 - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/kernel/percpu-var/)
+
+### Gcc，function part
+
+1. [compiling - Function symbol gets '.part' suffix after compilation - Unix & Linux Stack Exchange](https://unix.stackexchange.com/questions/223013/function-symbol-gets-part-suffix-after-compilation)
+2. [内核基础设施——static_key - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/kernel/static_key/)
+
+### 内核自定义编译
+
+1. [build system - How to pass compiler options during Linux kernel compilation? - Stack Overflow](https://stackoverflow.com/questions/40442218/how-to-pass-compiler-options-during-linux-kernel-compilation)

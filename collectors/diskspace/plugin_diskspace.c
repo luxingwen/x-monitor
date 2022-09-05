@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-12-20 11:16:02
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-05-19 17:40:06
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-08-31 20:47:51
  */
 
 #include "plugin_diskspace.h"
@@ -29,7 +29,7 @@ static const char *__name = "PLUGIN_DISKSPACE";
 static const char *__config_name = "collector_plugin_diskspace";
 
 struct collector_diskspace {
-    int32_t           exit_flag;
+    sig_atomic_t      exit_flag;
     pthread_t         thread_id;   // routine执行的线程ids
     int32_t           update_every;
     int32_t           check_for_new_mountinfos_every;

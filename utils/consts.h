@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-10-22 11:57:56
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-11 15:18:40
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-08-31 11:25:19
  */
 
 #pragma once
@@ -18,15 +18,18 @@
 #define XM_PROM_METRIC_NAME_LEN 32
 #define XM_PPROM_METRIC_LABEL_VALUE_LEN 128
 #define XM_ITF_NAME_SIZE 64
-#define XM_CMD_LINE_MAX 4096
-#define XM_PROC_FILENAME_MAX 256
-#define XM_PROCESS_COMM_SIZE 64
+
+#define XM_PROC_COMM_SIZE 64
 #define XM_PROC_LINE_SIZE 1024
+#define XM_PROC_FILENAME_MAX 256
+#define XM_PROC_CHILDREN_FILENAME_SIZE 64
+#define XM_PROC_CHILDREN_LINE_SIZE 4096
+#define XM_PROC_CMD_LINE_MAX 4096
+#define XM_PROC_CONTENT_BUF_SIZE 4096
+
 #define XM_APP_NAME_SIZE 64
 #define XM_CHILDPID_COUNT_MAX 256
 #define XM_PID_BUF_SIZE 16
-#define XM_PROC_CHILDREN_FILENAME_SIZE 64
-#define XM_PROC_CHILDREN_LINE_SIZE 4096
 #define XM_MD5_BLOCK_SIZE 16
 
 extern char *DEFAULT_PIDFILE;

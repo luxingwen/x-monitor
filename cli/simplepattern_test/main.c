@@ -6,19 +6,19 @@
  */
 
 #include "utils/common.h"
+#include "utils/compiler.h"
 #include "utils/log.h"
 #include "utils/simple_pattern.h"
 #include "utils/strings.h"
 
-void test_match(const char *pattern, const char *str) {
+void match(const char *pattern, const char *str) {
     SIMPLE_PATTERN *sp = simple_pattern_create(pattern, NULL, SIMPLE_PATTERN_EXACT);
 
     // simple_pattern_dump(sp);
 
     if (simple_pattern_matches(sp, str)) {
         debug("+++ '%s' matches with pattern: '%s'\n", str, pattern);
-    }
-    else {
+    } else {
         debug("---'%s' mismatches with pattern: '%s'\n", str, pattern);
     }
 
@@ -26,27 +26,38 @@ void test_match(const char *pattern, const char *str) {
 }
 
 int32_t main(int32_t argc, char **argv) {
-    char *log_cfg = argv[1];
-
-    if (log_init(log_cfg, "simplepattern_teset") != 0) {
+    if (log_init("../cli/log.cfg", "parttern_test") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }
 
-    test_match("*foobar* !foo* !*bar *", "foo");
-    test_match("*foobar* foo !*bar *", "foo");
-    test_match("*foobar* foo !*bar *", "foobar");
-    test_match("!foobar foo !*bar *", "foobar");
-    test_match("!*foobar foo !*bar *", "csdfoobar");
-    test_match("*", "csdfoobar");
-    // mismatch
-    test_match("!c*", "csdfoobar");
-    // mismatch
-    test_match("!*c*", "sdsdcsdfoobar");
-    // match
-    test_match("/proc/* /sys/* /var/run/user/* /run/user/* /snap/* /var/lib/docker/*", "/sys/fs/cgroup/");
+    if (unlikely(argc != 3)) {
+        fatal("./simplepattern_test pattern_str match_str\n");
+        return -1;
+    }
+
+    // match("*foobar* !foo* !*bar *", "foo");
+    // match("*foobar* foo !*bar *", "foo");
+    // match("*foobar* foo !*bar *", "foobar");
+    // match("!foobar foo !*bar *", "foobar");
+    // match("!*foobar foo !*bar *", "csdfoobar");
+    // match("*", "csdfoobar");
+    // // mismatch
+    // match("!c*", "csdfoobar");
+    // // mismatch
+    // match("!*c*", "sdsdcsdfoobar");
+    // // match
+    // match("/proc/* /sys/* /var/run/user/* /run/user/* /snap/* /var/lib/docker/*",
+    //            "/sys/fs/cgroup/");
+
+    match(argv[1], argv[2]);
 
     log_fini();
 
     return 0;
 }
+
+/*
+~/Program/x-monitor/bin » ./simplepattern_test "\!*foo* sdsd" sdsd
+22-08-31 23:53:01:466 [DEBUG] +++ 'sdsd' matches with pattern: '!*foo* sdsd'
+*/
