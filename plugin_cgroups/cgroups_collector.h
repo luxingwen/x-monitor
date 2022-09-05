@@ -9,8 +9,7 @@
 
 #include "cgroups_def.h"
 
-extern void collect_all_cgroups(struct plugin_cgroup_ctx *ctx);
-
+extern void    cgroups_collect(struct plugin_cgroup_ctx *ctx);
 extern int32_t cgroups_count();
-
-extern void read_all_cgroups_metrics(struct plugin_cgroup_ctx *ctx);
+extern void    cgroups_read_metrics(struct plugin_cgroup_ctx *ctx);
+extern void    cgroups_free();

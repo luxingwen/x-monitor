@@ -189,14 +189,16 @@ void *cgroup_collector_routine_start(void *UNUSED(arg)) {
                 && (now_usecs - last_update_all_cgroups_usecs
                     >= step_usecs_for_update_every_cgroups)) {
                 //收集所有cgroup对象
-                collect_all_cgroups(&__collector_cgroups.ctx);
+                cgroups_collect(&__collector_cgroups.ctx);
                 last_update_all_cgroups_usecs = now_usecs;
             }
 
             // 采集所有cgroup对象的指标
-            read_all_cgroups_metrics(&__collector_cgroups.ctx);
+            cgroups_read_metrics(&__collector_cgroups.ctx);
         }
     }
+
+    cgroups_free();
 
     debug("[%s] routine exit", __name);
     return NULL;

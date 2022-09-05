@@ -348,7 +348,7 @@ static int32_t __find_dir_in_subdirs(const char *base_dir, const char *this,
 
 //------------------------------------------------------------------------------
 
-void collect_all_cgroups(struct plugin_cgroup_ctx *ctx) {
+void cgroups_collect(struct plugin_cgroup_ctx *ctx) {
     debug("[PLUGIN_CGROUPS] collect all cgroups");
 
     __unset_all_cgroup_obj_find_flag();
@@ -435,11 +435,13 @@ static int32_t __read_cgroup_metrics(struct xm_cgroup_obj *cg_obj, struct plugin
 }
 
 // 采集所有cgroup的指标
-void read_all_cgroups_metrics(struct plugin_cgroup_ctx *ctx) {
+void cgroups_read_metrics(struct plugin_cgroup_ctx *ctx) {
     struct list_head     *iter = NULL;
     struct list_head     *n = NULL;
     struct xm_cgroup_obj *cg_obj = NULL;
     int32_t               ret = 0;
+
+    debug("[PLUGIN_CGROUPS] read all cgroups metrics");
 
     list_for_each_safe(iter, n, &__xm_cgroups_mgr.cg_list) {
         cg_obj = list_entry(iter, struct xm_cgroup_obj, l_member);
@@ -448,6 +450,26 @@ void read_all_cgroups_metrics(struct plugin_cgroup_ctx *ctx) {
             info("[PLUGIN_CGROUPS] read cgroup:'%s' metrics failed, so remove it.", cg_obj->cg_id);
             list_del(iter);
             __release_cgroup_obj(cg_obj);
+            cg_obj = NULL;
         }
+    }
+}
+
+/**
+ * It iterates over the list of cgroups, and for each cgroup, it removes it from the list, and then
+ * releases the cgroup object
+ */
+void cgroups_free() {
+    debug("[PLUGIN_CGROUPS] free all cgroups");
+
+    struct list_head     *iter = NULL;
+    struct list_head     *n = NULL;
+    struct xm_cgroup_obj *cg_obj = NULL;
+
+    list_for_each_safe(iter, n, &__xm_cgroups_mgr.cg_list) {
+        cg_obj = list_entry(iter, struct xm_cgroup_obj, l_member);
+        list_del(iter);
+        __release_cgroup_obj(cg_obj);
+        cg_obj = NULL;
     }
 }
