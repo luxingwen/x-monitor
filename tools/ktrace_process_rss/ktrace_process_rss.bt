@@ -1,3 +1,5 @@
+#!../bin/bpftrace.0.15
+
 #include <linux/mm_types.h>
 #include <linux/mm_types_task.h>
 #include <linux/sched.h>
