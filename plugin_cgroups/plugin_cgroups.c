@@ -8,7 +8,7 @@
 #include "plugin_cgroups.h"
 #include "cgroups_utils.h"
 #include "cgroups_def.h"
-#include "cgroups_collector.h"
+#include "cgroups_mgr.h"
 
 #include "routine.h"
 #include "utils/clocks.h"
@@ -29,11 +29,11 @@ static const char *__plugin_cgroups_v1_ss_base_path = "collector_plugin_cgroups.
 static const char *__plugin_cgroups_v2_ss_base_path = "collector_plugin_cgroups.cg_base_path.v2";
 
 struct collector_cgroups {
-    sig_atomic_t             exit_flag;
-    pthread_t                thread_id;   // routine执行的线程ids
-    int32_t                  update_every;
-    int32_t                  update_all_cgroups_interval_secs;
-    struct plugin_cgroup_ctx ctx;
+    sig_atomic_t              exit_flag;
+    pthread_t                 thread_id;   // routine执行的线程ids
+    int32_t                   update_every;
+    int32_t                   update_all_cgroups_interval_secs;
+    struct plugin_cgroups_ctx ctx;
 };
 
 static struct collector_cgroups __collector_cgroups = {
@@ -175,6 +175,10 @@ void *cgroup_collector_routine_start(void *UNUSED(arg)) {
 
     usec_t last_update_all_cgroups_usecs = 0;
 
+    if (unlikely(0 != cgroups_mgr_init(&__collector_cgroups.ctx))) {
+        return NULL;
+    }
+
     struct heartbeat hb;
     heartbeat_init(&hb);
 
@@ -189,22 +193,24 @@ void *cgroup_collector_routine_start(void *UNUSED(arg)) {
                 && (now_usecs - last_update_all_cgroups_usecs
                     >= step_usecs_for_update_every_cgroups)) {
                 //收集所有cgroup对象
-                cgroups_collect(&__collector_cgroups.ctx);
+                cgroups_mgr_start_discovery();
                 last_update_all_cgroups_usecs = now_usecs;
             }
 
             // 采集所有cgroup对象的指标
-            cgroups_read_metrics(&__collector_cgroups.ctx);
+            cgroups_mgr_collect_metrics();
         }
     }
 
-    cgroups_free();
+    cgroups_mgr_fini();
 
     debug("[%s] routine exit", __name);
     return NULL;
 }
 
 void cgroup_collector_routine_stop() {
+    debug("[%s] routine ready to stop", __name);
+
     __collector_cgroups.exit_flag = 1;
     pthread_join(__collector_cgroups.thread_id, NULL);
 

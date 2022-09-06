@@ -5,24 +5,28 @@
  * @Last Modified time: 2022-08-31 22:27:37
  */
 
-#include "cgroups_collector.h"
+#include "cgroups_mgr.h"
 #include "cgroups_utils.h"
+#include "cgroups_def.h"
 
 #include "utils/common.h"
 #include "utils/log.h"
 #include "utils/compiler.h"
 #include "utils/strings.h"
 
-// cgroup列表
-static LIST_HEAD(__xm_cgroup_list);
+static struct xm_cgroup_objs_mgr {
+    struct list_head           cg_discovery_list;     // cgroup发现列表
+    struct list_head           cg_collection_list;    // cgroup采集列表
+    sig_atomic_t               curr_cgroup_count;     // 当前采集cgroup数量
+    int32_t                    do_discovery;          // 条件
+    pthread_mutex_t            mutex;                 // 互斥锁
+    pthread_cond_t             cond;                  // 条件变量
+    pthread_t                  discovery_thread_id;   // 发现线程id
+    sig_atomic_t               exit_flag;
+    struct plugin_cgroups_ctx *ctx;
+} * __xm_cgroup_objs_mgr;
 
-static struct xm_cgroups_mgr {
-    struct list_head cg_list;             // cgroup列表
-    int32_t          curr_cgroup_count;   // 当前cgroup数量
-} __xm_cgroups_mgr = {
-    .cg_list = LIST_HEAD_INIT(__xm_cgroups_mgr.cg_list),
-    .curr_cgroup_count = 0,
-};
+static pthread_mutex_t __init_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * It adds a cgroup to the list of cgroups that the plugin is monitoring
@@ -32,12 +36,14 @@ static struct xm_cgroups_mgr {
  *
  * @return A pointer to a struct xm_cgroup_obj
  */
-static struct xm_cgroup_obj *__add_cgroup_obj(const char *cg_id, struct plugin_cgroup_ctx *ctx) {
+static struct xm_cgroup_obj *__add_cgroup_obj(const char *cg_id) {
+    struct plugin_cgroups_ctx *ctx = __xm_cgroup_objs_mgr->ctx;
+
     if (NULL == cg_id || 0 == *cg_id) {
         cg_id = "/";
     }
 
-    if (__xm_cgroups_mgr.curr_cgroup_count > ctx->max_cgroups_num) {
+    if (__xm_cgroup_objs_mgr->curr_cgroup_count > ctx->max_cgroups_num) {
         error("[PLUGIN_CGROUPS] maximum number of cgroups reached (%d). Not adding cgroup '%s'",
               ctx->max_cgroups_num, cg_id);
         return NULL;
@@ -52,13 +58,15 @@ static struct xm_cgroup_obj *__add_cgroup_obj(const char *cg_id, struct plugin_c
         cg_obj->cg_id = sdsnew(cg_id);
         cg_obj->cg_hash = simple_hash(cg_id);
 
-        // 加入链表
-        INIT_LIST_HEAD(&cg_obj->l_member);
-        list_add_tail(&cg_obj->l_member, &__xm_cgroups_mgr.cg_list);
+        INIT_LIST_HEAD(&cg_obj->l_discovery_member);
+        INIT_LIST_HEAD(&cg_obj->l_collection_member);
 
-        ++__xm_cgroups_mgr.curr_cgroup_count;
+        // 加入发现链表
+        list_add_tail(&cg_obj->l_discovery_member, &__xm_cgroup_objs_mgr->cg_discovery_list);
+
+        ++(__xm_cgroup_objs_mgr->curr_cgroup_count);
         info("[PLUGIN_CGROUPS] add new cgroup '%s' to cgroup_list, current cgroup object count:%d",
-             cg_id, __xm_cgroups_mgr.curr_cgroup_count);
+             cg_id, __xm_cgroup_objs_mgr->curr_cgroup_count);
     } else {
         info("[PLUGIN_CGROUPS] filter out cgroup '%s' according to the configure cgroups_matching",
              cg_id);
@@ -78,9 +86,10 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
     if (unlikely(!cg_obj))
         return;
 
-    __xm_cgroups_mgr.curr_cgroup_count--;
+    --(__xm_cgroup_objs_mgr->curr_cgroup_count);
     debug("[PLUGIN_CGROUPS] remove cgroup '%s', find_flag:'%s', current cgroup object count:%d",
-          cg_obj->cg_id, cg_obj->find_flag ? "true" : "false", __xm_cgroups_mgr.curr_cgroup_count);
+          cg_obj->cg_id, cg_obj->find_flag ? "true" : "false",
+          __xm_cgroup_objs_mgr->curr_cgroup_count);
 
     sdsfree(cg_obj->cg_id);
 
@@ -126,30 +135,20 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
  * @return A pointer to the cgroup object.
  */
 static struct xm_cgroup_obj *__find_cgroup_obj(const char *cg_id) {
-    debug("[PLUGIN_CGROUPS] find cgroup '%s'", cg_id);
-
     uint32_t cg_hash = simple_hash(cg_id);
 
     struct list_head     *iter = NULL;
     struct xm_cgroup_obj *cg_obj = NULL;
 
-    __list_for_each(iter, &__xm_cgroups_mgr.cg_list) {
-        cg_obj = list_entry(iter, struct xm_cgroup_obj, l_member);
+    __list_for_each(iter, &__xm_cgroup_objs_mgr->cg_discovery_list) {
+        cg_obj = list_entry(iter, struct xm_cgroup_obj, l_discovery_member);
         if (cg_obj->cg_hash == cg_hash && 0 == strcmp(cg_obj->cg_id, cg_id)) {
-            break;
+            debug("[PLUGIN_CGROUPS] the cgroup '%s' already exist", cg_id);
+            return cg_obj;
         }
     }
-    debug("[PLUGIN_CGROUPS] find cgroup '%s' %s", cg_id, cg_obj ? "exist" : "no exist");
-    return cg_obj;
-}
-
-/**
- * Return the number of cgroups currently in the x-monitor.
- *
- * @return The number of cgroups currently in the x-monitor.
- */
-int32_t cgroups_count() {
-    return __xm_cgroups_mgr.curr_cgroup_count;
+    debug("[PLUGIN_CGROUPS] the cgroup '%s' no exist", cg_id);
+    return NULL;
 }
 
 //------------------------------------------------------------------------------
@@ -163,8 +162,8 @@ static inline void __unset_all_cgroup_obj_find_flag() {
     struct xm_cgroup_obj *cg_obj = NULL;
     struct list_head     *iter = NULL;
 
-    __list_for_each(iter, &__xm_cgroups_mgr.cg_list) {
-        cg_obj = list_entry(iter, struct xm_cgroup_obj, l_member);
+    __list_for_each(iter, &__xm_cgroup_objs_mgr->cg_discovery_list) {
+        cg_obj = list_entry(iter, struct xm_cgroup_obj, l_discovery_member);
         cg_obj->find_flag = false;
     }
 }
@@ -178,12 +177,12 @@ static void __cleanup_all_cgroup_objs() {
     struct list_head     *iter = NULL, *n = NULL;
     struct xm_cgroup_obj *cg_obj = NULL;
 
-    list_for_each_safe(iter, n, &__xm_cgroups_mgr.cg_list) {
-        cg_obj = list_entry(iter, struct xm_cgroup_obj, l_member);
+    list_for_each_safe(iter, n, &__xm_cgroup_objs_mgr->cg_discovery_list) {
+        cg_obj = list_entry(iter, struct xm_cgroup_obj, l_discovery_member);
         if (0 == cg_obj->find_flag) {
             // 不存在的cgroup对象
             debug("[PLUGIN_CGROUPS] cleanup cgroup %s", cg_obj->cg_id);
-            // list_del(&cg_obj->l_member);
+            // list_del(&cg_obj->l_discovery_member);
             list_del(iter);
             // 释放xm_cgroup_obj对象
             __release_cgroup_obj(cg_obj);
@@ -193,8 +192,9 @@ static void __cleanup_all_cgroup_objs() {
 
 //------------------------------------------------------------------------------
 
-static void __make_cgroup_obj_metric_files(struct xm_cgroup_obj     *cg_obj,
-                                           struct plugin_cgroup_ctx *ctx) {
+static void __make_cgroup_obj_metric_files(struct xm_cgroup_obj *cg_obj) {
+    struct plugin_cgroups_ctx *ctx = __xm_cgroup_objs_mgr->ctx;
+
     if (likely(cg_obj)) {
         if (cg_type == CGROUPS_V1) {
             cg_obj->cpuacct_cpu_stat_filename =
@@ -260,23 +260,22 @@ static void __make_cgroup_obj_metric_files(struct xm_cgroup_obj     *cg_obj,
     }
 }
 
-static void __found_cgroup_in_dir(const char *cg_id, struct plugin_cgroup_ctx *ctx) {
+static void __found_cgroup_in_dir(const char *cg_id) {
     debug("[PLUGIN_CGROUPS] examining cgroup '%s'", cg_id);
 
     struct xm_cgroup_obj *cg_obj = __find_cgroup_obj(cg_id);
     if (!cg_obj) {
-        cg_obj = __add_cgroup_obj(cg_id, ctx);
+        cg_obj = __add_cgroup_obj(cg_id);
 
         // 配置cgroup指标文件
-        __make_cgroup_obj_metric_files(cg_obj, ctx);
+        __make_cgroup_obj_metric_files(cg_obj);
     } else {
         cg_obj->find_flag = 1;
     }
 }
 
 static int32_t __find_dir_in_subdirs(const char *base_dir, const char *this,
-                                     void (*callback)(const char *, struct plugin_cgroup_ctx *),
-                                     struct plugin_cgroup_ctx *ctx) {
+                                     void (*callback)(const char *)) {
 
     debug("[PLUGIN_CGROUPS] searching for directories in '%s' (base_dir '%s')", this ? this : "/",
           base_dir);
@@ -288,12 +287,14 @@ static int32_t __find_dir_in_subdirs(const char *base_dir, const char *this,
     int32_t enabled = 0;
     size_t  base_len = strlen(base_dir);
 
+    struct plugin_cgroups_ctx *ctx = __xm_cgroup_objs_mgr->ctx;
+
     // 子路径
     const char *relative_path = &this[base_len];
     if (0 == *relative_path) {
         relative_path = "/";
     }
-    debug("[PLUGIN_CGROUPS] relative path '%s'", relative_path);
+    debug("[PLUGIN_CGROUPS] relative path '%s' (base:'%s')", relative_path, base_dir);
 
     // 打开目录
     DIR *dir = opendir(this);
@@ -304,7 +305,7 @@ static int32_t __find_dir_in_subdirs(const char *base_dir, const char *this,
 
     ret = 1;
     // 相对目录就是cgroup的名称 例如cgget /system.slice/run-user-1000.mount
-    callback(relative_path, ctx);
+    callback(relative_path);
 
     struct dirent *entry = NULL;
     while ((entry = readdir(dir))) {
@@ -329,7 +330,7 @@ static int32_t __find_dir_in_subdirs(const char *base_dir, const char *this,
 
             if (enabled) {
                 sds     cg_path = sdscatfmt(sdsempty(), "%s/%s", this, entry->d_name);
-                int32_t ret2 = __find_dir_in_subdirs(base_dir, cg_path, callback, ctx);
+                int32_t ret2 = __find_dir_in_subdirs(base_dir, cg_path, callback);
                 if (ret2 > 0) {
                     ret += ret2;
                 }
@@ -348,8 +349,10 @@ static int32_t __find_dir_in_subdirs(const char *base_dir, const char *this,
 
 //------------------------------------------------------------------------------
 
-void cgroups_collect(struct plugin_cgroup_ctx *ctx) {
-    debug("[PLUGIN_CGROUPS] collect all cgroups");
+void cgroups_discovery() {
+    debug("[PLUGIN_CGROUPS] ---------discovery all cgroups---------");
+
+    struct plugin_cgroups_ctx *ctx = __xm_cgroup_objs_mgr->ctx;
 
     __unset_all_cgroup_obj_find_flag();
 
@@ -357,47 +360,81 @@ void cgroups_collect(struct plugin_cgroup_ctx *ctx) {
         // 处理cgroup v1目录结构
         if (ctx->cs_cpuacct_enable) {
             // find cgroup obj in cpucacct subsystem
-            if (__find_dir_in_subdirs(ctx->cs_cpuacct_path, NULL, __found_cgroup_in_dir, ctx) < 0) {
+            if (__find_dir_in_subdirs(ctx->cs_cpuacct_path, NULL, __found_cgroup_in_dir) < 0) {
                 error("[PLUGIN_CGROUPS] cannot find cgroup cpucacct subsystem");
             }
         }
 
         if (ctx->cs_memory_enable) {
             // find cgroup obj in memory subsystem
-            if (__find_dir_in_subdirs(ctx->cs_memory_path, NULL, __found_cgroup_in_dir, ctx) < 0) {
+            if (__find_dir_in_subdirs(ctx->cs_memory_path, NULL, __found_cgroup_in_dir) < 0) {
                 error("[PLUGIN_CGROUPS] cannot find cgroup memory subsystem");
             }
         }
 
         if (ctx->cs_cpuset_enable) {
             // find cgroup obj in cpuset subsystem
-            if (__find_dir_in_subdirs(ctx->cs_cpuset_path, NULL, __found_cgroup_in_dir, ctx) < 0) {
+            if (__find_dir_in_subdirs(ctx->cs_cpuset_path, NULL, __found_cgroup_in_dir) < 0) {
                 error("[PLUGIN_CGROUPS] cannot find cgroup cpuset subsystem");
             }
         }
 
         if (ctx->cs_blkio_enable) {
             // find cgroup obj in blkio subsystem
-            if (__find_dir_in_subdirs(ctx->cs_blkio_path, NULL, __found_cgroup_in_dir, ctx) < 0) {
+            if (__find_dir_in_subdirs(ctx->cs_blkio_path, NULL, __found_cgroup_in_dir) < 0) {
                 error("[PLUGIN_CGROUPS] cannot find cgroup blkio subsystem");
             }
         }
 
         if (ctx->cs_device_enable) {
             // find cgroup obj in device subsystem
-            if (__find_dir_in_subdirs(ctx->cs_device_path, NULL, __found_cgroup_in_dir, ctx) < 0) {
+            if (__find_dir_in_subdirs(ctx->cs_device_path, NULL, __found_cgroup_in_dir) < 0) {
                 error("[PLUGIN_CGROUPS] cannot find cgroup device subsystem");
             }
         }
     } else {
         // 处理cgroup v2目录结构
-        if (__find_dir_in_subdirs(ctx->unified_path, NULL, __found_cgroup_in_dir, ctx) < 0) {
+        if (__find_dir_in_subdirs(ctx->unified_path, NULL, __found_cgroup_in_dir) < 0) {
             error("[PLUGIN_CGROUPS] cannot find cgroup device subsystem");
         }
     }
+}
 
-    // 清除不存在的cgroup对象
-    __cleanup_all_cgroup_objs();
+//------------------------------------------------------------------------------
+static void *__cgroups_discovery_routine(void *UNUSED(arg)) {
+    info("[PLUGIN_CGROUPS] cgroups discovery thread started");
+
+    while (!(__xm_cgroup_objs_mgr->exit_flag)) {
+        pthread_mutex_lock(&__xm_cgroup_objs_mgr->mutex);
+        while (0 == __xm_cgroup_objs_mgr->do_discovery) {
+            pthread_cond_wait(&__xm_cgroup_objs_mgr->cond, &__xm_cgroup_objs_mgr->mutex);
+        }
+        __xm_cgroup_objs_mgr->do_discovery = 0;
+        pthread_mutex_unlock(&__xm_cgroup_objs_mgr->mutex);
+
+        if (__xm_cgroup_objs_mgr->exit_flag) {
+            break;
+        }
+
+        cgroups_discovery();
+
+        pthread_mutex_lock(&__xm_cgroup_objs_mgr->mutex);
+        // 清除不存在的cgroup对象
+        __cleanup_all_cgroup_objs();
+        // copy到采集链表
+        INIT_LIST_HEAD(&__xm_cgroup_objs_mgr->cg_collection_list);
+        struct list_head     *iter = NULL;
+        struct xm_cgroup_obj *cg_obj = NULL;
+        __list_for_each(iter, &__xm_cgroup_objs_mgr->cg_discovery_list) {
+            cg_obj = list_entry(iter, struct xm_cgroup_obj, l_discovery_member);
+            INIT_LIST_HEAD(&cg_obj->l_collection_member);
+            list_add_tail(&cg_obj->l_collection_member, &__xm_cgroup_objs_mgr->cg_collection_list);
+        }
+        pthread_mutex_unlock(&__xm_cgroup_objs_mgr->mutex);
+    }
+
+    info("[PLUGIN_CGROUPS] cgroups discovery thread exit!");
+    return NULL;
 }
 
 //------------------------------------------------------------------------------
@@ -427,49 +464,105 @@ static int32_t __read_cgroup_device_metrics(struct xm_cgroup_obj *cg_obj) {
 }
 
 // 采集cgroup各个子系统的指标
-static int32_t __read_cgroup_metrics(struct xm_cgroup_obj *cg_obj, struct plugin_cgroup_ctx *ctx) {
-    int32_t ret = 0;
-
+static void __read_cgroup_metrics(struct xm_cgroup_obj *cg_obj) {
     debug("[PLUGIN_CGROUPS] read cg_obj:'%s' metrics", cg_obj->cg_id);
-    return 0;
 }
 
-// 采集所有cgroup的指标
-void cgroups_read_metrics(struct plugin_cgroup_ctx *ctx) {
+int32_t cgroups_mgr_init(struct plugin_cgroups_ctx *ctx) {
+    if (unlikely(NULL == ctx)) {
+        error("[PLUGIN_CGROUPS] ctx is NULL");
+        return -1;
+    }
+
+    int32_t ret = 0;
+
+    if (__xm_cgroup_objs_mgr) {
+        return 0;
+    } else {
+        pthread_mutex_lock(&__init_mutex);
+
+        __xm_cgroup_objs_mgr = calloc(1, sizeof(struct xm_cgroup_objs_mgr));
+        if (unlikely(NULL == __xm_cgroup_objs_mgr)) {
+            error("[PLUGIN_CGROUPS] calloc struct xm_cgroup_objs_mgr failed!");
+            ret = -1;
+        } else {
+            pthread_mutex_init(&__xm_cgroup_objs_mgr->mutex, NULL);
+            pthread_cond_init(&__xm_cgroup_objs_mgr->cond, NULL);
+            INIT_LIST_HEAD(&__xm_cgroup_objs_mgr->cg_discovery_list);
+            INIT_LIST_HEAD(&__xm_cgroup_objs_mgr->cg_collection_list);
+            __xm_cgroup_objs_mgr->curr_cgroup_count = 0;
+            __xm_cgroup_objs_mgr->do_discovery = 0;
+            __xm_cgroup_objs_mgr->ctx = ctx;
+            __xm_cgroup_objs_mgr->exit_flag = 0;
+            // 启动cgroup发现线程
+            if (unlikely(0
+                         != pthread_create(&__xm_cgroup_objs_mgr->discovery_thread_id, NULL,
+                                           __cgroups_discovery_routine, NULL))) {
+                error("[PLUGIN_CGROUPS] create cgroup discovery thread failed!");
+                free(__xm_cgroup_objs_mgr);
+                __xm_cgroup_objs_mgr = NULL;
+                ret = -1;
+            } else {
+                debug("[PLUGIN_CGROUPS] cgroup objs manager init successed.");
+            }
+        }
+
+        pthread_mutex_unlock(&__init_mutex);
+    }
+    return ret;
+}
+
+void cgroups_mgr_start_discovery() {
+    pthread_mutex_lock(&__xm_cgroup_objs_mgr->mutex);
+    __xm_cgroup_objs_mgr->do_discovery = 1;
+    pthread_cond_signal(&__xm_cgroup_objs_mgr->cond);
+    debug("[PLUGIN_CGROUPS] trigger start cgroups discovery.");
+    pthread_mutex_unlock(&__xm_cgroup_objs_mgr->mutex);
+}
+
+void cgroups_mgr_collect_metrics() {
     struct list_head     *iter = NULL;
-    struct list_head     *n = NULL;
     struct xm_cgroup_obj *cg_obj = NULL;
-    int32_t               ret = 0;
 
-    debug("[PLUGIN_CGROUPS] read all cgroups metrics");
+    pthread_mutex_lock(&__xm_cgroup_objs_mgr->mutex);
 
-    list_for_each_safe(iter, n, &__xm_cgroups_mgr.cg_list) {
-        cg_obj = list_entry(iter, struct xm_cgroup_obj, l_member);
-        ret = __read_cgroup_metrics(cg_obj, ctx);
-        if (unlikely(0 != ret)) {
-            info("[PLUGIN_CGROUPS] read cgroup:'%s' metrics failed, so remove it.", cg_obj->cg_id);
+    debug("[PLUGIN_CGROUPS] start collect [%d] cgroups metrics.",
+          __xm_cgroup_objs_mgr->curr_cgroup_count);
+
+    __list_for_each(iter, &__xm_cgroup_objs_mgr->cg_collection_list) {
+        cg_obj = list_entry(iter, struct xm_cgroup_obj, l_collection_member);
+        __read_cgroup_metrics(cg_obj);
+    }
+
+    pthread_mutex_unlock(&__xm_cgroup_objs_mgr->mutex);
+}
+
+void cgroups_mgr_fini() {
+    debug("[PLUGIN_CGROUPS] cgroup objs manager ready to stop");
+
+    if (likely(__xm_cgroup_objs_mgr)) {
+        // 停止cgroup发现线程
+        __xm_cgroup_objs_mgr->exit_flag = 1;
+        __xm_cgroup_objs_mgr->do_discovery = 1;
+        pthread_cond_signal(&__xm_cgroup_objs_mgr->cond);
+        pthread_join(__xm_cgroup_objs_mgr->discovery_thread_id, NULL);
+
+        // 释放所有xm_cgroup_obj
+        debug("[PLUGIN_CGROUPS] now free all cgroup object");
+        struct list_head     *iter = NULL;
+        struct list_head     *n = NULL;
+        struct xm_cgroup_obj *cg_obj = NULL;
+
+        list_for_each_safe(iter, n, &__xm_cgroup_objs_mgr->cg_discovery_list) {
+            cg_obj = list_entry(iter, struct xm_cgroup_obj, l_discovery_member);
             list_del(iter);
             __release_cgroup_obj(cg_obj);
             cg_obj = NULL;
         }
+
+        free(__xm_cgroup_objs_mgr);
+        __xm_cgroup_objs_mgr = NULL;
     }
-}
 
-/**
- * It iterates over the list of cgroups, and for each cgroup, it removes it from the list, and then
- * releases the cgroup object
- */
-void cgroups_free() {
-    debug("[PLUGIN_CGROUPS] free all cgroups");
-
-    struct list_head     *iter = NULL;
-    struct list_head     *n = NULL;
-    struct xm_cgroup_obj *cg_obj = NULL;
-
-    list_for_each_safe(iter, n, &__xm_cgroups_mgr.cg_list) {
-        cg_obj = list_entry(iter, struct xm_cgroup_obj, l_member);
-        list_del(iter);
-        __release_cgroup_obj(cg_obj);
-        cg_obj = NULL;
-    }
+    debug("[PLUGIN_CGROUPS] cgroup objs manager fini successed.");
 }

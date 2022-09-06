@@ -17,7 +17,7 @@
 
 #include "cgroup_metrics.h"
 
-struct plugin_cgroup_ctx {
+struct plugin_cgroups_ctx {
     int32_t max_cgroups_num;
 
     // cgroup subsystem enable
@@ -70,7 +70,8 @@ struct xm_cgroup_cpuacct {};
 
 // cgroup对象
 struct xm_cgroup_obj {
-    struct list_head l_member;   // 链表成员
+    struct list_head l_discovery_member;    // 发现链表成员
+    struct list_head l_collection_member;   // 采集链表成员
 
     sds      cg_id;       // cgroup 目录名
     uint32_t cg_hash;     // cgroup 目录名的hash值
