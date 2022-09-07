@@ -114,6 +114,9 @@ struct xm_cgroup_obj {
     sds unified_memory_pressure;
 
     // for prometheus metrics
-    prom_collector_t         *cg_prom_collector;
-    struct xm_cgroup_metrics *cg_metrics;
+    prom_collector_t *cg_prom_collector;
+    // cgroup指标
+    struct sys_cgroup_metrics cg_metrics;
+    // 计算counter指标
+    struct sys_cgroup_counters cg_counters;
 };

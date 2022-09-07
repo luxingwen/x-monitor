@@ -1,18 +1,25 @@
 /*
  * @Author: calmwu
  * @Date: 2022-08-31 21:03:38
- * @Last Modified by: calmwu
- * @Last Modified time: 2022-08-31 22:27:37
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2022-09-07 15:01:24
  */
 
 #include "cgroups_mgr.h"
 #include "cgroups_utils.h"
 #include "cgroups_def.h"
+#include "cgroups_subsystem.h"
 
 #include "utils/common.h"
 #include "utils/log.h"
 #include "utils/compiler.h"
 #include "utils/strings.h"
+
+#include "prometheus-client-c/prom_collector_t.h"
+#include "prometheus-client-c/prom_collector_registry_t.h"
+#include "prometheus-client-c/prom_map_i.h"
+#include "prometheus-client-c/prom_metric_t.h"
+#include "prometheus-client-c/prom_metric_i.h"
 
 static struct xm_cgroup_objs_mgr {
     struct list_head           cg_discovery_list;     // cgroup发现列表
@@ -58,14 +65,34 @@ static struct xm_cgroup_obj *__add_cgroup_obj(const char *cg_id) {
         cg_obj->cg_id = sdsnew(cg_id);
         cg_obj->cg_hash = simple_hash(cg_id);
 
+        // 创建Prom metrics collector
+        cg_obj->cg_prom_collector = prom_collector_new(cg_id);
+        // 注册collector到默认registry
+        if (unlikely(0
+                     != prom_collector_registry_register_collector(PROM_COLLECTOR_REGISTRY_DEFAULT,
+                                                                   cg_obj->cg_prom_collector))) {
+            error("[PLUGIN_APPSTATUS] register cgroup object '%s' collector to default registry "
+                  "failed.",
+                  cg_id);
+
+            sdsfree(cg_obj->cg_id);
+            prom_collector_destroy(cg_obj->cg_prom_collector);
+            free(cg_obj);
+            return NULL;
+        }
+
+        init_cgroup_obj_cpuacct_metrics(cg_obj);
+        init_cgroup_obj_memory_metrics(cg_obj);
+        init_cgroup_obj_blkio_metrics(cg_obj);
+
         INIT_LIST_HEAD(&cg_obj->l_discovery_member);
         INIT_LIST_HEAD(&cg_obj->l_collection_member);
-
         // 加入发现链表
         list_add_tail(&cg_obj->l_discovery_member, &__xm_cgroup_objs_mgr->cg_discovery_list);
 
         ++(__xm_cgroup_objs_mgr->curr_cgroup_count);
-        info("[PLUGIN_CGROUPS] add new cgroup '%s' to cgroup_list, current cgroup object count:%d",
+        info("[PLUGIN_CGROUPS] add new cgroup object '%s' to cgroup discovery list, current cgroup "
+             "object count:%d",
              cg_id, __xm_cgroup_objs_mgr->curr_cgroup_count);
     } else {
         info("[PLUGIN_CGROUPS] filter out cgroup '%s' according to the configure cgroups_matching",
@@ -90,8 +117,6 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
     debug("[PLUGIN_CGROUPS] remove cgroup '%s', find_flag:'%s', current cgroup object count:%d",
           cg_obj->cg_id, cg_obj->find_flag ? "true" : "false",
           __xm_cgroup_objs_mgr->curr_cgroup_count);
-
-    sdsfree(cg_obj->cg_id);
 
     sdsfree(cg_obj->cpuacct_cpu_stat_filename);
     sdsfree(cg_obj->cpuacct_cpu_shares_filename);
@@ -123,6 +148,11 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
     sdsfree(cg_obj->unified_io_pressure);
     sdsfree(cg_obj->unified_memory_pressure);
 
+    if (likely(cg_obj->cg_prom_collector)) {
+        prom_map_delete(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, cg_obj->cg_id);
+    }
+
+    sdsfree(cg_obj->cg_id);
     free(cg_obj);
     cg_obj = NULL;
 }
@@ -438,34 +468,16 @@ static void *__cgroups_discovery_routine(void *UNUSED(arg)) {
 }
 
 //------------------------------------------------------------------------------
-static int32_t __read_cgroup_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
-    debug("[PLUGIN_CGROUPS] read cg_obj:'%s' cpuacct subsystem metrics", cg_obj->cg_id);
-    return 0;
-}
-
-static int32_t __read_cgroup_memory_metrics(struct xm_cgroup_obj *cg_obj) {
-    debug("[PLUGIN_CGROUPS] read cg_obj:'%s' memory subsystem metrics", cg_obj->cg_id);
-    return 0;
-}
-
-static int32_t __read_cgrou_cpuset_metrics(struct xm_cgroup_obj *cg_obj) {
-    debug("[PLUGIN_CGROUPS] read cg_obj:'%s' cpuset subsystem metrics", cg_obj->cg_id);
-    return 0;
-}
-
-static int32_t __read_cgroup_blkio_metrics(struct xm_cgroup_obj *cg_obj) {
-    debug("[PLUGIN_CGROUPS] read cg_obj:'%s' blkio subsystem metrics", cg_obj->cg_id);
-    return 0;
-}
-
-static int32_t __read_cgroup_device_metrics(struct xm_cgroup_obj *cg_obj) {
-    debug("[PLUGIN_CGROUPS] read cg_obj:'%s' device subsystem metrics", cg_obj->cg_id);
-    return 0;
-}
-
 // 采集cgroup各个子系统的指标
 static void __read_cgroup_metrics(struct xm_cgroup_obj *cg_obj) {
     debug("[PLUGIN_CGROUPS] read cg_obj:'%s' metrics", cg_obj->cg_id);
+
+    if (CGROUPS_V1 == cg_type) {
+        read_cgroup_obj_cpuacct_metrics(cg_obj);
+        read_cgroup_obj_memory_metrics(cg_obj);
+        read_cgroup_obj_blkio_metrics(cg_obj);
+    } else if (CGROUPS_V2 == cg_type) {
+    }
 }
 
 int32_t cgroups_mgr_init(struct plugin_cgroups_ctx *ctx) {

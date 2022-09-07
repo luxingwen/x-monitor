@@ -135,6 +135,7 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
                                                                    as->app_prom_collector))) {
             error("[PLUGIN_APPSTATUS] register app '%s' collector to default registry failed.",
                   app_name);
+            prom_collector_destroy(as->app_prom_collector);
             xm_mempool_free(__app_status_xmp, as);
             as = NULL;
             return NULL;
@@ -755,15 +756,15 @@ void free_apps_collector() {
 
     // 释放应用统计对象
     struct list_head *iter_list;
-again:
-    __list_for_each(iter_list, &__app_status_list) {
+    struct list_head *next;
+
+    list_for_each_safe(iter_list, next, &__app_status_list) {
         as = list_entry(iter_list, struct app_status, l_member);
         // 删除应用指标收集对象
         prom_map_delete(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, as->app_name);
 
         list_del(&as->l_member);
         xm_mempool_free(__app_status_xmp, as);
-        goto again;
     }
 
     if (likely(__app_assoc_process_table)) {
