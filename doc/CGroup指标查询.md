@@ -26,7 +26,7 @@ cpu调度策略有两种：
 - 完全公平调度（Completely Fair Scheduler，CFS），按限额和比例分配两种方式进行资源限制。
 - 实时调度（Real-TimeScheduler），针对实时任务按周期分配固定的运行时间。
 
-cfs_period_us：用来配置时间周期长度，单位：微秒。取值范围1毫秒(1000ms)~1秒(1000000ms)。它是CFS算法的一个调度周期，一般是100000。
+cfs_period_us：用来配置时间周期长度，单位：**微秒**。取值范围1毫秒(1000ms)~1秒(1000000ms)。它是CFS算法的一个调度周期，一般是100000。
 
 cfs_quota_us：配置当前cgroup在设置的周期长度内所能使用的cpu时间数，单位：微秒，取值大于1ms即可，如果值为-1（默认值），表示不受CPU时间的限制。它表示CFS算法中，在一个调度周期里这个控制组被允许的运行时间。
 
@@ -81,9 +81,14 @@ Given a total cpu quota, we should firstly distribute the cpu.share of each cgro
 
 提供了CPU资源用量的统计
 
-- cpuacct.usage，统计控制组中所有任务的CPU使用时长，单位是ns
-- cpuacct.stat，统计控制组中所有任务在用户态和内核态分别使用的CPU时长，单位是ns
-- cpuacct.usage_percpu，统计控制组中所有任务使用每个CPU的时长，单位是ns
+- cpuacct.usage，报告一个`cgroup`中所有任务（包括其子孙层级中的所有任务）使用`CPU`的总时间（纳秒）,该文件时可以写入`0`值的，用来进行重置统计信息。
+- cpuacct.usage_user，报告一个`cgroup`中所有任务（包括其子孙层级中的所有任务）使用用户态`CPU`的总时间（纳秒）。
+- cpuacct.usage_sys，报告一个`cgroup`中所有任务（包括其子孙层级中的所有任务）使用内核态`CPU`的总时间（纳秒）。
+- cpuacct.usage_percpu，报告一个`cgroup`中所有任务（包括其子孙层级中的所有任务）在每个`CPU`使用`CPU`的时间（纳秒）。
+- cpuacct.usage_percpu_user，报告一个`cgroup`中所有任务（包括其子孙层级中的所有任务）在每个`CPU`上使用用户态`CPU`的时间（纳秒）。
+- cpuacct.usage_percpu_sys，报告一个`cgroup`中所有任务（包括其子孙层级中的所有任务）在每个`CPU`上使用内核态`CPU`的时间（纳秒）。
+- cpuacct.usage_all，详细输出文件`cpuacct.usage_percpu_user`和`cpuacct.usage_percpu_sys`的内容。
+- cpuacct.stat，报告cgroup的所有任务（包括其子孙层级中的所有任务）使用的用户和系统CPU时间，单位是USER_HZ（100ms）
 - cpu.stat
   - nr_periods：表示过去了多少个cpu.cfs_period_us里面配置的时间周期。
   - nr_throttled：在上面这些周期中，有多少次是受到了限制（即cgroup中的进程在指定的时间周期中用光了它的配额）。

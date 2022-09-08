@@ -20,6 +20,14 @@ const char *__sys_cgroup_metric_cpu_cfs_period_us_help =
 const char *__sys_cgroup_metric_cpu_cfs_quota_us_help =
     "The total amount of time in microseconds for which all tasks in a cgroup can run during one "
     "period. The period is in the metric `cgroup.cpu_cfs_period_us`";
+
+const char *__sys_cgroup_metric_cpuacct_stat_user_userhzs_help =
+    "The number of USER_HZ units of time that this cgroup's tasks have been scheduled in user "
+    "mode.";
+const char *__sys_cgroup_metric_cpuacct_stat_system_userhzs_help =
+    "The number of USER_HZ units of time that this cgroup's tasks have been scheduled in kernel "
+    "mode.";
+
 const char *__sys_cgroup_metric_cpu_stat_nr_periods_help =
     "Number of period intervals that have elapsed (the period length is in the metric "
     "`cgroup.cpu_cfs_period_us`)";

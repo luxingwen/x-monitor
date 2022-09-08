@@ -119,12 +119,12 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
           __xm_cgroup_objs_mgr->curr_cgroup_count);
 
     sdsfree(cg_obj->cpuacct_cpu_stat_filename);
+    sdsfree(cg_obj->cpuacct_cpuacct_stat_filename);
+
     sdsfree(cg_obj->cpuacct_cpu_shares_filename);
     sdsfree(cg_obj->cpuacct_cpu_cfs_period_us_filename);
     sdsfree(cg_obj->cpuacct_cpu_cfs_quota_us_filename);
-    sdsfree(cg_obj->cpuacct_usage_percpu_filename);
-    sdsfree(cg_obj->cpuacct_usage_percpu_user_filename);
-    sdsfree(cg_obj->cpuacct_usage_percpu_sys_filename);
+    sdsfree(cg_obj->cpuacct_usage_all_filename);
     sdsfree(cg_obj->cpuacct_usage_filename);
     sdsfree(cg_obj->cpuacct_usage_user_filename);
     sdsfree(cg_obj->cpuacct_usage_sys_filename);
@@ -147,6 +147,8 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
     sdsfree(cg_obj->unified_cpu_pressure);
     sdsfree(cg_obj->unified_io_pressure);
     sdsfree(cg_obj->unified_memory_pressure);
+
+    free(cg_obj->cg_counters.usage_per_cpus);
 
     if (likely(cg_obj->cg_prom_collector)) {
         prom_map_delete(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, cg_obj->cg_id);
@@ -229,6 +231,8 @@ static void __make_cgroup_obj_metric_files(struct xm_cgroup_obj *cg_obj) {
         if (cg_type == CGROUPS_V1) {
             cg_obj->cpuacct_cpu_stat_filename =
                 sdscatfmt(sdsempty(), "%s/%s/cpu.stat", ctx->cs_cpuacct_path, cg_obj->cg_id);
+            cg_obj->cpuacct_cpuacct_stat_filename =
+                sdscatfmt(sdsempty(), "%s/%s/cpuacct.stat", ctx->cs_cpuacct_path, cg_obj->cg_id);
 
             cg_obj->cpuacct_cpu_shares_filename =
                 sdscatfmt(sdsempty(), "%s/%s/cpu.shares", ctx->cs_cpuacct_path, cg_obj->cg_id);
@@ -237,12 +241,8 @@ static void __make_cgroup_obj_metric_files(struct xm_cgroup_obj *cg_obj) {
             cg_obj->cpuacct_cpu_cfs_quota_us_filename = sdscatfmt(
                 sdsempty(), "%s/%s/cpu.cfs_quota_us", ctx->cs_cpuacct_path, cg_obj->cg_id);
 
-            cg_obj->cpuacct_usage_percpu_filename = sdscatfmt(
-                sdsempty(), "%s/%s/cpuacct.usage_percpu", ctx->cs_cpuacct_path, cg_obj->cg_id);
-            cg_obj->cpuacct_usage_percpu_user_filename = sdscatfmt(
-                sdsempty(), "%s/%s/cpuacct.usage_percpu_user", ctx->cs_cpuacct_path, cg_obj->cg_id);
-            cg_obj->cpuacct_usage_percpu_sys_filename = sdscatfmt(
-                sdsempty(), "%s/%s/cpuacct.usage_percpu_sys", ctx->cs_cpuacct_path, cg_obj->cg_id);
+            cg_obj->cpuacct_usage_all_filename = sdscatfmt(sdsempty(), "%s/%s/cpuacct.usage_all",
+                                                           ctx->cs_cpuacct_path, cg_obj->cg_id);
 
             cg_obj->cpuacct_usage_filename =
                 sdscatfmt(sdsempty(), "%s/%s/cpuacct.usage", ctx->cs_cpuacct_path, cg_obj->cg_id);

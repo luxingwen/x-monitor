@@ -23,7 +23,7 @@ int32_t init_proc_rdset() {
         }
 
         // 得到系统的cpu数量
-        int32_t node_cpu_count = get_system_cpus();
+        uint32_t node_cpu_count = get_system_processor_num();
 
         proc_rds->stat_rdset.core_rdsets =
             (struct proc_cpu_rdset *)calloc(node_cpu_count, sizeof(struct proc_cpu_rdset));

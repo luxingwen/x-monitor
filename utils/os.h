@@ -14,6 +14,26 @@
 extern "C" {
 #endif
 
+struct process_smaps_info {
+    uint64_t vmsize;
+    uint64_t rss;
+    uint64_t pss;
+    uint64_t pss_anon;
+    uint64_t pss_file;
+    uint64_t pss_shmem;
+    uint64_t uss;
+    uint64_t swap;
+};
+
+struct process_descendant_pids {
+    pid_t *pids;
+    size_t pids_size;
+};
+
+extern uint32_t system_hz;
+extern pid_t    system_pid_max;
+extern uint32_t system_processor_num;
+
 extern const char *get_hostname();
 
 extern const char *get_ipaddr_by_iface(const char *iface, char *ip_buf, size_t ip_buf_size);
@@ -24,7 +44,7 @@ extern int32_t bump_memlock_rlimit(void);
 
 extern const char *get_username(uid_t uid);
 
-extern int32_t get_system_cpus();
+extern uint32_t get_system_processor_num();
 
 extern int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high);
 
@@ -37,31 +57,13 @@ static __always_inline int32_t get_pgsize_kb() {
 
 extern int32_t read_proc_pid_cmdline(pid_t pid, char *name, size_t name_size);
 
-extern uint32_t system_hz;
-extern void     get_system_hz();
+extern void get_system_hz();
 
 extern uint64_t get_uptime();
 
-extern pid_t system_pid_max;
 extern pid_t get_system_pid_max();
 
-struct process_smaps_info {
-    uint64_t vmsize;
-    uint64_t rss;
-    uint64_t pss;
-    uint64_t pss_anon;
-    uint64_t pss_file;
-    uint64_t pss_shmem;
-    uint64_t uss;
-    uint64_t swap;
-};
-
 extern int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info);
-
-struct process_descendant_pids {
-    pid_t *pids;
-    size_t pids_size;
-};
 
 // 获得进程所有的后代进程pid
 extern int32_t get_process_descendant_pids(pid_t pid, struct process_descendant_pids *pd_pids);

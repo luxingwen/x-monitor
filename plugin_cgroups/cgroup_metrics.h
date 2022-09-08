@@ -14,6 +14,10 @@
 extern const char *__sys_cgroup_metric_cpu_shares_help;
 extern const char *__sys_cgroup_metric_cpu_cfs_period_us_help;
 extern const char *__sys_cgroup_metric_cpu_cfs_quota_us_help;   // microseconds
+
+extern const char *__sys_cgroup_metric_cpuacct_stat_user_userhzs_help;
+extern const char *__sys_cgroup_metric_cpuacct_stat_system_userhzs_help;
+
 extern const char *__sys_cgroup_metric_cpu_stat_nr_periods_help;
 extern const char *__sys_cgroup_metric_cpu_stat_nr_throttled_help;
 extern const char *__sys_cgroup_metric_cpu_stat_throttled_time_ns_help;
@@ -70,18 +74,23 @@ extern const char *__sys_cgroup_memory_max_usage_in_bytes_help;
 extern const char *__sys_cgroup_memory_swappiness_help;
 
 struct sys_cgroup_metrics {
-    prom_gauge_t   *cgroup_metric_cpu_shares;
-    prom_gauge_t   *cgroup_metric_cpu_cfs_period_us;   // 单位：微秒
-    prom_gauge_t   *cgroup_metric_cpu_cfs_quota_us;
-    prom_counter_t *cgroup_metric_cpu_stat_nr_periods;
+    prom_gauge_t *cgroup_metric_cpu_shares;          // file cpu.shares
+    prom_gauge_t *cgroup_metric_cpu_cfs_period_us;   // 单位：微秒 file cpu.cfs_period_us
+    prom_gauge_t *cgroup_metric_cpu_cfs_quota_us;    // file cpu.cfs_quota_us
+
+    prom_counter_t *cgroup_metric_cpu_stat_nr_periods;   // file cpuacct.cpu.stat
     prom_counter_t *cgroup_metric_cpu_stat_nr_throttled;
     prom_counter_t *cgroup_metric_cpu_stat_throttled_time_ns;
 
+    prom_gauge_t *cgroup_metric_cpuacct_stat_user_userhzs;   // file cpuacct.cpuacct.stat
+    prom_gauge_t *cgroup_metric_cpuacct_stat_system_userhzs;
+
     prom_counter_t *cgroup_metric_cpuacct_usage_ns;
-    prom_counter_t *cgroup_metric_cpuacct_usage_ns_per_cpu;
     prom_counter_t *cgroup_metric_cpuacct_usage_user_ns;
-    prom_counter_t *cgroup_metric_cpuacct_usage_user_ns_per_cpu;
     prom_counter_t *cgroup_metric_cpuacct_usage_system_ns;
+
+    prom_counter_t *cgroup_metric_cpuacct_usage_ns_per_cpu;
+    prom_counter_t *cgroup_metric_cpuacct_usage_user_ns_per_cpu;
     prom_counter_t *cgroup_metric_cpuacct_usage_system_ns_per_cpu;
 
     prom_gauge_t *cgroup_metric_memory_stat_cache_bytes;

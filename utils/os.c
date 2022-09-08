@@ -14,14 +14,14 @@
 #include "strings.h"
 #include "consts.h"
 
-static const char *__def_ipaddr = "0.0.0.0";
-static const char *__def_macaddr = "00:00:00:00:00:00";
-static const char *__def_hostname = "unknown";
+uint32_t system_processor_num = 1;
+uint32_t system_hz = 0;
 
-static __thread int32_t __processors = 1;
-static __thread char    __hostname[HOST_NAME_MAX] = { 0 };
-
-static const char __no_user[] = "";
+static const char   *__def_ipaddr = "0.0.0.0";
+static const char   *__def_macaddr = "00:00:00:00:00:00";
+static const char   *__def_hostname = "unknown";
+static __thread char __hostname[HOST_NAME_MAX] = { 0 };
+static const char    __no_user[] = "";
 
 const char *get_hostname() {
     if (unlikely(0 == __hostname[0])) {
@@ -103,44 +103,44 @@ const char *get_username(uid_t uid) {
     return pwd->pw_name;
 }
 
-int32_t get_system_cpus() {
+uint32_t get_system_processor_num() {
     // return sysconf(_SC_NPROCESSORS_ONLN); 加强移植性
+    if (system_processor_num > 1)
+        return system_processor_num;
 
     struct proc_file *pf_stat = procfile_open("/proc/stat", NULL, PROCFILE_FLAG_DEFAULT);
     if (unlikely(!pf_stat)) {
-        error("Cannot open /proc/stat. Assuming system has %d processors. error: %s", __processors,
-              strerror(errno));
-        return __processors;
+        error("Cannot open /proc/stat. Assuming system has %d processors. error: %s",
+              system_processor_num, strerror(errno));
+        return system_processor_num;
     }
 
     pf_stat = procfile_readall(pf_stat);
     if (unlikely(!pf_stat)) {
-        error("Cannot read /proc/stat. Assuming system has %d __processors.", __processors);
-        return __processors;
+        error("Cannot read /proc/stat. Assuming system has %d __processors.", system_processor_num);
+        return system_processor_num;
     }
 
-    __processors = 0;
-
+    system_processor_num = 0;
     for (size_t index = 0; index < procfile_lines(pf_stat); index++) {
         if (!procfile_linewords(pf_stat, index)) {
             continue;
         }
-
         if (strncmp(procfile_lineword(pf_stat, index, 0), "cpu", 3) == 0) {
-            __processors++;
+            system_processor_num++;
         }
     }
 
-    __processors--;
-    if (__processors < 1) {
-        __processors = 1;
+    system_processor_num--;
+    if (system_processor_num < 1) {
+        system_processor_num = 1;
     }
 
     procfile_close(pf_stat);
 
-    debug("System has %d __processors.", __processors);
+    debug("System has %d __processors.", system_processor_num);
 
-    return __processors;
+    return system_processor_num;
 }
 
 int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high) {
@@ -190,7 +190,7 @@ int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
     fd = open(__proc_pid_cmdline_file, O_RDONLY | O_NOFOLLOW, 0666);
     if (unlikely(fd == -1)) {
         rc = -1;
-        goto exit;
+        goto __EXIT;
     }
 
     ssize_t bytes = read(fd, cmdline, size);
@@ -198,7 +198,7 @@ int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
 
     if (unlikely(bytes < 0)) {
         rc = -2;
-        goto exit;
+        goto __EXIT;
     }
 
     // ** 要特殊处理
@@ -208,7 +208,7 @@ int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
             cmdline[i] = ' ';
     }
 
-exit:
+__EXIT:
     if (rc != 0) {
         /*
          * The process went away before we could read its process name. Try
@@ -223,7 +223,6 @@ exit:
     return rc;
 }
 
-uint32_t system_hz = 0;
 /**
  * Get the number of ticks per second from the system
  */

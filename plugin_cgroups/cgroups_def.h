@@ -42,6 +42,12 @@ struct plugin_cgroups_ctx {
     SIMPLE_PATTERN *cgroups_subpaths_matching;
 };
 
+struct sys_cgroup_usage_per_cpu {
+    uint64_t usage_ns;
+    uint64_t usage_user_ns;
+    uint64_t usage_system_ns;
+};
+
 struct sys_cgroup_counters {
     uint64_t cpu_stat_nr_periods;
     uint64_t cpu_stat_nr_throttled;
@@ -51,9 +57,10 @@ struct sys_cgroup_counters {
     uint64_t cpuacct_usage_user_ns;
     uint64_t cpuacct_usage_system_ns;
 
-    uint64_t cpuacct_usage_ns_per_cpu;
-    uint64_t cpuacct_usage_user_ns_per_cpu;
-    uint64_t cpuacct_usage_system_ns_per_cpu;
+    // uint64_t cpuacct_usage_ns_per_cpu;
+    // uint64_t cpuacct_usage_user_ns_per_cpu;
+    // uint64_t cpuacct_usage_system_ns_per_cpu;
+    struct sys_cgroup_usage_per_cpu *usage_per_cpus;   // file cpuacct.usage_all
 
     uint64_t memory_stat_pgpgin;
     uint64_t memory_stat_pgpgout;
@@ -65,8 +72,6 @@ struct sys_cgroup_counters {
     uint64_t memory_stat_total_pgfault;
     uint64_t memory_stat_total_pgmajfault;
 };
-
-struct xm_cgroup_cpuacct {};
 
 // cgroup对象
 struct xm_cgroup_obj {
@@ -80,14 +85,16 @@ struct xm_cgroup_obj {
     // 需要采集的配置文件
     // v1
     sds cpuacct_cpu_stat_filename;
+    sds cpuacct_cpuacct_stat_filename;
 
     sds cpuacct_cpu_shares_filename;
     sds cpuacct_cpu_cfs_period_us_filename;
     sds cpuacct_cpu_cfs_quota_us_filename;
 
-    sds cpuacct_usage_percpu_filename;
-    sds cpuacct_usage_percpu_user_filename;
-    sds cpuacct_usage_percpu_sys_filename;
+    // sds cpuacct_usage_all_filename;
+    // sds cpuacct_usage_percpu_user_filename;
+    // sds cpuacct_usage_percpu_sys_filename;
+    sds cpuacct_usage_all_filename;
 
     sds cpuacct_usage_filename;
     sds cpuacct_usage_user_filename;
