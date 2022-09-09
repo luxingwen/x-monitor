@@ -19,6 +19,7 @@
 #include "utils/sds/sds.h"
 #include "utils/simple_pattern.h"
 #include "utils/clocks.h"
+#include "utils/os.h"
 
 #include "app_config/app_config.h"
 
