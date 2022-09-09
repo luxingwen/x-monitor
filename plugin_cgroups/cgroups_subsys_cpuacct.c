@@ -148,13 +148,13 @@ void read_cgroup_obj_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
                       cg_obj->cpuacct_cpuacct_stat_filename);
             }
 
-            prom_gauge_add(cg_obj->cg_metrics.cgroup_metric_cpu_stat_nr_periods,
-                           (double)(nr_periods - cg_obj->cg_counters.cpu_stat_nr_periods),
-                           (const char *[]){ cg_obj->cg_id });
-            prom_gauge_add(cg_obj->cg_metrics.cgroup_metric_cpu_stat_nr_throttled,
-                           (double)(nr_throttled - cg_obj->cg_counters.cpu_stat_nr_throttled),
-                           (const char *[]){ cg_obj->cg_id });
-            prom_gauge_add(
+            prom_counter_add(cg_obj->cg_metrics.cgroup_metric_cpu_stat_nr_periods,
+                             (double)(nr_periods - cg_obj->cg_counters.cpu_stat_nr_periods),
+                             (const char *[]){ cg_obj->cg_id });
+            prom_counter_add(cg_obj->cg_metrics.cgroup_metric_cpu_stat_nr_throttled,
+                             (double)(nr_throttled - cg_obj->cg_counters.cpu_stat_nr_throttled),
+                             (const char *[]){ cg_obj->cg_id });
+            prom_counter_add(
                 cg_obj->cg_metrics.cgroup_metric_cpu_stat_throttled_time_ns,
                 (double)(throttled_time_ns - cg_obj->cg_counters.cpu_stat_throttled_time_ns),
                 (const char *[]){ cg_obj->cg_id });
