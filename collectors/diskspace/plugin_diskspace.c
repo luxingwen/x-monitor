@@ -153,16 +153,22 @@ static void __collector_diskspace_stats(struct mountinfo *mi, int32_t UNUSED(upd
 
     prom_gauge_set(__metric_node_filesystem_size_bytes, (double)node_filesystem_size_bytes,
                    (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+
     prom_gauge_set(__metric_node_filesystem_avail_bytes, (double)node_filesystem_avail_bytes,
                    (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+
     prom_gauge_set(__metric_node_filesystem_free_bytes, (double)node_filesystem_free_bytes,
                    (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+
     prom_gauge_set(__metric_node_filesystem_files, (double)node_filesystem_files,
                    (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+
     prom_gauge_set(__metric_node_filesystem_files_free, (double)node_filesystem_files_free,
                    (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+
     prom_gauge_set(__metric_node_filesystem_readonly, (double)node_filesystem_readonly,
                    (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+
     prom_gauge_set(__metric_node_filesystem_device_error, (double)node_filesystem_device_error,
                    (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
 
@@ -172,7 +178,7 @@ static void __collector_diskspace_stats(struct mountinfo *mi, int32_t UNUSED(upd
           mi->mount_source, mi->filesystem, mi->mount_point, node_filesystem_size_bytes,
           node_filesystem_avail_bytes, node_filesystem_free_bytes,
           node_filesystem_reserve_root_size_bytes, node_filesystem_files,
-          node_filesystem_files_used, node_filesystem_free_bytes,
+          node_filesystem_files_used, node_filesystem_files_free,
           node_filesystem_files_reserve_root);
 }
 
