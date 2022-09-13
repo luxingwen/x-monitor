@@ -1,6 +1,6 @@
 AUX_SOURCE_DIRECTORY(. readbtf_cli_srcs)
 
-include_directories("${PROJECT_SOURCE_DIR}//plugin_ebpf/usr"
+include_directories("${PROJECT_SOURCE_DIR}//plugin_ebpf/skel"
                     "${EXTRA_DIR}/include/libbpf/libbpf/include"
                     "${EXTRA_DIR}/include/libbpf/libbpf/include/uapi")
 

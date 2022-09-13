@@ -1,7 +1,7 @@
 # 目录下所有的源代码文件并将列表存储在cachestat_cli_srcs中
 AUX_SOURCE_DIRECTORY(. xdp_libbpf_test_srcs)
 
-include_directories("${PROJECT_SOURCE_DIR}/plugin_ebpf/usr"
+include_directories("${PROJECT_SOURCE_DIR}/plugin_ebpf/skel"
                     "${EXTRA_DIR}/include/libbpf/libbpf/include"
                     "${EXTRA_DIR}/include/libbpf/libbpf/include/uapi")
 
