@@ -86,7 +86,7 @@ const char *__sys_cgroup_memory_stat_hierarchical_memory_limit_help =
     "Bytes of memory limit with regard to hierarchy under which the memory cgroup is";
 const char *__sys_cgroup_memory_stat_hierarchical_memsw_limit_help =
     "The memory+swap limit in place by the hierarchy cgroup";
-const char *__sys_cgroup_memory_stat_stat_swap_help = "Bytes of swap memory used by the cgroup";
+const char *__sys_cgroup_memory_stat_swap_help = "Bytes of swap memory used by the cgroup";
 
 const char *__sys_cgroup_memory_stat_total_cache_help =
     "The equivalent of `cgroup.memory_stat_cache` that also includes the sum total of that metric "

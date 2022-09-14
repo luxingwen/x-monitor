@@ -42,21 +42,20 @@ static struct collector_cgroups __collector_cgroups = {
     .thread_id = 0,
     .update_every = 1,
     .update_all_cgroups_interval_secs = 10,
-    {
+    .ctx = {
         .max_cgroups_num = 1000,
         .cs_cpuacct_enable = true,
         .cs_memory_enable = true,
         .cs_cpuset_enable = false,
         .cs_blkio_enable = false,
         .cs_device_enable = false,
-
         .cs_cpuacct_path = NULL,
         .cs_memory_path = NULL,
         .cs_cpuset_path = NULL,
         .cs_blkio_path = NULL,
         .cs_device_path = NULL,
         .unified_path = NULL,
-
+        .cg_memory_pressure_level = NULL,
         .cgroups_matching = NULL,
         .cgroups_subpaths_matching = NULL,
     },
@@ -139,6 +138,9 @@ int32_t cgroup_collector_routine_init() {
                 __plugin_cgroups_v2_ss_base_path, "unified_path", "/sys/fs/cgroup");
             debug("[PLUGIN_CGROUPS] cg_v2 unified_path:'%s'", __collector_cgroups.ctx.unified_path);
         }
+
+        __collector_cgroups.ctx.cg_memory_pressure_level = appconfig_get_member_str(
+            __plugin_cgroups_config_base_path, "cg_memory_pressure_level", "medium");
 
         const char *cgroup_matching_pattern =
             appconfig_get_member_str(__plugin_cgroups_config_base_path, "cgroups_matching", NULL);

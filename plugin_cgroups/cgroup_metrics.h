@@ -47,7 +47,7 @@ extern const char *__sys_cgroup_memory_stat_active_file_help;
 extern const char *__sys_cgroup_memory_stat_unevictable_help;
 extern const char *__sys_cgroup_memory_stat_hierarchical_memory_limit_help;
 extern const char *__sys_cgroup_memory_stat_hierarchical_memsw_limit_help;
-extern const char *__sys_cgroup_memory_stat_stat_swap_help;
+extern const char *__sys_cgroup_memory_stat_swap_help;
 
 extern const char *__sys_cgroup_memory_stat_total_cache_help;
 extern const char *__sys_cgroup_memory_stat_total_rss_help;
@@ -93,7 +93,7 @@ struct sys_cgroup_metrics {
     prom_counter_t *cgroup_metric_cpuacct_usage_user_ns_per_cpu;
     prom_counter_t *cgroup_metric_cpuacct_usage_system_ns_per_cpu;
 
-    prom_gauge_t *cgroup_metric_memory_stat_cache_bytes;
+    prom_gauge_t *cgroup_metric_memory_stat_cache_bytes;   // file memory.stat
     prom_gauge_t *cgroup_metric_memory_stat_rss_bytes;
     prom_gauge_t *cgroup_metric_memory_stat_rss_huge_bytes;
     prom_gauge_t *cgroup_metric_memory_stat_shmem_bytes;
@@ -138,13 +138,17 @@ struct sys_cgroup_metrics {
     prom_gauge_t *cgroup_metric_memory_stat_total_unevictable_bytes;
 
     prom_gauge_t
-        *cgroup_metric_memory_usage_in_bytes;   // 显示当前内存（进程内存 + 页面缓存）的使用量
+        *cgroup_metric_memory_usage_in_bytes;   // 显示当前内存（进程内存 + 页面缓存）的使用量 file
+                                                // memory.usage_in_bytes
     prom_gauge_t
         *cgroup_metric_memory_limit_in_bytes;   // 显示当前内存（进程内存 +
                                                 // 页面缓存）使用量的限制值，超过这个值进程会被oom
-                                                // killer干掉或者被暂停
+                                                // killer干掉或者被暂停 file memory.limit_in_bytes
     prom_gauge_t *cgroup_metric_memory_failcnt;   // 显示内存（进程内存 + 页面缓存）达到限制值的次数
-    prom_gauge_t *cgroup_metric_memory_max_usage_in_bytes;   // 历史内存最大使用量
+                                                  // file memory.failcnt
+    prom_gauge_t *cgroup_metric_memory_max_usage_in_bytes;   // 历史内存最大使用量 file
+                                                             // memory.max_usage_in_bytes
     prom_gauge_t *
         cgroup_metric_memory_swappiness;   // 设置、显示针对分组的swappiness（相当于sysctl的vm.swappiness）
+                                           // file memory.swappiness
 };

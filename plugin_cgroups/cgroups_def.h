@@ -27,7 +27,6 @@ struct plugin_cgroups_ctx {
     bool cs_blkio_enable;
     bool cs_device_enable;
 
-    // cgroup subsystem path
     // v1
     const char *cs_cpuacct_path;
     const char *cs_memory_path;
@@ -36,6 +35,8 @@ struct plugin_cgroups_ctx {
     const char *cs_device_path;
     // v2
     const char *unified_path;
+
+    const char *cg_memory_pressure_level;
 
     // matching pattern
     SIMPLE_PATTERN *cgroups_matching;
@@ -86,16 +87,10 @@ struct xm_cgroup_obj {
     // v1
     sds cpuacct_cpu_stat_filename;
     sds cpuacct_cpuacct_stat_filename;
-
     sds cpuacct_cpu_shares_filename;
     sds cpuacct_cpu_cfs_period_us_filename;
     sds cpuacct_cpu_cfs_quota_us_filename;
-
-    // sds cpuacct_usage_all_filename;
-    // sds cpuacct_usage_percpu_user_filename;
-    // sds cpuacct_usage_percpu_sys_filename;
     sds cpuacct_usage_all_filename;
-
     sds cpuacct_usage_filename;
     sds cpuacct_usage_user_filename;
     sds cpuacct_usage_sys_filename;
@@ -126,4 +121,7 @@ struct xm_cgroup_obj {
     struct sys_cgroup_metrics cg_metrics;
     // 计算counter指标
     struct sys_cgroup_counters cg_counters;
+
+    // cgroup memory pressure event fd
+    int32_t cg_memory_pressure_evt_fd;
 };

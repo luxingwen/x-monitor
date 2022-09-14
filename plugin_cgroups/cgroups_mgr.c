@@ -64,7 +64,8 @@ static struct xm_cgroup_obj *__add_cgroup_obj(const char *cg_id) {
         cg_obj = calloc(1, sizeof(struct xm_cgroup_obj));
         cg_obj->cg_id = sdsnew(cg_id);
         cg_obj->cg_hash = simple_hash(cg_id);
-
+        cg_obj->find_flag = 1;
+        cg_obj->cg_memory_pressure_evt_fd = -1;
         // 创建Prom metrics collector
         cg_obj->cg_prom_collector = prom_collector_new(cg_id);
         // 注册collector到默认registry
@@ -117,6 +118,10 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
     debug("[PLUGIN_CGROUPS] remove cgroup '%s', find_flag:'%s', current cgroup object count:%d",
           cg_obj->cg_id, cg_obj->find_flag ? "true" : "false",
           __xm_cgroup_objs_mgr->curr_cgroup_count);
+
+    if (-1 != cg_obj->cg_memory_pressure_evt_fd) {
+        close(cg_obj->cg_memory_pressure_evt_fd);
+    }
 
     sdsfree(cg_obj->cpuacct_cpu_stat_filename);
     sdsfree(cg_obj->cpuacct_cpuacct_stat_filename);
@@ -196,7 +201,7 @@ static inline void __unset_all_cgroup_obj_find_flag() {
 
     __list_for_each(iter, &__xm_cgroup_objs_mgr->cg_discovery_list) {
         cg_obj = list_entry(iter, struct xm_cgroup_obj, l_discovery_member);
-        cg_obj->find_flag = false;
+        cg_obj->find_flag = 0;
     }
 }
 
@@ -296,9 +301,12 @@ static void __found_cgroup_in_dir(const char *cg_id) {
     struct xm_cgroup_obj *cg_obj = __find_cgroup_obj(cg_id);
     if (!cg_obj) {
         cg_obj = __add_cgroup_obj(cg_id);
-
-        // 配置cgroup指标文件
-        __make_cgroup_obj_metric_files(cg_obj);
+        if (cg_obj) {
+            // 配置cgroup指标文件
+            __make_cgroup_obj_metric_files(cg_obj);
+            // 配置监控cgroup memory pressure
+            init_cgroup_memory_pressure_listener(cg_obj, __xm_cgroup_objs_mgr->ctx);
+        }
     } else {
         cg_obj->find_flag = 1;
     }
@@ -366,9 +374,9 @@ static int32_t __find_dir_in_subdirs(const char *base_dir, const char *this,
                 }
                 sdsfree(cg_path);
             } else {
-                debug("[PLUGIN_CGROUPS] filter out cgroup '%s', first subdir '%s' (base:'%s') "
-                      "according to the configure cgroups_subpaths_matching",
-                      relative_path, entry->d_name, base_dir);
+                info("[PLUGIN_CGROUPS] filter out cgroup '%s', first subdir '%s' (base:'%s') "
+                     "according to the configure cgroups_subpaths_matching",
+                     relative_path, entry->d_name, base_dir);
             }
         }
     }

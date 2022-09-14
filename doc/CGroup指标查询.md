@@ -150,6 +150,9 @@ memory.stat说明
 - [Cgroup - Linux内存资源管理 | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/cgroup_linux_memory_control_group.html)
 - [Memory Resource Controller — The Linux Kernel documentation](https://docs.kernel.org/admin-guide/cgroup-v1/memory.html)
 - [A.4. cpuset Red Hat Enterprise Linux 7 | Red Hat Customer Portal](https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/7/html/resource_management_guide/sec-cpuset)
+- [Linux 系统调用 eventfd - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/linux/syscall-eventfd/)
+- [Simple command-line tool use cgroup's memory.pressure_level (github.com)](https://gist.github.com/vi/46f921db3cc24430f8d4)
+- [Linux错误码汇总 - CodeAntenna](https://codeantenna.com/a/VRNs4eUMHL)
 
 
 

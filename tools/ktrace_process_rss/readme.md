@@ -555,7 +555,7 @@ objdump -S -l --start-address=0xffffffff81317a90 /lib/modules/4.18.0/build/vmlin
 
 而bpftrace -lv只能看到__mod_memcg_state这个函数，所以我想这就是为何一直看不到堆栈的原因吧。
 
-实际上修改memcg中rss，cache的是函数 __mod_memcg_state.part.71。
+实际上修改memcg中rss，cache的是函数 **__mod_memcg_state.part.71**。
 
 为什么会有两个相同函数呢，这个和内核基础设施static_key有关。
 

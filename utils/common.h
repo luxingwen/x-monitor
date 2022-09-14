@@ -51,6 +51,7 @@ extern "C" {
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/wait.h>
+#include <sys/eventfd.h>
 #include <syslog.h>
 #include <time.h>
 #include <unistd.h>
