@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "utils/common.h"
+#include <stdint.h>
 
 extern int32_t cgroup_collector_routine_init();
 extern void   *cgroup_collector_routine_start(void *arg);
