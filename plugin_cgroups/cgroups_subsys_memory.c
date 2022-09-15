@@ -22,6 +22,12 @@
         prom_collector_add_metric(collector, metric);                                \
     } while (0)
 
+static const char *const vmpressure_str_levels[] = {
+    [VMPRESSURE_LOW] = "low",
+    [VMPRESSURE_MEDIUM] = "medium",
+    [VMPRESSURE_CRITICAL] = "critical",
+};
+
 void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
     __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_cache_bytes,
                                  prom_gauge_new, "cgroup_memory_stat_cache",
@@ -217,29 +223,43 @@ void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
                                  "cgroup_memory_swappiness", cg_obj->cg_prom_collector,
                                  __sys_cgroup_memory_swappiness_help);
 
+    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_pressure_level,
+                                 prom_gauge_new, "cgroup_memory_pressure_level",
+                                 cg_obj->cg_prom_collector,
+                                 __sys_cgroup_memory_pressure_level_help);
+
     debug("[PLUGIN_CGROUPS] init cgroup obj:'%s' subsys-memory metrics success.", cg_obj->cg_id);
 }
 
-void init_cgroup_memory_pressure_listener(struct xm_cgroup_obj      *cg_obj,
-                                          struct plugin_cgroups_ctx *ctx) {
+int32_t init_cgroup_memory_pressure_listener(struct xm_cgroup_obj *cg_obj,
+                                             const char           *cg_memory_base_path,
+                                             const char           *mem_pressure_level_str) {
     char    file_path[PATH_MAX] = { 0 };
     char    line[LINE_MAX] = { 0 };
-    int32_t mem_pressure_fd = -1, ctrl_fd = -1;
+    int32_t evt_fd = -1, mem_pressure_fd = -1, ctrl_fd = -1;
 
     if (unlikely(!cg_obj)) {
-        return;
+        return -1;
     }
 
     if (cg_type == CGROUPS_V1) {
-        cg_obj->cg_memory_pressure_evt_fd = eventfd(0, EFD_NONBLOCK);
-        if (unlikely(-1 == cg_obj->cg_memory_pressure_evt_fd)) {
+        // 设置了EFD_SEMAPHORE，每次读counter只会减1，这样可以保证level的时间更为持久
+        if (0 == strcmp("critical", mem_pressure_level_str)
+            || 0 == strcmp("medium", mem_pressure_level_str)) {
+            evt_fd = eventfd(0, EFD_NONBLOCK | EFD_SEMAPHORE);
+        } else {
+            // 因为low数值会很多，这样每次read减1需要很久，所以一次读取
+            evt_fd = eventfd(0, EFD_NONBLOCK);
+        }
+
+        if (unlikely(-1 == evt_fd)) {
             error("[PLUGIN_CGROUPS] create cgroup obj:'%s' memory eventfd failed, errno:%d, "
                   "error:%s.",
                   cg_obj->cg_id, errno, strerror(errno));
-            return;
+            return -1;
         }
 
-        snprintf(file_path, sizeof(file_path), "%s/%s/memory.pressure_level", ctx->cs_memory_path,
+        snprintf(file_path, sizeof(file_path), "%s/%s/memory.pressure_level", cg_memory_base_path,
                  cg_obj->cg_id);
         mem_pressure_fd = open(file_path, O_RDONLY);
         if (unlikely(-1 == mem_pressure_fd)) {
@@ -252,7 +272,7 @@ void init_cgroup_memory_pressure_listener(struct xm_cgroup_obj      *cg_obj,
                   cg_obj->cg_id);
         }
 
-        snprintf(file_path, sizeof(file_path), "%s/%s/cgroup.event_control", ctx->cs_memory_path,
+        snprintf(file_path, sizeof(file_path), "%s/%s/cgroup.event_control", cg_memory_base_path,
                  cg_obj->cg_id);
         ctrl_fd = open(file_path, O_WRONLY);
         if (unlikely(-1 == ctrl_fd)) {
@@ -266,8 +286,8 @@ void init_cgroup_memory_pressure_listener(struct xm_cgroup_obj      *cg_obj,
         }
 
         int32_t line_size;
-        snprintf(line, sizeof(line), "%d %d %s%n", cg_obj->cg_memory_pressure_evt_fd,
-                 mem_pressure_fd, ctx->cg_memory_pressure_level, &line_size);
+        snprintf(line, sizeof(line), "%d %d %s%n", evt_fd, mem_pressure_fd, mem_pressure_level_str,
+                 &line_size);
         if (unlikely(write(ctrl_fd, line, line_size) < 0)) {
             error("[PLUGIN_CGROUPS] write data:'%s' to cgroup obj:'%s'.cgroup.event_control file "
                   "failed, errno:%d, error:%s.",
@@ -282,12 +302,11 @@ void init_cgroup_memory_pressure_listener(struct xm_cgroup_obj      *cg_obj,
         close(ctrl_fd);
     }
 
-    return;
+    return evt_fd;
 
 failed_clean:
-    if (-1 != cg_obj->cg_memory_pressure_evt_fd) {
-        close(cg_obj->cg_memory_pressure_evt_fd);
-        cg_obj->cg_memory_pressure_evt_fd = -1;
+    if (-1 != evt_fd) {
+        close(evt_fd);
     }
 
     if (-1 != mem_pressure_fd) {
@@ -297,6 +316,7 @@ failed_clean:
     if (-1 != ctrl_fd) {
         close(ctrl_fd);
     }
+    return -1;
 }
 
 void read_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
@@ -304,25 +324,51 @@ void read_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
 
     if (cg_type == CGROUPS_V1) {
         int32_t  ret = 0;
-        uint64_t evtfd_val;
+        uint32_t mem_pressure = 0;
+        uint64_t counter_val = 0;
 
-        // 如果counter的值为0，非阻塞模式，会直接返回失败，并把errno的值指纹EINVAL
-        ret = read(cg_obj->cg_memory_pressure_evt_fd, &evtfd_val, sizeof(evtfd_val));
-        if (-1 == ret) {
-            error("[PLUGIN_CGROUPS] read cgroup obj:'%s' memory pressure eventfd failed, "
-                  "errno:%d, error:%s.",
-                  cg_obj->cg_id, errno, strerror(errno));
-            return;
-        } else if (0 == ret || ret != sizeof(uint64_t)) {
-            error("[PLUGIN_CGROUPS] read cgroup obj:'%s' memory pressure eventfd failed, ret:%d",
-                  cg_obj->cg_id, ret);
-            return;
-        }
+        // 会调用内核函数eventfd_ctx_do_read读取counter值，如果没有EFD_SEMAPHORE标志，则会将counter清零，否则counter只会减1
+        // 内核vmpressure_event函数会判断pressure
+        // level是否达到设定的level，如果达到则会调用eventfd_signal函数将counter加1，vmpressure.c
 
-        if (ret == sizeof(uint64_t)) {
-            debug("[PLUGIN_CGROUPS] read cgroup obj:'%s' memory pressure eventfd success, "
-                  "evtfd_val:%lu",
-                  cg_obj->cg_id, evtfd_val);
+        if (likely(-1 != cg_obj->mem_pressure_low_level_evt_fd
+                   && -1 != cg_obj->mem_pressure_medium_level_evt_fd
+                   && -1 != cg_obj->mem_pressure_critical_level_evt_fd)) {
+            ret =
+                read(cg_obj->mem_pressure_critical_level_evt_fd, &counter_val, sizeof(counter_val));
+            if (sizeof(counter_val) == ret) {
+                warn("[PLUGIN_CGROUPS] the cgroup obj:'%s' memory pressure reached 'critical' "
+                     "level, counter:%lu",
+                     cg_obj->cg_id, counter_val);
+                mem_pressure = 7;
+            } else {
+                ret = read(cg_obj->mem_pressure_medium_level_evt_fd, &counter_val,
+                           sizeof(counter_val));
+                if (sizeof(counter_val) == ret) {
+                    warn("[PLUGIN_CGROUPS] the cgroup obj:'%s' memory pressure reached 'medium' "
+                         "level, counter:%lu",
+                         cg_obj->cg_id, counter_val);
+                    mem_pressure = 3;
+                } else {
+                    ret = read(cg_obj->mem_pressure_low_level_evt_fd, &counter_val,
+                               sizeof(counter_val));
+                    if (sizeof(counter_val) == ret) {
+                        warn("[PLUGIN_CGROUPS] the cgroup obj:'%s' memory pressure reached 'low' "
+                             "level, counter: %lu",
+                             cg_obj->cg_id, counter_val);
+                        mem_pressure = 1;
+                    }
+                }
+            }
+
+            // 如果内存压力打到了critical level，那么就会将mem_pressure置为7
+            // medium level, mem_pressure = 3
+            // low level, mem_pressure = 1
+            debug("[PLUGIN_CGROUPS] the cgroup obj:'%s' memory pressure: %d", cg_obj->cg_id,
+                  mem_pressure);
+
+            prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_pressure_level,
+                           (double)mem_pressure, (const char *[]){ cg_obj->cg_id });
         }
     }
 }

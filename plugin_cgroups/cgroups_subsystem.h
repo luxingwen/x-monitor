@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 struct xm_cgroup_obj;
 struct plugin_cgroups_ctx;
 
@@ -20,5 +22,6 @@ DEF_CGROUP_SUBSYSTEM_FUNC(memory)
 
 DEF_CGROUP_SUBSYSTEM_FUNC(blkio)
 
-extern void init_cgroup_memory_pressure_listener(struct xm_cgroup_obj      *cg_obj,
-                                                 struct plugin_cgroups_ctx *ctx);
+extern int32_t init_cgroup_memory_pressure_listener(struct xm_cgroup_obj *cg_obj,
+                                                    const char           *cg_memory_base_path,
+                                                    const char           *mem_pressure_level_str);

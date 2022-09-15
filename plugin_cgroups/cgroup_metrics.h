@@ -72,6 +72,7 @@ extern const char *__sys_cgroup_memory_limit_in_bytes_help;
 extern const char *__sys_cgroup_memory_failcnt_help;
 extern const char *__sys_cgroup_memory_max_usage_in_bytes_help;
 extern const char *__sys_cgroup_memory_swappiness_help;
+extern const char *__sys_cgroup_memory_pressure_level_help;
 
 struct sys_cgroup_metrics {
     prom_gauge_t *cgroup_metric_cpu_shares;          // file cpu.shares
@@ -151,4 +152,7 @@ struct sys_cgroup_metrics {
     prom_gauge_t *
         cgroup_metric_memory_swappiness;   // 设置、显示针对分组的swappiness（相当于sysctl的vm.swappiness）
                                            // file memory.swappiness
+
+    prom_gauge_t *cgroup_metric_memory_pressure_level;   // 显示当前内存压力值 7: critical, 3:
+                                                         // medium, 1: low, 0: none
 };

@@ -150,3 +150,4 @@ const char *__sys_cgroup_memory_failcnt_help =
 const char *__sys_cgroup_memory_max_usage_in_bytes_help =
     "The maximum memory used by processes in the cgroup (in bytes)";
 const char *__sys_cgroup_memory_swappiness_help = "The swappiness value for the cgroup";
+const char *__sys_cgroup_memory_pressure_level_help = "The memory pressure level for the cgroup";

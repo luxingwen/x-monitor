@@ -36,8 +36,6 @@ struct plugin_cgroups_ctx {
     // v2
     const char *unified_path;
 
-    const char *cg_memory_pressure_level;
-
     // matching pattern
     SIMPLE_PATTERN *cgroups_matching;
     SIMPLE_PATTERN *cgroups_subpaths_matching;
@@ -72,6 +70,12 @@ struct sys_cgroup_counters {
     uint64_t memory_stat_total_pgpgout;
     uint64_t memory_stat_total_pgfault;
     uint64_t memory_stat_total_pgmajfault;
+};
+
+enum vmpressure_levels {
+    VMPRESSURE_LOW = 0,
+    VMPRESSURE_MEDIUM,
+    VMPRESSURE_CRITICAL,
 };
 
 // cgroup对象
@@ -123,5 +127,7 @@ struct xm_cgroup_obj {
     struct sys_cgroup_counters cg_counters;
 
     // cgroup memory pressure event fd
-    int32_t cg_memory_pressure_evt_fd;
+    int32_t mem_pressure_low_level_evt_fd;
+    int32_t mem_pressure_medium_level_evt_fd;
+    int32_t mem_pressure_critical_level_evt_fd;
 };

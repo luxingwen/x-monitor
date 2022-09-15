@@ -65,7 +65,8 @@ static struct xm_cgroup_obj *__add_cgroup_obj(const char *cg_id) {
         cg_obj->cg_id = sdsnew(cg_id);
         cg_obj->cg_hash = simple_hash(cg_id);
         cg_obj->find_flag = 1;
-        cg_obj->cg_memory_pressure_evt_fd = -1;
+        cg_obj->mem_pressure_low_level_evt_fd = cg_obj->mem_pressure_medium_level_evt_fd =
+            cg_obj->mem_pressure_critical_level_evt_fd = -1;
         // 创建Prom metrics collector
         cg_obj->cg_prom_collector = prom_collector_new(cg_id);
         // 注册collector到默认registry
@@ -119,8 +120,16 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
           cg_obj->cg_id, cg_obj->find_flag ? "true" : "false",
           __xm_cgroup_objs_mgr->curr_cgroup_count);
 
-    if (-1 != cg_obj->cg_memory_pressure_evt_fd) {
-        close(cg_obj->cg_memory_pressure_evt_fd);
+    if (-1 != cg_obj->mem_pressure_low_level_evt_fd) {
+        close(cg_obj->mem_pressure_low_level_evt_fd);
+    }
+
+    if (-1 != cg_obj->mem_pressure_medium_level_evt_fd) {
+        close(cg_obj->mem_pressure_medium_level_evt_fd);
+    }
+
+    if (-1 != cg_obj->mem_pressure_critical_level_evt_fd) {
+        close(cg_obj->mem_pressure_critical_level_evt_fd);
     }
 
     sdsfree(cg_obj->cpuacct_cpu_stat_filename);
@@ -297,6 +306,7 @@ static void __make_cgroup_obj_metric_files(struct xm_cgroup_obj *cg_obj) {
 
 static void __found_cgroup_in_dir(const char *cg_id) {
     debug("[PLUGIN_CGROUPS] examining cgroup '%s'", cg_id);
+    struct plugin_cgroups_ctx *ctx = __xm_cgroup_objs_mgr->ctx;
 
     struct xm_cgroup_obj *cg_obj = __find_cgroup_obj(cg_id);
     if (!cg_obj) {
@@ -305,7 +315,13 @@ static void __found_cgroup_in_dir(const char *cg_id) {
             // 配置cgroup指标文件
             __make_cgroup_obj_metric_files(cg_obj);
             // 配置监控cgroup memory pressure
-            init_cgroup_memory_pressure_listener(cg_obj, __xm_cgroup_objs_mgr->ctx);
+
+            cg_obj->mem_pressure_low_level_evt_fd = init_cgroup_memory_pressure_listener(
+                cg_obj, __xm_cgroup_objs_mgr->ctx->cs_memory_path, "low");
+            cg_obj->mem_pressure_medium_level_evt_fd = init_cgroup_memory_pressure_listener(
+                cg_obj, __xm_cgroup_objs_mgr->ctx->cs_memory_path, "medium");
+            cg_obj->mem_pressure_critical_level_evt_fd = init_cgroup_memory_pressure_listener(
+                cg_obj, __xm_cgroup_objs_mgr->ctx->cs_memory_path, "critical");
         }
     } else {
         cg_obj->find_flag = 1;
