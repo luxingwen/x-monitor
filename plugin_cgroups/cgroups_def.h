@@ -99,9 +99,9 @@ struct xm_cgroup_obj {
     sds cpuacct_usage_user_filename;
     sds cpuacct_usage_sys_filename;
 
-    sds memory_stat_filename;
-    sds memory_usage_in_bytes_filename;
-    sds memory_limit_in_bytes_filename;
+    sds memory_stat_filename;             // memory.stat
+    sds memory_usage_in_bytes_filename;   // memory.usage_in_bytes
+    sds memory_limit_in_bytes_filename;   // memory.limit_in_bytes
     sds memory_failcnt_filename;
     sds memory_max_usage_in_bytes_filename;
 

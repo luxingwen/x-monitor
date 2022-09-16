@@ -316,12 +316,12 @@ static void __found_cgroup_in_dir(const char *cg_id) {
             __make_cgroup_obj_metric_files(cg_obj);
             // 配置监控cgroup memory pressure
 
-            cg_obj->mem_pressure_low_level_evt_fd = init_cgroup_memory_pressure_listener(
-                cg_obj, __xm_cgroup_objs_mgr->ctx->cs_memory_path, "low");
-            cg_obj->mem_pressure_medium_level_evt_fd = init_cgroup_memory_pressure_listener(
-                cg_obj, __xm_cgroup_objs_mgr->ctx->cs_memory_path, "medium");
-            cg_obj->mem_pressure_critical_level_evt_fd = init_cgroup_memory_pressure_listener(
-                cg_obj, __xm_cgroup_objs_mgr->ctx->cs_memory_path, "critical");
+            cg_obj->mem_pressure_low_level_evt_fd =
+                init_cgroup_memory_pressure_listener(cg_obj, ctx->cs_memory_path, "low");
+            cg_obj->mem_pressure_medium_level_evt_fd =
+                init_cgroup_memory_pressure_listener(cg_obj, ctx->cs_memory_path, "medium");
+            cg_obj->mem_pressure_critical_level_evt_fd =
+                init_cgroup_memory_pressure_listener(cg_obj, ctx->cs_memory_path, "critical");
         }
     } else {
         cg_obj->find_flag = 1;
@@ -497,9 +497,9 @@ static void __read_cgroup_metrics(struct xm_cgroup_obj *cg_obj) {
     debug("[PLUGIN_CGROUPS] read cg_obj:'%s' metrics", cg_obj->cg_id);
 
     if (CGROUPS_V1 == cg_type) {
-        read_cgroup_obj_cpuacct_metrics(cg_obj);
-        read_cgroup_obj_memory_metrics(cg_obj);
-        read_cgroup_obj_blkio_metrics(cg_obj);
+        collect_cgroup_obj_cpuacct_metrics(cg_obj);
+        collect_cgroup_obj_memory_metrics(cg_obj);
+        collect_cgroup_obj_blkio_metrics(cg_obj);
     } else if (CGROUPS_V2 == cg_type) {
     }
 }

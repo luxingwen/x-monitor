@@ -113,7 +113,7 @@ void init_cgroup_obj_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
     debug("[PLUGIN_CGROUPS] init cgroup obj:'%s' subsys-cpuacct metrics success.", cg_obj->cg_id);
 }
 
-void read_cgroup_obj_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
+void collect_cgroup_obj_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
     debug("[PLUGIN_CGROUPS] read cgroup obj:'%s' subsys-cpuacct metrics", cg_obj->cg_id);
 
     static struct proc_file *pf = NULL;

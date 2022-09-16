@@ -14,7 +14,7 @@ struct plugin_cgroups_ctx;
 
 #define DEF_CGROUP_SUBSYSTEM_FUNC(name)                                         \
     extern void init_cgroup_obj_##name##_metrics(struct xm_cgroup_obj *cg_obj); \
-    extern void read_cgroup_obj_##name##_metrics(struct xm_cgroup_obj *cg_obj);
+    extern void collect_cgroup_obj_##name##_metrics(struct xm_cgroup_obj *cg_obj);
 
 DEF_CGROUP_SUBSYSTEM_FUNC(cpuacct)
 
