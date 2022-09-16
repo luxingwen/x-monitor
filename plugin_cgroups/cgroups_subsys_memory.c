@@ -15,6 +15,7 @@
 #include "utils/strings.h"
 #include "utils/procfile.h"
 #include "utils/adaptive_resortable_list.h"
+#include "utils/files.h"
 
 #include "prometheus-client-c/prom.h"
 
@@ -42,8 +43,6 @@ static uint64_t __cache_bytes = 0, __rss_bytes = 0, __rss_huge_bytes = 0, __shme
                 __total_pgmajfault = 0, __total_inactive_anon_bytes = 0,
                 __total_active_anon_bytes = 0, __total_inactive_file_bytes = 0,
                 __total_active_file_bytes = 0, __total_unevictable_bytes = 0;
-
-static ARL_BASE *__arl_base_mem_stat = NULL;
 
 void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
     __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_cache_bytes,
@@ -245,6 +244,40 @@ void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
                                  cg_obj->cg_prom_collector,
                                  __sys_cgroup_memory_pressure_level_help);
 
+    arl_expect(cg_obj->arl_base_mem_stat, "cache", &__cache_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "rss", &__rss_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "rss_huge", &__rss_huge_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "mapped_file", &__mapped_file_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "dirty", &__dirty_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "writeback", &__writeback_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "pgpgin", &__pgpgin);
+    arl_expect(cg_obj->arl_base_mem_stat, "pgpgout", &__pgpgout);
+    arl_expect(cg_obj->arl_base_mem_stat, "pgfault", &__pgfault);
+    arl_expect(cg_obj->arl_base_mem_stat, "pgmajfault", &__pgmajfault);
+    arl_expect(cg_obj->arl_base_mem_stat, "inactive_anon", &__inactive_anon_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "active_anon", &__active_anon_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "inactive_file", &__inactive_file_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "active_file", &__active_file_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "unevictable", &__unevictable_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "hierarchical_memory_limit",
+               &__hierarchical_memory_limit_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_cache", &__total_cache_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_rss", &__total_rss_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_rss_huge", &__total_rss_huge_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_shmem", &__total_shmem_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_mapped_file", &__total_mapped_file_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_dirty", &__total_dirty_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_writeback", &__total_writeback_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_pgpgin", &__total_pgpgin);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_pgpgout", &__total_pgpgout);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_pgfault", &__total_pgfault);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_pgmajfault", &__total_pgmajfault);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_inactive_anon", &__total_inactive_anon_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_active_anon", &__total_active_anon_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_inactive_file", &__total_inactive_file_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_active_file", &__total_active_file_bytes);
+    arl_expect(cg_obj->arl_base_mem_stat, "total_unevictable", &__total_unevictable_bytes);
+
     debug("[PLUGIN_CGROUPS] init cgroup obj:'%s' subsys-memory metrics success.", cg_obj->cg_id);
 }
 
@@ -339,7 +372,8 @@ failed_clean:
 static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
     int32_t  ret = 0;
     uint32_t mem_pressure = 0;
-    uint64_t counter_val = 0;
+    uint64_t counter_val = 0, usage_in_bytes = 0, limit_in_bytes = 0, failcnt = 0,
+             max_usage_in_bytes = 0;
 
     // 会调用内核函数eventfd_ctx_do_read读取counter值，如果没有EFD_SEMAPHORE标志，则会将counter清零，否则counter只会减1
     // 内核vmpressure_event函数会判断pressure
@@ -376,108 +410,124 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
         // 如果内存压力打到了critical level，那么就会将mem_pressure置为7
         // medium level, mem_pressure = 3
         // low level, mem_pressure = 1
-        debug("[PLUGIN_CGROUPS] the cgroup obj:'%s' memory pressure: %d", cg_obj->cg_id,
-              mem_pressure);
-
+        debug("[PLUGIN_CGROUPS] the cgroup:'%s' memory pressure: %d", cg_obj->cg_id, mem_pressure);
         prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_pressure_level, (double)mem_pressure,
                        (const char *[]){ cg_obj->cg_id });
+    }
 
-        // read memory.stat
-        static struct proc_file *pf = NULL;
-        if (likely(cg_obj->memory_stat_filename)) {
-            // open file
-            pf = procfile_reopen(pf, cg_obj->memory_stat_filename, NULL, PROCFILE_FLAG_DEFAULT);
+    // read memory.stat
+    static struct proc_file *pf = NULL;
+    if (likely(cg_obj->memory_stat_filename)) {
+        // open file
+        pf = procfile_reopen(pf, cg_obj->memory_stat_filename, NULL, PROCFILE_FLAG_DEFAULT);
+        if (likely(pf)) {
+            // read all file
+            pf = procfile_readall(pf);
             if (likely(pf)) {
-                // read all file
-                pf = procfile_readall(pf);
-                if (likely(pf)) {
-                    size_t line_count = procfile_lines(pf);
-                    if (unlikely(line_count < 1)) {
-                        error("[PLUGIN_CGROUPS] the cgroup obj:'%s' memory.stat file is empty.",
-                              cg_obj->cg_id);
-                    } else {
-                        // get line value
-                        arl_begin(__arl_base_mem_stat);
-                        for (size_t l = 0; l < line_count; l++) {
-                            size_t words = procfile_linewords(pf, l);
-                            if (unlikely(words < 2))
-                                continue;
+                size_t line_count = procfile_lines(pf);
+                if (unlikely(line_count < 1)) {
+                    error("[PLUGIN_CGROUPS] the cgroup obj:'%s' memory.stat file is empty.",
+                          cg_obj->cg_id);
+                } else {
+                    // get line value
+                    arl_begin(cg_obj->arl_base_mem_stat);
+                    for (size_t l = 0; l < line_count; l++) {
+                        size_t words = procfile_linewords(pf, l);
+                        if (unlikely(words < 2))
+                            continue;
 
-                            if (unlikely(arl_check(__arl_base_mem_stat, procfile_lineword(pf, l, 0),
-                                                   procfile_lineword(pf, l, 1)))) {
-                                break;
-                            }
+                        if (unlikely(arl_check(cg_obj->arl_base_mem_stat,
+                                               procfile_lineword(pf, l, 0),
+                                               procfile_lineword(pf, l, 1)))) {
+                            break;
                         }
-
-                        // set metric
-
-                        debug(
-                            "[PLUGIN_CGROUPS] the cgroup obj:'%s' memory.stat cache:%lu, rss:%lu, "
-                            "rss_huge:%lu, mapped_file:%lu, dirty:%lu, writeback:%lu, pgpgin:%lu, "
-                            "pgpgout:%lu, pgfault:%lu, pgmajfault:%lu, inactive_anon:%lu, "
-                            "active_anon:%lu, inactive_file:%lu, active_file:%lu, unevictable:%lu, "
-                            "hierarchical_memory_limit:%lu, total_cache:%lu, total_rss:%lu, "
-                            "total_rss_huge:%lu, total_shmem:%lu, total_mapped_file:%lu, "
-                            "total_dirty:%lu, total_writeback:%lu, total_pgpgin:%lu, "
-                            "total_pgpgout:%lu, total_pgfault:%lu, total_pgmajfault:%lu, "
-                            "total_inactive_anon:%lu, total_active_anon:%lu, "
-                            "total_inactive_file:%lu, total_active_file:%lu, total_unevictable:%lu",
-                            cg_obj->cg_id, __cache_bytes, __rss_bytes, __rss_huge_bytes,
-                            __mapped_file_bytes, __dirty_bytes, __writeback_bytes, __pgpgin,
-                            __pgpgout, __pgfault, __pgmajfault, __inactive_anon_bytes,
-                            __active_anon_bytes, __inactive_file_bytes, __active_file_bytes,
-                            __unevictable_bytes, __hierarchical_memory_limit_bytes,
-                            __total_cache_bytes, __total_rss_bytes, __total_rss_huge_bytes,
-                            __total_shmem_bytes, __total_mapped_file_bytes, __total_dirty_bytes,
-                            __total_writeback_bytes, __total_pgpgin, __total_pgpgout,
-                            __total_pgfault, __total_pgmajfault, __total_inactive_anon_bytes,
-                            __total_active_anon_bytes, __total_inactive_file_bytes,
-                            __total_active_file_bytes, __total_unevictable_bytes);
                     }
+
+                    // set metric
+
+                    debug("[PLUGIN_CGROUPS] the cgroup:'%s' memory.stat:'%s' cache:%lu, "
+                          "rss:%lu, rss_huge:%lu, mapped_file:%lu, dirty:%lu, writeback:%lu, "
+                          "pgpgin:%lu, pgpgout:%lu, pgfault:%lu, pgmajfault:%lu, "
+                          "inactive_anon:%lu, active_anon:%lu, inactive_file:%lu, "
+                          "active_file:%lu, unevictable:%lu, hierarchical_memory_limit:%lu, "
+                          "total_cache:%lu, total_rss:%lu, total_rss_huge:%lu, total_shmem:%lu, "
+                          "total_mapped_file:%lu, total_dirty:%lu, total_writeback:%lu, "
+                          "total_pgpgin:%lu, total_pgpgout:%lu, total_pgfault:%lu, "
+                          "total_pgmajfault:%lu, total_inactive_anon:%lu, total_active_anon:%lu, "
+                          "total_inactive_file:%lu, total_active_file:%lu, total_unevictable:%lu",
+                          cg_obj->cg_id, cg_obj->memory_stat_filename, __cache_bytes, __rss_bytes,
+                          __rss_huge_bytes, __mapped_file_bytes, __dirty_bytes, __writeback_bytes,
+                          __pgpgin, __pgpgout, __pgfault, __pgmajfault, __inactive_anon_bytes,
+                          __active_anon_bytes, __inactive_file_bytes, __active_file_bytes,
+                          __unevictable_bytes, __hierarchical_memory_limit_bytes,
+                          __total_cache_bytes, __total_rss_bytes, __total_rss_huge_bytes,
+                          __total_shmem_bytes, __total_mapped_file_bytes, __total_dirty_bytes,
+                          __total_writeback_bytes, __total_pgpgin, __total_pgpgout, __total_pgfault,
+                          __total_pgmajfault, __total_inactive_anon_bytes,
+                          __total_active_anon_bytes, __total_inactive_file_bytes,
+                          __total_active_file_bytes, __total_unevictable_bytes);
                 }
+            } else {
+                return;
             }
+        } else {
+            return;
         }
     }
+
+    // read memory.usage_in_bytes
+    if (likely(cg_obj->memory_usage_in_bytes_filename)) {
+        if (unlikely(
+                0
+                != read_file_to_uint64(cg_obj->memory_usage_in_bytes_filename, &usage_in_bytes))) {
+            // don't continue
+            return;
+        }
+        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_usage_in_bytes,
+                       (double)usage_in_bytes, (const char *[]){ cg_obj->cg_id });
+    }
+
+    // read memory.limit_in_bytes
+    if (likely(cg_obj->memory_limit_in_bytes_filename)) {
+        if (unlikely(
+                0
+                != read_file_to_uint64(cg_obj->memory_limit_in_bytes_filename, &limit_in_bytes))) {
+            // don't continue
+            return;
+        }
+        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_limit_in_bytes,
+                       (double)limit_in_bytes, (const char *[]){ cg_obj->cg_id });
+    }
+
+    // read memory.failcnt
+    if (likely(cg_obj->memory_failcnt_filename)) {
+        if (unlikely(0 != read_file_to_uint64(cg_obj->memory_failcnt_filename, &failcnt))) {
+            // don't continue
+            return;
+        }
+        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_failcnt, (double)failcnt,
+                       (const char *[]){ cg_obj->cg_id });
+    }
+
+    // read memory.max_usage_in_bytes
+    if (likely(cg_obj->memory_max_usage_in_bytes_filename)) {
+        if (unlikely(0
+                     != read_file_to_uint64(cg_obj->memory_max_usage_in_bytes_filename,
+                                            &max_usage_in_bytes))) {
+            // don't continue
+            return;
+        }
+        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_max_usage_in_bytes,
+                       (double)max_usage_in_bytes, (const char *[]){ cg_obj->cg_id });
+    }
+
+    debug("[PLUGIN_CGROUPS] the cgroup:'%s' memory.usage_in_bytes:%lu, "
+          "memory.limit_in_bytes:%lu, memory.failcnt:%lu, memory.max_usage_in_bytes:%lu",
+          cg_obj->cg_id, usage_in_bytes, limit_in_bytes, failcnt, max_usage_in_bytes);
 }
 
 void collect_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
     debug("[PLUGIN_CGROUPS] collect cgroup obj:'%s' subsys-memory metrics", cg_obj->cg_id);
-
-    __arl_base_mem_stat = arl_create("cg_mem_stat", NULL, 60);
-    // for cgroup v1
-    arl_expect(__arl_base_mem_stat, "cache", &__cache_bytes);
-    arl_expect(__arl_base_mem_stat, "rss", &__rss_bytes);
-    arl_expect(__arl_base_mem_stat, "rss_huge", &__rss_huge_bytes);
-    arl_expect(__arl_base_mem_stat, "mapped_file", &__mapped_file_bytes);
-    arl_expect(__arl_base_mem_stat, "dirty", &__dirty_bytes);
-    arl_expect(__arl_base_mem_stat, "writeback", &__writeback_bytes);
-    arl_expect(__arl_base_mem_stat, "pgpgin", &__pgpgin);
-    arl_expect(__arl_base_mem_stat, "pgpgout", &__pgpgout);
-    arl_expect(__arl_base_mem_stat, "pgfault", &__pgfault);
-    arl_expect(__arl_base_mem_stat, "pgmajfault", &__pgmajfault);
-    arl_expect(__arl_base_mem_stat, "inactive_anon", &__inactive_anon_bytes);
-    arl_expect(__arl_base_mem_stat, "active_anon", &__active_anon_bytes);
-    arl_expect(__arl_base_mem_stat, "inactive_file", &__inactive_file_bytes);
-    arl_expect(__arl_base_mem_stat, "active_file", &__active_file_bytes);
-    arl_expect(__arl_base_mem_stat, "unevictable", &__unevictable_bytes);
-    arl_expect(__arl_base_mem_stat, "hierarchical_memory_limit",
-               &__hierarchical_memory_limit_bytes);
-    arl_expect(__arl_base_mem_stat, "total_cache", &__total_cache_bytes);
-    arl_expect(__arl_base_mem_stat, "total_rss", &__total_rss_bytes);
-    arl_expect(__arl_base_mem_stat, "total_rss_huge", &__total_rss_huge_bytes);
-    arl_expect(__arl_base_mem_stat, "total_shmem", &__total_shmem_bytes);
-    arl_expect(__arl_base_mem_stat, "total_mapped_file", &__total_mapped_file_bytes);
-    arl_expect(__arl_base_mem_stat, "total_dirty", &__total_dirty_bytes);
-    arl_expect(__arl_base_mem_stat, "total_writeback", &__total_writeback_bytes);
-    arl_expect(__arl_base_mem_stat, "total_pgpgin", &__total_pgpgin);
-    arl_expect(__arl_base_mem_stat, "total_pgpgout", &__total_pgpgout);
-    arl_expect(__arl_base_mem_stat, "total_pgfault", &__total_pgfault);
-    arl_expect(__arl_base_mem_stat, "total_pgmajfault", &__total_pgmajfault);
-    arl_expect(__arl_base_mem_stat, "total_inactive_anon", &__total_inactive_anon_bytes);
-    arl_expect(__arl_base_mem_stat, "total_active_anon", &__total_active_anon_bytes);
-    arl_expect(__arl_base_mem_stat, "total_inactive_file", &__total_inactive_file_bytes);
-    arl_expect(__arl_base_mem_stat, "total_active_file", &__total_active_file_bytes);
-    arl_expect(__arl_base_mem_stat, "total_unevictable", &__total_unevictable_bytes);
 
     if (cg_type == CGROUPS_V1) {
         __collect_cgroup_v1_memory_metrics(cg_obj);

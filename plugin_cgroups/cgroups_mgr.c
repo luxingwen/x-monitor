@@ -67,6 +67,7 @@ static struct xm_cgroup_obj *__add_cgroup_obj(const char *cg_id) {
         cg_obj->find_flag = 1;
         cg_obj->mem_pressure_low_level_evt_fd = cg_obj->mem_pressure_medium_level_evt_fd =
             cg_obj->mem_pressure_critical_level_evt_fd = -1;
+        cg_obj->arl_base_mem_stat = arl_create("cg_mem_stat", NULL, 60);
         // 创建Prom metrics collector
         cg_obj->cg_prom_collector = prom_collector_new(cg_id);
         // 注册collector到默认registry
@@ -130,6 +131,10 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
 
     if (-1 != cg_obj->mem_pressure_critical_level_evt_fd) {
         close(cg_obj->mem_pressure_critical_level_evt_fd);
+    }
+
+    if (likely(cg_obj->arl_base_mem_stat)) {
+        arl_free(cg_obj->arl_base_mem_stat);
     }
 
     sdsfree(cg_obj->cpuacct_cpu_stat_filename);

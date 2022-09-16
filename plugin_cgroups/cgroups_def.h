@@ -14,6 +14,7 @@
 #include "utils/simple_pattern.h"
 #include "utils/sds/sds.h"
 #include "utils/list.h"
+#include "utils/adaptive_resortable_list.h"
 
 #include "cgroup_metrics.h"
 
@@ -130,4 +131,6 @@ struct xm_cgroup_obj {
     int32_t mem_pressure_low_level_evt_fd;
     int32_t mem_pressure_medium_level_evt_fd;
     int32_t mem_pressure_critical_level_evt_fd;
+
+    ARL_BASE *arl_base_mem_stat;
 };
