@@ -1,6 +1,6 @@
-# CGroup指标查询
+# CGroupV1
 
-## 限制CPU资源
+## CPU资源限制
 ### CPUACCT控制器
 
 自动生成控制组中任务对CPU资源使用情况的报告。
@@ -94,7 +94,7 @@ Given a total cpu quota, we should firstly distribute the cpu.share of each cgro
   - nr_throttled：在上面这些周期中，有多少次是受到了限制（即cgroup中的进程在指定的时间周期中用光了它的配额）。
   - throttled_time：cgroup中的进程被限制使用CPU持续了多长时间，单位是ns。
 
-## 限制内存资源
+## 内存资源限制
 
 当限制内存时，我们最好想清楚如果内存超限了发生什么？该如何处理？业务是否可以接受这样的状态？
 
@@ -139,6 +139,29 @@ memory.stat说明
 3. 往cgroup.event_control中写入这么一串：`<event_fd> <usage_in_bytes_fd> <threshold>`。
 4. 然后通过读取event_fd得到通知。
 
+## blkio资源限制
+
+子系统为了减少进程之间共同读写同一块磁盘时相互干扰的问题。blkio子系统可以限制进程读写的IOPS和吞吐量，但它只能对Direct I/O的文件读写进行限速，对Buffered I/O的文件读写无法限制。
+
+### 文件详情
+
+1. blkio.io_service_bytes，被分组迁入或者移出磁盘的字节数量。它按操作类型（读或写，同步或异步）细分。头两个域定义了主次设备号，第三个域定义了操作类型，第四个域定义了字节数量。
+2. blkio.io_serviced，被分组发给磁盘的IO(bio)数量。它按操作类型（读或写，同步或异步）细分。头两个域定义了主次设备号，第三个域定义了操作类型，第四个域定义了IO数量。
+3. blkio.io_merged，cgroup内的bio请求总量。它按操作类型（读或写，同步或异步）细分。
+4. blkio.io_queued，cgroup内任意给定时刻的排队请求总量。它按操作类型（读或写，同步或异步）细分。
+5. blkio.throttle.io_service_bytes，被分组迁入或者移出磁盘的字节数量。它又按操作类型（读或写，同步或异步）细分。头两个域定义了主次设备号，第三个域定义了操作类型，第四个域定义了字节数量。
+6. blkio.throttle.io_serviced，被分组迁入或者移出磁盘的字节数量。它又按操作类型（读或写，同步或异步）细分。头两个域定义了主次设备号，第三个域定义了操作类型，第四个域定义了字节数量。
+
+## V1的缺陷
+
+cgroup v1是每个层级对应一个子系统，子系统需要mount挂载使用，每个子系统之间是独立的，很难协同，比如memory subsys和blkio subsys能分别控制某个进程的资源使用，但blkio subsys对进程资源限制的时候无法感知memory subsys中进程资源的使用量。导致Buffer I/O的限制一直没有实现。
+
+<img src="./img/cgroup-v1.jpg" alt="cgroup-v2" style="zoom:67%;" />
+
+<img src="./img/cgroup-v1.jpg" alt="cgroup-v1" style="zoom: 67%;" />
+
+# CGroupV2
+
 ## 资料
 
 - [Linux Cgroup系列（05）：限制cgroup的CPU使用（subsystem之cpu） - SegmentFault 思否](https://segmentfault.com/a/1190000008323952?utm_source=sf-similar-article)
@@ -153,6 +176,10 @@ memory.stat说明
 - [Linux 系统调用 eventfd - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/linux/syscall-eventfd/)
 - [Simple command-line tool use cgroup's memory.pressure_level (github.com)](https://gist.github.com/vi/46f921db3cc24430f8d4)
 - [Linux错误码汇总 - CodeAntenna](https://codeantenna.com/a/VRNs4eUMHL)
+- [blkio cgroup · 田飞雨 (tianfeiyu.com)](https://blog.tianfeiyu.com/source-code-reading-notes/cgroup/blkio_cgroup.html)
+- [Linux Cgroup v1(中文翻译)(4)：Block IO Controller - 啊噗得网 (apude.com)](https://www.apude.com/blog/14886.html)
+- [Cgroup内核文档翻译(2)——Documentation/cgroup-v1/blkio-controller.txt - Hello-World3 - 博客园 (cnblogs.com)](https://www.cnblogs.com/hellokitty2/p/14226290.html)
+- [[译\] Control Group v2（cgroupv2 权威指南）（KernelDoc, 2021） (arthurchiao.art)](https://arthurchiao.art/blog/cgroupv2-zh/)
 
 
 
