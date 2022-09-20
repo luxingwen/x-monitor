@@ -32,7 +32,7 @@ struct process_descendant_pids {
 
 extern uint32_t system_hz;
 extern pid_t    system_pid_max;
-extern uint32_t system_processor_num;
+extern uint32_t cpu_cores_num;
 
 extern const char *get_hostname();
 
@@ -44,7 +44,7 @@ extern int32_t bump_memlock_rlimit(void);
 
 extern const char *get_username(uid_t uid);
 
-extern uint32_t get_system_processor_num();
+extern uint32_t get_cpu_cores_num();
 
 extern int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high);
 

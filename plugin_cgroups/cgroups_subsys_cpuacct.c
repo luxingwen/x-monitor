@@ -108,7 +108,7 @@ void init_cgroup_obj_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
                               cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_system_ns_per_cpu);
 
     cg_obj->cg_counters.usage_per_cpus = (struct sys_cgroup_usage_per_cpu *)calloc(
-        system_processor_num, sizeof(struct sys_cgroup_usage_per_cpu));
+        cpu_cores_num, sizeof(struct sys_cgroup_usage_per_cpu));
 
     debug("[PLUGIN_CGROUPS] init cgroup obj:'%s' subsys-cpuacct metrics success.", cg_obj->cg_id);
 }
@@ -247,7 +247,7 @@ static void __collect_cgroup_v1_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
             // 读取文件
             pf = procfile_readall(pf);
             size_t lines = procfile_lines(pf);
-            if (likely(lines >= (system_processor_num + 1))) {
+            if (likely(lines >= (cpu_cores_num + 1))) {
                 // 读取数值
                 for (index = 1; index < lines; index++) {
                     words = procfile_linewords(pf, index);

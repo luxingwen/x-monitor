@@ -22,14 +22,11 @@ int32_t init_proc_rdset() {
             return -1;
         }
 
-        // 得到系统的cpu数量
-        uint32_t node_cpu_count = get_system_processor_num();
-
         proc_rds->stat_rdset.core_rdsets =
-            (struct proc_cpu_rdset *)calloc(node_cpu_count, sizeof(struct proc_cpu_rdset));
+            (struct proc_cpu_rdset *)calloc(cpu_cores_num, sizeof(struct proc_cpu_rdset));
 
         proc_rds->schedstats =
-            (struct proc_schedstat *)calloc(node_cpu_count, sizeof(struct proc_schedstat));
+            (struct proc_schedstat *)calloc(cpu_cores_num, sizeof(struct proc_schedstat));
 
         if (unlikely(!proc_rds->stat_rdset.core_rdsets || !proc_rds->schedstats)) {
             error("calloc struct proc_cpu_rdset or proc_schedstat object failed");

@@ -93,7 +93,7 @@ int32_t main(int32_t argc, char **argv) {
 
     struct process_smaps_info psmaps;
 
-    uint32_t cores = get_system_processor_num();
+    uint32_t cores = get_cpu_cores_num();
     get_system_hz();
 
     // pid_t self = getpid();

@@ -137,6 +137,7 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
         arl_free(cg_obj->arl_base_mem_stat);
     }
 
+    // v1
     sdsfree(cg_obj->cpuacct_cpu_stat_filename);
     sdsfree(cg_obj->cpuacct_cpuacct_stat_filename);
 
@@ -158,7 +159,10 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
     sdsfree(cg_obj->blkio_throttle_io_serviced_filename);
     sdsfree(cg_obj->blkio_io_merged_filename);
     sdsfree(cg_obj->blkio_io_queued_filename);
+    sdsfree(cg_obj->blkio_io_service_bytes_filename);
+    sdsfree(cg_obj->blkio_io_serviced_filename);
 
+    // v2
     sdsfree(cg_obj->unified_io_stat_filename);
     sdsfree(cg_obj->unified_cpu_stat_filename);
     sdsfree(cg_obj->unified_memory_stat_filename);

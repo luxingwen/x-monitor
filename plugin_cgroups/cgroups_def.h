@@ -106,8 +106,8 @@ struct xm_cgroup_obj {
     sds memory_failcnt_filename;
     sds memory_max_usage_in_bytes_filename;
 
-    sds blkio_throttle_io_service_bytes_filename;   // blkio.io_service_bytes
-    sds blkio_throttle_io_serviced_filename;        // blkio.io_serviced
+    sds blkio_io_service_bytes_filename;            // blkio.io_service_bytes
+    sds blkio_io_serviced_filename;                 // blkio.io_serviced
     sds blkio_io_merged_filename;                   // blkio.io_merged
     sds blkio_io_queued_filename;                   // blkio.io_queued
     sds blkio_throttle_io_service_bytes_filename;   // blkio.throttle.io_service_bytes

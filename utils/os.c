@@ -14,7 +14,7 @@
 #include "strings.h"
 #include "consts.h"
 
-uint32_t system_processor_num = 1;
+uint32_t cpu_cores_num = 1;
 uint32_t system_hz = 0;
 
 static const char   *__def_ipaddr = "0.0.0.0";
@@ -103,44 +103,44 @@ const char *get_username(uid_t uid) {
     return pwd->pw_name;
 }
 
-uint32_t get_system_processor_num() {
+uint32_t get_cpu_cores_num() {
     // return sysconf(_SC_NPROCESSORS_ONLN); 加强移植性
-    if (system_processor_num > 1)
-        return system_processor_num;
+    if (cpu_cores_num > 1)
+        return cpu_cores_num;
 
     struct proc_file *pf_stat = procfile_open("/proc/stat", NULL, PROCFILE_FLAG_DEFAULT);
     if (unlikely(!pf_stat)) {
-        error("Cannot open /proc/stat. Assuming system has %d processors. error: %s",
-              system_processor_num, strerror(errno));
-        return system_processor_num;
+        error("Cannot open /proc/stat. Assuming system has %d processors. error: %s", cpu_cores_num,
+              strerror(errno));
+        return cpu_cores_num;
     }
 
     pf_stat = procfile_readall(pf_stat);
     if (unlikely(!pf_stat)) {
-        error("Cannot read /proc/stat. Assuming system has %d __processors.", system_processor_num);
-        return system_processor_num;
+        error("Cannot read /proc/stat. Assuming system has %d __processors.", cpu_cores_num);
+        return cpu_cores_num;
     }
 
-    system_processor_num = 0;
+    cpu_cores_num = 0;
     for (size_t index = 0; index < procfile_lines(pf_stat); index++) {
         if (!procfile_linewords(pf_stat, index)) {
             continue;
         }
         if (strncmp(procfile_lineword(pf_stat, index, 0), "cpu", 3) == 0) {
-            system_processor_num++;
+            cpu_cores_num++;
         }
     }
 
-    system_processor_num--;
-    if (system_processor_num < 1) {
-        system_processor_num = 1;
+    cpu_cores_num--;
+    if (cpu_cores_num < 1) {
+        cpu_cores_num = 1;
     }
 
     procfile_close(pf_stat);
 
-    debug("System has %d __processors.", system_processor_num);
+    debug("System has %d __processors.", cpu_cores_num);
 
-    return system_processor_num;
+    return cpu_cores_num;
 }
 
 int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high) {

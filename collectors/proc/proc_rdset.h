@@ -41,7 +41,6 @@ struct proc_stat_rdset {
     uint64_t               processes_from_boot;
     uint64_t               processes_running;   // is gauge type
     uint64_t               processes_blocked;   // is gauge type
-    uint16_t               node_cpu_count;      // is gauge type
 };
 
 struct proc_rdset {
