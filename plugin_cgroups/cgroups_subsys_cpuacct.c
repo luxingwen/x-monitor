@@ -21,94 +21,104 @@
 #include "prometheus-client-c/prom.h"
 
 void init_cgroup_obj_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
-    // 构造指标，加入collector
-    cg_obj->cg_metrics.cgroup_metric_cpu_shares = prom_gauge_new(
-        "cgroup_cpu_shares", __sys_cgroup_metric_cpu_shares_help, 1, (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpu_shares);
+    if (cg_type == CGROUPS_V1) {
+        // 构造指标，加入collector
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_shares =
+            prom_gauge_new("cgroup_v1_cpu_shares", sys_cgroup_v1_metric_cpu_shares_help, 1,
+                           (const char *[]){ "cgroup" });
+        prom_collector_add_metric(cg_obj->cg_prom_collector,
+                                  cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_shares);
 
-    cg_obj->cg_metrics.cgroup_metric_cpu_cfs_period_us =
-        prom_gauge_new("cgroup_cpu_cfs_period_us", __sys_cgroup_metric_cpu_cfs_period_us_help, 1,
-                       (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpu_cfs_period_us);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_cfs_period_us = prom_gauge_new(
+            "cgroup_v1_cpu_cfs_period_us", sys_cgroup_v1_metric_cpu_cfs_period_us_help, 1,
+            (const char *[]){ "cgroup" });
+        prom_collector_add_metric(cg_obj->cg_prom_collector,
+                                  cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_cfs_period_us);
 
-    cg_obj->cg_metrics.cgroup_metric_cpu_cfs_quota_us =
-        prom_gauge_new("cgroup_cpu_cfs_quota_us", __sys_cgroup_metric_cpu_cfs_quota_us_help, 1,
-                       (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpu_cfs_quota_us);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_cfs_quota_us =
+            prom_gauge_new("cgroup_v1_cpu_cfs_quota_us", sys_cgroup_v1_metric_cpu_cfs_quota_us_help,
+                           1, (const char *[]){ "cgroup" });
+        prom_collector_add_metric(cg_obj->cg_prom_collector,
+                                  cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_cfs_quota_us);
 
-    cg_obj->cg_metrics.cgroup_metric_cpuacct_stat_user_userhzs = prom_gauge_new(
-        "cgroup_cpuacct_stat_user_userhzs", __sys_cgroup_metric_cpuacct_stat_user_userhzs_help, 1,
-        (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpuacct_stat_user_userhzs);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_stat_user_userhzs = prom_gauge_new(
+            "cgroup_v1_cpuacct_stat_user_userhzs",
+            sys_cgroup_v1_metric_cpuacct_stat_user_userhzs_help, 1, (const char *[]){ "cgroup" });
+        prom_collector_add_metric(
+            cg_obj->cg_prom_collector,
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_stat_user_userhzs);
 
-    cg_obj->cg_metrics.cgroup_metric_cpuacct_stat_system_userhzs = prom_gauge_new(
-        "cgroup_cpuacct_stat_system_userhzs", __sys_cgroup_metric_cpuacct_stat_system_userhzs_help,
-        1, (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpuacct_stat_system_userhzs);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_stat_system_userhzs = prom_gauge_new(
+            "cgroup_v1_cpuacct_stat_system_userhzs",
+            sys_cgroup_v1_metric_cpuacct_stat_system_userhzs_help, 1, (const char *[]){ "cgroup" });
+        prom_collector_add_metric(
+            cg_obj->cg_prom_collector,
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_stat_system_userhzs);
 
-    cg_obj->cg_metrics.cgroup_metric_cpu_stat_nr_periods =
-        prom_counter_new("cgroup_cpu_stat_nr_periods", __sys_cgroup_metric_cpu_stat_nr_periods_help,
-                         1, (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpu_stat_nr_periods);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_stat_nr_periods = prom_counter_new(
+            "cgroup_v1_cpu_stat_nr_periods", sys_cgroup_v1_metric_cpu_stat_nr_periods_help, 1,
+            (const char *[]){ "cgroup" });
+        prom_collector_add_metric(cg_obj->cg_prom_collector,
+                                  cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_stat_nr_periods);
 
-    cg_obj->cg_metrics.cgroup_metric_cpu_stat_nr_throttled = prom_counter_new(
-        "cgroup_cpu_stat_nr_throttled", __sys_cgroup_metric_cpu_stat_nr_throttled_help, 1,
-        (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpu_stat_nr_throttled);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_stat_nr_throttled = prom_counter_new(
+            "cgroup_v1_cpu_stat_nr_throttled", sys_cgroup_v1_metric_cpu_stat_nr_throttled_help, 1,
+            (const char *[]){ "cgroup" });
+        prom_collector_add_metric(cg_obj->cg_prom_collector,
+                                  cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_stat_nr_throttled);
 
-    cg_obj->cg_metrics.cgroup_metric_cpu_stat_throttled_time_ns = prom_counter_new(
-        "cgroup_cpu_stat_throttled_time_ns", __sys_cgroup_metric_cpu_stat_throttled_time_ns_help, 1,
-        (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpu_stat_throttled_time_ns);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_stat_throttled_time_ns = prom_counter_new(
+            "cgroup_v1_cpu_stat_throttled_time_ns",
+            sys_cgroup_v1_metric_cpu_stat_throttled_time_ns_help, 1, (const char *[]){ "cgroup" });
+        prom_collector_add_metric(
+            cg_obj->cg_prom_collector,
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_stat_throttled_time_ns);
 
-    cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_ns =
-        prom_counter_new("cgroup_cpuacct_usage_ns", __sys_cgroup_metric_cpuacct_usage_ns_help, 1,
-                         (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_ns);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_ns = prom_counter_new(
+            "cgroup_v1_cpuacct_usage_ns", sys_cgroup_v1_metric_cpuacct_usage_ns_help, 1,
+            (const char *[]){ "cgroup" });
+        prom_collector_add_metric(cg_obj->cg_prom_collector,
+                                  cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_ns);
 
-    cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_ns_per_cpu = prom_counter_new(
-        "cgroup_cpuacct_usage_ns_per_cpu", __sys_cgroup_metric_cpuacct_usage_ns_per_cpu_help, 2,
-        (const char *[]){ "cgroup", "cpu" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_ns_per_cpu);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_ns_per_cpu =
+            prom_counter_new("cgroup_v1_cpuacct_usage_ns_per_cpu",
+                             sys_cgroup_v1_metric_cpuacct_usage_ns_per_cpu_help, 2,
+                             (const char *[]){ "cgroup", "cpu" });
+        prom_collector_add_metric(cg_obj->cg_prom_collector,
+                                  cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_ns_per_cpu);
 
-    cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_user_ns = prom_counter_new(
-        "cgroup_cpuacct_usage_user_ns", __sys_cgroup_metric_cpuacct_usage_user_ns_help, 1,
-        (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_user_ns);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_user_ns = prom_counter_new(
+            "cgroup_v1_cpuacct_usage_user_ns", sys_cgroup_v1_metric_cpuacct_usage_user_ns_help, 1,
+            (const char *[]){ "cgroup" });
+        prom_collector_add_metric(cg_obj->cg_prom_collector,
+                                  cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_user_ns);
 
-    cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_user_ns_per_cpu =
-        prom_counter_new("cgroup_cpuacct_usage_user_ns_per_cpu",
-                         __sys_cgroup_metric_cpuacct_usage_user_ns_per_cpu_help, 2,
-                         (const char *[]){ "cgroup", "cpu" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_user_ns_per_cpu);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_user_ns_per_cpu =
+            prom_counter_new("cgroup_v1_cpuacct_usage_user_ns_per_cpu",
+                             sys_cgroup_v1_metric_cpuacct_usage_user_ns_per_cpu_help, 2,
+                             (const char *[]){ "cgroup", "cpu" });
+        prom_collector_add_metric(
+            cg_obj->cg_prom_collector,
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_user_ns_per_cpu);
 
-    cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_system_ns = prom_counter_new(
-        "cgroup_cpuacct_usage_system_ns", __sys_cgroup_metric_cpuacct_usage_system_ns_help, 1,
-        (const char *[]){ "cgroup" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_system_ns);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_system_ns = prom_counter_new(
+            "cgroup_v1_cpuacct_usage_system_ns", sys_cgroup_v1_metric_cpuacct_usage_system_ns_help,
+            1, (const char *[]){ "cgroup" });
+        prom_collector_add_metric(cg_obj->cg_prom_collector,
+                                  cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_system_ns);
 
-    cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_system_ns_per_cpu =
-        prom_counter_new("cgroup_cpuacct_usage_system_ns_per_cpu",
-                         __sys_cgroup_metric_cpuacct_usage_system_ns_per_cpu_help, 2,
-                         (const char *[]){ "cgroup", "cpu" });
-    prom_collector_add_metric(cg_obj->cg_prom_collector,
-                              cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_system_ns_per_cpu);
+        cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_system_ns_per_cpu =
+            prom_counter_new("cgroup_v1_cpuacct_usage_system_ns_per_cpu",
+                             sys_cgroup_v1_metric_cpuacct_usage_system_ns_per_cpu_help, 2,
+                             (const char *[]){ "cgroup", "cpu" });
+        prom_collector_add_metric(
+            cg_obj->cg_prom_collector,
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_system_ns_per_cpu);
 
-    cg_obj->cg_counters.usage_per_cpus = (struct sys_cgroup_usage_per_cpu *)calloc(
-        cpu_cores_num, sizeof(struct sys_cgroup_usage_per_cpu));
+        cg_obj->cg_counters.usage_per_cpus = (struct sys_cgroup_usage_per_cpu *)calloc(
+            cpu_cores_num, sizeof(struct sys_cgroup_usage_per_cpu));
+    } else if (cg_type == CGROUPS_V2) {
+    }
 
     debug("[PLUGIN_CGROUPS] init cgroup obj:'%s' subsys-cpuacct metrics success.", cg_obj->cg_id);
 }
@@ -147,14 +157,14 @@ static void __collect_cgroup_v1_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
                       cg_obj->cpuacct_cpuacct_stat_filename);
             }
 
-            prom_counter_add(cg_obj->cg_metrics.cgroup_metric_cpu_stat_nr_periods,
+            prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_stat_nr_periods,
                              (double)(nr_periods - cg_obj->cg_counters.cpu_stat_nr_periods),
                              (const char *[]){ cg_obj->cg_id });
-            prom_counter_add(cg_obj->cg_metrics.cgroup_metric_cpu_stat_nr_throttled,
+            prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_stat_nr_throttled,
                              (double)(nr_throttled - cg_obj->cg_counters.cpu_stat_nr_throttled),
                              (const char *[]){ cg_obj->cg_id });
             prom_counter_add(
-                cg_obj->cg_metrics.cgroup_metric_cpu_stat_throttled_time_ns,
+                cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_stat_throttled_time_ns,
                 (double)(throttled_time_ns - cg_obj->cg_counters.cpu_stat_throttled_time_ns),
                 (const char *[]){ cg_obj->cg_id });
 
@@ -189,9 +199,9 @@ static void __collect_cgroup_v1_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
                         system_userhzs = str2uint64_t(procfile_lineword(pf, index, 1));
                     }
                 }
-                prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_cpuacct_stat_user_userhzs,
+                prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_stat_user_userhzs,
                                (double)user_userhzs, (const char *[]){ cg_obj->cg_id });
-                prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_cpuacct_stat_system_userhzs,
+                prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_stat_system_userhzs,
                                (double)system_userhzs, (const char *[]){ cg_obj->cg_id });
                 debug("[PLUGIN_CGROUPS] cgroup obj:'%s' cpuacct.stat user:%lu system:%lu",
                       cg_obj->cg_id, user_userhzs, system_userhzs);
@@ -210,7 +220,7 @@ static void __collect_cgroup_v1_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
             // don't continue
             return;
         }
-        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_cpu_shares, (double)cpu_shares,
+        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_shares, (double)cpu_shares,
                        (const char *[]){ cg_obj->cg_id });
     }
 
@@ -221,8 +231,8 @@ static void __collect_cgroup_v1_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
             // don't continue
             return;
         }
-        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_cpu_cfs_period_us, (double)cfs_period_us,
-                       (const char *[]){ cg_obj->cg_id });
+        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_cfs_period_us,
+                       (double)cfs_period_us, (const char *[]){ cg_obj->cg_id });
     }
 
     if (likely(cg_obj->cpuacct_cpu_cfs_quota_us_filename)) {
@@ -232,8 +242,8 @@ static void __collect_cgroup_v1_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
             // don't continue
             return;
         }
-        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_cpu_cfs_quota_us, (double)cfs_quota_us,
-                       (const char *[]){ cg_obj->cg_id });
+        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpu_cfs_quota_us,
+                       (double)cfs_quota_us, (const char *[]){ cg_obj->cg_id });
     }
 
     debug("[PLUGIN_CGROUPS] cgroup:'%s' cpu.shares:%lu, cpu.cfs_period_us:%lu, "
@@ -259,17 +269,17 @@ static void __collect_cgroup_v1_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
 
                         // call prom_counter_add
                         prom_counter_add(
-                            cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_ns_per_cpu,
+                            cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_ns_per_cpu,
                             (double)(usage_percpu_ns
                                      - cg_obj->cg_counters.usage_per_cpus[index - 1].usage_ns),
                             (const char *[]){ cg_obj->cg_id, cpu_id });
                         prom_counter_add(
-                            cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_user_ns_per_cpu,
+                            cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_user_ns_per_cpu,
                             (double)(usage_percpu_user_ns
                                      - cg_obj->cg_counters.usage_per_cpus[index - 1].usage_user_ns),
                             (const char *[]){ cg_obj->cg_id, cpu_id });
                         prom_counter_add(
-                            cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_system_ns_per_cpu,
+                            cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_system_ns_per_cpu,
                             (double)(usage_percpu_sys_ns
                                      - cg_obj->cg_counters.usage_per_cpus[index - 1]
                                            .usage_system_ns),
@@ -302,7 +312,7 @@ static void __collect_cgroup_v1_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
             // don't continue
             return;
         }
-        prom_counter_add(cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_ns,
+        prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_ns,
                          (double)(usage_ns - cg_obj->cg_counters.cpuacct_usage_ns),
                          (const char *[]){ cg_obj->cg_id });
         cg_obj->cg_counters.cpuacct_usage_ns = usage_ns;
@@ -314,7 +324,7 @@ static void __collect_cgroup_v1_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
             // don't continue
             return;
         }
-        prom_counter_add(cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_user_ns,
+        prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_user_ns,
                          (double)(usage_user_ns - cg_obj->cg_counters.cpuacct_usage_user_ns),
                          (const char *[]){ cg_obj->cg_id });
         cg_obj->cg_counters.cpuacct_usage_user_ns = usage_user_ns;
@@ -325,7 +335,7 @@ static void __collect_cgroup_v1_cpuacct_metrics(struct xm_cgroup_obj *cg_obj) {
             // don't continue
             return;
         }
-        prom_counter_add(cg_obj->cg_metrics.cgroup_metric_cpuacct_usage_system_ns,
+        prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_system_ns,
                          (double)(usage_sys_ns - cg_obj->cg_counters.cpuacct_usage_system_ns),
                          (const char *[]){ cg_obj->cg_id });
         cg_obj->cg_counters.cpuacct_usage_system_ns = usage_sys_ns;

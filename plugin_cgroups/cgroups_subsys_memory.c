@@ -45,238 +45,250 @@ static uint64_t __cache_bytes = 0, __rss_bytes = 0, __rss_huge_bytes = 0, __shme
                 __total_active_file_bytes = 0, __total_unevictable_bytes = 0;
 
 void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_cache_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_cache",
-                                 cg_obj->cg_prom_collector, __sys_cgroup_memory_stat_cache_help);
+    if (cg_type == CGROUPS_V1) {
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_cache_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_cache", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_cache_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_rss_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_rss",
-                                 cg_obj->cg_prom_collector, __sys_cgroup_memory_stat_rss_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_rss_bytes,
+                                     prom_gauge_new, "cgroup_v1_memory_stat_rss",
+                                     cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_rss_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_rss_huge_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_rss_huge",
-                                 cg_obj->cg_prom_collector, __sys_cgroup_memory_stat_rss_huge_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_rss_huge_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_rss_huge", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_rss_huge_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_shmem_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_shmem",
-                                 cg_obj->cg_prom_collector, __sys_cgroup_memory_stat_shmem_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_shmem_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_shmem", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_shmem_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_mapped_file_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_mapped_file",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_mapped_file_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_mapped_file_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_mapped_file", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_mapped_file_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_dirty_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_dirty",
-                                 cg_obj->cg_prom_collector, __sys_cgroup_memory_stat_dirty_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_dirty_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_dirty", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_dirty_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_writeback_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_writeback",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_writeback_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_writeback_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_writeback", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_writeback_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_pgpgin,
-                                 prom_counter_new, "cgroup_memory_stat_pgpgin",
-                                 cg_obj->cg_prom_collector, __sys_cgroup_memory_stat_pgpgin_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_pgpgin,
+                                     prom_counter_new, "cgroup_v1_memory_stat_pgpgin",
+                                     cg_obj->cg_prom_collector,
+                                     sys_cgroup_v1_memory_stat_pgpgin_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_pgpgout,
-                                 prom_counter_new, "cgroup_memory_stat_pgpgout",
-                                 cg_obj->cg_prom_collector, __sys_cgroup_memory_stat_pgpgout_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_pgpgout,
+                                     prom_counter_new, "cgroup_v1_memory_stat_pgpgout",
+                                     cg_obj->cg_prom_collector,
+                                     sys_cgroup_v1_memory_stat_pgpgout_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_pgfault,
-                                 prom_counter_new, "cgroup_memory_stat_pgfault",
-                                 cg_obj->cg_prom_collector, __sys_cgroup_memory_stat_pgfault_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_pgfault,
+                                     prom_counter_new, "cgroup_v1_memory_stat_pgfault",
+                                     cg_obj->cg_prom_collector,
+                                     sys_cgroup_v1_memory_stat_pgfault_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_pgmajfault,
-                                 prom_counter_new, "cgroup_memory_stat_pgmajfault",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_pgmajfault_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_pgmajfault,
+                                     prom_counter_new, "cgroup_v1_memory_stat_pgmajfault",
+                                     cg_obj->cg_prom_collector,
+                                     sys_cgroup_v1_memory_stat_pgmajfault_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_inactive_anon_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_inactive_anon",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_inactive_anon_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_inactive_anon_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_inactive_anon", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_inactive_anon_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_active_anon_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_active_anon",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_active_anon_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_active_anon_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_active_anon", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_active_anon_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_inactive_file_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_inactive_file",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_inactive_file_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_inactive_file_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_inactive_file", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_inactive_file_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_active_file_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_active_file",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_active_file_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_active_file_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_active_file", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_active_file_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_unevictable_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_unevictable",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_unevictable_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_unevictable_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_unevictable", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_unevictable_help);
 
-    __register_new_cgroup_metric(
-        cg_obj->cg_metrics.cgroup_metric_memory_stat_hierarchical_memory_limit_bytes,
-        prom_gauge_new, "cgroup_memory_stat_hierarchical_memory_limit", cg_obj->cg_prom_collector,
-        __sys_cgroup_memory_stat_hierarchical_memory_limit_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_hierarchical_memory_limit_bytes,
+            prom_gauge_new, "cgroup_v1_memory_stat_hierarchical_memory_limit",
+            cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_hierarchical_memory_limit_help);
 
-    __register_new_cgroup_metric(
-        cg_obj->cg_metrics.cgroup_metric_memory_stat_hierarchical_memsw_limit_bytes, prom_gauge_new,
-        "cgroup_memory_stat_hierarchical_memsw_limit", cg_obj->cg_prom_collector,
-        __sys_cgroup_memory_stat_hierarchical_memsw_limit_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_hierarchical_memsw_limit_bytes,
+            prom_gauge_new, "cgroup_v1_memory_stat_hierarchical_memsw_limit",
+            cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_hierarchical_memsw_limit_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_swap_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_swap",
-                                 cg_obj->cg_prom_collector, __sys_cgroup_memory_stat_swap_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_swap_bytes,
+                                     prom_gauge_new, "cgroup_v1_memory_stat_swap",
+                                     cg_obj->cg_prom_collector,
+                                     sys_cgroup_v1_memory_stat_swap_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_cache_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_total_cache",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_cache_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_cache_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_total_cache", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_cache_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_rss_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_total_rss",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_rss_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_rss_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_total_rss", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_rss_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_rss_huge_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_total_rss_huge",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_rss_huge_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_rss_huge_bytes,
+            prom_gauge_new, "cgroup_v1_memory_stat_total_rss_huge", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_rss_huge_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_shmem_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_total_shmem",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_shmem_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_shmem_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_total_shmem", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_shmem_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_swap_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_total_swap",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_swap_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_swap_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_total_swap", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_swap_help);
 
-    __register_new_cgroup_metric(
-        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_mapped_file_bytes, prom_gauge_new,
-        "cgroup_memory_stat_total_mapped_file", cg_obj->cg_prom_collector,
-        __sys_cgroup_memory_stat_total_mapped_file_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_mapped_file_bytes,
+            prom_gauge_new, "cgroup_v1_memory_stat_total_mapped_file", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_mapped_file_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_dirty_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_total_dirty",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_dirty_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_dirty_bytes, prom_gauge_new,
+            "cgroup_v1_memory_stat_total_dirty", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_dirty_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_writeback_bytes,
-                                 prom_gauge_new, "cgroup_memory_stat_total_writeback",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_writeback_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_writeback_bytes,
+            prom_gauge_new, "cgroup_v1_memory_stat_total_writeback", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_writeback_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_pgpgin,
-                                 prom_counter_new, "cgroup_memory_stat_total_pgpgin",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_pgpgin_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_pgpgin, prom_counter_new,
+            "cgroup_v1_memory_stat_total_pgpgin", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_pgpgin_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_pgpgout,
-                                 prom_counter_new, "cgroup_memory_stat_total_pgpgout",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_pgpgout_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_pgpgout, prom_counter_new,
+            "cgroup_v1_memory_stat_total_pgpgout", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_pgpgout_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_pgfault,
-                                 prom_counter_new, "cgroup_memory_stat_total_pgfault",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_pgfault_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_pgfault, prom_counter_new,
+            "cgroup_v1_memory_stat_total_pgfault", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_pgfault_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_pgmajfault,
-                                 prom_counter_new, "cgroup_memory_stat_total_pgmajfault",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_stat_total_pgmajfault_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_pgmajfault, prom_counter_new,
+            "cgroup_v1_memory_stat_total_pgmajfault", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_pgmajfault_help);
 
-    __register_new_cgroup_metric(
-        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_inactive_anon_bytes, prom_gauge_new,
-        "cgroup_memory_stat_total_inactive_anon", cg_obj->cg_prom_collector,
-        __sys_cgroup_memory_stat_total_inactive_anon_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_inactive_anon_bytes,
+            prom_gauge_new, "cgroup_v1_memory_stat_total_inactive_anon", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_inactive_anon_help);
 
-    __register_new_cgroup_metric(
-        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_active_anon_bytes, prom_gauge_new,
-        "cgroup_memory_stat_total_active_anon", cg_obj->cg_prom_collector,
-        __sys_cgroup_memory_stat_total_active_anon_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_active_anon_bytes,
+            prom_gauge_new, "cgroup_v1_memory_stat_total_active_anon", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_active_anon_help);
 
-    __register_new_cgroup_metric(
-        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_inactive_file_bytes, prom_gauge_new,
-        "cgroup_memory_stat_total_inactive_file", cg_obj->cg_prom_collector,
-        __sys_cgroup_memory_stat_total_inactive_file_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_inactive_file_bytes,
+            prom_gauge_new, "cgroup_v1_memory_stat_total_inactive_file", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_inactive_file_help);
 
-    __register_new_cgroup_metric(
-        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_active_file_bytes, prom_gauge_new,
-        "cgroup_memory_stat_total_active_file", cg_obj->cg_prom_collector,
-        __sys_cgroup_memory_stat_total_active_file_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_active_file_bytes,
+            prom_gauge_new, "cgroup_v1_memory_stat_total_active_file", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_active_file_help);
 
-    __register_new_cgroup_metric(
-        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_unevictable_bytes, prom_gauge_new,
-        "cgroup_memory_stat_total_unevictable", cg_obj->cg_prom_collector,
-        __sys_cgroup_memory_stat_total_unevictable_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_unevictable_bytes,
+            prom_gauge_new, "cgroup_v1_memory_stat_total_unevictable", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_stat_total_unevictable_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_usage_in_bytes,
-                                 prom_gauge_new, "cgroup_memory_usage_in_bytes",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_usage_in_bytes_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_usage_in_bytes,
+                                     prom_gauge_new, "cgroup_v1_memory_usage_in_bytes",
+                                     cg_obj->cg_prom_collector,
+                                     sys_cgroup_v1_memory_usage_in_bytes_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_limit_in_bytes,
-                                 prom_gauge_new, "cgroup_memory_limit_in_bytes",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_limit_in_bytes_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_limit_in_bytes,
+                                     prom_gauge_new, "cgroup_v1_memory_limit_in_bytes",
+                                     cg_obj->cg_prom_collector,
+                                     sys_cgroup_v1_memory_limit_in_bytes_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_failcnt, prom_gauge_new,
-                                 "cgroup_memory_failcnt", cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_failcnt_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_failcnt,
+                                     prom_gauge_new, "cgroup_v1_memory_failcnt",
+                                     cg_obj->cg_prom_collector, sys_cgroup_v1_memory_failcnt_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_max_usage_in_bytes,
-                                 prom_gauge_new, "cgroup_memory_max_usage_in_bytes",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_max_usage_in_bytes_help);
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_max_usage_in_bytes, prom_gauge_new,
+            "cgroup_v1_memory_max_usage_in_bytes", cg_obj->cg_prom_collector,
+            sys_cgroup_v1_memory_max_usage_in_bytes_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_swappiness, prom_gauge_new,
-                                 "cgroup_memory_swappiness", cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_swappiness_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_swappiness,
+                                     prom_gauge_new, "cgroup_v1_memory_swappiness",
+                                     cg_obj->cg_prom_collector,
+                                     sys_cgroup_v1_memory_swappiness_help);
 
-    __register_new_cgroup_metric(cg_obj->cg_metrics.cgroup_metric_memory_pressure_level,
-                                 prom_gauge_new, "cgroup_memory_pressure_level",
-                                 cg_obj->cg_prom_collector,
-                                 __sys_cgroup_memory_pressure_level_help);
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_pressure_level,
+                                     prom_gauge_new, "cgroup_v1_memory_pressure_level",
+                                     cg_obj->cg_prom_collector,
+                                     sys_cgroup_v1_memory_pressure_level_help);
 
-    arl_expect(cg_obj->arl_base_mem_stat, "cache", &__cache_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "rss", &__rss_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "rss_huge", &__rss_huge_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "mapped_file", &__mapped_file_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "dirty", &__dirty_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "writeback", &__writeback_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "pgpgin", &__pgpgin);
-    arl_expect(cg_obj->arl_base_mem_stat, "pgpgout", &__pgpgout);
-    arl_expect(cg_obj->arl_base_mem_stat, "pgfault", &__pgfault);
-    arl_expect(cg_obj->arl_base_mem_stat, "pgmajfault", &__pgmajfault);
-    arl_expect(cg_obj->arl_base_mem_stat, "inactive_anon", &__inactive_anon_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "active_anon", &__active_anon_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "inactive_file", &__inactive_file_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "active_file", &__active_file_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "unevictable", &__unevictable_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "hierarchical_memory_limit",
-               &__hierarchical_memory_limit_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_cache", &__total_cache_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_rss", &__total_rss_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_rss_huge", &__total_rss_huge_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_shmem", &__total_shmem_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_mapped_file", &__total_mapped_file_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_dirty", &__total_dirty_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_writeback", &__total_writeback_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_pgpgin", &__total_pgpgin);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_pgpgout", &__total_pgpgout);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_pgfault", &__total_pgfault);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_pgmajfault", &__total_pgmajfault);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_inactive_anon", &__total_inactive_anon_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_active_anon", &__total_active_anon_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_inactive_file", &__total_inactive_file_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_active_file", &__total_active_file_bytes);
-    arl_expect(cg_obj->arl_base_mem_stat, "total_unevictable", &__total_unevictable_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "cache", &__cache_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "rss", &__rss_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "rss_huge", &__rss_huge_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "mapped_file", &__mapped_file_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "dirty", &__dirty_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "writeback", &__writeback_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "pgpgin", &__pgpgin);
+        arl_expect(cg_obj->arl_base_mem_stat, "pgpgout", &__pgpgout);
+        arl_expect(cg_obj->arl_base_mem_stat, "pgfault", &__pgfault);
+        arl_expect(cg_obj->arl_base_mem_stat, "pgmajfault", &__pgmajfault);
+        arl_expect(cg_obj->arl_base_mem_stat, "inactive_anon", &__inactive_anon_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "active_anon", &__active_anon_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "inactive_file", &__inactive_file_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "active_file", &__active_file_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "unevictable", &__unevictable_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "hierarchical_memory_limit",
+                   &__hierarchical_memory_limit_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_cache", &__total_cache_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_rss", &__total_rss_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_rss_huge", &__total_rss_huge_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_shmem", &__total_shmem_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_mapped_file", &__total_mapped_file_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_dirty", &__total_dirty_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_writeback", &__total_writeback_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_pgpgin", &__total_pgpgin);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_pgpgout", &__total_pgpgout);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_pgfault", &__total_pgfault);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_pgmajfault", &__total_pgmajfault);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_inactive_anon", &__total_inactive_anon_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_active_anon", &__total_active_anon_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_inactive_file", &__total_inactive_file_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_active_file", &__total_active_file_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_unevictable", &__total_unevictable_bytes);
+    } else if (cg_type = CGROUPS_V2) {
+    }
 
     debug("[PLUGIN_CGROUPS] init cgroup obj:'%s' subsys-memory metrics success.", cg_obj->cg_id);
 }
@@ -411,8 +423,8 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
         // medium level, mem_pressure = 3
         // low level, mem_pressure = 1
         debug("[PLUGIN_CGROUPS] the cgroup:'%s' memory pressure: %d", cg_obj->cg_id, mem_pressure);
-        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_pressure_level, (double)mem_pressure,
-                       (const char *[]){ cg_obj->cg_id });
+        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_pressure_level,
+                       (double)mem_pressure, (const char *[]){ cg_obj->cg_id });
     }
 
     // read memory.stat
@@ -444,112 +456,126 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
                     }
 
                     // set metric
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_cache_bytes,
+                    prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_cache_bytes,
                                    (double)__cache_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_rss_bytes,
+                    prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_rss_bytes,
                                    (double)__rss_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_rss_huge_bytes,
-                                   (double)__rss_huge_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_mapped_file_bytes,
-                                   (double)__mapped_file_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_dirty_bytes,
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_rss_huge_bytes,
+                        (double)__rss_huge_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_mapped_file_bytes,
+                        (double)__mapped_file_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_dirty_bytes,
                                    (double)__dirty_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_writeback_bytes,
-                                   (double)__writeback_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_writeback_bytes,
+                        (double)__writeback_bytes, (const char *[]){ cg_obj->cg_id });
 
-                    prom_counter_add(cg_obj->cg_metrics.cgroup_metric_memory_stat_pgpgin,
+                    prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_pgpgin,
                                      (double)(__pgpgin - cg_obj->cg_counters.memory_stat_pgpgin),
                                      (const char *[]){ cg_obj->cg_id });
                     cg_obj->cg_counters.memory_stat_pgpgin = __pgpgin;
 
-                    prom_counter_add(cg_obj->cg_metrics.cgroup_metric_memory_stat_pgpgout,
+                    prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_pgpgout,
                                      (double)(__pgpgout - cg_obj->cg_counters.memory_stat_pgpgout),
                                      (const char *[]){ cg_obj->cg_id });
                     cg_obj->cg_counters.memory_stat_pgpgout = __pgpgout;
 
-                    prom_counter_add(cg_obj->cg_metrics.cgroup_metric_memory_stat_pgfault,
+                    prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_pgfault,
                                      (double)(__pgfault - cg_obj->cg_counters.memory_stat_pgfault),
                                      (const char *[]){ cg_obj->cg_id });
                     cg_obj->cg_counters.memory_stat_pgfault = __pgfault;
 
                     prom_counter_add(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_pgmajfault,
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_pgmajfault,
                         (double)(__pgmajfault - cg_obj->cg_counters.memory_stat_pgmajfault),
                         (const char *[]){ cg_obj->cg_id });
                     cg_obj->cg_counters.memory_stat_pgmajfault = __pgmajfault;
 
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_inactive_anon_bytes,
-                                   (double)__inactive_anon_bytes,
-                                   (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_active_anon_bytes,
-                                   (double)__active_anon_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_inactive_file_bytes,
-                                   (double)__inactive_file_bytes,
-                                   (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_active_file_bytes,
-                                   (double)__active_file_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_unevictable_bytes,
-                                   (double)__unevictable_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics
-                                       .cgroup_metric_memory_stat_hierarchical_memory_limit_bytes,
-                                   (double)__hierarchical_memory_limit_bytes,
-                                   (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_cache_bytes,
-                                   (double)__total_cache_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_rss_bytes,
-                                   (double)__total_rss_bytes, (const char *[]){ cg_obj->cg_id });
                     prom_gauge_set(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_rss_huge_bytes,
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_inactive_anon_bytes,
+                        (double)__inactive_anon_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_active_anon_bytes,
+                        (double)__active_anon_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_inactive_file_bytes,
+                        (double)__inactive_file_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_active_file_bytes,
+                        (double)__active_file_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_unevictable_bytes,
+                        (double)__unevictable_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics
+                            .sys_cgroup_v1_metric_memory_stat_hierarchical_memory_limit_bytes,
+                        (double)__hierarchical_memory_limit_bytes,
+                        (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_cache_bytes,
+                        (double)__total_cache_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_rss_bytes,
+                        (double)__total_rss_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_rss_huge_bytes,
                         (double)__total_rss_huge_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_shmem_bytes,
-                                   (double)__total_shmem_bytes, (const char *[]){ cg_obj->cg_id });
                     prom_gauge_set(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_mapped_file_bytes,
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_shmem_bytes,
+                        (double)__total_shmem_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_mapped_file_bytes,
                         (double)__total_mapped_file_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_dirty_bytes,
-                                   (double)__total_dirty_bytes, (const char *[]){ cg_obj->cg_id });
                     prom_gauge_set(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_writeback_bytes,
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_dirty_bytes,
+                        (double)__total_dirty_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_writeback_bytes,
                         (double)__total_writeback_bytes, (const char *[]){ cg_obj->cg_id });
 
                     prom_counter_add(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_pgpgin,
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_pgpgin,
                         (double)(__total_pgpgin - cg_obj->cg_counters.memory_stat_total_pgpgin),
                         (const char *[]){ cg_obj->cg_id });
                     cg_obj->cg_counters.memory_stat_total_pgpgin = __total_pgpgin;
 
                     prom_counter_add(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_pgpgout,
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_pgpgout,
                         (double)(__total_pgpgout - cg_obj->cg_counters.memory_stat_total_pgpgout),
                         (const char *[]){ cg_obj->cg_id });
                     cg_obj->cg_counters.memory_stat_total_pgpgout = __total_pgpgout;
 
                     prom_counter_add(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_pgfault,
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_pgfault,
                         (double)(__total_pgfault - cg_obj->cg_counters.memory_stat_total_pgfault),
                         (const char *[]){ cg_obj->cg_id });
                     cg_obj->cg_counters.memory_stat_total_pgfault = __total_pgfault;
 
-                    prom_counter_add(cg_obj->cg_metrics.cgroup_metric_memory_stat_total_pgmajfault,
-                                     (double)(__total_pgmajfault
-                                              - cg_obj->cg_counters.memory_stat_total_pgmajfault),
-                                     (const char *[]){ cg_obj->cg_id });
+                    prom_counter_add(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_pgmajfault,
+                        (double)(__total_pgmajfault
+                                 - cg_obj->cg_counters.memory_stat_total_pgmajfault),
+                        (const char *[]){ cg_obj->cg_id });
                     cg_obj->cg_counters.memory_stat_total_pgmajfault = __total_pgmajfault;
 
+                    prom_gauge_set(cg_obj->cg_metrics
+                                       .sys_cgroup_v1_metric_memory_stat_total_inactive_anon_bytes,
+                                   (double)__total_inactive_anon_bytes,
+                                   (const char *[]){ cg_obj->cg_id });
                     prom_gauge_set(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_inactive_anon_bytes,
-                        (double)__total_inactive_anon_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_active_anon_bytes,
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_active_anon_bytes,
                         (double)__total_active_anon_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(cg_obj->cg_metrics
+                                       .sys_cgroup_v1_metric_memory_stat_total_inactive_file_bytes,
+                                   (double)__total_inactive_file_bytes,
+                                   (const char *[]){ cg_obj->cg_id });
                     prom_gauge_set(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_inactive_file_bytes,
-                        (double)__total_inactive_file_bytes, (const char *[]){ cg_obj->cg_id });
-                    prom_gauge_set(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_active_file_bytes,
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_active_file_bytes,
                         (double)__total_active_file_bytes, (const char *[]){ cg_obj->cg_id });
                     prom_gauge_set(
-                        cg_obj->cg_metrics.cgroup_metric_memory_stat_total_unevictable_bytes,
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_unevictable_bytes,
                         (double)__total_unevictable_bytes, (const char *[]){ cg_obj->cg_id });
 
                     debug("[PLUGIN_CGROUPS] the cgroup:'%s' memory.stat:'%s' cache:%lu, "
@@ -590,7 +616,7 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
             // don't continue
             return;
         }
-        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_usage_in_bytes,
+        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_usage_in_bytes,
                        (double)usage_in_bytes, (const char *[]){ cg_obj->cg_id });
     }
 
@@ -602,7 +628,7 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
             // don't continue
             return;
         }
-        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_limit_in_bytes,
+        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_limit_in_bytes,
                        (double)limit_in_bytes, (const char *[]){ cg_obj->cg_id });
     }
 
@@ -612,7 +638,7 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
             // don't continue
             return;
         }
-        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_failcnt, (double)failcnt,
+        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_failcnt, (double)failcnt,
                        (const char *[]){ cg_obj->cg_id });
     }
 
@@ -624,7 +650,7 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
             // don't continue
             return;
         }
-        prom_gauge_set(cg_obj->cg_metrics.cgroup_metric_memory_max_usage_in_bytes,
+        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_max_usage_in_bytes,
                        (double)max_usage_in_bytes, (const char *[]){ cg_obj->cg_id });
     }
 

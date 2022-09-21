@@ -115,11 +115,11 @@ struct xm_cgroup_obj {
 
     // v2 需要采集的文件
     sds unified_io_stat_filename;
-    sds unified_cpu_stat_filename;
-    sds unified_memory_stat_filename;
-    sds unified_memory_current_filename;
-    sds unified_cpu_pressure;
     sds unified_io_pressure;
+    sds unified_cpu_stat_filename;         // cpu.stat
+    sds unified_memory_stat_filename;      // memory.stat
+    sds unified_memory_current_filename;   // memory.current
+    sds unified_cpu_pressure;
     sds unified_memory_pressure;
 
     // for prometheus metrics
