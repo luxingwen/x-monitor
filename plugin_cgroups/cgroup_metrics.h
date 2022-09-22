@@ -74,6 +74,35 @@ extern const char *sys_cgroup_v1_memory_max_usage_in_bytes_help;
 extern const char *sys_cgroup_v1_memory_swappiness_help;
 extern const char *sys_cgroup_v1_memory_pressure_level_help;
 
+extern const char *sys_cgroup_v2_metric_cpu_max_help;
+extern const char *sys_cgroup_v2_metric_cpu_stat_nr_periods_help;
+extern const char *sys_cgroup_v2_metric_cpu_stat_nr_throttled_help;
+extern const char *sys_cgroup_v2_metric_cpu_stat_throttled_usec_help;
+extern const char *sys_cgroup_v2_metric_cpu_stat_usage_usec_help;
+extern const char *sys_cgroup_v2_metric_cpu_stat_user_usec_help;
+extern const char *sys_cgroup_v2_metric_cpu_stat_system_usec_help;
+
+extern const char *sys_cgroup_v2_metric_memory_max_help;       // memory.max，-1：表示不限制
+extern const char *sys_cgroup_v2_metric_memory_current_help;   // cg当前使用的内存总量
+extern const char *sys_cgroup_v2_metric_memory_stat_anon_help;
+//  Amount of memory used to cache filesystem data, including tmpfs and shared memory
+extern const char *sys_cgroup_v2_metric_memory_stat_file_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_kernel_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_kernel_stack_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_slab_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_sock_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_anon_thp_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_file_writeback_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_file_dirty_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_pgfault_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_pgmajfault_help;
+
+extern const char *sys_cgroup_v2_metric_memory_stat_inactive_anon_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_active_anon_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_inactive_file_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_active_file_help;
+extern const char *sys_cgroup_v2_metric_memory_stat_unevictable_help;
+
 struct sys_cgroup_metrics {
     prom_gauge_t *sys_cgroup_v1_metric_cpu_shares;          // file cpu.shares
     prom_gauge_t *sys_cgroup_v1_metric_cpu_cfs_period_us;   // 单位：微秒 file cpu.cfs_period_us
@@ -155,4 +184,32 @@ struct sys_cgroup_metrics {
     // 显示当前内存压力值 7: critical,
     // 3: medium, 1: low, 0: none
     prom_gauge_t *sys_cgroup_v1_metric_memory_pressure_level;
+
+    prom_gauge_t   *sys_cgroup_v2_metric_cpu_max;   // cpu资源配额，-1：表示不限制
+    prom_counter_t *sys_cgroup_v2_metric_cpu_stat_nr_periods;   // file cpuacct.cpu.stat
+    prom_counter_t *sys_cgroup_v2_metric_cpu_stat_nr_throttled;
+    prom_counter_t *sys_cgroup_v2_metric_cpu_stat_throttled_usec;   // 微秒
+    prom_counter_t *sys_cgroup_v2_metric_cpu_stat_usage_usec;
+    prom_counter_t *sys_cgroup_v2_metric_cpu_stat_user_usec;
+    prom_counter_t *sys_cgroup_v2_metric_cpu_stat_system_usec;
+
+    prom_gauge_t *sys_cgroup_v2_metric_memory_max_in_bytes;   // memory.max，-1：表示不限制
+    prom_gauge_t *sys_cgroup_v2_metric_memory_current_in_bytes;   // cg当前使用的内存总量
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_anon_bytes;
+    //  Amount of memory used to cache filesystem data, including tmpfs and shared memory
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_file_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_kernel_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_kernel_stack_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_slab_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_sock_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_anon_thp_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_file_writeback_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_file_dirty_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_pgfault;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_pgmajfault;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_inactive_anon_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_active_anon_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_inactive_file_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_active_file_bytes;
+    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_unevictable_bytes;
 };

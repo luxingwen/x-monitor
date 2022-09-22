@@ -1,11 +1,13 @@
-# CGroupV1
+# CGroup指标
 
-## CPU资源限制
-### CPUACCT控制器
+## CGroupV1
+
+### CPU资源配额
+#### CPUACCT控制器
 
 自动生成控制组中任务对CPU资源使用情况的报告。
 
-#### cpu.shares，按权重比例设定CPU的分配
+##### cpu.shares，按权重比例设定CPU的分配
 
 shares用来设置CPU的相对值，必须大于等于2，最后除以权重综合，算出相对比例，按比例分配CPU时间。该指是针对**所有的CPU**。
 
@@ -19,16 +21,16 @@ shares值有如下特点：
 
 cpu.shares是几个控制组之间的CPU分配比例，而且一定要到整个节点中所有的CPU都跑满的时候，它才发挥作用。
 
-#### cpu.cfs_quota_us和cpu.cfs_period_us，设置CPU使用周期和使用上限。
+##### CPU使用周期和使用上限
 
 cpu调度策略有两种：
 
 - 完全公平调度（Completely Fair Scheduler，CFS），按限额和比例分配两种方式进行资源限制。
 - 实时调度（Real-TimeScheduler），针对实时任务按周期分配固定的运行时间。
 
-cfs_period_us：用来配置时间周期长度，单位：**微秒**。取值范围1毫秒(1000ms)~1秒(1000000ms)。它是CFS算法的一个调度周期，一般是100000。
+cpu.cfs_period_us：用来配置时间周期长度，单位：**微秒**。取值范围1毫秒(1000ms)~1秒(1000000ms)。它是CFS算法的一个调度周期，一般是100000。
 
-cfs_quota_us：配置当前cgroup在设置的周期长度内所能使用的cpu时间数，单位：微秒，取值大于1ms即可，如果值为-1（默认值），表示不受CPU时间的限制。它表示CFS算法中，在一个调度周期里这个控制组被允许的运行时间。
+cpu.cfs_quota_us：配置当前cgroup在设置的周期长度内所能使用的cpu时间数，单位：微秒，取值大于1ms即可，如果值为-1（默认值），表示不受CPU时间的限制。它表示CFS算法中，在一个调度周期里这个控制组被允许的运行时间。
 
 两个文件配合起来可以以**绝对比例限制cgroup的cpu的使用上限**。举例：
 
@@ -46,7 +48,7 @@ cfs_quota_us：配置当前cgroup在设置的周期长度内所能使用的cpu�
     # echo 50000 > cpu.cfs_period_us /* period = 50ms */
 ```
 
-#### cpu.shares和cpu.cfs_quota_us、cpu.cfs_period_us一起使用
+cpu.shares和cpu.cfs_quota_us、cpu.cfs_period_us一起使用
 
 三者合起来一起来综合判断，决定了能获得CPU资源上限，上限分为两种情况：
 
@@ -77,7 +79,7 @@ cpu.share and cpu.cfs_quota_us are working together.
 Given a total cpu quota, we should firstly distribute the cpu.share of each cgroup. Then find the cgroups whose exact quota exceeds their cpu.cfs_quota_us, find all such cgroups and keep their quota as their cpu.cfs_quota_us, and collect the exceeded part as unused cpu pool. Distribute these unused cpu pool among other cgroups by cpu.share again, and iterate as above, until no cgroup is exceeding the upper limit.
 ```
 
-#### cpu资源报告
+##### cpu资源报告
 
 提供了CPU资源用量的统计
 
@@ -94,16 +96,16 @@ Given a total cpu quota, we should firstly distribute the cpu.share of each cgro
   - nr_throttled：在上面这些周期中，有多少次是受到了限制（即cgroup中的进程在指定的时间周期中用光了它的配额）。
   - throttled_time：cgroup中的进程被限制使用CPU持续了多长时间，单位是ns。
 
-## 内存资源限制
+### 内存资源配额
 
 当限制内存时，我们最好想清楚如果内存超限了发生什么？该如何处理？业务是否可以接受这样的状态？
 
-### 内存控制能限制什么
+#### 内存控制能限制什么
 
 - 限制cgroup中所有进程所能使用的物理内存总量。
 - 限制cgroup中所有能使用的物理内存+交换空间总量（CONFIG_MEMCG_SWAP），一般在server不开启swap空间。
 
-### Memory Cgroup主要文件
+#### 主要文件
 
 ![memory_cgroup_file](./img/memory_cgroup_file.jpg)
 
@@ -113,7 +115,7 @@ memory.stat说明
 
 ![cgroup_memory_stat_cn](./img/cgroup_memory_stat_cn.jpg)
 
-### 压力通知机制
+#### 压力通知机制
 
 当cgroup内的内存使用量达到某种压力状态的时候，内核可以通过eventfd的机制来通知用户程序，这个通知是通过cgroup.event_control和memory.pressure_level来实现的。使用步骤如下：
 
@@ -130,7 +132,7 @@ memory.stat说明
 
 从efd读取的消息内容就是这三个级别的关键字。**多个level可能要创建多个event_fd**。
 
-### 内存阈值通知
+#### 内存阈值通知
 
 使用cgroup的事件通知机制来对内存阈值进行监控，当内存使用量穿过（高于或低于）设置的阈值时，就会收到通知，步骤如下。
 
@@ -139,11 +141,11 @@ memory.stat说明
 3. 往cgroup.event_control中写入这么一串：`<event_fd> <usage_in_bytes_fd> <threshold>`。
 4. 然后通过读取event_fd得到通知。
 
-## blkio资源限制
+### blkio资源限制
 
 子系统为了减少进程之间共同读写同一块磁盘时相互干扰的问题。blkio子系统可以限制进程读写的IOPS和吞吐量，但它只能对Direct I/O的文件读写进行限速，对Buffered I/O的文件读写无法限制。
 
-### 文件详情
+#### 文件详情
 
 1. blkio.io_service_bytes，被分组迁入或者移出磁盘的字节数量。它按操作类型（读或写，同步或异步）细分。头两个域定义了主次设备号，第三个域定义了操作类型，第四个域定义了字节数量。
 2. blkio.io_serviced，被分组发给磁盘的IO(bio)数量。它按操作类型（读或写，同步或异步）细分。头两个域定义了主次设备号，第三个域定义了操作类型，第四个域定义了IO数量。
@@ -152,7 +154,7 @@ memory.stat说明
 5. blkio.throttle.io_service_bytes，被分组迁入或者移出磁盘的字节数量。它又按操作类型（读或写，同步或异步）细分。头两个域定义了主次设备号，第三个域定义了操作类型，第四个域定义了字节数量。
 6. blkio.throttle.io_serviced，被分组迁入或者移出磁盘的字节数量。它又按操作类型（读或写，同步或异步）细分。头两个域定义了主次设备号，第三个域定义了操作类型，第四个域定义了字节数量。
 
-## V1的缺陷
+#### V1的缺陷
 
 cgroup v1是每个层级对应一个子系统，子系统需要mount挂载使用，每个子系统之间是独立的，很难协同，比如memory subsys和blkio subsys能分别控制某个进程的资源使用，但blkio subsys对进程资源限制的时候无法感知memory subsys中进程资源的使用量。导致Buffer I/O的限制一直没有实现。
 
@@ -160,7 +162,76 @@ cgroup v1是每个层级对应一个子系统，子系统需要mount挂载使用
 
 <img src="./img/cgroup-v1.jpg" alt="cgroup-v1" style="zoom: 67%;" />
 
-# CGroupV2
+## CGroupV2
+
+### CPU资源
+
+#### 资源配额
+
+v2中简化了cpu配额的配置方法，就用一个文件cpu.max，文件中填写2个值，格式为：$MAX $PERIOD。max : period的结果决定了占用cpu的百分比。如下配置方式。
+
+```
+    # 限制cpu的使用为1core
+    cgxset -2 -r cpu.max='100000 100000' x-monitor 
+```
+
+#### 资源统计
+
+文件cpu.stat记录了当前cgroup的cpu消耗统计。
+
+```
+ ⚡ root@localhost  /sys/fs/cgroup/x-monitor  cat cpu.stat
+usage_usec 2707351
+user_usec 1129936
+system_usec 1577414
+nr_periods 782
+nr_throttled 0
+throttled_usec 0
+nr_bursts 0
+burst_usec 0
+```
+
+- usage_usec：占用cpu的总时间，单位微秒。
+- user_usec：用户态占用时间。
+- system_usec：内核态占用。
+- nr_periods：周期计数。
+- nr_throttled：周期内的限制计数。
+- throttled_usec：限制执行的时间。
+- nr_bursts：突发发生的周期数。
+- burst_usec：任何CPU 在各个时期内使用的超过配额的累积挂起时间，内核代码中是纳秒，输出seqfile转换为微妙。
+
+#### 资源压力
+
+cpu.pressure。
+
+### Memory资源
+
+#### 资源配额
+
+memory.max，内存资源的上限，超过就会oom，默认值为max，不限制。如果限制就写入需要限制的字节数
+
+```
+    # 限制memory上限，1G
+    cgxset -2 -r memory.max=1073741824 x-monitor
+    # 不使用swap
+    cgxset -2 -r memory.swap.max=0 x-monitor
+```
+
+memory.swap.max，使用swap的上限。默认为max，如果不想使用swap，设置值为0。通常应该填写0，关闭swap。
+
+memory.min，内存保护机制，如果当前cgroup的内存使用量在min值以内，则任何情况都不会对这部分内存进行回收。
+
+memory.current，显示当前cgroup的内存使用总数，包括后代cgroup。The total amount of memory currently being used by the cgroup and its descendants.
+
+memory.swap.current，显示当前cgroup的swap的使用量。
+
+#### 资源统计
+
+memory.stat，类似/proc/meminfo的详细的内存使用统计信息，单位都是字节。
+
+#### 资源压力
+
+memory.pressure，显示内存的压力失速信息。
 
 ## 资料
 
@@ -168,7 +239,7 @@ cgroup v1是每个层级对应一个子系统，子系统需要mount挂载使用
 - [容器CPU（1）：怎么限制容器的CPU使用？_富士康质检员张全蛋的博客-CSDN博客_容器cpu限制](https://blog.csdn.net/qq_34556414/article/details/120654931)
 - [3.2. cpu Red Hat Enterprise Linux 6 | Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-cpu)
 - [Index of /doc/Documentation/cgroup-v1/ (kernel.org)](https://www.kernel.org/doc/Documentation/cgroup-v1/)
-- [详解Cgroup V2 | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/详解Cgroup V2.html)
+- **[详解Cgroup V2 | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/详解Cgroup V2.html)**
 - [Linux内存中的Cache真的能被回收么？ | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/linuxnei-cun-zhong-de-cache-zhen-de-neng-bei-hui-shou-yao-ff1f.html)
 - [Cgroup - Linux内存资源管理 | Zorro’s Linux Book (zorrozou.github.io)](https://zorrozou.github.io/docs/books/cgroup_linux_memory_control_group.html)
 - [Memory Resource Controller — The Linux Kernel documentation](https://docs.kernel.org/admin-guide/cgroup-v1/memory.html)
@@ -180,6 +251,7 @@ cgroup v1是每个层级对应一个子系统，子系统需要mount挂载使用
 - [Linux Cgroup v1(中文翻译)(4)：Block IO Controller - 啊噗得网 (apude.com)](https://www.apude.com/blog/14886.html)
 - [Cgroup内核文档翻译(2)——Documentation/cgroup-v1/blkio-controller.txt - Hello-World3 - 博客园 (cnblogs.com)](https://www.cnblogs.com/hellokitty2/p/14226290.html)
 - [[译\] Control Group v2（cgroupv2 权威指南）（KernelDoc, 2021） (arthurchiao.art)](https://arthurchiao.art/blog/cgroupv2-zh/)
+- [Control Group v2 — The Linux Kernel documentation](https://docs.kernel.org/admin-guide/cgroup-v2.html)
 
 
 
