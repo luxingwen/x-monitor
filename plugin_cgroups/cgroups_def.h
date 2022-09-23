@@ -51,11 +51,11 @@ struct sys_cgroup_usage_per_cpu {
 struct sys_cgroup_counters {
     uint64_t cpu_stat_nr_periods;
     uint64_t cpu_stat_nr_throttled;
-    uint64_t cpu_stat_throttled_time_ns;
+    uint64_t cpu_stat_throttled_time;
 
-    uint64_t cpuacct_usage_ns;
-    uint64_t cpuacct_usage_user_ns;
-    uint64_t cpuacct_usage_system_ns;
+    uint64_t cpu_stat_usage_time;
+    uint64_t cpu_stat_usage_user_time;
+    uint64_t cpu_stat_usage_system_time;
 
     // uint64_t cpuacct_usage_ns_per_cpu;
     // uint64_t cpuacct_usage_user_ns_per_cpu;
@@ -116,6 +116,7 @@ struct xm_cgroup_obj {
     // v2 需要采集的文件
     sds unified_io_stat_filename;
     sds unified_io_pressure;
+    sds unified_cpu_max_filename;          // cpu.max
     sds unified_cpu_stat_filename;         // cpu.stat
     sds unified_memory_stat_filename;      // memory.stat
     sds unified_memory_current_filename;   // memory.current

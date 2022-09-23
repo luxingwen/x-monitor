@@ -17,7 +17,7 @@ else
 
     cgcreate -g memory,cpu:/hello-cg
     # 限制cpu的使用为1core
-    cgxset -2 -r cpu.max='100000 100000' hello-cg 
+    cgxset -2 -r cpu.max='50000 100000' hello-cg 
     # 限制memory上限，1G
     cgxset -2 -r memory.max=1073741824 hello-cg
     # 不使用swap

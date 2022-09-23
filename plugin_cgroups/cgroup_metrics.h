@@ -185,7 +185,8 @@ struct sys_cgroup_metrics {
     // 3: medium, 1: low, 0: none
     prom_gauge_t *sys_cgroup_v1_metric_memory_pressure_level;
 
-    prom_gauge_t   *sys_cgroup_v2_metric_cpu_max;   // cpu资源配额，-1：表示不限制
+    prom_gauge_t *sys_cgroup_v2_metric_cpu_max;   // cpu资源配额，-1：表示不限制 file cpu.max
+
     prom_counter_t *sys_cgroup_v2_metric_cpu_stat_nr_periods;   // file cpuacct.cpu.stat
     prom_counter_t *sys_cgroup_v2_metric_cpu_stat_nr_throttled;
     prom_counter_t *sys_cgroup_v2_metric_cpu_stat_throttled_usec;   // 微秒
@@ -205,8 +206,10 @@ struct sys_cgroup_metrics {
     prom_gauge_t *sys_cgroup_v2_metric_memory_stat_anon_thp_bytes;
     prom_gauge_t *sys_cgroup_v2_metric_memory_stat_file_writeback_bytes;
     prom_gauge_t *sys_cgroup_v2_metric_memory_stat_file_dirty_bytes;
-    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_pgfault;
-    prom_gauge_t *sys_cgroup_v2_metric_memory_stat_pgmajfault;
+
+    prom_counter_t *sys_cgroup_v2_metric_memory_stat_pgfault;
+    prom_counter_t *sys_cgroup_v2_metric_memory_stat_pgmajfault;
+
     prom_gauge_t *sys_cgroup_v2_metric_memory_stat_inactive_anon_bytes;
     prom_gauge_t *sys_cgroup_v2_metric_memory_stat_active_anon_bytes;
     prom_gauge_t *sys_cgroup_v2_metric_memory_stat_inactive_file_bytes;

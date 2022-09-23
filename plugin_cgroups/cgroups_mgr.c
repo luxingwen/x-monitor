@@ -84,7 +84,7 @@ static struct xm_cgroup_obj *__add_cgroup_obj(const char *cg_id) {
             return NULL;
         }
 
-        init_cgroup_obj_cpuacct_metrics(cg_obj);
+        init_cgroup_obj_cpu_metrics(cg_obj);
         init_cgroup_obj_memory_metrics(cg_obj);
         init_cgroup_obj_blkio_metrics(cg_obj);
 
@@ -166,6 +166,7 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
     sdsfree(cg_obj->unified_io_stat_filename);
     sdsfree(cg_obj->unified_cpu_stat_filename);
     sdsfree(cg_obj->unified_memory_stat_filename);
+    sdsfree(cg_obj->unified_cpu_max_filename);
     sdsfree(cg_obj->unified_memory_current_filename);
     sdsfree(cg_obj->unified_cpu_pressure);
     sdsfree(cg_obj->unified_io_pressure);
@@ -297,6 +298,8 @@ static void __make_cgroup_obj_metric_files(struct xm_cgroup_obj *cg_obj) {
         } else if (cg_type == CGROUPS_V2) {
             cg_obj->unified_io_stat_filename =
                 sdscatfmt(sdsempty(), "%s/%s/io.stat", ctx->unified_path, cg_obj->cg_id);
+            cg_obj->unified_cpu_max_filename =
+                sdscatfmt(sdsempty(), "%s/%s/cpu.max", ctx->unified_path, cg_obj->cg_id);
             cg_obj->unified_cpu_stat_filename =
                 sdscatfmt(sdsempty(), "%s/%s/cpu.stat", ctx->unified_path, cg_obj->cg_id);
             cg_obj->unified_memory_stat_filename =
@@ -505,12 +508,9 @@ static void *__cgroups_discovery_routine(void *UNUSED(arg)) {
 static void __read_cgroup_metrics(struct xm_cgroup_obj *cg_obj) {
     debug("[PLUGIN_CGROUPS] read cg_obj:'%s' metrics", cg_obj->cg_id);
 
-    if (CGROUPS_V1 == cg_type) {
-        collect_cgroup_obj_cpuacct_metrics(cg_obj);
-        collect_cgroup_obj_memory_metrics(cg_obj);
-        collect_cgroup_obj_blkio_metrics(cg_obj);
-    } else if (CGROUPS_V2 == cg_type) {
-    }
+    collect_cgroup_obj_cpu_metrics(cg_obj);
+    collect_cgroup_obj_memory_metrics(cg_obj);
+    collect_cgroup_obj_blkio_metrics(cg_obj);
 }
 
 int32_t cgroups_mgr_init(struct plugin_cgroups_ctx *ctx) {

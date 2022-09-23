@@ -664,5 +664,6 @@ void collect_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
 
     if (cg_type == CGROUPS_V1) {
         __collect_cgroup_v1_memory_metrics(cg_obj);
+    } else if (cg_type == CGROUPS_V2) {
     }
 }
