@@ -288,14 +288,23 @@ void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
         arl_expect(cg_obj->arl_base_mem_stat, "total_active_file", &__total_active_file_bytes);
         arl_expect(cg_obj->arl_base_mem_stat, "total_unevictable", &__total_unevictable_bytes);
     } else if (cg_type = CGROUPS_V2) {
+        __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v2_metric_memory_max_in_bytes,
+                                     prom_gauge_new, "cgroup_v2_memory_max_in_bytes",
+                                     cg_obj->cg_prom_collector,
+                                     sys_cgroup_v2_metric_memory_max_help);
+
+        __register_new_cgroup_metric(
+            cg_obj->cg_metrics.sys_cgroup_v2_metric_memory_current_in_bytes, prom_gauge_new,
+            "cgroup_v2_metric_memory_current_in_bytes", cg_obj->cg_prom_collector,
+            sys_cgroup_v2_metric_memory_current_help);
     }
 
     debug("[PLUGIN_CGROUPS] init cgroup obj:'%s' subsys-memory metrics success.", cg_obj->cg_id);
 }
 
 int32_t init_cgroup_memory_pressure_listener(struct xm_cgroup_obj *cg_obj,
-                                             const char           *cg_memory_base_path,
-                                             const char           *mem_pressure_level_str) {
+                                             const char *          cg_memory_base_path,
+                                             const char *          mem_pressure_level_str) {
     char    file_path[PATH_MAX] = { 0 };
     char    line[LINE_MAX] = { 0 };
     int32_t evt_fd = -1, mem_pressure_fd = -1, ctrl_fd = -1;
