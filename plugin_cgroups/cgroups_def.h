@@ -120,6 +120,7 @@ struct xm_cgroup_obj {
     sds unified_cpu_stat_filename;         // cpu.stat
     sds unified_memory_stat_filename;      // memory.stat
     sds unified_memory_current_filename;   // memory.current
+    sds unified_memory_max_filename;       // memory.max
     sds unified_cpu_pressure;
     sds unified_memory_pressure;
 

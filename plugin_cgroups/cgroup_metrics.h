@@ -194,7 +194,7 @@ struct sys_cgroup_metrics {
     prom_counter_t *sys_cgroup_v2_metric_cpu_stat_user_usec;
     prom_counter_t *sys_cgroup_v2_metric_cpu_stat_system_usec;
 
-    prom_gauge_t *sys_cgroup_v2_metric_memory_max_in_bytes;   // memory.max，-1：表示不限制
+    prom_gauge_t *sys_cgroup_v2_metric_memory_max_in_bytes;   // memory.max，0：表示不限制
     prom_gauge_t *sys_cgroup_v2_metric_memory_current_in_bytes;   // cg当前使用的内存总量
     prom_gauge_t *sys_cgroup_v2_metric_memory_stat_anon_bytes;
     //  Amount of memory used to cache filesystem data, including tmpfs and shared memory

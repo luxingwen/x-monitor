@@ -168,6 +168,7 @@ static void __release_cgroup_obj(struct xm_cgroup_obj *cg_obj) {
     sdsfree(cg_obj->unified_memory_stat_filename);
     sdsfree(cg_obj->unified_cpu_max_filename);
     sdsfree(cg_obj->unified_memory_current_filename);
+    sdsfree(cg_obj->unified_memory_max_filename);
     sdsfree(cg_obj->unified_cpu_pressure);
     sdsfree(cg_obj->unified_io_pressure);
     sdsfree(cg_obj->unified_memory_pressure);
@@ -306,6 +307,8 @@ static void __make_cgroup_obj_metric_files(struct xm_cgroup_obj *cg_obj) {
                 sdscatfmt(sdsempty(), "%s/%s/memory.stat", ctx->unified_path, cg_obj->cg_id);
             cg_obj->unified_memory_current_filename =
                 sdscatfmt(sdsempty(), "%s/%s/memory.current", ctx->unified_path, cg_obj->cg_id);
+            cg_obj->unified_memory_max_filename =
+                sdscatfmt(sdsempty(), "%s/%s/memory.max", ctx->unified_path, cg_obj->cg_id);
             cg_obj->unified_cpu_pressure =
                 sdscatfmt(sdsempty(), "%s/%s/cpu.pressure", ctx->unified_path, cg_obj->cg_id);
             cg_obj->unified_io_pressure =
