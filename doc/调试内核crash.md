@@ -316,6 +316,37 @@ crash> ps
   >3370   3366   3  ffff8d03f6c717c0  RU   0.0   65432   6704  zsh
 ```
 
+通过task的值可以查看task_struct结构数据。
+
+```
+p *(struct task_struct*)0xffff8d03f6c717c0
+```
+
+ps命令参数
+
+```
+ps 打印内核崩溃时所有进程的状态信息
+ps pid 打印内核奔溃时指定进程的状态信息
+ps task 打印内核崩溃时进程描述符对应的进程状态信息
+ps command 打印内核崩溃时进程命令对应的进程状态信息
+ps -k 只输出内核崩溃时内核线程的状态信息
+ps -u 只输出内核崩溃时用户进程的进程状态信息
+ps -G 只输出内核崩溃时线程组的 Leader 线程状态信息
+ps -y policy 只输出内核崩溃时符合特定调度策略的进程状态
+ps -s 输出内核崩溃时进程的内核栈地址
+ps -p 输出内核崩溃时进程的父子关系
+ps -c 打印内核崩溃时某进程的所有子进程
+ps -t 打印内核崩溃时进程时间相关的信息
+ps -l 打印内核崩溃时进程最后运行的时间戳
+ps -m 打印内核崩溃时进程最后运行的时间日期
+ps -C cpus [m/l] 打印内核崩溃时指定 CPU 上进程时间信息
+ps -g 打印内核崩溃时包含指定线程的线程组信息
+ps -r 打印内核崩溃时进程的资源限制信息
+ps -a 打印内核崩溃时进程的参数和环境变量
+ps -S 打印内核崩溃时不同进程状态的数量信息
+ps -A 打印内核崩溃时各个 CPU 上正在运行的进程状态
+```
+
 #### dis - 反汇编
 
 反汇编，参数可以使用地址、符号（函数名、变量名），对齐反汇编得到改地址对应的源码。
@@ -357,6 +388,8 @@ crash> dis -l skb_release_data
 0xffffffffa8fa700e <skb_release_data+30>:       test   $0x1,%al
 0xffffffffa8fa7010 <skb_release_data+32>:       je     0xffffffffa8fa703d <skb_release_data+77>
 ```
+
+**一般使用<u>dis -rl</u>从函数开始到指定的地址**。
 
 #### rd - 读取相应的内存
 
@@ -531,6 +564,20 @@ struct sk_buff {
   cb = "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000",
 struct sk_buff {
 ```
+
+也可以用该命令查看task_struct结构
+
+```
+struct task_struct 0xffff8d03f6c717c0
+```
+
+#### irq - 查看中断信息
+
+```
+irq -c 20 -s -b
+```
+
+以上查看20号cpu的软中断的下半部处理程序。
 
 ## 举例
 
@@ -816,4 +863,5 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 - [系统崩溃 - crash工具介绍 - 简书 (jianshu.com)](https://www.jianshu.com/p/ad03152a0a53)
 - [Centos8 dnf命令 - chillax1314 - 博客园 (cnblogs.com)](https://www.cnblogs.com/chillax1314/articles/14627854.html)
 - [Crash工具实战-结构体解析 (qq.com)](https://mp.weixin.qq.com/s/oGlCg6FclbC21lKxN-Tkng)
+- [crash命令 —— list - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16046328.html)
 
