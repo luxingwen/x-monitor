@@ -545,6 +545,21 @@ crash> kmem -i
     COMMITTED  1101977       4.2 GB   55% of TOTAL LIMIT
 ```
 
+**kmem vma，显示地址的page信息**。
+
+```
+kmem -i 打印系统物理内存使用情况
+kmem -f 打印 ZONE 内 free_area 的信息
+kmem -v 打印 VMALLOC 分配器分配的内存信息
+kmem -V 打印系统 vm_state 表内容
+kmem -V 打印系统 vm_node_state 表内容
+kmem -V 打印系统 vm_numa_state 表内容
+kmem -V 打印系统 vm_event_state 表内容
+kmem -n 打印内存模型下的物理内存信息
+kmem -z 打印所有 Zone 的统计信息
+kmem -h 打印大页内存信息
+```
+
 #### struct - 解析结构体
 
 [struct] <结构体名称> <结构体虚拟地址>
@@ -565,11 +580,41 @@ struct sk_buff {
 struct sk_buff {
 ```
 
-也可以用该命令查看task_struct结构
+也可以用该命令查看task_struct结构对象的数据。
 
 ```
 struct task_struct 0xffff8d03f6c717c0
 ```
+
+查看结构体成员的偏移，使用命令**struct -o timer_list**。
+
+其它命令方式
+
+```
+struct struct_name 获得指定结构体在内核中的定义
+struct struct_name <addr> 获得指定结构体的内容
+struct struct_name.member <addr> 获得指定结构体中指定 member 数据
+struct struct_name -o 获得数据结构各成员在结构体中的偏移
+struct struct_name <addr> -r 获得结构体原始数据
+struct struct_name <addr> -x/-d 以十六进制/十进制方式输出结构体内容
+struct struct_name <addr> -p 打印结构体中指针的类型
+struct struct_name symobl 查看全局 symbol 的结构体内容
+struct struct_name symbol:cpuspec 打印指定 PERCPU 在指定 CPU 上结构体内容
+
+union union_name 获得指定联合体体在内核中的定义
+union union_name <addr> 获得指定联合体的内容
+union union_name.member <addr> 获得指定联合体中指定 member 数据
+union union_name -o 获得联合体各成员在联合体中的偏移
+union union_name <addr> -r 获得结构体原始数据
+union union_name <addr> -x/-d 以十六进制/十进制方式输出联合体体内容
+union union_name <addr> -p 打印联合体中指针的类型
+union union_name symobl 查看全局 symbol 的结构体内容
+union_union symbol:cpuspec 打印指定 PERCPU 在指定 CPU 上联合体内容
+```
+
+#### whatis - 查看数据或者类型信息
+
+如果要查看timer_list结构体定义，可以使用该命令，**whatis timer_list**。
 
 #### irq - 查看中断信息
 
@@ -578,6 +623,19 @@ irq -c 20 -s -b
 ```
 
 以上查看20号cpu的软中断的下半部处理程序。
+
+#### list - 查看链表
+
+```
+list structure.member <start> 通过单链表成员起始地址打印单链表所有成员的地址
+list [-o] offset <start> 通过单链表成员起始地址打印单链表所有成员的地址
+list structure.member -H <start> 通过双链表表头起始地址打印双链表成员的地址
+list [-o] offset -H <start> 通过双链表表头起始地址打印双链表成员的地址
+list structure.member -h <start> 通过双链表成员起始地址打印双链表所有成员的地址
+list [-o] offset -h <start> 通过双链表成员起始地址打印双链表所有成员的地址
+list -s/-S struct 打印链表成员的内容
+list -r 逆序输出链表
+```
 
 ## 举例
 
@@ -799,6 +857,12 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 
 这样就很明确具体是那一行导致的crash了。
 
+## 函数参数传递寄存器约定
+
+在 X86_64 架构中，寄存器的约定如上，当调用一个函数的时候，RDI 寄存器用于传递第一个参数，RSI 寄存器用于传递第二个寄存器，依次类推，R9 寄存器传递第六个参数, 函数返回值保存在 RAX 寄存器中。那么如果函数的参数超过六个，那么多余的参数参数如何传递? 在 X86_64 架构中，函数大于 6 个参数的参数通过堆栈进行传输:
+
+![x86-64_args](./img/x86-64_args.jpg)
+
 ## Crash命令列表
 
 |  命令   |                功能                |
@@ -864,4 +928,5 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 - [Centos8 dnf命令 - chillax1314 - 博客园 (cnblogs.com)](https://www.cnblogs.com/chillax1314/articles/14627854.html)
 - [Crash工具实战-结构体解析 (qq.com)](https://mp.weixin.qq.com/s/oGlCg6FclbC21lKxN-Tkng)
 - [crash命令 —— list - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16046328.html)
+- https://crash-utility.github.io/help_pages/kmem.html
 
