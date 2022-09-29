@@ -17,30 +17,53 @@
 #define AUTHOR "calm.wu <wubo0067@hotmail.com>"
 #define DESC "RCU test"
 
+/*
+1：rcu的read thread会读取新、老两个版本的数据。所以模拟多read
+2：rcu的write发布新数据后，read会读取到新数据。
+3：我觉得只有rcu_read_unlock返回后，synchronize_rcu\call_rcu才会被调用，返回返回。
+4：对于write，这个必须加锁
+5：保证了并发读的时候无锁的损耗
+*/
+
+/*
+Sep 29 16:15:33 localhost kernel: thread: myrcu_rd_thd-12965 __myrcu_header_thread: read a = 755
+Sep 29 16:15:33 localhost kernel: thread: myrcu_rd_thd-12967 __myrcu_header_thread: read a = 755
+Sep 29 16:15:34 localhost kernel: thread: myrcu_rd_thd-12966 __myrcu_header_thread: read a = 755
+Sep 29 16:15:34 localhost kernel: thread: myrcu_rd_thd-12965 __myrcu_header_thread: read a = 755
+Sep 29 16:15:36 localhost kernel: thread: myrcu_wr_thd-12968 __myrcu_writer_thread: write to new 756
+Sep 29 16:15:36 localhost kernel: thread: myrcu_rd_thd-12965 __myrcu_header_thread: read a = 756
+Sep 29 16:15:36 localhost kernel: __myrcu_del: a=755
+*/
+
 struct foo {
     s32             a;
     struct rcu_head rcu;
 };
 
 static struct foo         *g_ptr = NULL;
-static struct task_struct *read_thread = NULL;
-static struct task_struct *write_thread[2] = { NULL, NULL };
+static struct task_struct *read_threads[3] = { NULL, NULL, NULL };
+static struct task_struct *write_thread = NULL;
 
 DEFINE_SPINLOCK(foo_mutex);
 
 // read thread
 static s32 __myrcu_header_thread(void *data) {
     struct foo *p = NULL;
+    // s32         read_delay = *(s32 *)data;
+    s32 delay = (unsigned long)data;
+
+    printk("thread: %s-%d read_delay: %d\n", current->comm, current->pid, delay);
 
     while (!kthread_should_stop()) {
-        ssleep(1);
+        ssleep(delay);
         rcu_read_lock();
         // 从全局变量中读取
         p = rcu_dereference(g_ptr);
         if (p) {
-            printk("thread: %s:%d %s: read a = %d\n", current->comm, current->pid, __func__, p->a);
+            printk("thread: %s-%d %s: read a = %d\n", current->comm, current->pid, __func__, p->a);
         }
-        // 宽限期结束
+        // mdelay(delay * 100);
+        // 读结束，但这不会立即触发释放
         rcu_read_unlock();
     }
     return 0;
@@ -48,6 +71,7 @@ static s32 __myrcu_header_thread(void *data) {
 
 static void __myrcu_del(struct rcu_head *rh) {
     struct foo *p = container_of(rh, struct foo, rcu);
+    // 这一行，一定在rcu_read_unlock之后输出
     printk("%s: a=%d\n", __func__, p->a);
     kfree(p);
 }
@@ -56,27 +80,32 @@ static s32 __myrcu_writer_thread(void *p) {
     struct foo *old_fp;
     struct foo *new_fp;
 
-    s32 value = *(s32 *)p;
+    s32 value = (unsigned long)p;
+
+    printk("thread: %s-%d value: %d\n", current->comm, current->pid, value);
 
     while (!kthread_should_stop()) {
-        ssleep(3);
+        // write每秒更新一次数据
+        ssleep(2);
         new_fp = (struct foo *)kmalloc(sizeof(struct foo), GFP_KERNEL);
         spin_lock(&foo_mutex);
 
-        printk("thread: %s:%d %s: write to new %d\n", current->comm, current->pid, __func__, value);
+        printk("thread: %s-%d %s: write to new %d\n", current->comm, current->pid, __func__, value);
         // 保留old_fp，这个指针的释放需要由synchronize_rcu和call_rcu来决定
         old_fp = g_ptr;
         *new_fp = *old_fp;
         new_fp->a = value;
 
-        // 全局数据更新，实际read获得已经是全局数据的过期数据了
+        // 全局数据发布更新，发布之后read读取的都是最新的数据，但是旧的数据还是会保留一段时间，直到synchronize_rcu结束
+        // 也就是说，rcu_read_lock/unlock读取老数据的thread都退出了，才会释放老数据
         rcu_assign_pointer(g_ptr, new_fp);
 
         spin_unlock(&foo_mutex);
 
         if (old_fp) {
-            // 保证读的数据在读完之前不能被释放
+            // 保证读的数据在读完之前不能被释放，这个仅仅是注册而已，不是同步方法
             call_rcu(&old_fp->rcu, __myrcu_del);
+            printk("thread: %s-%d after call_rcu\n", current->comm, current->pid);
         }
         value++;
     }
@@ -86,24 +115,30 @@ static s32 __myrcu_writer_thread(void *p) {
 static s32 __init myrcu_test_init(void) {
 
     s32 value_1 = 700;
-    s32 value_2 = 90000;
+    s32 read_delay_secs[3] = { 1, 2, 3 };
 
     printk("calm-go: myrcu_test module init\n");
     g_ptr = kzalloc(sizeof(struct foo), GFP_KERNEL);
 
     // 启动内核线程
-    read_thread = kthread_run(__myrcu_header_thread, NULL, "myrcu_rd_thd");
-    write_thread[0] = kthread_run(__myrcu_writer_thread, (void *)&value_1, "myrcu_wr_thd_1");
-    write_thread[1] = kthread_run(__myrcu_writer_thread, (void *)&value_2, "myrcu_wr_thd_2");
+    for (s32 i = 0; i < ARRAY_SIZE(read_threads); i++) {
+        read_threads[i] = kthread_run(__myrcu_header_thread,
+                                      (void *)(unsigned long)read_delay_secs[i], "myrcu_rd_thd");
+    }
+
+    write_thread =
+        kthread_run(__myrcu_writer_thread, (void *)(unsigned long)value_1, "myrcu_wr_thd");
 
     return 0;
 }
 
 static void __exit myrcu_test_exit(void) {
     printk("calm-go: myrcu_test module exit\n");
-    kthread_stop(read_thread);
-    kthread_stop(write_thread[0]);
-    kthread_stop(write_thread[1]);
+    kthread_stop(write_thread);
+
+    for (s32 i = 0; i < ARRAY_SIZE(read_threads); i++) {
+        kthread_stop(read_threads[i]);
+    }
 
     if (g_ptr) {
         kfree(g_ptr);
