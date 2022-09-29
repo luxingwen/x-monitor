@@ -40,6 +40,7 @@ static s32 __myrcu_header_thread(void *data) {
         if (p) {
             printk("thread: %s:%d %s: read a = %d\n", current->comm, current->pid, __func__, p->a);
         }
+        // 宽限期结束
         rcu_read_unlock();
     }
     return 0;
@@ -63,15 +64,18 @@ static s32 __myrcu_writer_thread(void *p) {
         spin_lock(&foo_mutex);
 
         printk("thread: %s:%d %s: write to new %d\n", current->comm, current->pid, __func__, value);
+        // 保留old_fp，这个指针的释放需要由synchronize_rcu和call_rcu来决定
         old_fp = g_ptr;
         *new_fp = *old_fp;
         new_fp->a = value;
 
+        // 全局数据更新，实际read获得已经是全局数据的过期数据了
         rcu_assign_pointer(g_ptr, new_fp);
 
         spin_unlock(&foo_mutex);
 
         if (old_fp) {
+            // 保证读的数据在读完之前不能被释放
             call_rcu(&old_fp->rcu, __myrcu_del);
         }
         value++;

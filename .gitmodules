@@ -4,3 +4,6 @@
 [submodule "extra/zlog"]
 	path = extra/zlog
 	url = https://github.com/HardySimpson/zlog.git
+[submodule "extra/userspace-rcu"]
+	path = extra/userspace-rcu
+	url = git://git.liburcu.org/userspace-rcu.git
