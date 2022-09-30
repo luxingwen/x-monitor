@@ -31,15 +31,16 @@
 //     [VMPRESSURE_CRITICAL] = "critical",
 // };
 
-static uint64_t __cache_bytes = 0, __rss_bytes = 0, __rss_huge_bytes = 0, __mapped_file_bytes = 0,
-                __dirty_bytes = 0, __writeback_bytes = 0, __pgpgin = 0, __pgpgout = 0,
-                __pgfault = 0, __pgmajfault = 0, __inactive_anon_bytes = 0, __active_anon_bytes = 0,
-                __inactive_file_bytes = 0, __active_file_bytes = 0, __unevictable_bytes = 0,
+static uint64_t __cache_bytes = 0, __rss_bytes = 0, __rss_huge_bytes = 0, __shmem_bytes = 0,
+                __mapped_file_bytes = 0, __dirty_bytes = 0, __writeback_bytes = 0, __swap_bytes = 0,
+                __pgpgin = 0, __pgpgout = 0, __pgfault = 0, __pgmajfault = 0,
+                __inactive_anon_bytes = 0, __active_anon_bytes = 0, __inactive_file_bytes = 0,
+                __active_file_bytes = 0, __unevictable_bytes = 0,
                 __hierarchical_memory_limit_bytes = 0, __total_cache_bytes = 0,
                 __total_rss_bytes = 0, __total_rss_huge_bytes = 0, __total_shmem_bytes = 0,
                 __total_mapped_file_bytes = 0, __total_dirty_bytes = 0, __total_writeback_bytes = 0,
-                __total_pgpgin = 0, __total_pgpgout = 0, __total_pgfault = 0,
-                __total_pgmajfault = 0, __total_inactive_anon_bytes = 0,
+                __total_swap_bytes = 0, __total_pgpgin = 0, __total_pgpgout = 0,
+                __total_pgfault = 0, __total_pgmajfault = 0, __total_inactive_anon_bytes = 0,
                 __total_active_anon_bytes = 0, __total_inactive_file_bytes = 0,
                 __total_active_file_bytes = 0, __total_unevictable_bytes = 0, __anon_bytes = 0,
                 __file_bytes = 0, __kernel_bytes = 0, __kernel_stack_bytes = 0, __slab_bytes = 0,
@@ -259,9 +260,11 @@ void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
         arl_expect(cg_obj->arl_base_mem_stat, "cache", &__cache_bytes);
         arl_expect(cg_obj->arl_base_mem_stat, "rss", &__rss_bytes);
         arl_expect(cg_obj->arl_base_mem_stat, "rss_huge", &__rss_huge_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "shmem", &__shmem_bytes);
         arl_expect(cg_obj->arl_base_mem_stat, "mapped_file", &__mapped_file_bytes);
         arl_expect(cg_obj->arl_base_mem_stat, "dirty", &__dirty_bytes);
         arl_expect(cg_obj->arl_base_mem_stat, "writeback", &__writeback_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "swap", &__swap_bytes);
         arl_expect(cg_obj->arl_base_mem_stat, "pgpgin", &__pgpgin);
         arl_expect(cg_obj->arl_base_mem_stat, "pgpgout", &__pgpgout);
         arl_expect(cg_obj->arl_base_mem_stat, "pgfault", &__pgfault);
@@ -280,6 +283,7 @@ void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
         arl_expect(cg_obj->arl_base_mem_stat, "total_mapped_file", &__total_mapped_file_bytes);
         arl_expect(cg_obj->arl_base_mem_stat, "total_dirty", &__total_dirty_bytes);
         arl_expect(cg_obj->arl_base_mem_stat, "total_writeback", &__total_writeback_bytes);
+        arl_expect(cg_obj->arl_base_mem_stat, "total_swap", &__total_swap_bytes);
         arl_expect(cg_obj->arl_base_mem_stat, "total_pgpgin", &__total_pgpgin);
         arl_expect(cg_obj->arl_base_mem_stat, "total_pgpgout", &__total_pgpgout);
         arl_expect(cg_obj->arl_base_mem_stat, "total_pgfault", &__total_pgfault);
@@ -571,6 +575,8 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
                     prom_gauge_set(
                         cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_rss_huge_bytes,
                         (double)__rss_huge_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_shmem_bytes,
+                                   (double)__shmem_bytes, (const char *[]){ cg_obj->cg_id });
                     prom_gauge_set(
                         cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_mapped_file_bytes,
                         (double)__mapped_file_bytes, (const char *[]){ cg_obj->cg_id });
@@ -579,6 +585,8 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
                     prom_gauge_set(
                         cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_writeback_bytes,
                         (double)__writeback_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_swap_bytes,
+                                   (double)__swap_bytes, (const char *[]){ cg_obj->cg_id });
 
                     prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_pgpgin,
                                      (double)(__pgpgin - cg_obj->cg_counters.memory_stat_pgpgin),
@@ -642,6 +650,9 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
                     prom_gauge_set(
                         cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_writeback_bytes,
                         (double)__total_writeback_bytes, (const char *[]){ cg_obj->cg_id });
+                    prom_gauge_set(
+                        cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_swap_bytes,
+                        (double)__total_swap_bytes, (const char *[]){ cg_obj->cg_id });
 
                     prom_counter_add(
                         cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_pgpgin,
@@ -687,26 +698,27 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
                         (double)__total_unevictable_bytes, (const char *[]){ cg_obj->cg_id });
 
                     debug("[PLUGIN_CGROUPS] the cgroup:'%s' memory.stat:'%s' cache:%lu, "
-                          "rss:%lu, rss_huge:%lu, mapped_file:%lu, dirty:%lu, writeback:%lu, "
-                          "pgpgin:%lu, pgpgout:%lu, pgfault:%lu, pgmajfault:%lu, "
-                          "inactive_anon:%lu, active_anon:%lu, inactive_file:%lu, "
+                          "rss:%lu, rss_huge:%lu, shmem:%lu, mapped_file:%lu, dirty:%lu, "
+                          "writeback:%lu, swap:%lu, pgpgin:%lu, pgpgout:%lu, pgfault:%lu, "
+                          "pgmajfault:%lu, inactive_anon:%lu, active_anon:%lu, inactive_file:%lu, "
                           "active_file:%lu, unevictable:%lu, hierarchical_memory_limit:%lu, "
                           "total_cache:%lu, total_rss:%lu, total_rss_huge:%lu, total_shmem:%lu, "
                           "total_mapped_file:%lu, total_dirty:%lu, total_writeback:%lu, "
-                          "total_pgpgin:%lu, total_pgpgout:%lu, total_pgfault:%lu, "
+                          "total_swap:%lu total_pgpgin:%lu, total_pgpgout:%lu, total_pgfault:%lu, "
                           "total_pgmajfault:%lu, total_inactive_anon:%lu, total_active_anon:%lu, "
                           "total_inactive_file:%lu, total_active_file:%lu, total_unevictable:%lu",
                           cg_obj->cg_id, cg_obj->memory_stat_filename, __cache_bytes, __rss_bytes,
-                          __rss_huge_bytes, __mapped_file_bytes, __dirty_bytes, __writeback_bytes,
-                          __pgpgin, __pgpgout, __pgfault, __pgmajfault, __inactive_anon_bytes,
-                          __active_anon_bytes, __inactive_file_bytes, __active_file_bytes,
-                          __unevictable_bytes, __hierarchical_memory_limit_bytes,
-                          __total_cache_bytes, __total_rss_bytes, __total_rss_huge_bytes,
-                          __total_shmem_bytes, __total_mapped_file_bytes, __total_dirty_bytes,
-                          __total_writeback_bytes, __total_pgpgin, __total_pgpgout, __total_pgfault,
-                          __total_pgmajfault, __total_inactive_anon_bytes,
-                          __total_active_anon_bytes, __total_inactive_file_bytes,
-                          __total_active_file_bytes, __total_unevictable_bytes);
+                          __rss_huge_bytes, __shmem_bytes, __mapped_file_bytes, __dirty_bytes,
+                          __writeback_bytes, __swap_bytes, __pgpgin, __pgpgout, __pgfault,
+                          __pgmajfault, __inactive_anon_bytes, __active_anon_bytes,
+                          __inactive_file_bytes, __active_file_bytes, __unevictable_bytes,
+                          __hierarchical_memory_limit_bytes, __total_cache_bytes, __total_rss_bytes,
+                          __total_rss_huge_bytes, __total_shmem_bytes, __total_mapped_file_bytes,
+                          __total_dirty_bytes, __total_writeback_bytes, __total_swap_bytes,
+                          __total_pgpgin, __total_pgpgout, __total_pgfault, __total_pgmajfault,
+                          __total_inactive_anon_bytes, __total_active_anon_bytes,
+                          __total_inactive_file_bytes, __total_active_file_bytes,
+                          __total_unevictable_bytes);
                 }
             } else {
                 return;
