@@ -21,7 +21,7 @@
 
 4. [系统监控](doc/系统监控.md)
 
-5. [cgroup指标查询](doc/CGroup指标查询.md)
+5. [cgroup监控](doc/CGroup监控.md)
 
 6. [eBPF内核观察](doc/eBPF内核观察.md)
 
