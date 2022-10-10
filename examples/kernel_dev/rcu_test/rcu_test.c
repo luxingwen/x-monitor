@@ -23,6 +23,8 @@
 3：我觉得只有rcu_read_unlock返回后，synchronize_rcu\call_rcu才会被调用，返回返回。
 4：对于write，这个必须加锁
 5：保证了并发读的时候无锁的损耗
+
+https://mp.weixin.qq.com/s/PU27yZvWHWVTNDcY6bGVrw
 */
 
 /*
@@ -40,7 +42,7 @@ struct foo {
     struct rcu_head rcu;
 };
 
-static struct foo         *g_ptr = NULL;
+static struct foo *        g_ptr = NULL;
 static struct task_struct *read_threads[3] = { NULL, NULL, NULL };
 static struct task_struct *write_thread = NULL;
 
@@ -87,6 +89,7 @@ static s32 __myrcu_writer_thread(void *p) {
     while (!kthread_should_stop()) {
         // write每秒更新一次数据
         ssleep(2);
+        // 更新都需要在一个拷贝上进行
         new_fp = (struct foo *)kmalloc(sizeof(struct foo), GFP_KERNEL);
         spin_lock(&foo_mutex);
 
