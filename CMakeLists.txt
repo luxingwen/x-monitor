@@ -4,6 +4,9 @@ project(x-monitor)
 set(CMAKE_C_COMPILER "/usr/bin/gcc")
 set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 
+execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
+                OUTPUT_VARIABLE GCC_VERSION)
+
 # 编译输出目录
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
@@ -52,9 +55,11 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow -Wcast-qual -Wcast-align -Wwrite-st
 
 # -Wstrict-prototypes 如果函数的声明或定义没有指出参数类型,编译器就发出警告. (如果函数的前向引用说明指出了参数类型,则允许后面使用旧式风格的函数定义,而不会产生警告.)
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wold-style-definition -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wsuggest-attribute=noreturn -Wjump-misses-init")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wduplicated-cond -Wmisleading-indentation -Wnull-dereference")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wduplicated-branches -Wrestrict")
+if (GCC_VERSION GREATER "4.9")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wsuggest-attribute=noreturn -Wjump-misses-init")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wduplicated-cond -Wmisleading-indentation -Wnull-dereference")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wduplicated-branches -Wrestrict")
+endif()
 
 #  -fsanitize=undefined
 if(USE_ADDRSANITIZER)
@@ -128,7 +133,8 @@ set(EXTRA_LIBS "libcurl.a"
   "libffi.a"
   "libtasn1.a"
   "libunistring.a"
-  "libgmp.a")
+  "libgmp.a"
+  "libzstd.a")
 
 # "libpagemap.a")
 
@@ -241,4 +247,4 @@ target_compile_definitions(x-monitor PRIVATE
   -DAPP_METRIC_LABEL_NAME=${APP_METRIC_LABEL_NAME}
   -DCOMMON_METRIC_PREFIX=${COMMON_METRIC_PREFIX})
 
-target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread ssl crypto uuid dl zstd z m)
+target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread ssl crypto uuid dl z m)
