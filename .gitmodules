@@ -7,3 +7,6 @@
 [submodule "extra/userspace-rcu"]
 	path = extra/userspace-rcu
 	url = git://git.liburcu.org/userspace-rcu.git
+[submodule "extra/zstd"]
+	path = extra/zstd
+	url = https://github.com/facebook/zstd.git

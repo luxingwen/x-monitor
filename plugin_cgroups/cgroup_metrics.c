@@ -98,7 +98,7 @@ const char *sys_cgroup_v1_memory_stat_total_rss_huge_help =
     "The equivalent of `cgroup.memory_stat_rss_huge` that also includes the sum total of that "
     "metric for all descendant cgroups";
 const char *sys_cgroup_v1_memory_stat_total_shmem_help =
-    "	The equivalent of `cgroup.memory_stat_shmem` that also includes the sum total of that "
+    "The equivalent of `cgroup.memory_stat_shmem` that also includes the sum total of that "
     "metric for all descendant cgroups";
 const char *sys_cgroup_v1_memory_stat_total_swap_help =
     "Total amount of swap memory available to this cgroup";
@@ -106,7 +106,7 @@ const char *sys_cgroup_v1_memory_stat_total_mapped_file_help =
     "The equivalent of `cgroup.memory_stat_mapped_file` that also includes the sum total of that "
     "metric for all descendant cgroups";
 const char *sys_cgroup_v1_memory_stat_total_dirty_help =
-    "	The equivalent of `cgroup.memory_stat_dirty` that also includes the sum total of that "
+    "The equivalent of `cgroup.memory_stat_dirty` that also includes the sum total of that "
     "metric for all descendant cgroups";
 const char *sys_cgroup_v1_memory_stat_total_writeback_help =
     "The equivalent of `cgroup.memory_stat_writeback` that also includes the sum total of that "
@@ -121,7 +121,7 @@ const char *sys_cgroup_v1_memory_stat_total_pgfault_help =
     "The equivalent of `cgroup.memory_stat_pgfault` that also includes the sum total of that "
     "metric for all descendant cgroups";
 const char *sys_cgroup_v1_memory_stat_total_pgmajfault_help =
-    "he equivalent of `cgroup.memory_stat_pgmajfault` that also includes the sum total of that "
+    "The equivalent of `cgroup.memory_stat_pgmajfault` that also includes the sum total of that "
     "metric for all descendant cgroups";
 const char *sys_cgroup_v1_memory_stat_total_inactive_anon_help =
     "The equivalent of `cgroup.memory_stat_inactive_anon` that also includes the sum total of that "
@@ -158,7 +158,7 @@ const char *sys_cgroup_v2_metric_cpu_stat_nr_periods_help =
 const char *sys_cgroup_v2_metric_cpu_stat_nr_throttled_help =
     "Number of times the group has been throttled/limited.";
 const char *sys_cgroup_v2_metric_cpu_stat_throttled_usec_help =
-    "The total time duration (in usecs) for which entities of the group have been throttled ";
+    "The total time duration (in usecs) for which entities of the group have been throttled";
 const char *sys_cgroup_v2_metric_cpu_stat_usage_usec_help = "The total CPU time (in usecs)";
 const char *sys_cgroup_v2_metric_cpu_stat_user_usec_help =
     "Total time in microseconds spent in user mode on any CPU by tasks in this cgroup";
