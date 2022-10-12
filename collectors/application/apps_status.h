@@ -20,8 +20,10 @@ struct process_status;
 
 // 应用统计结构
 struct app_status {
-    char             app_name[XM_APP_NAME_SIZE];
     struct list_head l_member;
+
+    char app_name[XM_APP_NAME_SIZE];
+    char app_type_name[XM_APP_NAME_SIZE];
 
     pid_t   app_pid;         // 应用主进程ID
     int32_t process_count;   // 应用关联的进程数量
