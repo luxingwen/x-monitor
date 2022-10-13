@@ -7,14 +7,12 @@
 
 #pragma once
 
+#include "compiler.h"
 #include "common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-extern int32_t str_split_to_nums(const char *str, const char *delim, uint64_t *nums,
-                                 uint16_t nums_max_size);
 
 extern int32_t            str2int32_t(const char *s);
 extern uint32_t           str2uint32_t(const char *s);
@@ -23,12 +21,14 @@ extern unsigned long      str2ul(const char *s);
 extern unsigned long long str2ull(const char *s);
 extern int64_t            str2int64_t(const char *s, char **endptr);
 extern long double        str2ld(const char *s, char **endptr);
-
-extern char *itoa(int32_t value, char *result, int32_t base);
-
-extern uint32_t bkrd_hash(const void *key, size_t len);
-
-extern uint32_t simple_hash(const char *name);
+extern char              *itoa(int32_t value, char *result, int32_t base);
+extern uint32_t           bkrd_hash(const void *key, size_t len);
+extern uint32_t           simple_hash(const char *name);
+extern size_t             strlcpy(char *dst, const char *src, size_t siz);
+extern char             **strsplit(const char *s, const char *delim);
+extern char             **strsplit_count(const char *s, const char *delim, size_t *nb);
+extern int32_t            strsplit_to_nums(const char *str, const char *delim, uint64_t *nums,
+                                           uint16_t nums_max_size);
 
 static __always_inline char *strreplace(char *s, char old, char new) {
     for (; *s; ++s)
@@ -37,11 +37,25 @@ static __always_inline char *strreplace(char *s, char old, char new) {
     return s;
 }
 
-extern size_t strlcpy(char *dst, const char *src, size_t siz);
+static __always_inline void strupr(char *str) {
+    if (likely(NULL != str)) {
+        char *s = str;
+        while (*s) {
+            *s = (*s >= 'a' && *s <= 'z') ? *s - 32 : *s;
+            s++;
+        }
+    }
+}
 
-extern char **strsplit(const char *s, const char *delim);
-
-extern char **strsplit_count(const char *s, const char *delim, size_t *nb);
+static __always_inline void strlwr(char *str) {
+    if (likely(NULL != str)) {
+        char *s = str;
+        while (*s) {
+            *s = (*s >= 'A' && *s <= 'Z') ? *s + 32 : *s;
+            s++;
+        }
+    }
+}
 
 #define str_has_pfx(str, pfx) \
     (strncmp(str, pfx, __builtin_constant_p(pfx) ? sizeof(pfx) - 1 : strlen(pfx)) == 0)

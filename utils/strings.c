@@ -8,8 +8,8 @@
 #include "strings.h"
 #include "compiler.h"
 
-int32_t str_split_to_nums(const char *str, const char *delim, uint64_t *nums,
-                          uint16_t nums_max_size) {
+int32_t strsplit_to_nums(const char *str, const char *delim, uint64_t *nums,
+                         uint16_t nums_max_size) {
     int32_t  count = 0;
     uint64_t num = 0;
 

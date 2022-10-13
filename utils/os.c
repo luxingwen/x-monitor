@@ -433,7 +433,7 @@ static void __get_all_childpids(pid_t ppid, struct process_descendant_pids *pd_p
     read_size = read_file(proc_children_file, proc_children_line, XM_PROC_CHILDREN_LINE_SIZE - 1);
     if (likely(read_size > 0)) {
         child_pids_size =
-            str_split_to_nums(proc_children_line, " ", children_pids, XM_CHILDPID_COUNT_MAX);
+            strsplit_to_nums(proc_children_line, " ", children_pids, XM_CHILDPID_COUNT_MAX);
 
         if (likely(child_pids_size > 0)) {
             pd_pids->pids = (pid_t *)realloc(

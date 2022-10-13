@@ -400,7 +400,7 @@ static void __collect_cgroup_v2_cpu_metrics(struct xm_cgroup_obj *cg_obj) {
             debug("[PLUGIN_CGROUPS] cgroup:'%s' cpu.max:'%s'", cg_obj->cg_id, line);
             if (0 != strncmp(line, "max", 3)) {
                 uint64_t cpu_quota_period[2] = { 100000, 100000 };
-                if (2 == str_split_to_nums(line, " ", cpu_quota_period, 2)) {
+                if (2 == strsplit_to_nums(line, " ", cpu_quota_period, 2)) {
                     // 计算cpu core配额
                     cpu_usage_max = (double)cpu_quota_period[0] / (double)cpu_quota_period[1];
                 }
