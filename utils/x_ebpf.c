@@ -23,11 +23,13 @@ static const char *__ksym_empty_name = "";
 
 static const char *__xdp_action_names[XDP_ACTION_MAX] = {
 
-    [XDP_ABORTED] = "XDP_ABORTED", [XDP_DROP] = "XDP_DROP",         [XDP_PASS] = "XDP_PASS",
-    [XDP_TX] = "XDP_TX",           [XDP_REDIRECT] = "XDP_REDIRECT", [XDP_UNKNOWN] = "XDP_UNKNOWN",
+    [XDP_ABORTED] = "XDP_ABORTED",   [XDP_DROP] = "XDP_DROP",
+    [XDP_PASS] = "XDP_PASS",         [XDP_TX] = "XDP_TX",
+    [XDP_REDIRECT] = "XDP_REDIRECT", [XDP_UNKNOWN] = "XDP_UNKNOWN",
 };
 
-int32_t xm_bpf_printf(enum libbpf_print_level level, const char *fmt, va_list args) {
+int32_t xm_bpf_printf(enum libbpf_print_level level, const char *fmt,
+                      va_list args) {
     // if ( level == LIBBPF_DEBUG && !g_env.verbose ) {
     // 	return 0;
     // }
@@ -146,7 +148,8 @@ int32_t open_raw_sock(const char *iface) {
     struct sockaddr_ll sll;
     int32_t            sock;
 
-    sock = socket(PF_PACKET, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC, htons(ETH_P_ALL));
+    sock = socket(PF_PACKET, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC,
+                  htons(ETH_P_ALL));
     if (sock < 0) {
         error("socket() create raw socket failed: %s", strerror(errno));
         return -errno;
@@ -170,7 +173,8 @@ const char *xm_bpf_xdpaction2str(uint32_t action) {
     return NULL;
 }
 
-int32_t xm_bpf_get_bpf_map_info(int32_t map_fd, struct bpf_map_info *info, int32_t verbose) {
+int32_t xm_bpf_get_bpf_map_info(int32_t map_fd, struct bpf_map_info *info,
+                                int32_t verbose) {
     uint32_t info_len = (uint32_t)sizeof(*info);
 
     if (unlikely(map_fd < 0)) {
@@ -187,21 +191,23 @@ int32_t xm_bpf_get_bpf_map_info(int32_t map_fd, struct bpf_map_info *info, int32
     if (verbose) {
         debug(" - BPF map (bpf_map_type:%d) id:%d name:%s"
               " key_size:%d value_size:%d max_entries:%d",
-              info->type, info->id, info->name, info->key_size, info->value_size,
-              info->max_entries);
+              info->type, info->id, info->name, info->key_size,
+              info->value_size, info->max_entries);
     }
     return 0;
 }
 
-static void xdp_stats_map_get_value_array(int32_t xdp_stats_map_fd, uint32_t key,
+static void xdp_stats_map_get_value_array(int32_t  xdp_stats_map_fd,
+                                          uint32_t key,
                                           struct xdp_stats_datarec *value) {
     if (unlikely(bpf_map_lookup_elem(xdp_stats_map_fd, &key, value))) {
         error("ERR: bpf_map_lookup_elem failed key:0x%X", key);
     }
 }
 
-static void xdp_stats_map_get_value_percpu_array(int32_t xdp_stats_map_fd, uint32_t key,
-                                                 struct xdp_stats_datarec *value) {
+static void
+xdp_stats_map_get_value_percpu_array(int32_t xdp_stats_map_fd, uint32_t key,
+                                     struct xdp_stats_datarec *value) {
     int32_t nr_cpus = xm_bpf_num_possible_cpus();
     int32_t i;
 
@@ -238,7 +244,8 @@ void xm_bpf_xdp_stats_print(int32_t xdp_stats_map_fd) {
     for (key = 0; key < XDP_ACTION_MAX; key++) {
         switch (info.type) {
         case BPF_MAP_TYPE_PERCPU_ARRAY:
-            xdp_stats_map_get_value_percpu_array(xdp_stats_map_fd, key, &records[key]);
+            xdp_stats_map_get_value_percpu_array(xdp_stats_map_fd, key,
+                                                 &records[key]);
             break;
         case BPF_MAP_TYPE_ARRAY:
             xdp_stats_map_get_value_array(xdp_stats_map_fd, key, &records[key]);
@@ -253,13 +260,15 @@ void xm_bpf_xdp_stats_print(int32_t xdp_stats_map_fd) {
         if (records[key].rx_bytes == 0 && records[key].rx_packets == 0)
             continue;
         debug("%s: %lu packets, %lu bytes", __xdp_action_names[key],
-              (uint64_t)records[key].rx_packets, (uint64_t)records[key].rx_bytes);
+              (uint64_t)records[key].rx_packets,
+              (uint64_t)records[key].rx_bytes);
     }
 
     return;
 }
 
-int32_t xm_bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog_fd) {
+int32_t xm_bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags,
+                               int32_t prog_fd) {
     int32_t ret;
 
     // ret = bpf_set_link_xdp_fd(ifindex, prog_fd, xdp_flags);
@@ -272,7 +281,8 @@ int32_t xm_bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog
         uint32_t old_flags = xdp_flags;
         // 将所有mode清空
         xdp_flags &= ~XDP_FLAGS_MODES;
-        xdp_flags |= (old_flags & XDP_FLAGS_SKB_MODE) ? XDP_FLAGS_DRV_MODE : XDP_FLAGS_SKB_MODE;
+        xdp_flags |= (old_flags & XDP_FLAGS_SKB_MODE) ? XDP_FLAGS_DRV_MODE :
+                                                        XDP_FLAGS_SKB_MODE;
         // ret = bpf_set_link_xdp_fd(ifindex, -1, xdp_flags);
         ret = bpf_xdp_attach(ifindex, -1, xdp_flags, NULL);
         if (!ret) {
@@ -282,12 +292,14 @@ int32_t xm_bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog
     }
 
     if (ret < 0) {
-        error("ERR: ifindex(%d) link set xdp fd failed (%d): %s", ifindex, -ret, strerror(-ret));
+        error("ERR: ifindex(%d) link set xdp fd failed (%d): %s", ifindex, -ret,
+              strerror(-ret));
 
         switch (-ret) {
         case EBUSY:
         case EEXIST:
-            error("Hint: XDP already loaded on device, use --force to swap/replace");
+            error("Hint: XDP already loaded on device, use --force to "
+                  "swap/replace");
             break;
         case EOPNOTSUPP:
             error("Hint: Native-XDP not supported, use skb-mode");
@@ -300,7 +312,8 @@ int32_t xm_bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog
     return ret;
 }
 
-int32_t xm_bpf_xdp_link_detach(int32_t ifindex, uint32_t xdp_flags, uint32_t expected_prog_id) {
+int32_t xm_bpf_xdp_link_detach(int32_t ifindex, uint32_t xdp_flags,
+                               uint32_t expected_prog_id) {
     uint32_t curr_prog_id = 0;
     int32_t  ret;
 
@@ -316,8 +329,8 @@ int32_t xm_bpf_xdp_link_detach(int32_t ifindex, uint32_t xdp_flags, uint32_t exp
     }
 
     if (expected_prog_id && curr_prog_id != expected_prog_id) {
-        error("ERR: expected prog id:(%d) no match:(%d), not removing", expected_prog_id,
-              curr_prog_id);
+        error("ERR: expected prog id:(%d) no match:(%d), not removing",
+              expected_prog_id, curr_prog_id);
         return -1;
     }
 
