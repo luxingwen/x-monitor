@@ -8,16 +8,18 @@
 #include "strings.h"
 #include "compiler.h"
 
-int32_t str_split_to_nums(const char *str, const char *delim, uint64_t *nums,
-                          uint16_t nums_max_size) {
+int32_t strsplit_to_nums(const char *str, const char *delim, uint64_t *nums,
+                         uint16_t nums_max_size) {
     int32_t  count = 0;
     uint64_t num = 0;
 
-    if (str == NULL || delim == NULL || nums == NULL || strlen(str) == 0 || strlen(delim) == 0) {
+    if (str == NULL || delim == NULL || nums == NULL || strlen(str) == 0
+        || strlen(delim) == 0) {
         return -EINVAL;
     }
 
-    for (char *tok = strtok((char *restrict)str, delim); tok != NULL && count < nums_max_size;
+    for (char *tok = strtok((char *restrict)str, delim);
+         tok != NULL && count < nums_max_size;
          tok = strtok(NULL, delim), count++) {
         num = strtoull(tok, NULL, 10);
         nums[count] = num;
@@ -193,8 +195,8 @@ char *itoa(int32_t value, char *result, int32_t base) {
     do {
         tmp_value = value;
         value /= base;
-        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"
-            [35 + (tmp_value - value * base)];
+        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnop"
+                 "qrstuvwxyz"[35 + (tmp_value - value * base)];
     } while (value);
 
     // Apply negative sign
@@ -234,8 +236,9 @@ uint32_t simple_hash(const char *name) {
 }
 
 /**
- * Copy the source string to the destination string, but don't copy more than siz-1 characters, and
- * always make sure that the destination string is null terminated
+ * Copy the source string to the destination string, but don't copy more than
+ * siz-1 characters, and always make sure that the destination string is null
+ * terminated
  *
  * @param dst The destination string.
  * @param src The source string to copy.
@@ -273,7 +276,7 @@ static char **_strsplit(const char *s, const char *delim, size_t *nb) {
     void        *data;
     char        *_s = (char *)s;
     const char **ptrs;
-    size_t       ptrsSize, nbWords = 1, sLen = strlen(s), delimLen = strlen(delim);
+    size_t ptrsSize, nbWords = 1, sLen = strlen(s), delimLen = strlen(delim);
 
     while ((_s = strstr(_s, delim))) {
         _s += delimLen;

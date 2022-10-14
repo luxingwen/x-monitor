@@ -234,7 +234,7 @@ int32_t main(int32_t argc, char **argv) {
         case 'p':
             strncpy(filter_pids_buf, optarg, strlen(optarg));
             if ((pid_count =
-                     str_split_to_nums(filter_pids_buf, ":", __filter_pids, FILTERPIDS_MAX_COUNT))
+                     strsplit_to_nums(filter_pids_buf, ":", __filter_pids, FILTERPIDS_MAX_COUNT))
                 < 0) {
                 fprintf(stderr, "invalid filter pids: %s\n", filter_pids_buf);
                 return -1;

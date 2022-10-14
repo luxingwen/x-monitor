@@ -20,7 +20,8 @@ struct simple_pattern {
     struct simple_pattern  *next;
 };
 
-static struct simple_pattern *__parse_pattern(char *str, enum SIMPLE_PREFIX_MODE default_mode) {
+static struct simple_pattern *
+__parse_pattern(char *str, enum SIMPLE_PREFIX_MODE default_mode) {
     enum SIMPLE_PREFIX_MODE mode;
     struct simple_pattern  *child = NULL;
 
@@ -71,9 +72,10 @@ static struct simple_pattern *__parse_pattern(char *str, enum SIMPLE_PREFIX_MODE
     return m;
 }
 
-static char *__add_wildcarded(const char *matched, size_t matched_size, char *wildcarded,
-                              size_t *wildcarded_size) {
-    if (unlikely(wildcarded && *wildcarded_size && matched && *matched && matched_size)) {
+static char *__add_wildcarded(const char *matched, size_t matched_size,
+                              char *wildcarded, size_t *wildcarded_size) {
+    if (unlikely(wildcarded && *wildcarded_size && matched && *matched
+                 && matched_size)) {
         size_t wss = *wildcarded_size - 1;
         size_t len = (matched_size < wss) ? matched_size : wss;
         if (likely(len)) {
@@ -87,8 +89,9 @@ static char *__add_wildcarded(const char *matched, size_t matched_size, char *wi
     return wildcarded;
 }
 
-static int32_t __match_pattern(struct simple_pattern *m, const char *str, size_t len,
-                               char *wildcarded, size_t *wildcarded_size) {
+static int32_t __match_pattern(struct simple_pattern *m, const char *str,
+                               size_t len, char *wildcarded,
+                               size_t *wildcarded_size) {
     char *s;
 
     if (m->len <= len) {
@@ -97,30 +100,34 @@ static int32_t __match_pattern(struct simple_pattern *m, const char *str, size_t
             if (!m->len)
                 return 1;
             if ((s = strstr(str, m->match))) {
-                wildcarded = __add_wildcarded(str, s - str, wildcarded, wildcarded_size);
+                wildcarded =
+                    __add_wildcarded(str, s - str, wildcarded, wildcarded_size);
                 if (!m->child) {
-                    wildcarded = __add_wildcarded(&s[m->len], len - (&s[m->len] - str), wildcarded,
-                                                  wildcarded_size);
+                    wildcarded =
+                        __add_wildcarded(&s[m->len], len - (&s[m->len] - str),
+                                         wildcarded, wildcarded_size);
                     return 1;
                 }
-                return __match_pattern(m->child, &s[m->len], len - (s - str) - m->len, wildcarded,
+                return __match_pattern(m->child, &s[m->len],
+                                       len - (s - str) - m->len, wildcarded,
                                        wildcarded_size);
             }
             break;
         case SIMPLE_PATTERN_PREFIX:
             if (unlikely(strncmp(str, m->match, m->len) == 0)) {
                 if (!m->child) {
-                    wildcarded =
-                        __add_wildcarded(&str[m->len], len - m->len, wildcarded, wildcarded_size);
+                    wildcarded = __add_wildcarded(&str[m->len], len - m->len,
+                                                  wildcarded, wildcarded_size);
                     return 1;
                 }
-                return __match_pattern(m->child, &str[m->len], len - m->len, wildcarded,
-                                       wildcarded_size);
+                return __match_pattern(m->child, &str[m->len], len - m->len,
+                                       wildcarded, wildcarded_size);
             }
             break;
         case SIMPLE_PATTERN_SUFFIX:
             if (unlikely(strcmp(&str[len - m->len], m->match) == 0)) {
-                wildcarded = __add_wildcarded(str, len - m->len, wildcarded, wildcarded_size);
+                wildcarded = __add_wildcarded(str, len - m->len, wildcarded,
+                                              wildcarded_size);
                 if (!m->child)
                     return 1;
                 return 0;
@@ -229,7 +236,8 @@ SIMPLE_PATTERN *simple_pattern_create(const char *list, const char *separators,
     return (SIMPLE_PATTERN *)root;
 }
 
-int32_t simple_pattern_matches_extract(SIMPLE_PATTERN *list, const char *str, char *wildcarded,
+int32_t simple_pattern_matches_extract(SIMPLE_PATTERN *list, const char *str,
+                                       char  *wildcarded,
                                        size_t wildcarded_size) {
     struct simple_pattern *m, *root = (struct simple_pattern *)list;
 
@@ -246,7 +254,8 @@ int32_t simple_pattern_matches_extract(SIMPLE_PATTERN *list, const char *str, ch
         if (__match_pattern(m, str, len, ws, &wss)) {
 
             // if(ws && wss)
-            //    fprintf(stderr, "FINAL WILDCARDED '%s' of length %zu\n", ws, strlen(ws));
+            //    fprintf(stderr, "FINAL WILDCARDED '%s' of length %zu\n", ws,
+            //    strlen(ws));
 
             if (m->negative)
                 return 0;
@@ -280,7 +289,8 @@ void simple_pattern_dump(SIMPLE_PATTERN *p) {
         debug("dump_pattern(NULL)");
         return;
     }
-    // debug("dump_pattern(%p) child=%p next=%p mode=%u match=%s", (void *)root, root->child,
+    // debug("dump_pattern(%p) child=%p next=%p mode=%u match=%s", (void *)root,
+    // root->child,
     //       root->next, root->mode, root->match);
     if (root->child != NULL)
         simple_pattern_dump((SIMPLE_PATTERN *)root->child);
@@ -290,28 +300,32 @@ void simple_pattern_dump(SIMPLE_PATTERN *p) {
 
 /* Heuristic: decide if the pattern could match a DNS name.
 
-   Although this functionality is used directly by socket.c:connection_allowed() it must be in this
-   file because of the SIMPLE_PATTERN/simple_pattern structure hiding. Based on RFC952 / RFC1123. We
-   need to decide if the pattern may match a DNS name, or not. For the negative cases we need to be
-   sure that it can only match an ipv4 or ipv6 address:
+   Although this functionality is used directly by socket.c:connection_allowed()
+   it must be in this file because of the SIMPLE_PATTERN/simple_pattern
+   structure hiding. Based on RFC952 / RFC1123. We need to decide if the pattern
+   may match a DNS name, or not. For the negative cases we need to be sure that
+   it can only match an ipv4 or ipv6 address:
      * IPv6 addresses contain ':', which are illegal characters in DNS.
      * IPv4 addresses cannot contain alpha- characters.
      * DNS TLDs must be alphanumeric to distinguish from IPv4.
    Some patterns (e.g. "*a*" ) could match multiple cases (i.e. DNS or IPv6).
-   Some patterns will be awkward (e.g. "192.168.*") as they look like they are intended to match
-   IPv4-only but could match DNS (i.e. "192.168.com" is a valid name).
+   Some patterns will be awkward (e.g. "192.168.*") as they look like they are
+   intended to match IPv4-only but could match DNS (i.e. "192.168.com" is a
+   valid name).
 */
-static void __scan_is_potential_name(struct simple_pattern *p, int32_t *alpha, int32_t *colon,
-                                     int32_t *wildcards) {
+static void __scan_is_potential_name(struct simple_pattern *p, int32_t *alpha,
+                                     int32_t *colon, int32_t *wildcards) {
     while (p) {
         if (p->match) {
-            if (p->mode == SIMPLE_PATTERN_EXACT && !strcmp("localhost", p->match)) {
+            if (p->mode == SIMPLE_PATTERN_EXACT
+                && !strcmp("localhost", p->match)) {
                 p = p->child;
                 continue;
             }
             char const *scan = p->match;
             while (*scan != 0) {
-                if ((*scan >= 'a' && *scan <= 'z') || (*scan >= 'A' && *scan <= 'Z'))
+                if ((*scan >= 'a' && *scan <= 'z')
+                    || (*scan >= 'A' && *scan <= 'Z'))
                     *alpha = 1;
                 if (*scan == ':')
                     *colon = 1;

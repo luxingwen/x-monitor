@@ -331,7 +331,7 @@ static void __bind_all_childprocess(struct app_status *as, pid_t ppid, pid_t app
     read_size = read_file(proc_children_file, proc_children_line, XM_PROC_CHILDREN_LINE_SIZE - 1);
     if (likely(read_size > 0)) {
         child_pid_count =
-            str_split_to_nums(proc_children_line, " ", children_pids, XM_CHILDPID_COUNT_MAX);
+            strsplit_to_nums(proc_children_line, " ", children_pids, XM_CHILDPID_COUNT_MAX);
 
         if (likely(child_pid_count > 0)) {
             // 判断这个pid是否存在，而且父进程是否相同

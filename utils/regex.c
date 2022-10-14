@@ -43,13 +43,14 @@ int32_t regex_create(struct xm_regex **repp, const char *pattern) {
         return -1;
     }
 
-    re->compiled =
-        pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, 0, &error, &error_offset, NULL);
+    re->compiled = pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, 0,
+                                 &error, &error_offset, NULL);
 
     if (re->compiled == NULL) {
         PCRE2_UCHAR buffer[256];
         pcre2_get_error_message(error, buffer, sizeof(buffer));
-        error("PCRE2 compilation failed at offset %ld: %s\n", error_offset, buffer);
+        error("PCRE2 compilation failed at offset %ld: %s\n", error_offset,
+              buffer);
         return -1;
     }
 
@@ -68,7 +69,8 @@ bool regex_match(struct xm_regex *re, const char *s) {
 
     match = pcre2_match_data_create_from_pattern(re->compiled, NULL);
 
-    error = pcre2_match(re->compiled, (PCRE2_SPTR8)s, strlen(s), 0, 0, match, NULL);
+    error =
+        pcre2_match(re->compiled, (PCRE2_SPTR8)s, strlen(s), 0, 0, match, NULL);
 
     pcre2_match_data_free(match);
 
@@ -89,8 +91,8 @@ int32_t regex_match_values(struct xm_regex *re, const char *subject) {
 
     match_data = pcre2_match_data_create_from_pattern(re->compiled, NULL);
 
-    rc = pcre2_match(re->compiled, (PCRE2_SPTR8)subject, (PCRE2_SIZE)subject_length, 0, 0,
-                     match_data, NULL);
+    rc = pcre2_match(re->compiled, (PCRE2_SPTR8)subject,
+                     (PCRE2_SIZE)subject_length, 0, 0, match_data, NULL);
     if (unlikely(rc < 0)) {
         pcre2_match_data_free(match_data);
         // if (PCRE2_ERROR_NOMATCH == rc) {

@@ -29,7 +29,8 @@ int32_t log_init(const char *log_config_file, const char *log_category_name) {
         if (NULL == g_log_cat) {
             ret = zlog_init(log_config_file);
             if (unlikely(0 != ret)) {
-                fprintf(stderr, "zlog init failed, ret: %d. config file: '%s'\n", ret,
+                fprintf(stderr,
+                        "zlog init failed, ret: %d. config file: '%s'\n", ret,
                         log_config_file);
                 ret = -1;
                 goto init_error;
@@ -37,7 +38,8 @@ int32_t log_init(const char *log_config_file, const char *log_category_name) {
 
             g_log_cat = zlog_get_category(log_category_name);
             if (unlikely(NULL == g_log_cat)) {
-                fprintf(stderr, "zlog get category failed. category name: '%s'\n",
+                fprintf(stderr,
+                        "zlog get category failed. category name: '%s'\n",
                         log_category_name);
                 ret = -2;
                 goto init_error;
