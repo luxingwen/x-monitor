@@ -37,7 +37,7 @@ RunQueue中的线程是按照优先级排序的，这个值可以由系统内核
 
 ### tracepoint函数
 
-下面代码定义了一个tracepoint函数，sched_wakeup_new、sched_wakeup都会加上**前缀trace_**，实际内核代码会调用trace_sched_wakeup/trace_sched_wakeup_new，trace_xxx这两个函数也称为
+下面代码定义了一个tracepoint函数，DEFINE_EVENT宏会给sched_wakeup_new、sched_wakeup加上**前缀trace_**，实际内核代码会调用trace_sched_wakeup/trace_sched_wakeup_new。
 
 ```
 /*
@@ -136,7 +136,7 @@ void wake_up_new_task(struct task_struct *p)
 
 #### 内核唤醒
 
-唤醒操作室通过函数wake_up进行，它会唤醒指定的等待队列上的所有进程。它调用函数try_to_wake_up()，该函数负责将进程设置为TASK_RUNNING状态，调用enqueue_task()将此进程放入红黑树中，如果被唤醒的进程优先级比当前正在执行的进程优先级高，还要设置need_resched标志。
+唤醒操作是通过函数wake_up进行，它会唤醒指定的等待队列上的所有进程。它调用函数try_to_wake_up()，该函数负责将进程设置为TASK_RUNNING状态，调用enqueue_task()将此进程放入红黑树中，如果被唤醒的进程优先级比当前正在执行的进程优先级高，还要设置need_resched标志。
 
 need_resched标志：来表明是否需要重新执行一次调度，该标志对于内核来讲是一个信息，它表示有其他进程应当被运行了，要尽快调用调度程序。相关代码在kernel/sched/core.c
 
