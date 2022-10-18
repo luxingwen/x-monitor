@@ -96,6 +96,13 @@ static const struct bpf_sec_def section_defs[] = {
     bpf_probe_read_user(&check_filename, filename_len, (char*)ctx->args[1]);
     ```
 
+- example:
+
+  ```
+  SEC("tp/syscalls/sys_enter_openat")
+  int handle_openat_enter(struct trace_event_raw_sys_enter *ctx)
+  ```
+
 tracepoint exit函数
 
 - 参数：struct trace_event_raw_sys_exit *ctx
@@ -106,50 +113,108 @@ tracepoint exit函数
   unsigned int fd = (unsigned int)ctx->ret;
   ```
 
+- example：
+
+  ```
+  SEC("tp/syscalls/sys_exit_openat")
+  int handle_openat_exit(struct trace_event_raw_sys_exit *ctx)
+  ```
+
 ### kprobe函数
 
-函数定义：int BPF_KPROBE(函数名, 内核函数参数)，BPF_KPROBE宏实际是展开了struct pt_regs *ctx（Registers and BPF context）。example如下
+- 函数定义：int BPF_KPROBE(函数名, 内核函数参数)，BPF_KPROBE宏实际是展开了struct pt_regs *ctx（Registers and BPF context）。
 
-```
-SEC("kprobe/inet_listen")
-int BPF_KPROBE(inet_listen_entry, struct socket *sock, int backlog)
-{
-	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
-	__u32 tid = (__u32)pid_tgid;
-	struct event event = {};
+  example：
 
-	if (target_pid && target_pid != pid)
-		return 0;
-
-	fill_event(&event, sock);
-	event.pid = pid;
-	event.backlog = backlog;
-	bpf_map_update_elem(&values, &tid, &event, BPF_ANY);
-	return 0;
-}
-```
+  ```
+  SEC("kprobe/inet_listen")
+  int BPF_KPROBE(inet_listen_entry, struct socket *sock, int backlog)
+  {
+  	__u64 pid_tgid = bpf_get_current_pid_tgid();
+  	__u32 pid = pid_tgid >> 32;
+  	__u32 tid = (__u32)pid_tgid;
+  	struct event event = {};
+  
+  	if (target_pid && target_pid != pid)
+  		return 0;
+  
+  	fill_event(&event, sock);
+  	event.pid = pid;
+  	event.backlog = backlog;
+  	bpf_map_update_elem(&values, &tid, &event, BPF_ANY);
+  	return 0;
+  }
+  ```
 
 ### kproberet函数
 
-函数定义：int BPF_KRETPROBE(函数名，参数)。example如下，宏会带上ctx，获取返回值需要ctx
+- 函数定义：int BPF_KRETPROBE(函数名，参数)。example如下，宏会带上ctx，获取返回值需要ctx。
 
-```
-SEC("kretprobe/dummy_file_write")
-int BPF_KRETPROBE(file_write_exit, ssize_t ret)
-{
-	return probe_exit(ctx, WRITE, ret);
-}
-```
+  example：
 
-获取函数返回值：int ret = PT_REGS_RC(ctx);
+  ```
+  SEC("kretprobe/dummy_file_write")
+  int BPF_KRETPROBE(file_write_exit, ssize_t ret)
+  {
+  	return probe_exit(ctx, WRITE, ret);
+  }
+  ```
 
+- 获取函数返回值：int ret = PT_REGS_RC(ctx);
 
+### tp_btf/fentry/fexit函数
+
+- btf raw tracepoint
+
+  tp_btf是编写BPF_TRACE_RAW_TP程序的section前缀。
+
+  ```
+  SEC_DEF("tp_btf/", TRACING, .expected_attach_type = BPF_TRACE_RAW_TP,
+  		.is_attach_btf = true, .attach_fn = attach_trace),
+  ```
+
+  btf raw tracepoint 指的是 [BTF-powered raw tracepoint (tp_btf) 或者说是 BTF-enabled raw tracepoint](https://lore.kernel.org/netdev/20201203204634.1325171-1-andrii@kernel.org/t/) ，更常规的raw tracepoint相比有个最重要的区别：btf版本可以直接在ebpf程序中访问内核内存，不需要像常规raw tracepoint一样需要借助bpf_core_read或bpf_probe_read_kernel这样的辅助函数才能访问内核内存。-------**好像很少这样做**。
+
+  - 函数定义，SEC("tp_btf/<name>")，name和普通的tracepoint函数没什么区别
+
+    ```
+    SEC("tp_btf/block_rq_complete")
+    int BPF_PROG(block_rq_complete, struct request *rq, int error,
+    	     unsigned int nr_bytes)
+    ```
+
+    宏BPF_PROG会自动展开ctx对应到tracepoint函数参数。也可以如下定义。
+
+    ```
+    SEC("tp_btf/block_rq_complete")
+    int btf_raw_tracepoint__block_rq_complete(u64 *ctx)
+    ```
+
+    其中 `ctx[0]` 对应上面 `btf_trace_block_rq_complete` 中 `void *` 后面的第一个参数 `struct pt_regs *`, `ctx[1]` 是第二个参数 `struct request *` 。这两个参数的含义跟前面 [raw tracepoint](https://mozillazg.com/2022/05/ebpf-libbpf-raw-tracepoint-common-questions.html) 中所说的 `TP_PROTO(struct request *rq, int error, unsigned int nr_bytes)` 中的含义是一样的。
+
+  - 确定参数，所有事件在vmlinux中都存在一个名为btf_trace_<name>函数指针定义，以上面函数为例。**参数确定比raw tracepoing函数方便**
+
+    ```
+    typedef void (*btf_trace_block_rq_complete)(void *, struct request *, int, unsigned int);
+    ```
+
+    可以在内核源码中找到tracepoint函数定义
+
+    ```
+    TRACE_EVENT(block_rq_complete,
+    	TP_PROTO(struct request *rq, int error, unsigned int nr_bytes),
+    	TP_ARGS(rq, error, nr_bytes),
+    ```
+
+- fentry
+
+- fexit
 
 ## 资料
 
 - [x86-64汇编入门 - nifengz](https://nifengz.com/introduction_x64_assembly/)
 - [bcc/reference_guide.md at master · iovisor/bcc (github.com)](https://github.com/iovisor/bcc/blob/master/docs/reference_guide.md)
+- [ebpf/libbpf 程序使用 btf raw tracepoint 的常见问题 - mozillazg's Blog](https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec)
 
 
 
