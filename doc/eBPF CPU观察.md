@@ -1,4 +1,4 @@
-# CPU观察
+# eBPF CPU观察
 
 ## CPU调度器
 
