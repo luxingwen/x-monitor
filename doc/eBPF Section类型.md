@@ -103,7 +103,7 @@ static const struct bpf_sec_def section_defs[] = {
   int handle_openat_enter(struct trace_event_raw_sys_enter *ctx)
   ```
 
-tracepoint exit函数
+### tracepoint exit函数
 
 - 参数：struct trace_event_raw_sys_exit *ctx
 
