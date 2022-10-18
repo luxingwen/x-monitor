@@ -487,7 +487,12 @@ ffff8d045dcbd308 563d372b4000 563d3743f000 8100073
 ffff8d045695d6a8 7fc8a22ff000 7fc8a2310000 8000075 /usr/lib64/zsh/5.5.1/zsh/computil.so
 ffff8d045695cae0 7fc8a2310000 7fc8a250f000 8000070 /usr/lib64/zsh/5.5.1/zsh/computil.so
 ffff8d045695ce80 7fc8a250f000 7fc8a2510000 8100071 /usr/lib64/zsh/5.5.1/zsh/computil.so
+```
 
+这里VMA代表struct vm_area_struct对象，START对应vm_start，END对应vm_end，在定位中我们可以通过virtual address找到对应vma，查看vma的结构信息
+
+```
+struct vm_area_struct ffff9af5ba799440
 ```
 
 #### task [pid] - 进程的task_struct和thread_info
