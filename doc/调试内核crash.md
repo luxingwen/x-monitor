@@ -563,7 +563,16 @@ kmem -V 打印系统 vm_event_state 表内容
 kmem -n 打印内存模型下的物理内存信息
 kmem -z 打印所有 Zone 的统计信息
 kmem -h 打印大页内存信息
+kmem -o 获取per-cpu变量在每个CPU上的基地址
 ```
+
+%gs寄存器中保存的是每个cpu的per-cpu基地址
+
+```
+move %gs:0x6a28c12a(%rip), %eax
+```
+
+kmem address，如果不加任何flag，address可以是内核的虚拟地址或者物理地址
 
 #### struct - 解析结构体
 
@@ -628,6 +637,18 @@ irq -c 20 -s -b
 ```
 
 以上查看20号cpu的软中断的下半部处理程序。
+
+#### sys - 查看系统信息
+
+- sys：display essential system information。
+- sys -i
+
+#### p - 计算数值表达式
+
+```
+move %gs:0x6a28c12a(%rip), %eax
+crash> px 0xffffffff95d8ff8f + 0x6a28c12a
+```
 
 #### list - 查看链表
 
@@ -934,4 +955,5 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 - [Crash工具实战-结构体解析 (qq.com)](https://mp.weixin.qq.com/s/oGlCg6FclbC21lKxN-Tkng)
 - [crash命令 —— list - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16046328.html)
 - https://crash-utility.github.io/help_pages/kmem.html
+- [crash命令 —— kmem - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16064197.html)
 

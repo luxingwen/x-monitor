@@ -34,10 +34,6 @@ Section Headers:
   [ 5] license           PROGBITS         0000000000000000  00000070
 ```
 
-```
-readelf -l
-```
-
 ### SEC中的内容
 
 文件libbpf.c中定义了SEC参数内容，带有+号的意味前缀。
