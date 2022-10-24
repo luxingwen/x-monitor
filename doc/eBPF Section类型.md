@@ -145,6 +145,25 @@ static const struct bpf_sec_def section_defs[] = {
   	return 0;
   }
   ```
+  
+  也可以直接使用struct pt_regs *ctx作为参数，需要使用PT_REGS_XXX宏来读取参数信息
+  
+  ```
+  SEC("kprobe/__seccomp_filter")
+  int bpf_prog1(struct pt_regs *ctx)
+  {
+  	int sc_nr = (int)PT_REGS_PARM1(ctx);
+  ```
+  
+  如果参数是结构体
+  
+  ```
+  PROG(SYS__NR_write)(struct pt_regs *ctx)
+  {
+  	struct seccomp_data sd;
+  
+  	bpf_probe_read_kernel(&sd, sizeof(sd), (void *)PT_REGS_PARM2(ctx));
+  ```
 
 ### kproberet函数
 

@@ -32,7 +32,7 @@ SEC("tracepoint/syscalls/sys_enter_ptrace")
 __s32 xm_bpf_deny_ptrace(struct syscalls_enter_ptrace_args *ctx) {
     long ret = 0;
     // strace的pid
-    pid_t pid = xmonitor_get_pid();
+    pid_t pid = __xm_get_pid();
 
     if (target_pid != 0) {
         if (ctx->pid != target_pid) {
@@ -40,7 +40,8 @@ __s32 xm_bpf_deny_ptrace(struct syscalls_enter_ptrace_args *ctx) {
         }
     }
 
-    bpf_printk("x-monitor deny pid:'%ld' ptrace to target pid:'%ld'", pid, target_pid);
+    bpf_printk("x-monitor deny pid:'%ld' ptrace to target pid:'%ld'", pid,
+               target_pid);
     ret = bpf_send_signal(9);
 
     // log event

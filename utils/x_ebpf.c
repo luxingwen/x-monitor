@@ -28,6 +28,16 @@ static const char *__xdp_action_names[XDP_ACTION_MAX] = {
     [XDP_REDIRECT] = "XDP_REDIRECT", [XDP_UNKNOWN] = "XDP_UNKNOWN",
 };
 
+/**
+ * It's a wrapper for vfprintf that prepends the level of the message to the
+ * message itself
+ *
+ * @param level The level of the message.
+ * @param fmt The format string.
+ * @param args the arguments to be passed to the function
+ *
+ * @return The number of characters printed.
+ */
 int32_t xm_bpf_printf(enum libbpf_print_level level, const char *fmt,
                       va_list args) {
     // if ( level == LIBBPF_DEBUG && !g_env.verbose ) {
@@ -39,7 +49,7 @@ int32_t xm_bpf_printf(enum libbpf_print_level level, const char *fmt,
     return vfprintf(stderr, out_fmt, args);
 }
 
-static int32_t ksym_cmp(const void *p1, const void *p2) {
+static __always_inline int32_t __ksym_cmp(const void *p1, const void *p2) {
     return ((const struct ksym *)p1)->addr - ((const struct ksym *)p2)->addr;
 }
 
@@ -64,7 +74,7 @@ int32_t xm_load_kallsyms() {
     }
     fclose(f);
     __sym_cnt = i;
-    qsort(__syms, __sym_cnt, sizeof(struct ksym), ksym_cmp);
+    qsort(__syms, __sym_cnt, sizeof(struct ksym), __ksym_cmp);
     return 0;
 }
 

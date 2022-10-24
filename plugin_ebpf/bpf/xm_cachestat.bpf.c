@@ -114,14 +114,15 @@ __s32 xmonitor_bpf_add_to_page_cache_lru(struct pt_regs *ctx) {
     struct cachestat_value *fill;
 
     // 得到进程ID
-    pid = xmonitor_get_pid();
+    pid = __xm_get_pid();
 
     fill = bpf_map_lookup_elem(&cachestat_map, &pid);
     if (fill) {
-        xmonitor_update_u64(&fill->add_to_page_cache_lru, 1);
+        __xm_update_u64(&fill->add_to_page_cache_lru, 1);
         // 有可能因为execve导致comm改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
-        bpf_printk("xmonitor update add_to_page_cache_lru pcomm: '%s' pid: %d value: %lu",
+        bpf_printk("xmonitor update add_to_page_cache_lru pcomm: '%s' pid: %d "
+                   "value: %lu",
                    fill->comm, pid, fill->add_to_page_cache_lru);
 
     } else {
@@ -133,9 +134,11 @@ __s32 xmonitor_bpf_add_to_page_cache_lru(struct pt_regs *ctx) {
         // 得到应用程序名
         bpf_get_current_comm(&init_value.comm, sizeof(init_value.comm));
 
-        ret = bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
+        ret =
+            bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
         if (0 == ret) {
-            bpf_printk("xmonitor add_to_page_cache_lru add new pcomm: '%s' pid: %d successed",
+            bpf_printk("xmonitor add_to_page_cache_lru add new pcomm: '%s' "
+                       "pid: %d successed",
                        init_value.comm, pid);
         }
     }
@@ -149,15 +152,16 @@ __s32 xmonitor_bpf_mark_page_accessed(struct pt_regs *ctx) {
     struct cachestat_value *fill;
 
     // 得到进程ID
-    pid = xmonitor_get_pid();
+    pid = __xm_get_pid();
 
     fill = bpf_map_lookup_elem(&cachestat_map, &pid);
     if (fill) {
-        xmonitor_update_u64(&fill->mark_page_accessed, 1);
+        __xm_update_u64(&fill->mark_page_accessed, 1);
         // 有可能因为execve导致comm改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
-        bpf_printk("xmonitor update mark_page_accessed pcomm: '%s' pid: %d value: %lu", fill->comm,
-                   pid, fill->mark_page_accessed);
+        bpf_printk(
+            "xmonitor update mark_page_accessed pcomm: '%s' pid: %d value: %lu",
+            fill->comm, pid, fill->mark_page_accessed);
 
     } else {
         struct cachestat_value init_value = {
@@ -168,9 +172,11 @@ __s32 xmonitor_bpf_mark_page_accessed(struct pt_regs *ctx) {
         // 得到应用程序名
         bpf_get_current_comm(&init_value.comm, sizeof(init_value.comm));
 
-        ret = bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
+        ret =
+            bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
         if (0 == ret) {
-            bpf_printk("xmonitor mark_page_accessed add new pcomm: '%s' pid: %d successed",
+            bpf_printk("xmonitor mark_page_accessed add new pcomm: '%s' pid: "
+                       "%d successed",
                        init_value.comm, pid);
         }
     }
@@ -184,13 +190,14 @@ __s32 xmonitor_bpf_account_page_dirtied(struct pt_regs *ctx) {
     struct cachestat_value *fill;
 
     // 得到进程ID
-    pid = xmonitor_get_pid();
+    pid = __xm_get_pid();
 
     fill = bpf_map_lookup_elem(&cachestat_map, &pid);
     if (fill) {
-        xmonitor_update_u64(&fill->account_page_dirtied, 1);
+        __xm_update_u64(&fill->account_page_dirtied, 1);
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
-        bpf_printk("xmonitor update account_page_dirtied pcomm: '%s' pid: %d value: %lu",
+        bpf_printk("xmonitor update account_page_dirtied pcomm: '%s' pid: %d "
+                   "value: %lu",
                    fill->comm, pid, fill->account_page_dirtied);
 
     } else {
@@ -202,9 +209,11 @@ __s32 xmonitor_bpf_account_page_dirtied(struct pt_regs *ctx) {
         // 得到应用程序名
         bpf_get_current_comm(&init_value.comm, sizeof(init_value.comm));
 
-        ret = bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
+        ret =
+            bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
         if (0 == ret) {
-            bpf_printk("xmonitor account_page_dirtied add new pcomm: '%s' pid: %d successed",
+            bpf_printk("xmonitor account_page_dirtied add new pcomm: '%s' pid: "
+                       "%d successed",
                        init_value.comm, pid);
         }
     }
@@ -218,15 +227,16 @@ __s32 xmonitor_bpf_mark_buffer_dirty(struct pt_regs *ctx) {
     struct cachestat_value *fill;
 
     // 得到进程ID
-    pid = xmonitor_get_pid();
+    pid = __xm_get_pid();
 
     fill = bpf_map_lookup_elem(&cachestat_map, &pid);
     if (fill) {
-        xmonitor_update_u64(&fill->mark_buffer_dirty, 1);
+        __xm_update_u64(&fill->mark_buffer_dirty, 1);
         // 有可能因为execve导致comm改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
-        bpf_printk("xmonitor update mark_buffer_dirty pcomm: '%s' pid: %d value: %lu", fill->comm,
-                   pid, fill->mark_buffer_dirty);
+        bpf_printk(
+            "xmonitor update mark_buffer_dirty pcomm: '%s' pid: %d value: %lu",
+            fill->comm, pid, fill->mark_buffer_dirty);
         // bpf_map_update_elem(&cachestat_map, &pid, fill, BPF_ANY);
     } else {
         struct cachestat_value init_value = {
@@ -237,9 +247,11 @@ __s32 xmonitor_bpf_mark_buffer_dirty(struct pt_regs *ctx) {
         // 得到应用程序名
         bpf_get_current_comm(&init_value.comm, sizeof(init_value.comm));
 
-        ret = bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
+        ret =
+            bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
         if (0 == ret) {
-            bpf_printk("xmonitor mark_buffer_dirty add new pcomm: '%s' pid: %d successed",
+            bpf_printk("xmonitor mark_buffer_dirty add new pcomm: '%s' pid: %d "
+                       "successed",
                        init_value.comm, pid);
         }
     }
@@ -249,7 +261,7 @@ __s32 xmonitor_bpf_mark_buffer_dirty(struct pt_regs *ctx) {
 // #define PROG(tpfn)                                                                                \
 //     __s32 __##tpfn(void *ctx)                                                                     \
 //     {                                                                                             \
-//         __s32 pid = xmonitor_get_pid();                                                           \
+//         __s32 pid = __xm_get_pid();                                                           \
 //         char  comm[TASK_COMM_LEN];                                                                \
 //         bpf_get_current_comm(&comm, sizeof(comm));                                                \
 //                                                                                                   \

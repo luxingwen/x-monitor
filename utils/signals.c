@@ -27,7 +27,7 @@ static struct signals_waiting __signal_waiting_list[] = {
     { SIGHUP, "SIGHUP", 0, E_SIGNAL_RELOADCONFIG }
 };
 
-static void signal_handler(int32_t signo) {
+static void __signal_handler(int32_t signo) {
     // find the entry in the list
     int32_t i;
     for (i = 0; i < (int32_t)ARRAY_SIZE(__signal_waiting_list); i++) {
@@ -37,7 +37,8 @@ static void signal_handler(int32_t signo) {
 
             if (__signal_waiting_list[i].action_mode == E_SIGNAL_FATAL) {
                 char buffer[200 + 1];
-                snprintf(buffer, 200, "\nSIGNAL HANDLER: received: %s. Oops! This is bad!\n",
+                snprintf(buffer, 200,
+                         "\nSIGNAL HANDLER: received: %s. Oops! This is bad!\n",
                          __signal_waiting_list[i].signame);
                 write(STDERR_FILENO, buffer, strlen(buffer));
             }
@@ -59,12 +60,13 @@ void signals_init(void) {
             sa.sa_handler = SIG_IGN;
             break;
         default:
-            sa.sa_handler = signal_handler;
+            sa.sa_handler = __signal_handler;
             break;
         }
         // 注册信号处理函数
         if (sigaction(__signal_waiting_list[i].signo, &sa, NULL) == -1) {
-            error("Cannot set signal handler for %s (%d)", __signal_waiting_list[i].signame,
+            error("Cannot set signal handler for %s (%d)",
+                  __signal_waiting_list[i].signame,
                   __signal_waiting_list[i].signo);
         }
     }
@@ -79,31 +81,41 @@ void signals_handle(on_signal_t fn) {
                 found = 0;
                 int32_t i = 0;
 
-                for (i = 0; i < (int32_t)ARRAY_SIZE(__signal_waiting_list); i++) {
+                for (i = 0; i < (int32_t)ARRAY_SIZE(__signal_waiting_list);
+                     i++) {
                     if (__signal_waiting_list[i].receive_count > 0) {
                         found = 1;
                         __signal_waiting_list[i].receive_count = 0;
-                        const char *signal_name = __signal_waiting_list[i].signame;
+                        const char *signal_name =
+                            __signal_waiting_list[i].signame;
 
                         switch (__signal_waiting_list[i].action_mode) {
                         case E_SIGNAL_EXIT_CLEANLY:
-                            info("Received signal %s. Exiting cleanly.", signal_name);
-                            fn(__signal_waiting_list[i].signo, E_SIGNAL_EXIT_CLEANLY);
+                            info("Received signal %s. Exiting cleanly.",
+                                 signal_name);
+                            fn(__signal_waiting_list[i].signo,
+                               E_SIGNAL_EXIT_CLEANLY);
                             exit(0);
                             break;
                         case E_SIGNAL_SAVE_DATABASE:
-                            info("Received signal %s. Saving the database.", signal_name);
+                            info("Received signal %s. Saving the database.",
+                                 signal_name);
                             break;
                         case E_SIGNAL_FATAL:
-                            info("Received signal %s. Exiting with error.", signal_name);
+                            info("Received signal %s. Exiting with error.",
+                                 signal_name);
                             exit(1);
                             break;
                         case E_SIGNAL_RELOADCONFIG:
-                            info("Received signal %s. Reloading the configuration.", signal_name);
-                            fn(__signal_waiting_list[i].signo, E_SIGNAL_RELOADCONFIG);
+                            info("Received signal %s. Reloading the "
+                                 "configuration.",
+                                 signal_name);
+                            fn(__signal_waiting_list[i].signo,
+                               E_SIGNAL_RELOADCONFIG);
                             break;
                         default:
-                            info("Received signal %s. No signal handler configured, Ignoring it.",
+                            info("Received signal %s. No signal handler "
+                                 "configured, Ignoring it.",
                                  signal_name);
                             break;
                         }
@@ -111,7 +123,9 @@ void signals_handle(on_signal_t fn) {
                 }
             }
         } else {
-            error("pause() returned but it was not interupted by a signal. errno: %d", errno);
+            error("pause() returned but it was not interupted by a signal. "
+                  "errno: %d",
+                  errno);
             break;
         }
     }
@@ -122,9 +136,10 @@ int32_t signals_block() {
     sigfillset(&set);
 
     // sigprocmask vs pthread_sigmask
-    // For one, the POSIX.1 standard does not explicitly specify the usage of sigprocmask in
-    // multi-threaded programs, so not all implementations may behave predictably in multi-threaded
-    // applications. Safer to use pthread_sigmask in this case.
+    // For one, the POSIX.1 standard does not explicitly specify the usage of
+    // sigprocmask in multi-threaded programs, so not all implementations may
+    // behave predictably in multi-threaded applications. Safer to use
+    // pthread_sigmask in this case.
     if (0 != pthread_sigmask(SIG_BLOCK, &set, NULL)) {
         error("Cannot block signals");
         return -1;
