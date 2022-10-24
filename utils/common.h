@@ -23,6 +23,7 @@ extern "C" {
 #include <limits.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
+#include <linux/sched.h>
 #include <locale.h>
 #include <math.h>
 #include <net/if.h>
@@ -32,6 +33,7 @@ extern "C" {
 #include <pwd.h>
 #include <signal.h>
 #include <spawn.h>
+#include <sched.h>
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <stdbool.h>

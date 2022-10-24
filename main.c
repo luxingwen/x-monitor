@@ -17,6 +17,7 @@
 #include "utils/os.h"
 #include "utils/popen.h"
 #include "utils/signals.h"
+#include "utils/strings.h"
 
 #include "app_config/app_config.h"
 #include "plugins.d/plugins_d.h"
@@ -41,9 +42,11 @@ struct option_def {
 static const struct option_def option_definitions[] = {
     // opt description     arg name       default value
     { 'c', "Configuration file to load.", "filename", CONFIG_FILENAME },
-    { 'D', "Do not fork. Run in the foreground.", NULL, "run in the background" },
+    { 'D', "Do not fork. Run in the foreground.", NULL,
+      "run in the background" },
     { 'h', "Display this help message.", NULL, NULL },
-    { 'i', "The IP address to listen to.", "IP", "all IP addresses IPv4 and IPv6" },
+    { 'i', "The IP address to listen to.", "IP",
+      "all IP addresses IPv4 and IPv6" },
     { 'p', "API/Web port to use.", "port", "19999" },
     { 's', "Prefix for /proc and /sys (for containers).", "path", "no prefix" },
     { 't', "The internal clock of netdata.", "seconds", "1" },
@@ -62,7 +65,9 @@ struct xmonitor_static_routine_list {
     int32_t                         static_routine_count;
 };
 
-static struct xmonitor_static_routine_list __xmonitor_static_routine_list = { NULL, NULL, 0 };
+static struct xmonitor_static_routine_list __xmonitor_static_routine_list = {
+    NULL, NULL, 0
+};
 
 void register_xmonitor_static_routine(struct xmonitor_static_routine *routine) {
     if (__xmonitor_static_routine_list.root == NULL) {
@@ -99,13 +104,17 @@ static __attribute__((section(".calmwu"), used)) void __help() {
     fprintf(stderr, "%s",
             "\n"
             " ^\n"
-            " |.-.   .-.   .-.   .-.   .  x-monitor                                         \n"
-            " |   '-'   '-'   '-'   '-'   real-time performance monitoring, done right!   \n"
-            " +----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+--->\n"
+            " |.-.   .-.   .-.   .-.   .  x-monitor                            "
+            "             \n"
+            " |   '-'   '-'   '-'   '-'   real-time performance monitoring, "
+            "done right!   \n"
+            " +----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----"
+            "+-----+--->\n"
             "\n"
             " Copyright (C) 2021-2100, Calm.wu\n"
             " Released under GNU General Public License v3 or later.\n"
-            " This is free software: you are free to change and redistribute it.\n");
+            " This is free software: you are free to change and redistribute "
+            "it.\n");
 
     fprintf(stderr, " SYNOPSIS: x-monitor [options]\n");
     fprintf(stderr, "\n");
@@ -113,9 +122,11 @@ static __attribute__((section(".calmwu"), used)) void __help() {
 
     // Output options description.
     for (i = 0; i < num_opts; i++) {
-        fprintf(stderr, "  -%c %-*s  %s", option_definitions[i].val, max_len_arg,
-                option_definitions[i].arg_name ? option_definitions[i].arg_name : "",
-                option_definitions[i].description);
+        fprintf(
+            stderr, "  -%c %-*s  %s", option_definitions[i].val, max_len_arg,
+            option_definitions[i].arg_name ? option_definitions[i].arg_name :
+                                             "",
+            option_definitions[i].description);
         if (option_definitions[i].default_value) {
             fprintf(stderr, "\n   %c %-*s  Default: %s\n", ' ', max_len_arg, "",
                     option_definitions[i].default_value);
@@ -135,7 +146,8 @@ static void on_signal(int32_t UNUSED(signo), enum signal_action_mode mode) {
                 error("EXIT: cannot remove pid file '%s'", pid_file);
         }
 
-        struct xmonitor_static_routine *routine = __xmonitor_static_routine_list.root;
+        struct xmonitor_static_routine *routine =
+            __xmonitor_static_routine_list.root;
         struct xmonitor_static_routine *free_routine = NULL;
         while (routine) {
             if (routine->enabled && routine->stop_routine) {
@@ -209,8 +221,8 @@ int32_t main(int32_t argc, char *argv[]) {
                 break;
             case 'V':
             case 'v':
-                fprintf(stderr, "x-monitor Version: %d.%d", XMonitor_VERSION_MAJOR,
-                        XMonitor_VERSION_MINOR);
+                fprintf(stderr, "x-monitor Version: %d.%d",
+                        XMonitor_VERSION_MAJOR, XMonitor_VERSION_MINOR);
                 return 0;
             case 'h':
             default:
@@ -245,12 +257,15 @@ int32_t main(int32_t argc, char *argv[]) {
     signals_init();
 
     // INIT routines
-    struct xmonitor_static_routine *routine = __xmonitor_static_routine_list.root;
+    struct xmonitor_static_routine *routine =
+        __xmonitor_static_routine_list.root;
     for (; routine; routine = routine->next) {
         // 判断是否enable
         if (routine->config_name) {
-            routine->enabled = appconfig_get_member_bool(routine->config_name, "enable", 0);
-            debug("Routine '%s' config '%s' is %s", routine->name, routine->config_name,
+            routine->enabled =
+                appconfig_get_member_bool(routine->config_name, "enable", 0);
+            debug("Routine '%s' config '%s' is %s", routine->name,
+                  routine->config_name,
                   routine->enabled ? "enabled" : "disabled");
         }
 
@@ -258,9 +273,11 @@ int32_t main(int32_t argc, char *argv[]) {
             // 初始化
             ret = routine->init_routine();
             if (0 == ret) {
-                info("init xmonitor-static-routine '%s' successed", routine->name);
+                info("init xmonitor-static-routine '%s' successed",
+                     routine->name);
             } else {
-                error("init xmonitor-static-routine '%s' failed", routine->name);
+                error("init xmonitor-static-routine '%s' failed",
+                      routine->name);
                 return 0;
             }
         } else {
@@ -271,16 +288,20 @@ int32_t main(int32_t argc, char *argv[]) {
     promhttp_set_active_collector_registry(NULL);
 
     // 守护进程
-    strncpy(pid_file, appconfig_get_str("application.pid_file", DEFAULT_PIDFILE),
+    strlcpy(pid_file,
+            appconfig_get_str("application.pid_file", DEFAULT_PIDFILE),
             XM_PID_FILENAME_MAX);
     const char *user = appconfig_get_str("application.run_as_user", NULL);
     become_daemon(dont_fork, pid_file, user);
 
+    // 计算密集型调度策略
+    sched_setscheduler(getpid(), SCHED_BATCH, NULL);
+
     // 启动metrics http exporter
-    uint16_t metrics_http_export_port =
-        (uint16_t)appconfig_get_int("application.metrics_http_exporter.port", 8000);
-    __promhttp_daemon =
-        promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, metrics_http_export_port, NULL, NULL);
+    uint16_t metrics_http_export_port = (uint16_t)appconfig_get_int(
+        "application.metrics_http_exporter.port", 8000);
+    __promhttp_daemon = promhttp_start_daemon(
+        MHD_USE_SELECT_INTERNALLY, metrics_http_export_port, NULL, NULL);
     if (unlikely(!__promhttp_daemon)) {
         error("promhttp_start_daemon failed");
         return -1;
@@ -290,12 +311,16 @@ int32_t main(int32_t argc, char *argv[]) {
     routine = __xmonitor_static_routine_list.root;
     for (; routine; routine = routine->next) {
         if (routine->enabled && NULL != routine->start_routine) {
-            ret = pthread_create(routine->thread_id, NULL, routine->start_routine, NULL);
+            ret = pthread_create(routine->thread_id, NULL,
+                                 routine->start_routine, NULL);
             if (unlikely(0 != ret)) {
-                error("xmonitor-static-routine '%s' pthread_create() failed with code %d",
+                error("xmonitor-static-routine '%s' pthread_create() failed "
+                      "with code %d",
                       routine->name, ret);
             } else {
-                info("xmonitor-static-routine '%s' successed to create new thread.", routine->name);
+                info("xmonitor-static-routine '%s' successed to create new "
+                     "thread.",
+                     routine->name);
             }
         }
     }
