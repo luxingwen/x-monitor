@@ -21,6 +21,83 @@ RunQueue中的线程是按照优先级排序的，这个值可以由系统内核
 
 线程迁移：在多core环境中，有core空闲，并且运行队列中有可运行状态的线程等待执行，CPU调度器可以将这个线程迁移到该core的队列中，以便尽快运行。
 
+### 调度策略
+
+进程调度依赖调度策略，内核把相同的调度策略抽象成调度类。不同类型的进程采用不同的调度策略，Linux内核中默认实现了5个调度类
+
+1. stop
+2. deadline，用于调度有严格时间要求的实时进程，比如视频编解码
+3. realtime
+4. CFS，选择vruntime值最小的进程运行。nice越大，虚拟时间过的越慢。CFS使用红黑树来组织就绪队列，因此可以最快找到vruntime值最小的那个进程，pick_next_task_fair()
+5. idle
+
+### 时间片
+
+time slice是os用来表示进程被调度进来与被调度出去之间所能维持运行的时间长度。通常系统都有默认的时间片，但是很难确定多长的时间片是合适的。
+
+### 调度入口
+
+进程的调度是从调用通用调度器schedule函数开始的，schedule()功能是挑选下一个可运行任务，由pick_next_task()来遍历这些调度类选出下一个任务。该函数首先会在cfs类中寻找下一个最佳任务。
+
+判断方式：运行队列中可运行的任务总数nr_running是否等于CFS类的子运行队列中的可运行任务的总数来判断。否则会遍历所有其它类并挑选下一个最佳可运行任务。
+
+```
+static inline struct task_struct *
+pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
+{
+	const struct sched_class *class;
+	struct task_struct *p;
+
+	/*
+	 * Optimization: we know that if all tasks are in the fair class we can
+	 * call that function directly, but only if the @prev task wasn't of a
+	 * higher scheduling class, because otherwise those lose the
+	 * opportunity to pull in more work from other CPUs.
+	 */
+	if (likely((prev->sched_class == &idle_sched_class ||
+		    prev->sched_class == &fair_sched_class) &&
+		   rq->nr_running == rq->cfs.h_nr_running)) {
+
+		p = pick_next_task_fair(rq, prev, rf);
+```
+
+#### 调度类
+
+- 完全公平调度类
+
+  ```
+  const struct sched_class fair_sched_class = {
+  	.next			= &idle_sched_class,
+  	.enqueue_task		= enqueue_task_fair,
+  	.dequeue_task		= dequeue_task_fair,
+  	.yield_task		= yield_task_fair,
+  	.yield_to_task		= yield_to_task_fair,
+  ```
+
+- 实时调度类
+
+  ```
+  const struct sched_class rt_sched_class = {
+  	.next			= &fair_sched_class,
+  	.enqueue_task		= enqueue_task_rt,
+  	.dequeue_task		= dequeue_task_rt,
+  	.yield_task		= yield_task_rt,
+  	.check_preempt_curr	= check_preempt_curr_rt,
+  ```
+
+- deadline调度类
+
+  ```
+  const struct sched_class dl_sched_class = {
+  	.next			= &rt_sched_class,
+  	.enqueue_task		= enqueue_task_dl,
+  	.dequeue_task		= dequeue_task_dl,
+  	.yield_task		= yield_task_dl,
+  	.check_preempt_curr	= check_preempt_curr_dl,
+  ```
+
+  
+
 ## BPF对CPU的分析能力
 
 1. 为什么CPU系统调用时间很高？是系统调用导致的吗？具体是那些系统调用？
