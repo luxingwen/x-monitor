@@ -237,6 +237,12 @@ memory.pressure，显示内存的压力失速信息。
 
 ### CPU
 
+- cgroup_v1_cpu_util
+
+  expr：rate(cgroup_v1_cpuacct_usage_ns{cgroup=$cg-name}[40s])/10000000
+
+  说明：cgroup的cpu使用率。
+
 - cgroup_v1_cpu_shares
 
   说明：The relative share of CPU that this cgroup gets. This number is divided into the sum total of all cpu share values to determine the share any individual cgroup is entitled to.

@@ -8,7 +8,8 @@
 #pragma once
 
 #if __GNUC__
-#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#define GCC_VERSION \
+    (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #if __x86_64__ || __ppc64__
 #define LONG_BITS 64
 #else
@@ -27,8 +28,8 @@
 /*
 https://hackmd.io/@sysprog/c-bitfield
 
-這個 macro 是用來檢查是否會有 compilation error，e 是個判斷式，當它經由這個 macro 結果為 true
-，則可以在 compile-time 的時候被告知有錯
+這個 macro 是用來檢查是否會有 compilation error，e 是個判斷式，當它經由這個
+macro 結果為 true ，則可以在 compile-time 的時候被告知有錯
 !!(e)：對 e 做兩次 NOT，確保結果一定是 0 或 1
 -!!(e)：對 !!(e) 乘上 -1，因此結果會是 0 或 -1
 */
@@ -75,41 +76,6 @@ https://hackmd.io/@sysprog/c-bitfield
 #define offsetof(TYPE, MEMBER) ((size_t) & ((TYPE *)0)->MEMBER)
 #endif
 #endif
-/*
-#define UNCONST_HAX_(TYPE)    \
-    ({                        \
-        TYPE _tmp_macro_var_; \
-        _tmp_macro_var_;      \
-    })
-#define UNCONST(x)                                                                   \
-    __typeof__(_Generic((x), signed char                                             \
-                        : UNCONST_HAX_(signed char), const signed char               \
-                        : UNCONST_HAX_(signed char), unsigned char                   \
-                        : UNCONST_HAX_(unsigned char), const unsigned char           \
-                        : UNCONST_HAX_(unsigned char), short                         \
-                        : UNCONST_HAX_(short), const short                           \
-                        : UNCONST_HAX_(short), unsigned short                        \
-                        : UNCONST_HAX_(unsigned short), const unsigned short         \
-                        : UNCONST_HAX_(unsigned short), int                          \
-                        : UNCONST_HAX_(int), const int                               \
-                        : UNCONST_HAX_(int), unsigned                                \
-                        : UNCONST_HAX_(unsigned), const unsigned                     \
-                        : UNCONST_HAX_(unsigned), long                               \
-                        : UNCONST_HAX_(long), const long                             \
-                        : UNCONST_HAX_(long), unsigned long                          \
-                        : UNCONST_HAX_(unsigned long), const unsigned long           \
-                        : UNCONST_HAX_(unsigned long), long long                     \
-                        : UNCONST_HAX_(long long), const long long                   \
-                        : UNCONST_HAX_(long long), unsigned long long                \
-                        : UNCONST_HAX_(unsigned long long), const unsigned long long \
-                        : UNCONST_HAX_(unsigned long long), float                    \
-                        : UNCONST_HAX_(float), const float                           \
-                        : UNCONST_HAX_(float), double                                \
-                        : UNCONST_HAX_(double), const double                         \
-                        : UNCONST_HAX_(double), long double                          \
-                        : UNCONST_HAX_(long double), const long double               \
-                        : UNCONST_HAX_(long double)))
-*/
 
 #ifndef typeof_member
 #define typeof_member(T, m) typeof(((T *)0)->m)
@@ -144,8 +110,11 @@ https://hackmd.io/@sysprog/c-bitfield
  * @TYPE: The type of the structure
  * @MEMBER: The member within the structure to get the end offset of
  */
-#define offsetofend(TYPE, MEMBER) (offsetof(TYPE, MEMBER) + sizeof_field(TYPE, MEMBER))
+#define offsetofend(TYPE, MEMBER) \
+    (offsetof(TYPE, MEMBER) + sizeof_field(TYPE, MEMBER))
 
 // 支持宏嵌套
 #define TO_STRING_1(x) #x
 #define TO_STRING(x) TO_STRING_1(x)
+
+#define __new(T) (typeof(T))calloc(1, sizeof(T))

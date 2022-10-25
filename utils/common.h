@@ -61,10 +61,6 @@ extern "C" {
 #include <argp.h>
 //#include <uv.h>
 
-#define __new(T) (typeof(T))calloc(1, sizeof(T))
-#define __delete(P) free((void *)(P))
-#define __zero(P) memset((void *)(P), 0, sizeof(*(P)))
-
 #ifdef __cplusplus
 }
 #endif
