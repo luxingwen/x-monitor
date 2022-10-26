@@ -83,3 +83,26 @@ __xm_get_process_start_time(struct task_struct *task) {
     BPF_CORE_READ_INTO(&start_time, task, start_time);
     return start_time;
 }
+
+/**
+ * Returns the PID namespace of the current thread.
+ * https://www.dubaojiang.com/category/linux/linux_kernel/process/  局部 ID
+ * 与命名空间
+ */
+static __always_inline __u32 __xm_get_pid_namespace(struct task_struct *task) {
+    struct pid *thread_pid = NULL;
+    __u32       level;
+    struct upid upid;
+    __u32       ns_num = 0;
+
+    // thread_pid = task->thread_pid
+    BPF_CORE_READ_INTO(&thread_pid, task, thread_pid);
+    // level = thread_pid->level
+    BPF_CORE_READ_INTO(&level, thread_pid, level);
+    //
+    BPF_CORE_READ_INTO(&upid, thread_pid, numbers[level]);
+    // bpf_core_read(&upid, sizeof(upid), &thread_pid->numbers[level]);
+    // 如果是对象，必须写在一起，用.分割，如果是指针，必须用->分割
+    BPF_CORE_READ_INTO(&ns_num, upid.ns, ns.inum);
+    return ns_num;
+}

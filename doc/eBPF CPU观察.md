@@ -23,12 +23,43 @@ RunQueue中的线程是按照优先级排序的，这个值可以由系统内核
 
 ### 调度策略
 
-进程调度依赖调度策略，内核把相同的调度策略抽象成调度类。不同类型的进程采用不同的调度策略，Linux内核中默认实现了5个调度类
+进程调度依赖调度策略，内核把相同的调度策略抽象成**调度类**。不同类型的进程采用不同的调度策略，Linux内核中默认实现了5个调度类
 
 1. stop
+
 2. deadline，用于调度有严格时间要求的实时进程，比如视频编解码
+
+   ```
+   const struct sched_class dl_sched_class = {
+   	.next			= &rt_sched_class,
+   	.enqueue_task		= enqueue_task_dl,
+   	.dequeue_task		= dequeue_task_dl,
+   	.yield_task		= yield_task_dl,
+   	.check_preempt_curr	= check_preempt_curr_dl,
+   ```
+
 3. realtime
+
+   ```
+   const struct sched_class rt_sched_class = {
+   	.next			= &fair_sched_class,
+   	.enqueue_task		= enqueue_task_rt,
+   	.dequeue_task		= dequeue_task_rt,
+   	.yield_task		= yield_task_rt,
+   	.check_preempt_curr	= check_preempt_curr_rt,
+   ```
+
 4. CFS，选择vruntime值最小的进程运行。nice越大，虚拟时间过的越慢。CFS使用红黑树来组织就绪队列，因此可以最快找到vruntime值最小的那个进程，pick_next_task_fair()
+
+   ```
+   const struct sched_class fair_sched_class = {
+   	.next			= &idle_sched_class,
+   	.enqueue_task		= enqueue_task_fair,
+   	.dequeue_task		= dequeue_task_fair,
+   	.yield_task		= yield_task_fair,
+   	.yield_to_task		= yield_to_task_fair,
+   ```
+
 5. idle
 
 ### 时间片
@@ -61,43 +92,6 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 		p = pick_next_task_fair(rq, prev, rf);
 ```
 
-#### 调度类
-
-- 完全公平调度类
-
-  ```
-  const struct sched_class fair_sched_class = {
-  	.next			= &idle_sched_class,
-  	.enqueue_task		= enqueue_task_fair,
-  	.dequeue_task		= dequeue_task_fair,
-  	.yield_task		= yield_task_fair,
-  	.yield_to_task		= yield_to_task_fair,
-  ```
-
-- 实时调度类
-
-  ```
-  const struct sched_class rt_sched_class = {
-  	.next			= &fair_sched_class,
-  	.enqueue_task		= enqueue_task_rt,
-  	.dequeue_task		= dequeue_task_rt,
-  	.yield_task		= yield_task_rt,
-  	.check_preempt_curr	= check_preempt_curr_rt,
-  ```
-
-- deadline调度类
-
-  ```
-  const struct sched_class dl_sched_class = {
-  	.next			= &rt_sched_class,
-  	.enqueue_task		= enqueue_task_dl,
-  	.dequeue_task		= dequeue_task_dl,
-  	.yield_task		= yield_task_dl,
-  	.check_preempt_curr	= check_preempt_curr_dl,
-  ```
-
-  
-
 ## BPF对CPU的分析能力
 
 1. 为什么CPU系统调用时间很高？是系统调用导致的吗？具体是那些系统调用？
@@ -112,28 +106,39 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 
 跟踪CPU调度器事件，效率非常重要，因为上下文切换这样的调度器事件每秒可能触发几百万次。如果每次上下文切换都执行eBPF程序，累积起来性能消耗也是很可观的，10%的消耗是书上说的最糟糕。    
 
-### tracepoint函数
+### 内核实现Tracepoint
 
-下面代码定义了一个tracepoint函数，DEFINE_EVENT宏会给sched_wakeup_new、sched_wakeup加上**前缀trace_**，实际内核代码会调用trace_sched_wakeup/trace_sched_wakeup_new。
+下面代码定义了一个tracepoint函数，DEFINE_EVENT本质是封装了__DECLARE_TRACE宏，该宏定义了一个tracepoint结构对象。
 
 ```
-/*
- * Tracepoint called when the task is actually woken; p->state == TASK_RUNNNG.
- * It is not always called from the waking context.
- */
+struct tracepoint {
+	const char *name;		/* Tracepoint name */
+	struct static_key key;
+	int (*regfunc)(void);
+	void (*unregfunc)(void);
+	struct tracepoint_func __rcu *funcs;
+};
+
 DEFINE_EVENT(sched_wakeup_template, sched_wakeup,
 	     TP_PROTO(struct task_struct *p),
 	     TP_ARGS(p));
 
-/*
- * Tracepoint for waking up a new task:
- */
-DEFINE_EVENT(sched_wakeup_template, sched_wakeup_new,
-	     TP_PROTO(struct task_struct *p),
-	     TP_ARGS(p));
+#define DEFINE_EVENT(template, name, proto, args)		\
+	DECLARE_TRACE(name, PARAMS(proto), PARAMS(args))
+	
+#define DECLARE_TRACE(name, proto, args)				\
+	__DECLARE_TRACE(name, PARAMS(proto), PARAMS(args),		\
+			cpu_online(raw_smp_processor_id()),		\
+			PARAMS(void *__data, proto),			\
+			PARAMS(__data, args))
+			
+#define __DECLARE_TRACE(name, proto, args, cond, data_proto, data_args) \
+	extern struct tracepoint __tracepoint_##name;			\
+	static inline void trace_##name(proto)				\
+	{
 ```
 
-调用tracepoint函数trace_sched_wakup(p)。所以可以观察这些tracepoint函数，获得更准确的状态
+内核函数会调用插桩点trace_sched_waking。
 
 ```
 static int
@@ -144,17 +149,6 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 
 	preempt_disable();
 	if (p == current) {
-		/*
-		 * We're waking current, this means 'p->on_rq' and 'task_cpu(p)
-		 * == smp_processor_id()'. Together this means we can special
-		 * case the whole 'p->on_rq && ttwu_runnable()' case below
-		 * without taking any locks.
-		 *
-		 * In particular:
-		 *  - we rely on Program-Order guarantees for all the ordering,
-		 *  - we're serialized against set_special_state() by virtue of
-		 *    it disabling IRQs (this allows not taking ->pi_lock).
-		 */
 		if (!(p->state & state))
 			goto out;
 
@@ -164,38 +158,6 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 		trace_sched_wakeup(p);
 		goto out;
 	}
-```
-
-```
-void wake_up_new_task(struct task_struct *p)
-{
-	struct rq_flags rf;
-	struct rq *rq;
-
-	raw_spin_lock_irqsave(&p->pi_lock, rf.flags);
-	p->state = TASK_RUNNING;
-#ifdef CONFIG_SMP
-	/*
-	 * Fork balancing, do it here and not earlier because:
-	 *  - cpus_ptr can change in the fork path
-	 *  - any previously selected CPU might disappear through hotplug
-	 *
-	 * Use __set_task_cpu() to avoid calling sched_class::migrate_task_rq,
-	 * as we're not fully set-up yet.
-	 */
-	p->recent_used_cpu = task_cpu(p);
-	rseq_migrate(p);
-	__set_task_cpu(p, select_task_rq(p, task_cpu(p), WF_FORK));
-#endif
-	rq = __task_rq_lock(p, &rf);
-	update_rq_clock(rq);
-	post_init_entity_util_avg(p);
-
-	activate_task(rq, p, ENQUEUE_NOCLOCK);
-	trace_sched_wakeup_new(p);
-	check_preempt_curr(rq, p, WF_FORK);
-#ifdef CONFIG_SMP
-	if (p->sched_class->task_woken) {
 ```
 
 ### runqlat 
@@ -215,10 +177,12 @@ void wake_up_new_task(struct task_struct *p)
 
 唤醒操作是通过函数wake_up进行，它会唤醒指定的等待队列上的所有进程。它调用函数try_to_wake_up()，该函数负责将进程设置为TASK_RUNNING状态，调用enqueue_task()将此进程放入红黑树中，如果被唤醒的进程优先级比当前正在执行的进程优先级高，还要设置need_resched标志。
 
-need_resched标志：来表明是否需要重新执行一次调度，该标志对于内核来讲是一个信息，它表示有其他进程应当被运行了，要尽快调用调度程序。相关代码在kernel/sched/core.c
+need_resched标志：来表明是否需要重新执行一次调度，该标志对于内核来讲是一个信息，**它表示有其他进程应当被运行了，要尽快调用调度程序**。相关代码在kernel/sched/core.c
 
 ## 资料
 
 1. [【原创】Kernel调试追踪技术之 Ftrace on ARM64 - HPYU - 博客园 (cnblogs.com)](https://www.cnblogs.com/hpyu/p/14348523.html)
 2. https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec
+3. [Linux 内核静态追踪技术的实现 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/433010401)
+4. [「Let's Go eBPF」认识数据源：Tracepoint | Serica (iserica.com)](https://www.iserica.com/posts/brief-intro-for-tracepoint/)
 
