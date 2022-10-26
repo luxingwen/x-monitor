@@ -27,7 +27,8 @@ __s32 BPF_PROG(xm_btp_sched_wakeup_new, struct task_struct *ts) {
 }
 
 SEC("tp_btf/sched_switch")
-__s32 BPF_PROG(xm_btp_sched_switch, struct task_struct *ts) {
+__s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
+               struct task_struct *next) {
     return 0;
 }
 
