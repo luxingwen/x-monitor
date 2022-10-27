@@ -231,7 +231,7 @@ static void ttwu_do_wakeup(struct rq *rq, struct task_struct *p, int wake_flags,
 	trace_sched_wakeup(p);
 ```
 
-使用perf-tool的funcgraph来观察下ttwu_do_activate函数的子调用，看看是否会调用上面的两个函数。执行命令**./funcgraph -d 1 -HtP -m 3 ttwu_do_activate > out**， 的确，可以看到enqueue_task_fair和ttwu_do_wakeup的调用。funcgraph用来观察函数内的子调用，这点非常方便。
+使用perf-tool的funcgraph来观察下ttwu_do_activate函数的子调用，看看是否会调用上面的两个函数。执行命令 **./funcgraph -d 1 -HtP -m 3 ttwu_do_activate > out** ， 的确，可以看到enqueue_task_fair和ttwu_do_wakeup的调用。funcgraph用来观察函数内的子调用，这点非常方便。
 
 ```
 27050.671092 |   6)    <idle>-0    |               |  ttwu_do_activate() {
