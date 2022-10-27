@@ -45,14 +45,15 @@ static const struct option_def option_definitions[] = {
     { 'D', "Do not fork. Run in the foreground.", NULL,
       "run in the background" },
     { 'h', "Display this help message.", NULL, NULL },
-    { 'i', "The IP address to listen to.", "IP",
-      "all IP addresses IPv4 and IPv6" },
-    { 'p', "API/Web port to use.", "port", "19999" },
-    { 's', "Prefix for /proc and /sys (for containers).", "path", "no prefix" },
-    { 't', "The internal clock of netdata.", "seconds", "1" },
-    { 'u', "Run as user.", "username", "netdata" },
-    { 'v', "Print netdata version and exit.", NULL, NULL },
-    { 'V', "Print netdata version and exit.", NULL, NULL }
+    //{ 'i', "The IP address to listen to.", "IP",
+    //  "all IP addresses IPv4 and IPv6" },
+    //{ 'p', "API/Web port to use.", "port", "19999" },
+    //{ 's', "Prefix for /proc and /sys (for containers).", "path", "no prefix"
+    //},
+    //{ 't', "The internal clock of x-monitor.", "seconds", "1" },
+    //{ 'u', "Run as user.", "username", "x-monitor" },
+    { 'v', "Print x-monitor version and exit.", NULL, NULL },
+    { 'V', "Print x-monitor version and exit.", NULL, NULL }
 };
 
 static char pid_file[XM_PID_FILENAME_MAX + 1] = "";
