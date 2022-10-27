@@ -21,7 +21,7 @@ RunQueue中的线程是按照优先级排序的，这个值可以由系统内核
 
 线程迁移：在多core环境中，有core空闲，并且运行队列中有可运行状态的线程等待执行，CPU调度器可以将这个线程迁移到该core的队列中，以便尽快运行。
 
-### 调度策略
+### 调度类
 
 进程调度依赖调度策略，内核把相同的调度策略抽象成**调度类**。不同类型的进程采用不同的调度策略，Linux内核中默认实现了5个调度类
 
@@ -62,6 +62,15 @@ RunQueue中的线程是按照优先级排序的，这个值可以由系统内核
 
 5. idle
 
+调度类的结构体中关键元素
+
+- enqueue_task：在运行队列中添加一个新进程
+- dequeue_task：当进程从运行队列中移出时
+- yield_task：当进程想自愿放弃CPU时
+- pick_next_task：schedule()调用pick_next_task的函数。从它的类中挑选出下一个最佳可运行的任务。
+
+组调度，CFS引入group scheduling，其中时间片被分配给线程组而不是单个线程。在组调度下，进程A及其创建的线程属于一个组，进程B及其创建的线程属于另一个组。
+
 ### 时间片
 
 time slice是os用来表示进程被调度进来与被调度出去之间所能维持运行的时间长度。通常系统都有默认的时间片，但是很难确定多长的时间片是合适的。
@@ -92,21 +101,22 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 		p = pick_next_task_fair(rq, prev, rf);
 ```
 
-## BPF对CPU的分析能力
+### Task状态
 
-1. 为什么CPU系统调用时间很高？是系统调用导致的吗？具体是那些系统调用？
-2. 线程每次唤醒时在CPU上花费了多长时间？
-3. 线程在运行队列中等待的时间有多长？
-4. 当前运行队列中有多少线程在等待执行？
-5. 不同CPU之间的运行队列是否均衡？
-6. 那些软中断和硬中断占用了CPU时间？
-7. 当其它运行队列中有需要运行的程序时，那些CPU任然处于空闲状态。
+| TASK_RUNNING         | 等待运行状态                                                 |
+| -------------------- | ------------------------------------------------------------ |
+| TASK_INTERRUPTIBLE   | 可中断睡眠状态                                               |
+| TASK_UNINTERRUPTIBLE | 不可中断睡眠状态                                             |
+| TASK_STOPPED         | 停止状态（收到 SIGSTOP、SIGTTIN、SIGTSTP 、 SIG.TTOU信号后状态 |
+| TASK_TRACED          | 被调试状态                                                   |
+| TASK_KILLABLE        | 新可中断睡眠状态                                             |
+| TASK_PARKED          | kthread_park使用的特殊状态                                   |
+| TASK_NEW             | 创建任务临时状态                                             |
+| TASK_DEAD            | 被唤醒状态                                                   |
+| TASK_IDLE            | 任务空闲状态                                                 |
+| TASK_WAKING          | 被唤醒状态                                                   |
 
-### eBPF程序的消耗
-
-跟踪CPU调度器事件，效率非常重要，因为上下文切换这样的调度器事件每秒可能触发几百万次。如果每次上下文切换都执行eBPF程序，累积起来性能消耗也是很可观的，10%的消耗是书上说的最糟糕。    
-
-### 内核实现Tracepoint
+## 内核Tracepoint的实现
 
 下面代码定义了一个tracepoint函数，DEFINE_EVENT本质是封装了__DECLARE_TRACE宏，该宏定义了一个tracepoint结构对象。
 
@@ -160,16 +170,130 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 	}
 ```
 
+## BPF对CPU的分析能力
+
+1. 为什么CPU系统调用时间很高？是系统调用导致的吗？具体是那些系统调用？
+2. 线程每次唤醒时在CPU上花费了多长时间？
+3. 线程在运行队列中等待的时间有多长？
+4. 当前运行队列中有多少线程在等待执行？
+5. 不同CPU之间的运行队列是否均衡？
+6. 那些软中断和硬中断占用了CPU时间？
+7. 当其它运行队列中有需要运行的程序时，那些CPU任然处于空闲状态。
+
+### eBPF程序的消耗
+
+跟踪CPU调度器事件，效率非常重要，因为上下文切换这样的调度器事件每秒可能触发几百万次。如果每次上下文切换都执行eBPF程序，累积起来性能消耗也是很可观的，10%的消耗是书上说的最糟糕。    
+
 ### runqlat 
 
-用来记录CPU调度器从唤醒一个线程到这个线程运行之间的时间间隔。
+Time a task spends waiting on a runqueue for it's turn to run on the processor，我第一感觉就是enqueue_task到schedule之间的时间消耗，**很像排队上机到上机的这段时间**。
 
-唤醒的tracepoint，使用的是btf raw tracepoint
+#### 唤醒的tracepoint
+
+使用的是btf raw tracepoint
 
 - tp_btf/sched_wakeup，trace_sched_wakeup，入口函数是try_to_wake_up/ttwu_do_wakeup。
 - tp_btf/sched_wakeup_new，实际函数是trace_sched_wakeup_new。入口函数是wake_up_new_task。
 
-运行的tracepoint
+什么时候将状态设置为TASK_RUNNING，并插入运行队列中的呢，这块来分析并验证下，先说结论，try_to_wake_up这个函数。
+
+通过分析代码ttwu_do_activate函数中会调用**activate_task**和**ttwu_do_wakeup**。
+
+```
+static void ttwu_do_activate(struct rq *rq, struct task_struct *p,
+			     int wake_flags, struct rq_flags *rf)
+{
+......
+	activate_task(rq, p, en_flags);
+	ttwu_do_wakeup(rq, p, wake_flags, rf);
+}
+```
+
+函数active_task中会将task加入运行队列
+
+```
+void activate_task(struct rq *rq, struct task_struct *p, int flags)
+{
+	enqueue_task(rq, p, flags);
+
+	p->on_rq = TASK_ON_RQ_QUEUED;
+}
+```
+
+函数ttwu_do_wakeup会将任务状态设置为TASK_RUNNING，同时调用插桩的tracepoint
+
+```
+static void ttwu_do_wakeup(struct rq *rq, struct task_struct *p, int wake_flags,
+			   struct rq_flags *rf)
+{
+	check_preempt_curr(rq, p, wake_flags);
+	p->state = TASK_RUNNING;
+	trace_sched_wakeup(p);
+```
+
+使用perf-tool的funcgraph来观察下ttwu_do_activate函数的子调用，看看是否会调用上面的两个函数。执行命令**./funcgraph -d 1 -HtP -m 3 ttwu_do_activate > out**， 的确，可以看到enqueue_task_fair和ttwu_do_wakeup的调用。funcgraph用来观察函数内的子调用，这点非常方便。
+
+```
+27050.671092 |   6)    <idle>-0    |               |  ttwu_do_activate() {
+27050.671092 |   6)    <idle>-0    |               |    psi_task_change() {
+27050.671092 |   6)    <idle>-0    |   0.078 us    |      record_times();
+27050.671093 |   6)    <idle>-0    |   0.620 us    |    }
+27050.671093 |   6)    <idle>-0    |               |    enqueue_task_fair() {
+27050.671093 |   6)    <idle>-0    |   0.598 us    |      enqueue_entity();
+27050.671094 |   6)    <idle>-0    |   0.027 us    |      hrtick_update();
+27050.671094 |   6)    <idle>-0    |   1.106 us    |    }
+27050.671094 |   6)    <idle>-0    |               |    ttwu_do_wakeup() {
+27050.671094 |   6)    <idle>-0    |   0.188 us    |      check_preempt_curr();
+```
+
+从代码分析唤醒的调用堆栈：**try_to_wake_up()----->ttwu_queue()----->ttwu_do_activate()**。
+
+使用bpftrace来观察下ttw_do_activate函数的调用堆栈，这是外部调用，bpftrace -e 'kprobe:ttwu_do_activate { @[kstack] = count(); }'，看到堆栈如下
+
+```
+@[
+    ttwu_do_activate+1
+    try_to_wake_up+422
+    hrtimer_wakeup+30
+    __hrtimer_run_queues+256
+    hrtimer_interrupt+256
+    smp_apic_timer_interrupt+106
+    apic_timer_interrupt+15
+    native_safe_halt+14
+    acpi_idle_do_entry+70
+    acpi_idle_enter+155
+    cpuidle_enter_state+135
+    cpuidle_enter+44
+    do_idle+564
+    cpu_startup_entry+111
+    start_secondary+411
+    secondary_startup_64_no_verify+194
+]: 526
+```
+
+感觉使用bcc的trace工具看起来更直观
+
+```
+15:27:02 0       0       swapper/0       ttwu_do_activate 
+        ffffffffa711c141 ttwu_do_activate+0x1 [kernel]
+        ffffffffa711d186 try_to_wake_up+0x1a6 [kernel]
+        ffffffffa717d6ee hrtimer_wakeup+0x1e [kernel]
+        ffffffffa717d920 __hrtimer_run_queues+0x100 [kernel]
+        ffffffffa717e0f0 hrtimer_interrupt+0x100 [kernel]
+        ffffffffa7a026ba smp_apic_timer_interrupt+0x6a [kernel]
+        ffffffffa7a01c4f apic_timer_interrupt+0xf [kernel]
+        ffffffffa79813ae native_safe_halt+0xe [kernel]
+        ffffffffa7981756 acpi_idle_do_entry+0x46 [kernel]
+        ffffffffa756a18b acpi_idle_enter+0x9b [kernel]
+        ffffffffa77435a7 cpuidle_enter_state+0x87 [kernel]
+        ffffffffa774393c cpuidle_enter+0x2c [kernel]
+        ffffffffa7122a84 do_idle+0x234 [kernel]
+        ffffffffa7122c7f cpu_startup_entry+0x6f [kernel]
+        ffffffffa8c19267 start_kernel+0x51d [kernel]
+        ffffffffa7000107 secondary_startup_64_no_verify+0xc2 [kernel]
+```
+
+#### 运行的tracepoint
 
 - tp_btf/sched_switch，trace_sched_switch，入口函数__schedule，这因该是调度器入口。负责在运行队列中找到一个该运行的进程。到了这里进程就被cpu执行了。
 
