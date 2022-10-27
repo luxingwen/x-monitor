@@ -188,14 +188,13 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 
 Time a task spends waiting on a runqueue for it's turn to run on the processor，我第一感觉就是enqueue_task到schedule之间的时间消耗，**很像排队上机到上机的这段时间**。
 
-#### 唤醒的tracepoint
+#### 内核唤醒
 
-使用的是btf raw tracepoint
+唤醒操作是通过函数wake_up进行，它会唤醒指定的等待队列上的所有进程。它调用函数try_to_wake_up()，该函数负责将进程设置为TASK_RUNNING状态，调用enqueue_task()将此进程放入红黑树中，如果被唤醒的进程优先级比当前正在执行的进程优先级高，还要设置need_resched标志。
 
-- tp_btf/sched_wakeup，trace_sched_wakeup，入口函数是try_to_wake_up/ttwu_do_wakeup。
-- tp_btf/sched_wakeup_new，实际函数是trace_sched_wakeup_new。入口函数是wake_up_new_task。
+need_resched标志：来表明是否需要重新执行一次调度，该标志对于内核来讲是一个信息，**它表示有其他进程应当被运行了，要尽快调用调度程序**。相关代码在kernel/sched/core.c
 
-什么时候将状态设置为TASK_RUNNING，并插入运行队列中的呢，这块来分析并验证下，先说结论，try_to_wake_up这个函数。
+我们通过工具来观察下try_to_wake_up函数设置TASK_RUNNING，并插入运行队列中的流程。
 
 通过分析代码ttwu_do_activate函数中会调用**activate_task**和**ttwu_do_wakeup**。
 
@@ -271,7 +270,7 @@ static void ttwu_do_wakeup(struct rq *rq, struct task_struct *p, int wake_flags,
 ]: 526
 ```
 
-感觉使用bcc的trace工具看起来更直观
+感觉使用bcc的trace工具看起来更直观，trace 'ttwu_do_activate' -K -T -a
 
 ```
 15:27:02 0       0       swapper/0       ttwu_do_activate 
@@ -293,15 +292,16 @@ static void ttwu_do_wakeup(struct rq *rq, struct task_struct *p, int wake_flags,
         ffffffffa7000107 secondary_startup_64_no_verify+0xc2 [kernel]
 ```
 
+#### 唤醒的tracepoint
+
+使用的是btf raw tracepoint
+
+- tp_btf/sched_wakeup，trace_sched_wakeup，入口函数是try_to_wake_up/ttwu_do_wakeup。
+- tp_btf/sched_wakeup_new，实际函数是trace_sched_wakeup_new。入口函数是wake_up_new_task。
+
 #### 运行的tracepoint
 
 - tp_btf/sched_switch，trace_sched_switch，入口函数__schedule，这因该是调度器入口。负责在运行队列中找到一个该运行的进程。到了这里进程就被cpu执行了。
-
-#### 内核唤醒
-
-唤醒操作是通过函数wake_up进行，它会唤醒指定的等待队列上的所有进程。它调用函数try_to_wake_up()，该函数负责将进程设置为TASK_RUNNING状态，调用enqueue_task()将此进程放入红黑树中，如果被唤醒的进程优先级比当前正在执行的进程优先级高，还要设置need_resched标志。
-
-need_resched标志：来表明是否需要重新执行一次调度，该标志对于内核来讲是一个信息，**它表示有其他进程应当被运行了，要尽快调用调度程序**。相关代码在kernel/sched/core.c
 
 ## 资料
 
@@ -309,4 +309,5 @@ need_resched标志：来表明是否需要重新执行一次调度，该标志�
 2. https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec
 3. [Linux 内核静态追踪技术的实现 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/433010401)
 4. [「Let's Go eBPF」认识数据源：Tracepoint | Serica (iserica.com)](https://www.iserica.com/posts/brief-intro-for-tracepoint/)
+5. [linux 任务状态定义 – GarlicSpace](https://garlicspace.com/2019/06/29/linux任务状态定义/)
 
