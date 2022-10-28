@@ -310,4 +310,6 @@ static void ttwu_do_wakeup(struct rq *rq, struct task_struct *p, int wake_flags,
 3. [Linux 内核静态追踪技术的实现 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/433010401)
 4. [「Let's Go eBPF」认识数据源：Tracepoint | Serica (iserica.com)](https://www.iserica.com/posts/brief-intro-for-tracepoint/)
 5. [linux 任务状态定义 – GarlicSpace](https://garlicspace.com/2019/06/29/linux任务状态定义/)
+6. [CFS调度器（2）-源码解析 (wowotech.net)](http://www.wowotech.net/process_management/448.html)
+7. [Linux Preemption - 2 | Oliver Yang](http://oliveryang.net/2016/03/linux-scheduler-2/)
 
