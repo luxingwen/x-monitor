@@ -12,12 +12,23 @@ Thread运行的三种状态
 
 RunQueue中的线程是按照优先级排序的，这个值可以由系统内核和用户进程来设置，通过调节这个值可以调高重要任务的运行性能。
 
-有两种方式可以让线程哟里CPU执行：
+有两种方式可以让线程脱离CPU执行：
 
-- 主动脱离：它发生在线程阻塞于I/O、锁或者主动sleep。
+- 主动脱离，任务主动通过直接或间接调用schedule函数引起的上下文切换。
+
 - 被动脱离：如果线程运行时长超过调度器分配给其的CPU时间，或者高优先级抢占低优先级任务时，就会被调度器调离CPU。
 
-**上下文切换**：当CPU从一个线程切换到另一个线程时，需要更换内存寻址信息和其它的上下文信息，这种行为就是“上下文切换”。
+**上下文切换**：当CPU从一个线程切换到另一个线程时，需要更换内存寻址信息和其它的上下文信息，这种行为就是“上下文切换”。一般操作系统因为以下三种方式引起上下文切换，
+
+- Task Scheduling（进程上下文切换），任务调度一般是由调度器在内核空间完成，通常将当前CPU执行任务的代码，用户或内核栈，地址空间切换到下一个需要运行任务的代码，用户或内核栈，地址空间。这是一种整体切换。成本是比系统调用要高的。
+
+  如果是同一个进程的线程间进行上下文切换，它们之间有一部分共用的数据，这些数据可以免除切换，所以开销较小。
+
+- Interrupt or Exception
+
+- System Call（特权模式切换），**同一进程内**的CPU上下文切换，相对于进程的切换应该少了保存用户空间资源这一步。
+
+进程的上下文包括，虚拟内存，栈，全局变量，寄存器等用户空间资源，还包括内核堆栈、寄存器等内核空间状态。
 
 线程迁移：在多core环境中，有core空闲，并且运行队列中有可运行状态的线程等待执行，CPU调度器可以将这个线程迁移到该core的队列中，以便尽快运行。
 
@@ -292,6 +303,69 @@ static void ttwu_do_wakeup(struct rq *rq, struct task_struct *p, int wake_flags,
         ffffffffa7000107 secondary_startup_64_no_verify+0xc2 [kernel]
 ```
 
+#### 唤醒抢占（Wakeup Preemption）
+
+当一个任务被唤醒，选择一个CPU的rq插入，然后将状态设置为TASK_RUNNING后，调度器会立即进行判断CPU当前运行的任务是否被抢占，一旦调度算法决定剥夺当前任务的运行，就会设置TIF_NEED_RESCHED标志。
+
+继续跟踪ttwu_do_wakeup，core.c文件中函数check_preempt_curr逻辑中会调用resched_curr，这个函数会设置TIF_NEED_RESCHED标志，而调度类的实现函数sched_class->check_preempt_curr也会在流程判断是否调用resched_curr函数。
+
+```
+void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
+{
+	const struct sched_class *class;
+
+	if (p->sched_class == rq->curr->sched_class) {
+		rq->curr->sched_class->check_preempt_curr(rq, p, flags);
+	} else {
+		for_each_class(class)
+		{
+			if (class == rq->curr->sched_class)
+				break;
+			if (class == p->sched_class) {
+				resched_curr(rq);
+				break;
+			}
+		}
+	}
+	.......
+```
+
+我们用bcc的trace来观察下resched_curr堆栈，**trace 'resched_curr' -K -T -a**。下面堆栈符合了check_preempt_curr函数逻辑
+
+```
+15:57:58 3050    3449    PLUGINSD[ebpf]  resched_curr     
+        ffffffffa711ba31 resched_curr+0x1 [kernel]
+        ffffffffa712970d check_preempt_wakeup+0x18d [kernel]
+        ffffffffa711bfd2 check_preempt_curr+0x62 [kernel]
+        ffffffffa711c019 ttwu_do_wakeup+0x19 [kernel]
+        ffffffffa711da8c sched_ttwu_pending+0xcc [kernel]
+        ffffffffa711dd84 scheduler_ipi+0xa4 [kernel]
+        ffffffffa7a02425 smp_reschedule_interrupt+0x45 [kernel]
+        ffffffffa7a01d2f reschedule_interrupt+0xf [kernel]
+        
+15:57:58 0       0       swapper/2       resched_curr     
+        ffffffffa711ba31 resched_curr+0x1 [kernel]
+        ffffffffa711bfea check_preempt_curr+0x7a [kernel]
+        ffffffffa711c019 ttwu_do_wakeup+0x19 [kernel]
+        ffffffffa711d186 try_to_wake_up+0x1a6 [kernel]
+        ffffffffa71d4743 watchdog_timer_fn+0x53 [kernel]
+        ffffffffa717d920 __hrtimer_run_queues+0x100 [kernel]
+        ffffffffa717e0f0 hrtimer_interrupt+0x100 [kernel]
+        ffffffffa7a026ba smp_apic_timer_interrupt+0x6a [kernel]
+        ffffffffa7a01c4f apic_timer_interrupt+0xf [kernel]
+        ffffffffa79813ae native_safe_halt+0xe [kernel]
+        ffffffffa7981756 acpi_idle_do_entry+0x46 [kernel]
+        ffffffffa756a18b acpi_idle_enter+0x9b [kernel]
+        ffffffffa77435a7 cpuidle_enter_state+0x87 [kernel]
+        ffffffffa774393c cpuidle_enter+0x2c [kernel]
+        ffffffffa7122a84 do_idle+0x234 [kernel]
+        ffffffffa7122c7f cpu_startup_entry+0x6f [kernel]
+        ffffffffa705929b start_secondary+0x19b [kernel]
+        ffffffffa7000107 secondary_startup_64_no_verify+0xc2 [kernel]
+```
+
+被抢占的进程被设置TIF_NEED_RESCHED后，并没有立即调用schedule函数发生上下文切换。
+
 #### 唤醒的tracepoint
 
 使用的是btf raw tracepoint
@@ -312,4 +386,5 @@ static void ttwu_do_wakeup(struct rq *rq, struct task_struct *p, int wake_flags,
 5. [linux 任务状态定义 – GarlicSpace](https://garlicspace.com/2019/06/29/linux任务状态定义/)
 6. [CFS调度器（2）-源码解析 (wowotech.net)](http://www.wowotech.net/process_management/448.html)
 7. [Linux Preemption - 2 | Oliver Yang](http://oliveryang.net/2016/03/linux-scheduler-2/)
+8. [一文让你明白CPU上下文切换 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/52845869)
 
