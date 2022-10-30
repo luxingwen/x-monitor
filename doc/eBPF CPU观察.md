@@ -375,7 +375,25 @@ void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 
 #### 运行的tracepoint
 
+当一个任务被schedule选中，放入CPU运行，这时的tracepoint函数就是要来观察的。
+
 - tp_btf/sched_switch，trace_sched_switch，入口函数__schedule，这因该是调度器入口。负责在运行队列中找到一个该运行的进程。到了这里进程就被cpu执行了。
+
+#### schedule的调用时机
+
+__schedule是调度器的核心函数，作用是让调度器选择和切换到一个合适的进程并运行，调度的时机有三种
+
+1. 阻塞操作：互斥量，信号量，等待队列。
+2. 在中断返回前和系统调用返回用户空间时，检查TIF_NEED_RESCHED标志位以判断是否需要调度。
+3. 将要被唤醒的进程不会马上调度schedule，而是会被添加到CFS就绪队列中，并且设置TIF_NEED_RESCHED标志位。那么被唤醒的进程什么时候被调度呢？抢占内核分为两种情况
+   1. 如果唤醒动作发生在系统调用或者异常处理上下文中，那么在下一次调用preempt_enable时会检查是否需要抢占调度。
+   2. 如果唤醒动作发生在硬件中断处理上下文中，那么硬件中断处理返回前会检查是否要抢占当前进程。
+
+schedule函数还有几个变种：
+
+- preempt_schedule
+- preempt_schedule_irq
+- schedule_timeout，进程睡眠到timeout指定超时时间为止。
 
 ## 资料
 
