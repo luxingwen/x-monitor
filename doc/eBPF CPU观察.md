@@ -379,12 +379,57 @@ void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 
 - tp_btf/sched_switch，trace_sched_switch，入口函数__schedule，这因该是调度器入口。负责在运行队列中找到一个该运行的进程。到了这里进程就被cpu执行了。
 
+使用trace命令观察sched_switch这个tracepoint，**trace 't:sched:sched_switch "prev=%s next=%s", args->prev_comm, args->next_comm' -K -T -a**
+
+```
+14:49:57 0       0       swapper/5       sched_switch     prev=swapper/5 next=sshd
+        ffffffffa797bb68 __sched_text_start+0x338 [kernel]
+        ffffffffa797bb68 __sched_text_start+0x338 [kernel]
+        ffffffffa797c28e schedule_idle+0x1e [kernel]
+        ffffffffa71229c1 do_idle+0x171 [kernel]
+        ffffffffa7122c7f cpu_startup_entry+0x6f [kernel]
+        ffffffffa705929b start_secondary+0x19b [kernel]
+        ffffffffa7000107 secondary_startup_64_no_verify+0xc2 [kernel]
+```
+
 #### schedule的调用时机
 
 __schedule是调度器的核心函数，作用是让调度器选择和切换到一个合适的进程并运行，调度的时机有三种
 
 1. 阻塞操作：互斥量，信号量，等待队列。
+
+   ```
+   @[
+       schedule+1
+       futex_wait_queue_me+182
+       futex_wait+287
+       do_futex+725
+       __x64_sys_futex+325
+       do_syscall_64+91
+       entry_SYSCALL_64_after_hwframe+101
+   ]: 2196
+   ```
+
 2. 在中断返回前和系统调用返回用户空间时，检查TIF_NEED_RESCHED标志位以判断是否需要调度。
+
+   ```
+   static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
+   {
+   	/*
+   	 * In order to return to user mode, we need to have IRQs off with
+   	 * none of EXIT_TO_USERMODE_LOOP_FLAGS set.  Several of these flags
+   	 * can be set at any time on preemptible kernels if we have IRQs on,
+   	 * so we need to loop.  Disabling preemption wouldn't help: doing the
+   	 * work to clear some of the flags can sleep.
+   	 */
+   	while (true) {
+   		/* We have work to do. */
+   		local_irq_enable();
+   
+   		if (cached_flags & _TIF_NEED_RESCHED)
+   			schedule();
+   ```
+
 3. 将要被唤醒的进程不会马上调度schedule，而是会被添加到CFS就绪队列中，并且设置TIF_NEED_RESCHED标志位。那么被唤醒的进程什么时候被调度呢？抢占内核分为两种情况
    1. 如果唤醒动作发生在系统调用或者异常处理上下文中，那么在下一次调用preempt_enable时会检查是否需要抢占调度。
    2. 如果唤醒动作发生在硬件中断处理上下文中，那么硬件中断处理返回前会检查是否要抢占当前进程。
@@ -394,6 +439,81 @@ schedule函数还有几个变种：
 - preempt_schedule
 - preempt_schedule_irq
 - schedule_timeout，进程睡眠到timeout指定超时时间为止。
+
+代码：
+
+```
+#ifdef CONFIG_PREEMPTION
+#define preempt_enable() \
+do { \
+	barrier(); \
+	if (unlikely(preempt_count_dec_and_test())) \
+		__preempt_schedule(); \
+} while (0)
+```
+
+preempt_count_dec_and_test，prermpt_count减1后为0，且TIF_NEED_RESCHED被置位，则进行schedule()调度抢占
+
+```
+static __always_inline bool __preempt_count_dec_and_test(void)
+{
+	return !--*preempt_count_ptr() && tif_need_resched();
+}
+```
+
+core.c中实现了preempt_schedule
+
+```
+asmlinkage __visible void __sched notrace preempt_schedule(void)
+{
+	/*
+	 * If there is a non-zero preempt_count or interrupts are disabled,
+	 * we do not want to preempt the current task. Just return..
+	 */
+	if (likely(!preemptible()))
+		return;
+
+	preempt_schedule_common();
+}
+```
+
+preempt_schedule_common调用__schedule，执行进程调度
+
+```
+static void __sched notrace preempt_schedule_common(void)
+{
+	do {
+		/*
+		 * Because the function tracer can trace preempt_count_sub()
+		 * and it also uses preempt_enable/disable_notrace(), if
+		 * NEED_RESCHED is set, the preempt_enable_notrace() called
+		 * by the function tracer will call this function again and
+		 * cause infinite recursion.
+		 *
+		 * Preemption must be disabled here before the function
+		 * tracer can trace. Break up preempt_disable() into two
+		 * calls. One to disable preemption without fear of being
+		 * traced. The other to still record the preemption latency,
+		 * which can also be traced by the function tracer.
+		 */
+		preempt_disable_notrace();
+		preempt_latency_start(1);
+		__schedule(true);
+		preempt_latency_stop(1);
+		preempt_enable_no_resched_notrace();
+
+		/*
+		 * Check again in case we missed a preemption opportunity
+		 * between schedule and now.
+		 */
+	} while (need_resched());
+}
+
+static __always_inline bool need_resched(void)
+{
+	return unlikely(tif_need_resched());
+}
+```
 
 ## 资料
 
