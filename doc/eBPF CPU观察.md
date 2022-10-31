@@ -387,4 +387,5 @@ void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 6. [CFS调度器（2）-源码解析 (wowotech.net)](http://www.wowotech.net/process_management/448.html)
 7. [Linux Preemption - 2 | Oliver Yang](http://oliveryang.net/2016/03/linux-scheduler-2/)
 8. [一文让你明白CPU上下文切换 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/52845869)
+9. [深入理解Linux内核之进程唤醒 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/402374191)  代码注释
 
