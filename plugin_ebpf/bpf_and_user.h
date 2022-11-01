@@ -11,6 +11,11 @@
 #define TASK_COMM_LEN 16
 #endif
 
+#define XDP_UNKNOWN XDP_REDIRECT + 1
+#ifndef XDP_ACTION_MAX
+#define XDP_ACTION_MAX (XDP_UNKNOWN + 1)
+#endif
+
 struct xdp_stats_datarec {
     __u64 rx_packets;
     __u64 rx_bytes;
@@ -23,7 +28,23 @@ struct xm_ebpf_event {
     __s32 err_code;   // 0 means success, otherwise means failed
 };
 
-#define XDP_UNKNOWN XDP_REDIRECT + 1
-#ifndef XDP_ACTION_MAX
-#define XDP_ACTION_MAX (XDP_UNKNOWN + 1)
-#endif
+enum task_filter_scope_type {
+    FILTER_DEF_OS = 0,     // 整个系统按线程统计，整个系统是一个直方图
+    FILTER_PER_THREAD,     // 按线程过滤 task_struct.pid，每个线程是一个直方图
+    FILTER_PER_PROCESS,    // 按进程过滤 task_struct.tgid，每个进程使一个直方图
+    FILTER_PER_PIDNS,      // 按pidns过滤，每个pidns是个直方图
+    FILTER_SPEC_CGROUP,    // 只统计指定的cgroup下的thread
+    FILTER_SPEC_PROCESS,   // 只统计指定进程下的thread
+};
+
+//------------------------ runqlat
+#define XM_RUNQLAT_MAX_SLOTS 26
+
+struct xm_runqlat_args {
+    enum task_filter_scope_type filter_type;
+    __u64                       id;
+};
+
+struct xm_runqlat_hist {
+    __u32 slots[XM_RUNQLAT_MAX_SLOTS];   // 每个slot代表2的次方
+};

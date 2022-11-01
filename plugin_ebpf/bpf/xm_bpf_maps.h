@@ -7,7 +7,8 @@
 
 #pragma once
 
-#include <bpf_helpers.h>
+#include <bpf/bpf_helpers.h>
+#include <asm-generic/errno.h>
 
 /**
  * Looks up a value in a map and initializes it if it doesn't exist.
@@ -20,14 +21,14 @@
  *          map didn't exist.
  */
 static __always_inline void *bpf_map_lookup_or_try_init(void *map, const void *key,
-                                                        const void init_val) {
+                                                        const void *init_val) {
     void *val = bpf_map_lookup_elem(map, key);
     if (val) {
         return val;
     }
 
     __s32 err_no = bpf_map_update_elem(map, key, init_val, BPF_NOEXIST);
-    if (err && err != -EEXIST) {
+    if (err_no && err_no != -EEXIST) {
         return 0;
     }
     return bpf_map_lookup_elem(map, key);

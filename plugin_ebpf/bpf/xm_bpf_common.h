@@ -21,23 +21,22 @@
 
 // bpf_probe_read_kernel(&exit_code, sizeof(exit_code), &task->exit_code);
 
-#define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                \
-    __s32 __##tpfn(void *ctx) {                                              \
-        __u32 pid = __xm_get_pid();                                          \
-        char  comm[TASK_COMM_LEN];                                           \
-        bpf_get_current_comm(&comm, sizeof(comm));                           \
-                                                                             \
-        __s32 ret = bpf_map_delete_elem(&hash_map, &pid);                    \
-        if (0 == ret) {                                                      \
-            struct task_struct *task =                                       \
-                (struct task_struct *)bpf_get_current_task();                \
-            __s32 exit_code = BPF_CORE_READ(task, exit_code);                \
-                                                                             \
-            bpf_printk("xmonitor pcomm: '%s' pid: %d exit_code: %d. remove " \
-                       "element from hash_map.",                             \
-                       comm, pid, exit_code);                                \
-        }                                                                    \
-        return 0;                                                            \
+#define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                        \
+    __s32 __##tpfn(void *ctx) {                                                      \
+        __u32 pid = __xm_get_pid();                                                  \
+        char  comm[TASK_COMM_LEN];                                                   \
+        bpf_get_current_comm(&comm, sizeof(comm));                                   \
+                                                                                     \
+        __s32 ret = bpf_map_delete_elem(&hash_map, &pid);                            \
+        if (0 == ret) {                                                              \
+            struct task_struct *task = (struct task_struct *)bpf_get_current_task(); \
+            __s32               exit_code = BPF_CORE_READ(task, exit_code);          \
+                                                                                     \
+            bpf_printk("xmonitor pcomm: '%s' pid: %d exit_code: %d. remove "         \
+                       "element from hash_map.",                                     \
+                       comm, pid, exit_code);                                        \
+        }                                                                            \
+        return 0;                                                                    \
     }
 
 static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
@@ -47,10 +46,12 @@ static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
     }
 }
 
+// 进程id
 static __always_inline __u32 __xm_get_pid() {
     return bpf_get_current_pid_tgid() >> 32;
 }
 
+// 线程id
 static __always_inline __s32 __xm_get_tid() {
     return bpf_get_current_pid_tgid() & 0xFFFFFFFF;
 }
@@ -77,8 +78,7 @@ static __always_inline __s32 __xm_get_ppid(struct task_struct *task) {
  *
  * @returns The start time of the process.
  */
-static __always_inline __u64
-__xm_get_process_start_time(struct task_struct *task) {
+static __always_inline __u64 __xm_get_process_start_time(struct task_struct *task) {
     __u64 start_time = 0;
     BPF_CORE_READ_INTO(&start_time, task, start_time);
     return start_time;
@@ -105,4 +105,34 @@ static __always_inline __u32 __xm_get_pid_namespace(struct task_struct *task) {
     // 如果是对象，必须写在一起，用.分割，如果是指针，必须用->分割
     BPF_CORE_READ_INTO(&ns_num, upid.ns, ns.inum);
     return ns_num;
+}
+
+/* new kernel task_struct definition */
+struct task_struct___new {
+    long __state;
+} __attribute__((preserve_access_index));
+
+/* old kernel task_struct definition */
+struct task_struct___old {
+    long state;
+} __attribute__((preserve_access_index));
+
+/**
+ * Gets the state of a task.
+ *
+ * @param task The task whose state is to be retrieved.
+ *
+ * @returns The state of the task.
+ */
+static __always_inline __s64 __xm_get_task_state(struct task_struct *task) {
+    struct task_struct___new *t_new = (void *)task;
+
+    if (bpf_core_field_exists(t_new->__state)) {
+        return BPF_CORE_READ(t_new, __state);
+    } else {
+        /* 老内核里面field是task */
+        struct task_struct___old *t_old = (void *)task;
+
+        return BPF_CORE_READ(t_old, state);
+    }
 }

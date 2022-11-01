@@ -7,9 +7,9 @@
 
 #pragma once
 
-#include <bpf_helpers.h>
+#include <bpf/bpf_helpers.h>
 
-static __always_inline __u64 __log2(__u32 v) {
+static __always_inline __u64 __xm_log2(__u32 v) {
     __u32 shift, r;
 
     r = (v > 0xFFFF) << 4;
@@ -37,11 +37,11 @@ static __always_inline __u64 __log2(__u32 v) {
  *
  * log2(9) = 3
  */
-static __always_inline __u64 __log2l(__u64 v) {
+static __always_inline __u64 __xm_log2l(__u64 v) {
     __u32 hi = v >> 32;
 
     if (hi)
-        return __log2(hi) + 32;
+        return __xm_log2(hi) + 32;
     else
-        return __log2(v);
+        return __xm_log2(v);
 }

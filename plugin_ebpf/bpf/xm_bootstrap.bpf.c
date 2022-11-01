@@ -43,8 +43,7 @@ __s32 handle_exec(struct trace_event_raw_sched_process_exec *ctx) {
     void *value = bpf_map_lookup_elem(&__exec_start_hsmap, &pid);
     if (!value) {
         // 在ringbuffer中保留空间
-        bs_ev =
-            bpf_ringbuf_reserve(&__bs_ev_rbmap, sizeof(struct bootstrap_ev), 0);
+        bs_ev = bpf_ringbuf_reserve(&__bs_ev_rbmap, sizeof(struct bootstrap_ev), 0);
         if (!bs_ev) {
             return 0;
         }
@@ -60,8 +59,7 @@ __s32 handle_exec(struct trace_event_raw_sched_process_exec *ctx) {
         bpf_get_current_comm(&bs_ev->comm, sizeof(bs_ev->comm));
         // 难道高字节是偏移？
         fname_off = ctx->__data_loc_filename & 0xFFFF;
-        bpf_core_read_str(&bs_ev->filename, sizeof(bs_ev->filename),
-                          (void *)ctx + fname_off);
+        bpf_core_read_str(&bs_ev->filename, sizeof(bs_ev->filename), (void *)ctx + fname_off);
 
         bpf_ringbuf_submit(bs_ev, 0);
     }
@@ -81,6 +79,7 @@ __s32 handle_exit(struct trace_event_raw_sched_process_template *ctx) {
 
     // ignore thread exits
     if (pid != tid) {
+        // 不是主线程
         return 0;
     }
 
@@ -93,8 +92,7 @@ __s32 handle_exit(struct trace_event_raw_sched_process_template *ctx) {
             return 0;
         }
 
-        bs_ev =
-            bpf_ringbuf_reserve(&__bs_ev_rbmap, sizeof(struct bootstrap_ev), 0);
+        bs_ev = bpf_ringbuf_reserve(&__bs_ev_rbmap, sizeof(struct bootstrap_ev), 0);
         if (bs_ev) {
             task = (struct task_struct *)bpf_get_current_task();
 
