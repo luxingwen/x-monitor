@@ -70,6 +70,8 @@ extern int32_t get_process_descendant_pids(pid_t pid, struct process_descendant_
 
 extern int32_t get_block_device_sector_size(const char *disk);
 
+extern int32_t get_default_gateway_and_iface(in_addr_t *addr, char *iface);
+
 #ifdef __cplusplus
 }
 #endif
