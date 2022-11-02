@@ -343,44 +343,35 @@ static void __collect_cgroup_v1_cpu_metrics(struct xm_cgroup_obj *cg_obj) {
                 error("[PLUGIN_CGROUPS] cgroup file:'%s' should have 2 lines",
                       cg_obj->cpuacct_cpuacct_stat_filename);
             }
-        } else {
-            // don't continue
-            return;
         }
     }
 
     if (likely(cg_obj->cpuacct_usage_filename)) {
-        if (unlikely(0 != read_file_to_uint64(cg_obj->cpuacct_usage_filename, &usage_ns))) {
-            // don't continue
-            return;
+        if (likely(0 == read_file_to_uint64(cg_obj->cpuacct_usage_filename, &usage_ns))) {
+            prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_ns,
+                             (double)(usage_ns - cg_obj->cg_counters.cpu_stat_usage_time),
+                             (const char *[]){ cg_obj->cg_id });
+            cg_obj->cg_counters.cpu_stat_usage_time = usage_ns;
         }
-        prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_ns,
-                         (double)(usage_ns - cg_obj->cg_counters.cpu_stat_usage_time),
-                         (const char *[]){ cg_obj->cg_id });
-        cg_obj->cg_counters.cpu_stat_usage_time = usage_ns;
     }
 
     if (likely(cg_obj->cpuacct_usage_user_filename)) {
-        if (unlikely(0
-                     != read_file_to_uint64(cg_obj->cpuacct_usage_user_filename, &usage_user_ns))) {
-            // don't continue
-            return;
+        if (likely(0 == read_file_to_uint64(cg_obj->cpuacct_usage_user_filename, &usage_user_ns))) {
+            prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_user_ns,
+                             (double)(usage_user_ns - cg_obj->cg_counters.cpu_stat_usage_user_time),
+                             (const char *[]){ cg_obj->cg_id });
+            cg_obj->cg_counters.cpu_stat_usage_user_time = usage_user_ns;
         }
-        prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_user_ns,
-                         (double)(usage_user_ns - cg_obj->cg_counters.cpu_stat_usage_user_time),
-                         (const char *[]){ cg_obj->cg_id });
-        cg_obj->cg_counters.cpu_stat_usage_user_time = usage_user_ns;
     }
 
     if (likely(cg_obj->cpuacct_usage_sys_filename)) {
-        if (unlikely(0 != read_file_to_uint64(cg_obj->cpuacct_usage_sys_filename, &usage_sys_ns))) {
-            // don't continue
-            return;
+        if (likely(0 == read_file_to_uint64(cg_obj->cpuacct_usage_sys_filename, &usage_sys_ns))) {
+            prom_counter_add(
+                cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_system_ns,
+                (double)(usage_sys_ns - cg_obj->cg_counters.cpu_stat_usage_system_time),
+                (const char *[]){ cg_obj->cg_id });
+            cg_obj->cg_counters.cpu_stat_usage_system_time = usage_sys_ns;
         }
-        prom_counter_add(cg_obj->cg_metrics.sys_cgroup_v1_metric_cpuacct_usage_system_ns,
-                         (double)(usage_sys_ns - cg_obj->cg_counters.cpu_stat_usage_system_time),
-                         (const char *[]){ cg_obj->cg_id });
-        cg_obj->cg_counters.cpu_stat_usage_system_time = usage_sys_ns;
     }
 
     debug("[PLUGIN_CGROUPS] cgroup:'%s' cpuacct.usage:'%lu' cpuacct.usage_user:'%lu' "

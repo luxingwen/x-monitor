@@ -730,48 +730,40 @@ static void __collect_cgroup_v1_memory_metrics(struct xm_cgroup_obj *cg_obj) {
 
     // read memory.usage_in_bytes
     if (likely(cg_obj->memory_usage_in_bytes_filename)) {
-        if (unlikely(
+        if (likely(
                 0
-                != read_file_to_uint64(cg_obj->memory_usage_in_bytes_filename, &usage_in_bytes))) {
-            // don't continue
-            return;
+                == read_file_to_uint64(cg_obj->memory_usage_in_bytes_filename, &usage_in_bytes))) {
+            prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_usage_in_bytes,
+                           (double)usage_in_bytes, (const char *[]){ cg_obj->cg_id });
         }
-        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_usage_in_bytes,
-                       (double)usage_in_bytes, (const char *[]){ cg_obj->cg_id });
     }
 
     // read memory.limit_in_bytes
     if (likely(cg_obj->memory_limit_in_bytes_filename)) {
-        if (unlikely(
+        if (likely(
                 0
-                != read_file_to_uint64(cg_obj->memory_limit_in_bytes_filename, &limit_in_bytes))) {
-            // don't continue
-            return;
+                == read_file_to_uint64(cg_obj->memory_limit_in_bytes_filename, &limit_in_bytes))) {
+            prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_limit_in_bytes,
+                           (double)limit_in_bytes, (const char *[]){ cg_obj->cg_id });
         }
-        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_limit_in_bytes,
-                       (double)limit_in_bytes, (const char *[]){ cg_obj->cg_id });
     }
 
     // read memory.failcnt
     if (likely(cg_obj->memory_failcnt_filename)) {
-        if (unlikely(0 != read_file_to_uint64(cg_obj->memory_failcnt_filename, &failcnt))) {
-            // don't continue
-            return;
+        if (likely(0 == read_file_to_uint64(cg_obj->memory_failcnt_filename, &failcnt))) {
+            prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_failcnt, (double)failcnt,
+                           (const char *[]){ cg_obj->cg_id });
         }
-        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_failcnt, (double)failcnt,
-                       (const char *[]){ cg_obj->cg_id });
     }
 
     // read memory.max_usage_in_bytes
     if (likely(cg_obj->memory_max_usage_in_bytes_filename)) {
-        if (unlikely(0
-                     != read_file_to_uint64(cg_obj->memory_max_usage_in_bytes_filename,
-                                            &max_usage_in_bytes))) {
-            // don't continue
-            return;
+        if (likely(0
+                   == read_file_to_uint64(cg_obj->memory_max_usage_in_bytes_filename,
+                                          &max_usage_in_bytes))) {
+            prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_max_usage_in_bytes,
+                           (double)max_usage_in_bytes, (const char *[]){ cg_obj->cg_id });
         }
-        prom_gauge_set(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_max_usage_in_bytes,
-                       (double)max_usage_in_bytes, (const char *[]){ cg_obj->cg_id });
     }
 
     debug("[PLUGIN_CGROUPS] the cgroup:'%s' memory.usage_in_bytes:%lu, "
