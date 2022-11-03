@@ -515,6 +515,8 @@ static __always_inline bool need_resched(void)
 }
 ```
 
+### runqlen
+
 ## 资料
 
 1. [【原创】Kernel调试追踪技术之 Ftrace on ARM64 - HPYU - 博客园 (cnblogs.com)](https://www.cnblogs.com/hpyu/p/14348523.html)
