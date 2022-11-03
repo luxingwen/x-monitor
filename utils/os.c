@@ -17,9 +17,9 @@
 uint32_t cpu_cores_num = 1;
 uint32_t system_hz = 0;
 
-static const char   *__def_ipaddr = "0.0.0.0";
-static const char   *__def_macaddr = "00:00:00:00:00:00";
-static const char   *__def_hostname = "unknown";
+static const char *  __def_ipaddr = "0.0.0.0";
+static const char *  __def_macaddr = "00:00:00:00:00:00";
+static const char *  __def_hostname = "unknown";
 static __thread char __hostname[HOST_NAME_MAX] = { 0 };
 static const char    __no_user[] = "";
 
@@ -146,7 +146,7 @@ uint32_t get_cpu_cores_num() {
 int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high) {
     int32_t ret = 0;
     char    rd_buffer[1024] = { 0 };
-    char   *start = NULL, *end = NULL;
+    char *  start = NULL, *end = NULL;
 
     ret = read_file("/proc/sys/net/ipv4/tcp_mem", rd_buffer, 1023);
     if (unlikely(ret < 0)) {
@@ -243,7 +243,7 @@ void get_system_hz() {
  * @return The uptime of the system in centiseconds.
  */
 uint64_t get_uptime() {
-    FILE    *fp = NULL;
+    FILE *   fp = NULL;
     char     line[XM_PROC_LINE_SIZE] = { 0 };
     uint32_t up_sec = 0, up_cent = 0;
     uint64_t uptime = 0;
@@ -346,7 +346,7 @@ int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
         }
     }
 
-    char                *cursor = NULL, *num = NULL;
+    char *               cursor = NULL, *num = NULL;
     enum smaps_line_type type = LINE_IS_NORMAL;
 
     while (NULL != fgets(__proc_smaps_line, XM_PROC_LINE_SIZE, fp)) {
@@ -485,4 +485,49 @@ int32_t get_block_device_sector_size(const char *disk) {
         free(block_size_full_path);
     }
     return ret;
+}
+
+/**
+ * Gets the default gateway and interface for the current network.
+ *
+ * @param addr The address of the default gateway.
+ * @param iface The interface of the default gateway.
+ *
+ * @returns 0 on success, -1 on failure.
+ */
+int32_t get_default_gateway_and_iface(in_addr_t *addr, char *iface) {
+    uint32_t destination = 0;
+    int32_t  nread = 0, gateway = 0;
+    char     route_line_buff[XM_PROC_LINE_SIZE] = { 0 };
+
+    FILE *fp = fopen("/proc/net/route", "r");
+    if (unlikely(!fp)) {
+        error("open /proc/net/route failed, reason: %s", strerror(errno));
+        return -1;
+    }
+
+    // skip the header line
+    if (fscanf(fp, "%*[^\n]\n") < 0) {
+        fclose(fp);
+        return -1;
+    }
+
+    for (;;) {
+        nread = fscanf(fp, "%s%X%X\n", iface, &destination, &gateway);
+        if (nread != 3) {
+            break;
+        }
+
+        if (0 == destination) {
+            *addr = gateway;
+            fclose(fp);
+            return 0;
+        }
+    }
+
+    if (fp) {
+        // default route not found
+        fclose(fp);
+    }
+    return -1;
 }
