@@ -20,8 +20,7 @@
 
 #include "app_config/app_config.h"
 
-#define DEFAULT_EXCLUDED_PATHS \
-    "/proc/* /sys/* /var/run/user/* /snap/* /var/lib/docker/* /dev/*"
+#define DEFAULT_EXCLUDED_PATHS "/proc/* /sys/* /var/run/user/* /snap/* /var/lib/docker/* /dev/*"
 #define DEFAULT_EXCLUDED_FILESYSTEMS                                     \
     "*gvfs *gluster* *s3fs *ipfs *davfs2 *httpfs *sshfs *gdfs *moosefs " \
     "fusectl autofs *gvfsd*"
@@ -55,12 +54,10 @@ static prom_gauge_t *__metric_node_filesystem_avail_bytes = NULL,
                     *__metric_node_filesystem_readonly = NULL,
                     *__metric_node_filesystem_device_error = NULL;
 
-__attribute__((constructor)) static void
-collector_diskspace_register_routine() {
+__attribute__((constructor)) static void collector_diskspace_register_routine() {
     fprintf(stderr, "---register_collector_diskspace_routine---\n");
     struct xmonitor_static_routine *xsr =
-        (struct xmonitor_static_routine *)calloc(
-            1, sizeof(struct xmonitor_static_routine));
+        (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;
     xsr->config_name = __config_name;   //配置文件中节点名
     xsr->enabled = 0;
@@ -76,9 +73,7 @@ static void __reload_mountinfo(int32_t force) {
 
     time_t now = now_realtime_sec();
 
-    if (force
-        || now - last_load
-               >= __collector_diskspace.check_for_new_mountinfos_every) {
+    if (force || now - last_load >= __collector_diskspace.check_for_new_mountinfos_every) {
         // 先释放
         mountinfo_free_all(__collector_diskspace.disk_mountinfo_root);
         __collector_diskspace.disk_mountinfo_root = mountinfo_read(0);
@@ -86,16 +81,15 @@ static void __reload_mountinfo(int32_t force) {
     }
 }
 
-static void __collector_diskspace_stats(struct mountinfo *mi,
-                                        int32_t UNUSED(update_every)) {
-    if (unlikely(simple_pattern_matches(
-            __collector_diskspace.excluded_mountpoints, mi->mount_point))) {
+static void __collector_diskspace_stats(struct mountinfo *mi, int32_t UNUSED(update_every)) {
+    if (unlikely(
+            simple_pattern_matches(__collector_diskspace.excluded_mountpoints, mi->mount_point))) {
         return;
     }
 
     // 匹配上就直接忽略
-    if (unlikely(simple_pattern_matches(
-            __collector_diskspace.excluded_filesystems, mi->filesystem))) {
+    if (unlikely(
+            simple_pattern_matches(__collector_diskspace.excluded_filesystems, mi->filesystem))) {
         return;
     }
 
@@ -118,8 +112,8 @@ static void __collector_diskspace_stats(struct mountinfo *mi,
         error("[PLUGIN_DISKSPACE] failed to statvfs() mount point '%s' (disk "
               "'%s', "
               "filesystem '%s', root '%s')",
-              mi->mount_point, mi->mount_source,
-              mi->filesystem ? mi->filesystem : "", mi->root ? mi->root : "");
+              mi->mount_point, mi->mount_source, mi->filesystem ? mi->filesystem : "",
+              mi->root ? mi->root : "");
         node_filesystem_device_error = 1;
     } else {
         // 基本文件系统块大小，磁盘的块大小是扇区
@@ -143,130 +137,108 @@ static void __collector_diskspace_stats(struct mountinfo *mi,
         // Number of free inodes for unprivileged users.
         fsblkcnt_t inode_avail = vfs.f_favail;
         // 为特权用户保留的inode数量
-        node_filesystem_files_reserve_root =
-            node_filesystem_files - inode_avail;
+        node_filesystem_files_reserve_root = node_filesystem_files - inode_avail;
         // 已经使用的inode数量
-        node_filesystem_files_used =
-            node_filesystem_files - node_filesystem_files_free;
+        node_filesystem_files_used = node_filesystem_files - node_filesystem_files_free;
 
         // 设置指标
         node_filesystem_size_bytes = block_total * block_size;
         node_filesystem_avail_bytes = block_avail * block_size;
         node_filesystem_free_bytes = block_free * block_size;
-        node_filesystem_reserve_root_size_bytes =
-            block_reserve_root * block_size;
+        node_filesystem_reserve_root_size_bytes = block_reserve_root * block_size;
 
         if (mi->flags & MOUNTINFO_FLAG_READONLY) {
             node_filesystem_readonly = 1;
         }
     }
 
-    prom_gauge_set(
-        __metric_node_filesystem_size_bytes, (double)node_filesystem_size_bytes,
-        (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+    prom_gauge_set(__metric_node_filesystem_size_bytes, (double)node_filesystem_size_bytes,
+                   (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
 
-    prom_gauge_set(
-        __metric_node_filesystem_avail_bytes,
-        (double)node_filesystem_avail_bytes,
-        (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+    prom_gauge_set(__metric_node_filesystem_avail_bytes, (double)node_filesystem_avail_bytes,
+                   (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
 
-    prom_gauge_set(
-        __metric_node_filesystem_free_bytes, (double)node_filesystem_free_bytes,
-        (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+    prom_gauge_set(__metric_node_filesystem_free_bytes, (double)node_filesystem_free_bytes,
+                   (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
 
-    prom_gauge_set(
-        __metric_node_filesystem_files, (double)node_filesystem_files,
-        (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+    prom_gauge_set(__metric_node_filesystem_files, (double)node_filesystem_files,
+                   (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
 
-    prom_gauge_set(
-        __metric_node_filesystem_files_free, (double)node_filesystem_files_free,
-        (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+    prom_gauge_set(__metric_node_filesystem_files_free, (double)node_filesystem_files_free,
+                   (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
 
-    prom_gauge_set(
-        __metric_node_filesystem_readonly, (double)node_filesystem_readonly,
-        (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+    prom_gauge_set(__metric_node_filesystem_readonly, (double)node_filesystem_readonly,
+                   (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
 
-    prom_gauge_set(
-        __metric_node_filesystem_device_error,
-        (double)node_filesystem_device_error,
-        (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
+    prom_gauge_set(__metric_node_filesystem_device_error, (double)node_filesystem_device_error,
+                   (const char *[]){ mi->mount_source, mi->filesystem, mi->mount_point });
 
     debug("[PLUGIN_DISKSPACE] Device:'%s', FileSystem:'%s' mounted on:'%s' "
           "size:%lu bytes "
           "avail:%lu bytes free:%lu bytes reserver_root:%lu bytes "
           "inode-total:%lu inode-used:%lu "
           "inode-free:%lu inode-reserver_root:%lu",
-          mi->mount_source, mi->filesystem, mi->mount_point,
-          node_filesystem_size_bytes, node_filesystem_avail_bytes,
-          node_filesystem_free_bytes, node_filesystem_reserve_root_size_bytes,
-          node_filesystem_files, node_filesystem_files_used,
-          node_filesystem_files_free, node_filesystem_files_reserve_root);
+          mi->mount_source, mi->filesystem, mi->mount_point, node_filesystem_size_bytes,
+          node_filesystem_avail_bytes, node_filesystem_free_bytes,
+          node_filesystem_reserve_root_size_bytes, node_filesystem_files,
+          node_filesystem_files_used, node_filesystem_files_free,
+          node_filesystem_files_reserve_root);
 }
 
 int32_t diskspace_routine_init() {
     __collector_diskspace.update_every =
         appconfig_get_int("collector_plugin_diskspace.update_every", 1);
-    __collector_diskspace.check_for_new_mountinfos_every = appconfig_get_int(
-        "collector_plugin_diskspace.check_for_new_mountinfos_every", 15);
+    __collector_diskspace.check_for_new_mountinfos_every =
+        appconfig_get_int("collector_plugin_diskspace.check_for_new_mountinfos_every", 15);
 
     __collector_diskspace.excluded_mountpoints = simple_pattern_create(
-        appconfig_get_str("collector_plugin_diskspace.exclude_mountpoints",
-                          DEFAULT_EXCLUDED_PATHS),
+        appconfig_get_str("collector_plugin_diskspace.exclude_mountpoints", DEFAULT_EXCLUDED_PATHS),
         NULL, SIMPLE_PATTERN_PREFIX);
-    __collector_diskspace.excluded_filesystems = simple_pattern_create(
-        appconfig_get_str("collector_plugin_diskspace.exclude_filesystems",
-                          DEFAULT_EXCLUDED_FILESYSTEMS),
-        NULL, SIMPLE_PATTERN_EXACT);
+    __collector_diskspace.excluded_filesystems =
+        simple_pattern_create(appconfig_get_str("collector_plugin_diskspace.exclude_filesystems",
+                                                DEFAULT_EXCLUDED_FILESYSTEMS),
+                              NULL, SIMPLE_PATTERN_EXACT);
 
     debug("[%s] routine start, update_every: %d, "
           "check_for_new_mountinfos_every: %d",
           __name, __collector_diskspace.update_every,
           __collector_diskspace.check_for_new_mountinfos_every);
 
-    __metric_node_filesystem_avail_bytes =
-        prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_filesystem_avail_bytes",
-            "node_filesystem_avail_bytes Filesystem space available to "
-            "non-root users in bytes.",
-            3, (const char *[]){ "device", "fstype", "mountpoint" }));
+    __metric_node_filesystem_avail_bytes = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_filesystem_avail_bytes",
+                       "node_filesystem_avail_bytes Filesystem space available to "
+                       "non-root users in bytes.",
+                       3, (const char *[]){ "device", "fstype", "mountpoint" }));
 
-    __metric_node_filesystem_free_bytes =
-        prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_filesystem_free_bytes",
-            "node_filesystem_free_bytes Filesystem free space in bytes.", 3,
-            (const char *[]){ "device", "fstype", "mountpoint" }));
+    __metric_node_filesystem_free_bytes = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_filesystem_free_bytes",
+                       "node_filesystem_free_bytes Filesystem free space in bytes.", 3,
+                       (const char *[]){ "device", "fstype", "mountpoint" }));
 
     __metric_node_filesystem_size_bytes =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_filesystem_size_bytes",
-            "node_filesystem_size_bytes Filesystem size in bytes.", 3,
+            "node_filesystem_size_bytes", "node_filesystem_size_bytes Filesystem size in bytes.", 3,
             (const char *[]){ "device", "fstype", "mountpoint" }));
 
-    __metric_node_filesystem_files =
-        prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_filesystem_files",
-            "node_filesystem_files Filesystem total file nodes.", 3,
-            (const char *[]){ "device", "fstype", "mountpoint" }));
+    __metric_node_filesystem_files = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_filesystem_files", "node_filesystem_files Filesystem total file nodes.", 3,
+        (const char *[]){ "device", "fstype", "mountpoint" }));
 
-    __metric_node_filesystem_files_free =
-        prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_filesystem_files_free",
-            "node_filesystem_files_free Filesystem total free file nodes.", 3,
-            (const char *[]){ "device", "fstype", "mountpoint" }));
+    __metric_node_filesystem_files_free = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_filesystem_files_free",
+                       "node_filesystem_files_free Filesystem total free file nodes.", 3,
+                       (const char *[]){ "device", "fstype", "mountpoint" }));
 
-    __metric_node_filesystem_readonly =
-        prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_filesystem_readonly",
-            "node_filesystem_readonly Filesystem read-only status.", 3,
-            (const char *[]){ "device", "fstype", "mountpoint" }));
+    __metric_node_filesystem_readonly = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_filesystem_readonly", "node_filesystem_readonly Filesystem read-only status.", 3,
+        (const char *[]){ "device", "fstype", "mountpoint" }));
 
-    __metric_node_filesystem_device_error =
-        prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_filesystem_device_error",
-            "node_filesystem_device_error Whether an error occurred while "
-            "getting "
-            "statistics for the given device.",
-            3, (const char *[]){ "device", "fstype", "mountpoint" }));
+    __metric_node_filesystem_device_error = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_filesystem_device_error",
+                       "node_filesystem_device_error Whether an error occurred while "
+                       "getting "
+                       "statistics for the given device.",
+                       3, (const char *[]){ "device", "fstype", "mountpoint" }));
 
     debug("[%s] routine init successed", __name);
     return 0;
@@ -297,11 +269,8 @@ void *diskspace_routine_start(void *UNUSED(arg)) {
         // disk space metrics
         debug("[%s] update filesystem metrics ====>", __name);
         struct mountinfo *mi;
-        for (mi = __collector_diskspace.disk_mountinfo_root; mi;
-             mi = mi->next) {
-            if (unlikely(
-                    mi->flags
-                    & (MOUNTINFO_FLAG_IS_DUMMY | MOUNTINFO_FLAG_IS_BIND))) {
+        for (mi = __collector_diskspace.disk_mountinfo_root; mi; mi = mi->next) {
+            if (unlikely(mi->flags & (MOUNTINFO_FLAG_IS_DUMMY | MOUNTINFO_FLAG_IS_BIND))) {
                 // 忽略指定的文件系统和绑定文件系统
                 continue;
             }

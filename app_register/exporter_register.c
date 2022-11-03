@@ -33,11 +33,7 @@
 #define SECRET_KEY_LEN 64
 
 static const char *__exporter_register_config_base_path = "application.exporter_register";
-// static const char *__exporter_register_env_base_path_fmt =
-// "application.exporter_register.envs.%s";
-static const char *__iface_config_path = "application.metrics_http_exporter.iface";
 static const char *__port_config_path = "application.metrics_http_exporter.port";
-static const char *__default_iface_name = "eth0";
 
 struct register_mgr {
     int32_t enabled;
@@ -98,11 +94,15 @@ static int32_t __init_register_config() {
     __register_mgr.enabled =
         appconfig_get_member_bool(__exporter_register_config_base_path, "enable", 0);
     if (likely(__register_mgr.enabled)) {
-        // 获取配置网卡名称
-        const char *iface_name = appconfig_get_str(__iface_config_path, __default_iface_name);
+        char      iface[IF_NAMESIZE] = { 0 };
+        in_addr_t gateway_addr = 0;
+
+        get_default_gateway_and_iface(&gateway_addr, iface);
+        debug("[app_register] default geteway add:'%s', iface:'%s'",
+              inet_ntoa(*(struct in_addr *)&gateway_addr), iface);
 
         // 获取本机ip地址、端口号、endpoint
-        get_ipaddr_by_iface(iface_name, __register_mgr.ip, XM_IP_BUF_SIZE);
+        get_ipaddr_by_iface(iface, __register_mgr.ip, XM_IP_BUF_SIZE);
         strlcpy(__register_mgr.endpoint, get_hostname(), HOST_NAME_MAX);
         __register_mgr.port = (int16_t)appconfig_get_int(__port_config_path, 0);
         if (unlikely(0 == __register_mgr.port)) {
