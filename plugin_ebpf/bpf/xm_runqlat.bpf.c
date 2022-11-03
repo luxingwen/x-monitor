@@ -117,7 +117,7 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
 
     // 单位是微秒
     wakeup_to_run_duration = wakeup_to_run_duration / 1000U;
-    // 求出在哪个slot, 总共26个槽位，1---2的25次方
+    // 计算2的对数，求出在哪个slot, 总共26个槽位，1---2的25次方
     __u32 slot = __xm_log2l(wakeup_to_run_duration);
     //
     if (slot > XM_RUNQLAT_MAX_SLOTS) {
