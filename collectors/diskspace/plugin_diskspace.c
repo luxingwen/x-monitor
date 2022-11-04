@@ -55,7 +55,7 @@ static prom_gauge_t *__metric_node_filesystem_avail_bytes = NULL,
                     *__metric_node_filesystem_device_error = NULL;
 
 __attribute__((constructor)) static void collector_diskspace_register_routine() {
-    fprintf(stderr, "---register_collector_diskspace_routine---\n");
+    // fprintf(stderr, "---register_collector_diskspace_routine---\n");
     struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;

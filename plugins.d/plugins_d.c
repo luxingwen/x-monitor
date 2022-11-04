@@ -58,7 +58,7 @@ static struct pluginsd __pluginsd = {
 };
 
 __attribute__((constructor)) static void pluginsd_register_routine() {
-    fprintf(stderr, "---register_pluginsd_routine---\n");
+    // fprintf(stderr, "---register_pluginsd_routine---\n");
     struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;

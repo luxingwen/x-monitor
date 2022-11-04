@@ -7,6 +7,32 @@ set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
                 OUTPUT_VARIABLE GCC_VERSION)
 
+SET(COMMIT_HASH "")
+SET(BRANCH_NAME "")
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} log -1 --pretty=format:%h
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        OUTPUT_VARIABLE COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} symbolic-ref --short -q HEAD
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        OUTPUT_VARIABLE BRANCH_NAME
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
+message(STATUS "Git version is ${BRANCH_NAME}:${COMMIT_HASH}")
+# 版本号.
+set(XMonitor_VERSION_MAJOR 1)
+set(XMonitor_VERSION_MINOR 0)
+
+string(TIMESTAMP BUILD_TIME "%Y-%m-%d %H:%M:%S" UTC)
+
 # 编译输出目录
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
@@ -82,10 +108,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # 这个是支持c11和extensions -std=gnu11
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# 版本号.
-set(XMonitor_VERSION_MAJOR 1)
-set(XMonitor_VERSION_MINOR 0)
 
 # 依赖项
 set(EXTRA_DIR "${PROJECT_SOURCE_DIR}/extra")

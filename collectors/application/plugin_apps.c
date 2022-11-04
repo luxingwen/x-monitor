@@ -42,7 +42,7 @@ static struct collector_appstat __collector_appstat = {
 };
 
 __attribute__((constructor)) static void collector_appstatus_register_routine() {
-    fprintf(stderr, "---register_collector_appstatus_routine---\n");
+    // fprintf(stderr, "---register_collector_appstatus_routine---\n");
     struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;

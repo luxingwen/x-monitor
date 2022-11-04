@@ -1,2 +1,5 @@
-#define XMonitor_VERSION_MAJOR @XMonitor_VERSION_MAJOR@
-#define XMonitor_VERSION_MINOR @XMonitor_VERSION_MINOR@
+#define XMonitor_VERSION_MAJOR "@XMonitor_VERSION_MAJOR@"
+#define XMonitor_VERSION_MINOR "@XMonitor_VERSION_MINOR@"
+#define COMMIT_HASH "@COMMIT_HASH@"
+#define BRANCH_NAME "@BRANCH_NAME@"
+#define BUILD_TIME "@BUILD_TIME@"

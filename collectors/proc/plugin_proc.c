@@ -61,7 +61,7 @@ static struct proc_metrics_module
                               } };
 
 __attribute__((constructor)) static void collector_proc_register_routine() {
-    fprintf(stderr, "---register_collector_proc_routine---\n");
+    // fprintf(stderr, "---register_collector_proc_routine---\n");
     struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;

@@ -18,7 +18,7 @@
 
 #include "app_config/app_config.h"
 
-static const char *__name = "PROXY_ENVOY_MGR";
+static const char *__name = "PLUGIN_PROXY_ENVOY";
 static const char *__config_name = "plugin_proxy";
 
 static struct proxy_envoy_mgr {
@@ -35,7 +35,7 @@ static struct proxy_envoy_mgr {
 };
 
 __attribute__((constructor)) static void proxy_envoymgr_register_routine() {
-    fprintf(stderr, "---register_proxy_envoymgr_routine---\n");
+    // fprintf(stderr, "---register_proxy_envoymgr_routine---\n");
     struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;
