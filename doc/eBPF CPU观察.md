@@ -30,6 +30,8 @@ RunQueue中的线程是按照优先级排序的，这个值可以由系统内核
 
 进程的上下文包括，虚拟内存，栈，全局变量，寄存器等用户空间资源，还包括内核堆栈、寄存器等内核空间状态。
 
+TLB（加快虚拟地址到物理地址转换速度），全局类型TLB：内核空间时所有进程共享的空间，因此这部分空间的虚拟地址到物理地址的翻译不会变化。进程独有类型的TLB：用户地址空间是每个进程独有的。。
+
 线程迁移：在多core环境中，有core空闲，并且运行队列中有可运行状态的线程等待执行，CPU调度器可以将这个线程迁移到该core的队列中，以便尽快运行。
 
 ### 调度类
@@ -225,7 +227,6 @@ static void ttwu_do_activate(struct rq *rq, struct task_struct *p,
 void activate_task(struct rq *rq, struct task_struct *p, int flags)
 {
 	enqueue_task(rq, p, flags);
-
 	p->on_rq = TASK_ON_RQ_QUEUED;
 }
 ```
@@ -514,8 +515,6 @@ static __always_inline bool need_resched(void)
 	return unlikely(tif_need_resched());
 }
 ```
-
-### runqlen
 
 ## 资料
 

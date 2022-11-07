@@ -229,6 +229,15 @@ static const struct bpf_sec_def section_defs[] = {
 
 - fexit
 
+### perf_event函数
+
+```
+SEC("perf_event")
+int do_sample(struct bpf_perf_event_data *ctx)
+```
+
+触发执行，每个采样间隔执行一次。
+
 ## 资料
 
 - [x86-64汇编入门 - nifengz](https://nifengz.com/introduction_x64_assembly/)
