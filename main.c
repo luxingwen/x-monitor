@@ -44,13 +44,6 @@ static const struct option_def option_definitions[] = {
     { 'c', "Configuration file to load.", "filename", CONFIG_FILENAME },
     { 'D', "Do not fork. Run in the foreground.", NULL, "run in the background" },
     { 'h', "Display this help message.", NULL, NULL },
-    //{ 'i', "The IP address to listen to.", "IP",
-    //  "all IP addresses IPv4 and IPv6" },
-    //{ 'p', "API/Web port to use.", "port", "19999" },
-    //{ 's', "Prefix for /proc and /sys (for containers).", "path", "no prefix"
-    //},
-    //{ 't', "The internal clock of x-monitor.", "seconds", "1" },
-    //{ 'u', "Run as user.", "username", "x-monitor" },
     { 'v', "Print x-monitor version and exit.", NULL, NULL },
     { 'V', "Print x-monitor version and exit.", NULL, NULL }
 };
@@ -216,7 +209,7 @@ int32_t main(int32_t argc, char *argv[]) {
                 break;
             case 'V':
             case 'v':
-                fprintf(stderr, "x-monitor:\n\tVersion: %s.%s\n\tGit: %s:%s\n\tBuild Time: %s\n",
+                fprintf(stderr, "\tVersion: %s.%s\n\tGit: %s:%s\n\tBuild Time: %s\n",
                         XMonitor_VERSION_MAJOR, XMonitor_VERSION_MINOR, BRANCH_NAME, COMMIT_HASH,
                         BUILD_TIME);
                 return 0;

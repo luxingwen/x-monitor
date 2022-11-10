@@ -2,6 +2,8 @@
 
 ## BPF_MAP_TYPE_PERF_EVENT_ARRAY
 
+存储指向`perf_event`数据结构的指针，用于读取和存储perf事件计数器
+
 构造一个map对象
 
 ```
@@ -69,3 +71,10 @@ bpf_task_storage_delete(&start, next);
 	pelem = bpf_task_storage_get(&tstamp, curr, NULL, 0);
 ```
 
+## BPF_MAP_TYPE_HASH
+
+一种哈希表
+
+## BPF_MAP_TYPE_STACK_TRACE
+
+存储调用堆栈跟踪信息

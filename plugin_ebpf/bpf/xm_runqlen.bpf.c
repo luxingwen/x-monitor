@@ -12,3 +12,10 @@
 #include "xm_bpf_parsing_helpers.h"
 
 #include "../bpf_and_user.h"
+
+SEC("perf_event")
+__s32 xm_bperf_runqlen_do_sample(struct bpf_perf_event_data *ctx) {
+    return 0;
+}
+
+char LICENSE[] SEC("license") = "GPL";

@@ -8,8 +8,7 @@
 #pragma once
 
 #if __GNUC__
-#define GCC_VERSION \
-    (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #if __x86_64__ || __ppc64__
 #define LONG_BITS 64
 #else
@@ -110,11 +109,20 @@ macro 結果為 true ，則可以在 compile-time 的時候被告知有錯
  * @TYPE: The type of the structure
  * @MEMBER: The member within the structure to get the end offset of
  */
-#define offsetofend(TYPE, MEMBER) \
-    (offsetof(TYPE, MEMBER) + sizeof_field(TYPE, MEMBER))
+#define offsetofend(TYPE, MEMBER) (offsetof(TYPE, MEMBER) + sizeof_field(TYPE, MEMBER))
 
 // 支持宏嵌套
 #define TO_STRING_1(x) #x
 #define TO_STRING(x) TO_STRING_1(x)
 
 #define __new(T) (typeof(T))calloc(1, sizeof(T))
+
+#define RUN_ONCE(runcode)         \
+    do {                          \
+        static bool code_ran = 0; \
+        if (!code_ran) {          \
+            \ 
+        code_ran = 1;             \
+            runcode;              \
+        }                         \
+    } while (0)

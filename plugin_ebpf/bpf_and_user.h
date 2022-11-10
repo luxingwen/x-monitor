@@ -48,3 +48,6 @@ struct xm_runqlat_args {
 struct xm_runqlat_hist {
     __u32 slots[XM_RUNQLAT_MAX_SLOTS];   // 每个slot代表2的次方
 };
+
+//------------------------ runqlen
+#define XM_MAX_CPU_NR 128

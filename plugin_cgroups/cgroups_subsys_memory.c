@@ -51,36 +51,36 @@ void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
     if (cg_type == CGROUPS_V1) {
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_cache_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_cache", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_cache_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_cache_help);
 
         __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_rss_bytes,
-                                     prom_gauge_new, "cgroup_v1_memory_stat_rss",
+                                     prom_gauge_new, "cgroup_v1_memory_stat_rss_bytes",
                                      cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_rss_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_rss_huge_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_rss_huge", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_rss_huge_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_rss_huge_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_shmem_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_shmem", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_shmem_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_shmem_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_mapped_file_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_mapped_file", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_mapped_file_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_mapped_file_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_dirty_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_dirty", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_dirty_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_dirty_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_writeback_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_writeback", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_writeback_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_writeback_help);
 
         __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_pgpgin,
@@ -105,83 +105,83 @@ void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_inactive_anon_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_inactive_anon", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_inactive_anon_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_inactive_anon_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_active_anon_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_active_anon", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_active_anon_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_active_anon_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_inactive_file_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_inactive_file", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_inactive_file_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_inactive_file_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_active_file_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_active_file", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_active_file_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_active_file_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_unevictable_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_unevictable", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_unevictable_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_unevictable_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_hierarchical_memory_limit_bytes,
-            prom_gauge_new, "cgroup_v1_memory_stat_hierarchical_memory_limit",
+            prom_gauge_new, "cgroup_v1_memory_stat_hierarchical_memory_limit_bytes",
             cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_hierarchical_memory_limit_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_hierarchical_memsw_limit_bytes,
-            prom_gauge_new, "cgroup_v1_memory_stat_hierarchical_memsw_limit",
+            prom_gauge_new, "cgroup_v1_memory_stat_hierarchical_memsw_limit_bytes",
             cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_hierarchical_memsw_limit_help);
 
         __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_swap_bytes,
-                                     prom_gauge_new, "cgroup_v1_memory_stat_swap",
+                                     prom_gauge_new, "cgroup_v1_memory_stat_swap_bytes",
                                      cg_obj->cg_prom_collector,
                                      sys_cgroup_v1_memory_stat_swap_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_cache_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_total_cache", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_total_cache_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_total_cache_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_rss_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_total_rss", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_total_rss_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_total_rss_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_rss_huge_bytes,
-            prom_gauge_new, "cgroup_v1_memory_stat_total_rss_huge", cg_obj->cg_prom_collector,
+            prom_gauge_new, "cgroup_v1_memory_stat_total_rss_huge_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_total_rss_huge_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_shmem_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_total_shmem", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_total_shmem_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_total_shmem_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_swap_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_total_swap", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_total_swap_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_total_swap_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_mapped_file_bytes,
-            prom_gauge_new, "cgroup_v1_memory_stat_total_mapped_file", cg_obj->cg_prom_collector,
-            sys_cgroup_v1_memory_stat_total_mapped_file_help);
+            prom_gauge_new, "cgroup_v1_memory_stat_total_mapped_file_bytes",
+            cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_total_mapped_file_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_dirty_bytes, prom_gauge_new,
-            "cgroup_v1_memory_stat_total_dirty", cg_obj->cg_prom_collector,
+            "cgroup_v1_memory_stat_total_dirty_bytes", cg_obj->cg_prom_collector,
             sys_cgroup_v1_memory_stat_total_dirty_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_writeback_bytes,
-            prom_gauge_new, "cgroup_v1_memory_stat_total_writeback", cg_obj->cg_prom_collector,
-            sys_cgroup_v1_memory_stat_total_writeback_help);
+            prom_gauge_new, "cgroup_v1_memory_stat_total_writeback_bytes",
+            cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_total_writeback_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_pgpgin, prom_counter_new,
@@ -205,28 +205,28 @@ void init_cgroup_obj_memory_metrics(struct xm_cgroup_obj *cg_obj) {
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_inactive_anon_bytes,
-            prom_gauge_new, "cgroup_v1_memory_stat_total_inactive_anon", cg_obj->cg_prom_collector,
-            sys_cgroup_v1_memory_stat_total_inactive_anon_help);
+            prom_gauge_new, "cgroup_v1_memory_stat_total_inactive_anon_bytes",
+            cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_total_inactive_anon_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_active_anon_bytes,
-            prom_gauge_new, "cgroup_v1_memory_stat_total_active_anon", cg_obj->cg_prom_collector,
-            sys_cgroup_v1_memory_stat_total_active_anon_help);
+            prom_gauge_new, "cgroup_v1_memory_stat_total_active_anon_bytes",
+            cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_total_active_anon_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_inactive_file_bytes,
-            prom_gauge_new, "cgroup_v1_memory_stat_total_inactive_file", cg_obj->cg_prom_collector,
-            sys_cgroup_v1_memory_stat_total_inactive_file_help);
+            prom_gauge_new, "cgroup_v1_memory_stat_total_inactive_file_bytes",
+            cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_total_inactive_file_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_active_file_bytes,
-            prom_gauge_new, "cgroup_v1_memory_stat_total_active_file", cg_obj->cg_prom_collector,
-            sys_cgroup_v1_memory_stat_total_active_file_help);
+            prom_gauge_new, "cgroup_v1_memory_stat_total_active_file_bytes",
+            cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_total_active_file_help);
 
         __register_new_cgroup_metric(
             cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_stat_total_unevictable_bytes,
-            prom_gauge_new, "cgroup_v1_memory_stat_total_unevictable", cg_obj->cg_prom_collector,
-            sys_cgroup_v1_memory_stat_total_unevictable_help);
+            prom_gauge_new, "cgroup_v1_memory_stat_total_unevictable_bytes",
+            cg_obj->cg_prom_collector, sys_cgroup_v1_memory_stat_total_unevictable_help);
 
         __register_new_cgroup_metric(cg_obj->cg_metrics.sys_cgroup_v1_metric_memory_usage_in_bytes,
                                      prom_gauge_new, "cgroup_v1_memory_usage_in_bytes",
