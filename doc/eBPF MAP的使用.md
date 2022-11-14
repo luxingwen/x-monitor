@@ -73,8 +73,14 @@ bpf_task_storage_delete(&start, next);
 
 ## BPF_MAP_TYPE_HASH
 
-一种哈希表
+一种哈希表，
 
 ## BPF_MAP_TYPE_STACK_TRACE
 
 存储调用堆栈跟踪信息
+
+## BPF_MAP_TYPE_PERCPU_ARRAY
+
+## BPF_MAP_TYPE_RINGBUF
+
+内核5.8引入，

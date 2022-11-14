@@ -1,5 +1,7 @@
 # x-monitor
 
+![x-monitor](./doc/img/x-monitor.jpg)
+
 系统观察服务，从以下层面来观察OS、收集指标：
 
 - 系统监控指标
