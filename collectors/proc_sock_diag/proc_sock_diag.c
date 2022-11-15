@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-11-15 16:04:51
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-11-15 16:26:09
+ * @Last Modified time: 2022-11-15 18:35:45
  */
 
 #include "proc_sock_diag.h"
@@ -27,7 +27,7 @@ static const char *const __socket_state_name[] = {
 };
 
 const char *sock_state_name(enum SOCK_STATE ss) {
-    if (ss < 1 || ss >= SS_MAX) {
+    if (ss < 1 || ss >= SS_MAX_STATES) {
         return __socket_state_name[0];
     }
     return __socket_state_name[ss];
