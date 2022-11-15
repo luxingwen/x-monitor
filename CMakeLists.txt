@@ -169,6 +169,7 @@ set(EXTRA_LIBS "libcurl.a"
 # 项目子目录，让cmake去识别子目录下的CMakeLists.txt文件
 add_subdirectory(utils)
 add_subdirectory(collectors/process)
+add_subdirectory(collectors/proc_sock_diag)
 
 add_subdirectory(examples/construct_init)
 add_subdirectory(examples/procfile_cli)
