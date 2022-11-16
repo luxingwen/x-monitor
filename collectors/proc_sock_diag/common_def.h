@@ -9,9 +9,13 @@
 
 #include <stdint.h>
 
+#include "urcu/call-rcu.h"
+#include "urcu/rculfhash.h"
+
 // SOCK类型
 enum SOCK_TYPE { ST_UNKNOWN, ST_TCP, ST_TCP6, ST_UDP, ST_UDP6, ST_UNIX, ST_MAX };
 
+// https://github.com/torvalds/linux/blob/master/include/uapi/linux/net.h#L48
 // SOCK状态
 enum SOCK_STATE {
     SS_UNKNOWN = 0,
@@ -33,6 +37,11 @@ struct sock_info {
     uint32_t        ino;   // sock inode
     enum SOCK_TYPE  sock_type;
     enum SOCK_STATE sock_state;
+
+    // for rcu hash table
+    struct cds_lfht_node node;
+    struct rcu_head      rcu;
 };
 
-extern const char *const socket_state_name[];
+// sock diag rcu map
+struct cds_lfht *sock_diag_rcu_map;

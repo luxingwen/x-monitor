@@ -10,6 +10,8 @@
 
 #include "utils/common.h"
 #include "utils/compiler.h"
+#include "utils/consts.h"
+#include "utils/log.h"
 
 static const char *const __socket_state_name[] = {
     "UNKNOWN",
@@ -31,4 +33,20 @@ const char *sock_state_name(enum SOCK_STATE ss) {
         return __socket_state_name[0];
     }
     return __socket_state_name[ss];
+}
+
+int32_t init_socks_diag() {
+    debug("[SOCKS_DIAG] init");
+
+    return 0;
+}
+
+int32_t collect_socks_diag() {
+    debug("[SOCKS_DIAG] collect");
+
+    return 0;
+}
+
+void fini_socks_diag() {
+    debug("[SOCKS_DIAG] fini");
 }

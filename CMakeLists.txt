@@ -156,7 +156,9 @@ set(EXTRA_LIBS "libcurl.a"
   "libtasn1.a"
   "libunistring.a"
   "libgmp.a"
-  "libzstd.a")
+  "libzstd.a"
+  "liburcu-cds.a"
+  "liburcu.a")
 
 # "libpagemap.a")
 

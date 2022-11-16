@@ -16,6 +16,8 @@
 #include "utils/consts.h"
 #include "utils/log.h"
 
+#include "urcu/urcu-memb.h"
+
 #include "app_config/app_config.h"
 
 #include "proc_rdset.h"
@@ -107,6 +109,8 @@ int32_t proc_routine_init() {
 void *proc_routine_start(void *UNUSED(arg)) {
     debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
+    urcu_memb_register_thread();
+
     int32_t index = 0;
     int32_t update_every = appconfig_get_int("collector_plugin_proc.update_every", 1);
 
@@ -141,7 +145,7 @@ void *proc_routine_start(void *UNUSED(arg)) {
             }
         }
     }
-
+    urcu_memb_unregister_thread();
     debug("[%s] routine exit", __name);
     return NULL;
 }

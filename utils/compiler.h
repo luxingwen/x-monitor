@@ -121,8 +121,9 @@ macro 結果為 true ，則可以在 compile-time 的時候被告知有錯
     do {                          \
         static bool code_ran = 0; \
         if (!code_ran) {          \
-            \ 
-        code_ran = 1;             \
+            code_ran = 1;         \
             runcode;              \
         }                         \
     } while (0)
+
+

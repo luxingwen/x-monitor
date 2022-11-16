@@ -16,6 +16,8 @@
 #include "utils/files.h"
 #include "utils/consts.h"
 
+#include "urcu/urcu-memb.h"
+
 #include "app_config/app_config.h"
 
 static const char *__name = "PLUGIN_PROXY_ENVOY";
@@ -82,6 +84,8 @@ int32_t envoy_manager_routine_init() {
 void *envoy_manager_routine_start(void *UNUSED(arg)) {
     debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
+    urcu_memb_register_thread();
+
     char buf[XM_STDOUT_LINE_BUF_SIZE] = { 0 };
 
     while (!__proxy_envoy_mgr.exit_flag) {
@@ -117,7 +121,7 @@ void *envoy_manager_routine_start(void *UNUSED(arg)) {
 
         sleep(1);
     }
-
+    urcu_memb_unregister_thread();
     debug("routine '%s' exit", __name);
     return NULL;
 }

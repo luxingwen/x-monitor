@@ -11,6 +11,15 @@
 
 extern const char *sock_state_name(enum SOCK_STATE ss);
 
-extern int32_t do_sock_diag();
+// 初始化套接字诊断收集
+extern int32_t init_socks_diag();
 
+// 收集套接字诊断信息
+extern int32_t collect_socks_diag();
+
+// 清空套接字诊断信息
+extern void fini_socks_diag();
+
+// 查询套接字诊断信息
+// ino：socket inode number
 extern struct sock_info *find_sock_info(uint32_t ino);

@@ -21,6 +21,8 @@
 #include "utils/clocks.h"
 #include "utils/os.h"
 
+#include "urcu/urcu-memb.h"
+
 #include "app_config/app_config.h"
 
 static const char *__name = "PLUGIN_CGROUPS";
@@ -168,6 +170,8 @@ int32_t cgroup_collector_routine_init() {
 void *cgroup_collector_routine_start(void *UNUSED(arg)) {
     debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
+    urcu_memb_register_thread();
+
     usec_t step_usecs = __collector_cgroups.update_every * USEC_PER_SEC;
     usec_t step_usecs_for_update_every_cgroups =
         __collector_cgroups.update_all_cgroups_interval_secs * USEC_PER_SEC;
@@ -202,6 +206,8 @@ void *cgroup_collector_routine_start(void *UNUSED(arg)) {
     }
 
     cgroups_mgr_fini();
+
+    urcu_memb_unregister_thread();
 
     debug("[%s] routine exit", __name);
     return NULL;

@@ -9,6 +9,8 @@
 
 #include "prometheus-client-c/prom.h"
 
+#include "urcu/urcu-memb.h"
+
 #include "routine.h"
 #include "utils/clocks.h"
 #include "utils/common.h"
@@ -247,6 +249,8 @@ int32_t diskspace_routine_init() {
 void *diskspace_routine_start(void *UNUSED(arg)) {
     debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
+    urcu_memb_register_thread();
+
     // 每次tick的时间间隔，转换为微秒
     usec_t step_usecs = __collector_diskspace.update_every * USEC_PER_SEC;
 
@@ -282,6 +286,7 @@ void *diskspace_routine_start(void *UNUSED(arg)) {
         }
     }
 
+    urcu_memb_unregister_thread();
     debug("[%s] routine exit", __name);
     return NULL;
 }

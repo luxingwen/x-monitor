@@ -14,6 +14,8 @@
 #include "utils/consts.h"
 #include "utils/log.h"
 
+#include "urcu/urcu-memb.h"
+
 #include "app_config/app_config.h"
 
 #include "apps_filter_rule.h"
@@ -74,12 +76,15 @@ int32_t appstat_collector_routine_init() {
 void *appstat_collector_routine_start(void *UNUSED(arg)) {
     debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
+    urcu_memb_register_thread();
+
     usec_t step_usecs = __collector_appstat.update_every * USEC_PER_SEC;
     usec_t step_usecs_for_app = __collector_appstat.update_every_for_app * USEC_PER_SEC;
     usec_t step_usecs_for_filter_rules =
         __collector_appstat.update_every_for_filter_rules * USEC_PER_SEC;
 
     if (unlikely(0 != init_apps_collector())) {
+        urcu_memb_unregister_thread();
         return NULL;
     }
 
@@ -89,6 +94,7 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
     // 构造过滤规则
     struct app_filter_rules *afr = create_filter_rules(__config_name);
     if (unlikely(!afr)) {
+        urcu_memb_unregister_thread();
         return NULL;
     }
     __collector_appstat.last_update_for_filter_rules_usecs = now_monotonic_usec();
@@ -130,7 +136,9 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
     free_filter_rules(afr);
     afr = NULL;
 
+    urcu_memb_unregister_thread();
     debug("[%s] routine exit", __name);
+
     return NULL;
 }
 

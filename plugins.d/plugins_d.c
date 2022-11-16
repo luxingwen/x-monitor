@@ -16,6 +16,8 @@
 #include "utils/popen.h"
 #include "utils/strings.h"
 
+#include "urcu/urcu-memb.h"
+
 #include "app_config/app_config.h"
 
 #define PLUGINSD_FILE_SUFFIX ".plugin"
@@ -185,6 +187,8 @@ int32_t pluginsd_routine_init() {
 void *pluginsd_routine_start(void *UNUSED(arg)) {
     debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
+    urcu_memb_register_thread();
+
     // https://www.cnblogs.com/guxuanqing/p/8385077.html
     // pthread_cleanup_push( pluginsd_cleanup, NULL );
 
@@ -310,7 +314,7 @@ void *pluginsd_routine_start(void *UNUSED(arg)) {
         closedir(dir);
         sleep(__pluginsd.scan_frequency);
     }
-
+    urcu_memb_unregister_thread();
     debug("routine '%s' exit", __name);
     return 0;
 }
