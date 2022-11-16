@@ -43,5 +43,5 @@ struct sock_info {
     struct rcu_head      rcu;
 };
 
-// sock diag rcu map
-struct cds_lfht *sock_diag_rcu_map;
+// sock diag rcu hash table
+struct cds_lfht *sock_diag_rcu_ht;
