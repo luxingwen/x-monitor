@@ -66,6 +66,14 @@ endif(STATIC_LINKING)
 set(CMAKE_C_FLAGS_DEBUG "-Wall -g -ggdb3")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 
+if(${CMAKE_BUILD_TYPE} MATCHES "Release")
+  set(BuildType "Release")
+  message(STATUS "Release Version: ${CMAKE_C_FLAGS_RELEASE}")
+else()
+  set(BuildType "Debug")
+  message(STATUS "Debug Version: ${CMAKE_C_FLAGS_DEBUG}")
+endif()
+
 # 设置c编译参数
 # Position-Independent Code
 # set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -Wpedantic")
@@ -171,7 +179,7 @@ set(EXTRA_LIBS "libcurl.a"
 # 项目子目录，让cmake去识别子目录下的CMakeLists.txt文件
 add_subdirectory(utils)
 add_subdirectory(collectors/process)
-add_subdirectory(collectors/proc_sock_diag)
+add_subdirectory(collectors/proc_sock)
 
 add_subdirectory(examples/construct_init)
 add_subdirectory(examples/procfile_cli)
@@ -272,4 +280,4 @@ target_compile_definitions(x-monitor PRIVATE
   -DAPP_METRIC_LABEL_NAME=${APP_METRIC_LABEL_NAME}
   -DCOMMON_METRIC_PREFIX=${COMMON_METRIC_PREFIX})
 
-target_link_libraries(x-monitor xmonitor-process-stat xmonitor-proc-sock-diag xmonitor-utils ${EXTRA_LIBS} pthread ssl crypto uuid dl z m)
+target_link_libraries(x-monitor xmonitor-process-stat xmonitor-proc-sock xmonitor-utils ${EXTRA_LIBS} pthread ssl crypto uuid dl z m)

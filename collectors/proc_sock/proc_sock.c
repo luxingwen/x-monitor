@@ -2,18 +2,17 @@
  * @Author: CALM.WU
  * @Date: 2022-11-15 16:04:51
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-11-15 18:35:45
+ * @Last Modified time: 2022-11-17 16:18:33
  */
 
-#include "proc_sock_diag.h"
-#include "common_def.h"
-
-#include "urcu/urcu-memb.h"
+#include "proc_sock.h"
 
 #include "utils/common.h"
 #include "utils/compiler.h"
 #include "utils/consts.h"
 #include "utils/log.h"
+
+#include "internal/socks_internal.h"
 
 static const char *const __socket_state_name[] = {
     "UNKNOWN",
@@ -38,26 +37,20 @@ const char *sock_state_name(enum SOCK_STATE ss) {
 }
 
 int32_t init_socks_diag() {
-    debug("[SOCKS_DIAG] init");
+    if (unlikely(init_sock_info_mgr() != 0)) {
+        return -1;
+    }
 
-    RUN_ONCE({
-        sock_diag_rcu_ht = cds_lfht_new_flavor(8, 8, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING,
-                                               &urcu_memb_flavor, NULL);
-        if (unlikely(!sock_diag_rcu_ht)) {
-            error("[SOCKS_DIAG] allocating hash table failed");
-            return -1;
-        }
-    });
-
+    debug("[PROC_SOCK] init successed.");
     return 0;
 }
 
-int32_t collect_socks_diag() {
-    debug("[SOCKS_DIAG] collect");
+int32_t collect_socks_info() {
+    debug("[PROC_SOCK] start collect proc socks info");
 
     return 0;
 }
 
 void fini_socks_diag() {
-    debug("[SOCKS_DIAG] fini");
+    debug("[PROC_SOCK] fini");
 }

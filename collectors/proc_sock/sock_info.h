@@ -2,14 +2,14 @@
  * @Author: CALM.WU
  * @Date: 2022-11-15 15:07:39
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-11-15 18:35:13
+ * @Last Modified time: 2022-11-17 16:37:07
  */
 
 #pragma once
 
 #include <stdint.h>
 
-#include "urcu/call-rcu.h"
+#include "urcu/urcu-memb.h"
 #include "urcu/rculfhash.h"
 
 // SOCK类型
@@ -42,6 +42,3 @@ struct sock_info {
     struct cds_lfht_node node;
     struct rcu_head      rcu;
 };
-
-// sock diag rcu hash table
-struct cds_lfht *sock_diag_rcu_ht;
