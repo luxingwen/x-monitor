@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-11-15 15:08:58
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-11-18 16:33:28
+ * @Last Modified time: 2022-11-18 18:00:21
  */
 
 // https://guanjunjian.github.io/2017/11/09/study-8-proc-net-tcp-analysis/
@@ -57,6 +57,11 @@ static int32_t __collect_unix_socks_info(struct proc_file *pf, const char *const
     return 0;
 }
 
+/**
+ * It reads the contents of the /proc/net/tcp, /proc/net/tcp6, /proc/net/udp, /proc/net/udp6, and
+ * /proc/net/unix files, and parses the contents of each file to extract information about the
+ * sockets
+ */
 int32_t do_sock_info_collection() {
     int32_t ret = 0;
     debug("[PROC_SOCK] start collect socks info.");
