@@ -195,6 +195,7 @@ add_subdirectory(examples/process_stat_test)
 add_subdirectory(examples/regex_cli)
 add_subdirectory(examples/config_test)
 add_subdirectory(examples/pdpids_test)
+add_subdirectory(examples/proc_sock_test)
 
 add_subdirectory(examples/ebpf/cachestat_cli)
 

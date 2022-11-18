@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-12-06 11:13:59
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-12-23 16:52:50
+ * @Last Modified time: 2022-11-18 11:37:31
  */
 
 #include "utils/common.h"
@@ -15,15 +15,14 @@ const char *seps = " \t:";
 int32_t main(int32_t argc, char **argv) {
     int32_t ret = 0;
 
-    char    *log_cfg = argv[1];
-    char    *proc_file = argv[2];
-    uint32_t loop_secs = str2uint32_t(argv[3]);
+    char    *proc_file = argv[1];
+    uint32_t loop_secs = str2uint32_t(argv[2]);
 
     if (loop_secs == 0) {
         loop_secs = 10;
     }
 
-    if (log_init(log_cfg, "procfile_cli") != 0) {
+    if (log_init("../examples/log.cfg", "procfile_cli") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }

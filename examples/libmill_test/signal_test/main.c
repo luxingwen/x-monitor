@@ -44,7 +44,7 @@ coroutine void recevier(chan ch) {   // 读取socket
 }
 
 int32_t main(int32_t argc, char *argv[]) {
-    if (log_init("../cli/log.cfg", "libmill_signal_test") != 0) {
+    if (log_init("../examples/log.cfg", "libmill_signal_test") != 0) {
         fprintf(stderr, "log init failed");
         return -1;
     }

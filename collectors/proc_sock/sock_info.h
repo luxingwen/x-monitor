@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-11-15 15:07:39
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-11-17 16:37:07
+ * @Last Modified time: 2022-11-18 16:38:33
  */
 
 #pragma once
@@ -41,4 +41,6 @@ struct sock_info {
     // for rcu hash table
     struct cds_lfht_node node;
     struct rcu_head      rcu;
+
+    int8_t is_find;
 };

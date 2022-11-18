@@ -76,7 +76,7 @@ int32_t main(int32_t argc, char **argv) {
     BackoffAlgorithmContext_t retryContext;
     uint16_t                  nextRetryBackoff = 0;
 
-    if (log_init("../cli/log.cfg", "prom_reg_test") != 0) {
+    if (log_init("../examples/log.cfg", "prom_reg_test") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }

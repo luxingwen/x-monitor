@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-31 10:24:17
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-13 16:49:19
+ * @Last Modified time: 2022-11-18 11:34:04
  */
 
 #include "utils/common.h"
@@ -58,7 +58,7 @@ static double __get_total_cpu_jiffies() {
 }
 
 int32_t main(int32_t argc, char **argv) {
-    if (log_init("../cli/log.cfg", "process_stat_test") != 0) {
+    if (log_init("../examples/log.cfg", "process_stat_test") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }

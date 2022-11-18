@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-23 16:19:17
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-08-11 15:49:49
+ * @Last Modified time: 2022-11-18 16:14:55
  */
 
 // https://www.cnblogs.com/songhaibin/p/13885403.html
@@ -32,7 +32,7 @@ int32_t collector_process_cpu_usage(struct process_status *ps) {
     ps->pf_proc_pid_stat = procfile_reopen(ps->pf_proc_pid_stat, ps->stat_full_filename, NULL,
                                            PROCFILE_FLAG_NO_ERROR_ON_FILE_IO);
     if (unlikely(NULL == ps->pf_proc_pid_stat)) {
-        error("[PROCESS] procfile_reopen '%s' failed.", ps->stat_full_filename);
+        error("[PROCESS:cpu] procfile_reopen '%s' failed.", ps->stat_full_filename);
         return -1;
     }
 

@@ -45,7 +45,7 @@ static void __test_person_ary() {
 
 int32_t main(int32_t argc, char **argv) {
 
-    if (log_init("../cli/log.cfg", "descendant_pids_test") != 0) {
+    if (log_init("../examples/log.cfg", "descendant_pids_test") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }

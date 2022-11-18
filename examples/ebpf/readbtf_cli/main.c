@@ -79,7 +79,7 @@ int32_t main(int32_t argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    if (log_init("../cli/log.cfg", "readbtf_cli") != 0) {
+    if (log_init("../examples/log.cfg", "readbtf_cli") != 0) {
         fprintf(stderr, "log init failed\n");
         return EXIT_FAILURE;
     }

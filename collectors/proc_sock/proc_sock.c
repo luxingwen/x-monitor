@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-11-15 16:04:51
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-11-17 16:18:33
+ * @Last Modified time: 2022-11-18 14:59:45
  */
 
 #include "proc_sock.h"
@@ -12,7 +12,7 @@
 #include "utils/consts.h"
 #include "utils/log.h"
 
-#include "internal/socks_internal.h"
+#include "impl/socks_info_mgr.h"
 
 static const char *const __socket_state_name[] = {
     "UNKNOWN",
@@ -36,7 +36,7 @@ const char *sock_state_name(enum SOCK_STATE ss) {
     return __socket_state_name[ss];
 }
 
-int32_t init_socks_diag() {
+int32_t init_proc_socks() {
     if (unlikely(init_sock_info_mgr() != 0)) {
         return -1;
     }
@@ -48,9 +48,17 @@ int32_t init_socks_diag() {
 int32_t collect_socks_info() {
     debug("[PROC_SOCK] start collect proc socks info");
 
-    return 0;
+    // 清空
+    clean_all_sock_info();
+
+    return do_sock_info_collection();
 }
 
-void fini_socks_diag() {
+struct sock_info *find_sock_info(uint32_t ino) {
+    return find_sock_info_i(ino);
+}
+
+void fini_proc_socks() {
+    fini_sock_info_mgr();
     debug("[PROC_SOCK] fini");
 }

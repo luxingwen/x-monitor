@@ -90,7 +90,7 @@ int32_t main(int32_t argc, char **argv) {
     struct xm_bootstrap_bpf *skel = NULL;
     struct ring_buffer      *rb = NULL;
 
-    if (log_init("../cli/log.cfg", "bootstrap_cli") != 0) {
+    if (log_init("../examples/log.cfg", "bootstrap_cli") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }

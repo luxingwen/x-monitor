@@ -148,7 +148,7 @@ static void __do_post(struct http_client *hc) {
 int32_t main(int32_t argc, char **argv) {
     struct http_client *hc = NULL;
 
-    if (log_init("../cli/log.cfg", "http_client_test") != 0) {
+    if (log_init("../examples/log.cfg", "http_client_test") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }
