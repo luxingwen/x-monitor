@@ -236,7 +236,7 @@ SEC("perf_event")
 int do_sample(struct bpf_perf_event_data *ctx)
 ```
 
-触发执行，每个采样间隔执行一次。
+什么时候运行？取决于perf事件触发和所选择的采样率，这些采样率由perf事件属性结构中的freq和sample_period字段指定。每个采样间隔执行一次。
 
 ## 资料
 

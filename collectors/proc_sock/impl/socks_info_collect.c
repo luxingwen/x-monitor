@@ -21,17 +21,25 @@ static const char *const __proc_udp_sock = "/proc/net/udp";
 static const char *const __proc_udp6_sock = "/proc/net/udp6";
 static const char *const __proc_unix_sock = "/proc/net/unix";
 
-static int32_t __collect_tcp_socks_info(struct proc_file *pf, const char *const proc_net_tcp) {
-    debug("[PROC_SOCK] start collect tcp:'%s' socks info.", proc_net_tcp);
+static struct sock_file_info {
+    enum SOCK_TYPE sock_type;
+    const char *   sock_file;
+} __sock_file_infos[] = {
+    { ST_TCP, "/proc/net/tcp" },   { ST_TCP6, "/proc/net/tcp6" }, { ST_UDP, "/proc/net/udp" },
+    { ST_UDP6, "/proc/net/udp6" }, { ST_UNIX, "/proc/net/unix" },
+};
 
-    pf = procfile_reopen(pf, proc_net_tcp, " \t:", PROCFILE_FLAG_DEFAULT);
+static int32_t __collect_tcp_socks_info(struct proc_file *pf, const struct sock_file_info *sfi) {
+    debug("[PROC_SOCK] start collect tcp:'%s' socks info.", sfi->sock_file);
+
+    pf = procfile_reopen(pf, sfi->sock_file, " \t:", PROCFILE_FLAG_DEFAULT);
     if (unlikely(!pf)) {
         return -1;
     }
 
     pf = procfile_readall(pf);
     if (unlikely(!pf)) {
-        error("[PROC_SOCK] read proc file:'%s' failed.", proc_net_tcp);
+        error("[PROC_SOCK] read proc file:'%s' failed.", sfi->sock_file);
         return -1;
     }
 
@@ -47,12 +55,12 @@ static int32_t __collect_tcp_socks_info(struct proc_file *pf, const char *const 
     return 0;
 }
 
-static int32_t __collect_udp_socks_info(struct proc_file *pf, const char *const proc_net_udp) {
+static int32_t __collect_udp_socks_info(struct proc_file *pf, const struct sock_file_info *sfi) {
     debug("[PROC_SOCK] start collect udp socks info.");
     return 0;
 }
 
-static int32_t __collect_unix_socks_info(struct proc_file *pf, const char *const proc_net_unix) {
+static int32_t __collect_unix_socks_info(struct proc_file *pf, const struct sock_file_info *sfi) {
     debug("[PROC_SOCK] start collect unix socks info.");
     return 0;
 }
@@ -62,14 +70,33 @@ static int32_t __collect_unix_socks_info(struct proc_file *pf, const char *const
  * /proc/net/unix files, and parses the contents of each file to extract information about the
  * sockets
  */
-int32_t do_sock_info_collection() {
-    int32_t ret = 0;
+void collect_socks_info_i() {
     debug("[PROC_SOCK] start collect socks info.");
 
-    ret = __collect_tcp_socks_info(g_proc_sock_info_mgr->proc_net_tcp, __proc_tcp_sock);
-    ret += __collect_tcp_socks_info(g_proc_sock_info_mgr->proc_net_tcp6, __proc_tcp6_sock);
-    ret += __collect_udp_socks_info(g_proc_sock_info_mgr->proc_net_udp, __proc_udp_sock);
-    ret += __collect_udp_socks_info(g_proc_sock_info_mgr->proc_net_udp6, __proc_udp6_sock);
-    ret += __collect_unix_socks_info(g_proc_sock_info_mgr->proc_net_unix, __proc_unix_sock);
-    return ret == 0 ? 0 : -1;
+    // 清除所有sock_info查询标志位
+    clean_all_sock_info_update_flag();
+
+    // 收集sock信息
+    for (size_t i = 0; i < ARRAY_SIZE(__sock_file_infos); i++) {
+        struct sock_file_info *sfi = &__sock_file_infos[i];
+        if (sfi->sock_type == ST_TCP || sfi->sock_type == ST_TCP6) {
+            __collect_tcp_socks_info(NULL, sfi);
+        } else if (sfi->sock_type == ST_TCP6) {
+            __collect_tcp_socks_info(NULL, sfi);
+        } else if (sfi->sock_type == ST_UDP) {
+            __collect_udp_socks_info(NULL, sfi);
+        } else if (sfi->sock_type == ST_UDP6) {
+            __collect_udp_socks_info(NULL, sfi);
+        } else if (sfi->sock_type == ST_UNIX) {
+            __collect_unix_socks_info(NULL, sfi);
+        }
+    }
+    __collect_tcp_socks_info(g_proc_sock_info_mgr->proc_net_tcp, __proc_tcp_sock);
+    __collect_tcp_socks_info(g_proc_sock_info_mgr->proc_net_tcp6, __proc_tcp6_sock);
+    __collect_udp_socks_info(g_proc_sock_info_mgr->proc_net_udp, __proc_udp_sock);
+    __collect_udp_socks_info(g_proc_sock_info_mgr->proc_net_udp6, __proc_udp6_sock);
+    __collect_unix_socks_info(g_proc_sock_info_mgr->proc_net_unix, __proc_unix_sock);
+
+    // 释放sock_info查询标志位为0的对象
+    delete_all_not_update_sock_info();
 }

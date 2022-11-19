@@ -80,26 +80,6 @@ static void __free_sock_info(struct rcu_head *rcu) {
 }
 
 /**
- * It adds a sock_info struct to a hash table
- *
- * @param sock_info the sock_info struct to be added to the hash table.
- *
- * @return The return value is the return value of the function.
- */
-int32_t add_sock_info(struct sock_info *sock_info) {
-    if (likely(sock_info)) {
-        cds_lfht_node_init(&sock_info->node);
-        uint32_t hash = XXH32(&sock_info->ino, sizeof(uint32_t), (uint32_t)time(NULL));
-
-        urcu_memb_read_lock();
-        cds_lfht_add(g_proc_sock_info_mgr->sock_info_rcu_ht, hash, &sock_info->node);
-        debug("[PROC_SOCK] add sock info to ht. ino:%u", sock_info->ino);
-        urcu_memb_read_unlock();
-    }
-    return 0;
-}
-
-/**
  * It returns 0 if the inode number of the socket info structure pointed to by the node parameter is
  * equal to the inode number pointed to by the key parameter
  *
@@ -108,10 +88,45 @@ int32_t add_sock_info(struct sock_info *sock_info) {
  *
  * @return The inode number of the socket.
  */
-static int32_t __match_sock_info(struct cds_lfht_node *node, const void *key) {
-    const uint32_t   *p_ino = (const uint32_t *)key;
-    struct sock_info *si = container_of(node, struct sock_info, node);
+static int32_t __match_sock_info(struct cds_lfht_node *ht_node, const void *key) {
+    const uint32_t *  p_ino = (const uint32_t *)key;
+    struct sock_info *si = container_of(ht_node, struct sock_info, node);
     return (*p_ino) == si->ino;
+}
+
+/**
+ * It adds a new sock_info to the hash table
+ *
+ * @param sock_info the data to be added to the hash table
+ *
+ * @return the node.
+ */
+int32_t add_sock_info(struct sock_info *sock_info) {
+    struct cds_lfht_node *ht_node;
+
+    if (likely(sock_info)) {
+        cds_lfht_node_init(&sock_info->node);
+
+        uint32_t hash = XXH32(&sock_info->ino, sizeof(uint32_t), (uint32_t)time(NULL));
+
+        urcu_memb_read_lock();
+
+        // sock ino可能重复
+        ht_node = cds_lfht_add_replace(g_proc_sock_info_mgr->sock_info_rcu_ht, hash,
+                                       __match_sock_info, sock_info->ino, &sock_info->node);
+        if (ht_node) {
+            // replace
+            struct sock_info *old_si = container_of(ht_node, struct sock_info, node);
+            debug("[PROC_SOCK] replace sock_info ino:%u", old_si->ino);
+            urcu_memb_call_rcu(&old_si->rcu, __free_sock_info);
+        } else {
+            // add
+            debug("[PROC_SOCK] add sock info to hash table. ino:%u", sock_info->ino);
+        }
+
+        urcu_memb_read_unlock();
+    }
+    return 0;
 }
 
 /**
@@ -122,14 +137,12 @@ static int32_t __match_sock_info(struct cds_lfht_node *node, const void *key) {
  * @return A pointer to a sock_info struct.
  */
 struct sock_info *find_sock_info_i(uint32_t ino) {
-    struct sock_info     *si = NULL;
+    struct sock_info *    si = NULL;
     struct cds_lfht_iter  iter; /* For iteration on hash table */
     struct cds_lfht_node *ht_node;
 
     // 计算sock inode hash值
     uint32_t hash = XXH32(&ino, sizeof(ino), (uint32_t)time(NULL));
-
-    urcu_memb_read_lock();
 
     // 在hash table中查找，first use hash value，second use key
     cds_lfht_lookup(g_proc_sock_info_mgr->sock_info_rcu_ht, hash, __match_sock_info, &ino, &iter);
@@ -140,8 +153,6 @@ struct sock_info *find_sock_info_i(uint32_t ino) {
               si->sock_type);
     }
 
-    urcu_memb_read_unlock();
-
     return si;
 }
 
@@ -151,7 +162,7 @@ struct sock_info *find_sock_info_i(uint32_t ino) {
  */
 static void __clean_all_sock_info() {
     struct cds_lfht_iter  iter;
-    struct sock_info     *si = NULL;
+    struct sock_info *    si = NULL;
     struct cds_lfht_node *ht_node;
     int32_t               ret = 0;
 
@@ -170,8 +181,51 @@ static void __clean_all_sock_info() {
     urcu_memb_read_unlock();
 }
 
-void clean_all_sock_info() {
-    __clean_all_sock_info();
+/**
+ * It iterates through a hash table, and sets a flag to 0 for each entry in the hash table
+ */
+void clean_all_sock_info_update_flag() {
+    struct cds_lfht_iter  iter;
+    struct cds_lfht_node *ht_node;
+    struct sock_info *    si;
+    int32_t               ret = 0;
+
+    debug("[PROC_SOCK] clean all sock info flag");
+
+    urcu_memb_read_lock();
+
+    cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_rcu_ht, &iter, si, node) {
+        ht_node = cds_lfht_iter_get_node(&iter);
+        si->find_flag = 0;
+    }
+
+    urcu_memb_read_unlock();
+}
+
+/**
+ * It iterates over a hash table, and deletes all entries that have a certain flag set
+ */
+void delete_all_not_update_sock_info() {
+    struct cds_lfht_iter  iter;
+    struct cds_lfht_node *ht_node;
+    struct sock_info *    si;
+    int32_t               ret = 0;
+
+    debug("[PROC_SOCK] delete all not update sock info");
+
+    urcu_memb_read_lock();
+
+    cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_rcu_ht, &iter, si, node) {
+        ht_node = cds_lfht_iter_get_node(&iter);
+        if (si->find_flag == 0) {
+            ret = cds_lfht_del(g_proc_sock_info_mgr->sock_info_rcu_ht, ht_node);
+            if (!ret) {
+                urcu_memb_call_rcu(&si->rcu, __free_sock_info);
+            }
+        }
+    }
+
+    urcu_memb_read_unlock();
 }
 
 /**

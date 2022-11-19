@@ -42,5 +42,5 @@ struct sock_info {
     struct cds_lfht_node node;
     struct rcu_head      rcu;
 
-    int8_t is_find;
+    int8_t is_update;
 };
