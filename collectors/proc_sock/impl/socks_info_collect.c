@@ -15,12 +15,6 @@
 #include "utils/log.h"
 #include "utils/procfile.h"
 
-static const char *const __proc_tcp_sock = "/proc/net/tcp";
-static const char *const __proc_tcp6_sock = "/proc/net/tcp6";
-static const char *const __proc_udp_sock = "/proc/net/udp";
-static const char *const __proc_udp6_sock = "/proc/net/udp6";
-static const char *const __proc_unix_sock = "/proc/net/unix";
-
 static struct sock_file_info {
     enum SOCK_TYPE sock_type;
     const char *   sock_file;
@@ -81,13 +75,10 @@ void collect_socks_info_i() {
         struct sock_file_info *sfi = &__sock_file_infos[i];
         if (sfi->sock_type == ST_TCP || sfi->sock_type == ST_TCP6) {
             __collect_tcp_socks_info(NULL, sfi);
-        } else if (sfi->sock_type == ST_TCP6) {
-            __collect_tcp_socks_info(NULL, sfi);
-        } else if (sfi->sock_type == ST_UDP) {
-            __collect_udp_socks_info(NULL, sfi);
-        } else if (sfi->sock_type == ST_UDP6) {
-            __collect_udp_socks_info(NULL, sfi);
-        } else if (sfi->sock_type == ST_UNIX) {
+        } else if (sfi->sock_type == ST_UDP || sfi->sock_type == ST_UDP6)) {
+                __collect_udp_socks_info(NULL, sfi);
+            }
+        else if (sfi->sock_type == ST_UNIX) {
             __collect_unix_socks_info(NULL, sfi);
         }
     }
