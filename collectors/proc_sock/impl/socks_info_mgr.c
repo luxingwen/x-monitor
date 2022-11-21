@@ -44,7 +44,7 @@ int32_t init_sock_info_mgr() {
             goto FAILED;
         }
     });
-    debug("[PROC_SOCK] init sock info mgr successed.");
+    debug("[PROC_SOCK] sockinfo manager init successed.");
     return 0;
 
 FAILED:
@@ -89,7 +89,7 @@ static void __free_sock_info(struct rcu_head *rcu) {
  * @return The inode number of the socket.
  */
 static int32_t __match_sock_info(struct cds_lfht_node *ht_node, const void *key) {
-    const uint32_t *  p_ino = (const uint32_t *)key;
+    const uint32_t   *p_ino = (const uint32_t *)key;
     struct sock_info *si = container_of(ht_node, struct sock_info, node);
     return (*p_ino) == si->ino;
 }
@@ -113,7 +113,7 @@ int32_t add_sock_info(struct sock_info *sock_info) {
 
         // sock ino可能重复
         ht_node = cds_lfht_add_replace(g_proc_sock_info_mgr->sock_info_rcu_ht, hash,
-                                       __match_sock_info, sock_info->ino, &sock_info->node);
+                                       __match_sock_info, &sock_info->ino, &sock_info->node);
         if (ht_node) {
             // replace
             struct sock_info *old_si = container_of(ht_node, struct sock_info, node);
@@ -121,7 +121,7 @@ int32_t add_sock_info(struct sock_info *sock_info) {
             urcu_memb_call_rcu(&old_si->rcu, __free_sock_info);
         } else {
             // add
-            debug("[PROC_SOCK] add sock info to hash table. ino:%u", sock_info->ino);
+            debug("[PROC_SOCK] add sock_info ino:%u", sock_info->ino);
         }
 
         urcu_memb_read_unlock();
@@ -137,7 +137,7 @@ int32_t add_sock_info(struct sock_info *sock_info) {
  * @return A pointer to a sock_info struct.
  */
 struct sock_info *find_sock_info_i(uint32_t ino) {
-    struct sock_info *    si = NULL;
+    struct sock_info     *si = NULL;
     struct cds_lfht_iter  iter; /* For iteration on hash table */
     struct cds_lfht_node *ht_node;
 
@@ -162,7 +162,7 @@ struct sock_info *find_sock_info_i(uint32_t ino) {
  */
 static void __clean_all_sock_info() {
     struct cds_lfht_iter  iter;
-    struct sock_info *    si = NULL;
+    struct sock_info     *si = NULL;
     struct cds_lfht_node *ht_node;
     int32_t               ret = 0;
 
@@ -179,6 +179,8 @@ static void __clean_all_sock_info() {
     }
 
     urcu_memb_read_unlock();
+
+    urcu_memb_synchronize_rcu();
 }
 
 /**
@@ -187,16 +189,16 @@ static void __clean_all_sock_info() {
 void clean_all_sock_info_update_flag() {
     struct cds_lfht_iter  iter;
     struct cds_lfht_node *ht_node;
-    struct sock_info *    si;
+    struct sock_info     *si;
     int32_t               ret = 0;
 
-    debug("[PROC_SOCK] clean all sock info flag");
+    debug("[PROC_SOCK] clean all sock info update flag");
 
     urcu_memb_read_lock();
 
     cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_rcu_ht, &iter, si, node) {
         ht_node = cds_lfht_iter_get_node(&iter);
-        si->find_flag = 0;
+        si->is_update = 0;
     }
 
     urcu_memb_read_unlock();
@@ -205,10 +207,10 @@ void clean_all_sock_info_update_flag() {
 /**
  * It iterates over a hash table, and deletes all entries that have a certain flag set
  */
-void delete_all_not_update_sock_info() {
+void remove_all_not_update_sock_info() {
     struct cds_lfht_iter  iter;
     struct cds_lfht_node *ht_node;
-    struct sock_info *    si;
+    struct sock_info     *si;
     int32_t               ret = 0;
 
     debug("[PROC_SOCK] delete all not update sock info");
@@ -217,7 +219,7 @@ void delete_all_not_update_sock_info() {
 
     cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_rcu_ht, &iter, si, node) {
         ht_node = cds_lfht_iter_get_node(&iter);
-        if (si->find_flag == 0) {
+        if (si->is_update == 0) {
             ret = cds_lfht_del(g_proc_sock_info_mgr->sock_info_rcu_ht, ht_node);
             if (!ret) {
                 urcu_memb_call_rcu(&si->rcu, __free_sock_info);
@@ -261,5 +263,7 @@ void fini_sock_info_mgr() {
 
         free(g_proc_sock_info_mgr);
         g_proc_sock_info_mgr = NULL;
+
+        debug("[PROC_SOCK] sockinfo manager finalize.");
     }
 }

@@ -19,14 +19,21 @@ int32_t main(int32_t argc, char *argv[]) {
         return -1;
     }
 
+    urcu_memb_register_thread();
+
     ret = init_proc_socks();
     if (ret != 0) {
         error("init proc socks failed.");
         return -1;
     }
 
+    collect_socks_info();
+
     fini_proc_socks();
     log_fini();
 
+    urcu_memb_unregister_thread();
+
+    sleep(1);
     return 0;
 }

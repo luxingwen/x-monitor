@@ -45,12 +45,9 @@ int32_t init_proc_socks() {
     return 0;
 }
 
-int32_t collect_socks_info() {
+void collect_socks_info() {
     debug("[PROC_SOCK] start collect proc socks info");
-
     collect_socks_info_i();
-
-    return 0;
 }
 
 struct sock_info *find_sock_info(uint32_t ino) {
