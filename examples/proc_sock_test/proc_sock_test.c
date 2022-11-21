@@ -27,7 +27,8 @@ int32_t main(int32_t argc, char *argv[]) {
         return -1;
     }
 
-    for (size_t i = 0; i < 1000; i++) {
+    for (size_t i = 0; i < 3; i++) {
+        debug("-------------------------------------------");
         collect_socks_info();
         sleep(1);
     }

@@ -76,6 +76,7 @@ struct sock_info *alloc_sock_info() {
  */
 static void __free_sock_info(struct rcu_head *rcu) {
     struct sock_info *si = container_of(rcu, struct sock_info, rcu);
+    debug("[PROC_SOCK] free sock_info ino:%u", si->ino);
     xm_mempool_free(g_proc_sock_info_mgr->sock_info_xmp, si);
 }
 
