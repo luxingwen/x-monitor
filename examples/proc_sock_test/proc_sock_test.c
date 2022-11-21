@@ -27,7 +27,10 @@ int32_t main(int32_t argc, char *argv[]) {
         return -1;
     }
 
-    collect_socks_info();
+    for (size_t i = 0; i < 1000; i++) {
+        collect_socks_info();
+        sleep(1);
+    }
 
     fini_proc_socks();
     log_fini();

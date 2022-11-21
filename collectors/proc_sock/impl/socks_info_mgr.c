@@ -26,7 +26,7 @@ int32_t init_sock_info_mgr() {
         g_proc_sock_info_mgr =
             (struct proc_sock_info_mgr *)calloc(1, sizeof(struct proc_sock_info_mgr));
         if (unlikely(!g_proc_sock_info_mgr)) {
-            error("[PROC_SOCK] calloc proc_sock_info_mgr failed.");
+            error("[PROC_SOCK] calloc sock_info manager failed.");
             return -1;
         }
 
@@ -44,7 +44,7 @@ int32_t init_sock_info_mgr() {
             goto FAILED;
         }
     });
-    debug("[PROC_SOCK] sockinfo manager init successed.");
+    debug("[PROC_SOCK] sock_info manager init successed.");
     return 0;
 
 FAILED:
@@ -149,7 +149,7 @@ struct sock_info *find_sock_info_i(uint32_t ino) {
     ht_node = cds_lfht_iter_get_node(&iter);
     if (likely(ht_node)) {
         si = container_of(ht_node, struct sock_info, node);
-        debug("[PROC_SOCK] find sock info successed. ino: %u, sock_type:%d", si->ino,
+        debug("[PROC_SOCK] find sock_info successed. ino: %u, sock_type:%d", si->ino,
               si->sock_type);
     }
 
@@ -160,13 +160,13 @@ struct sock_info *find_sock_info_i(uint32_t ino) {
  * It iterates over all the entries in the hash table, deletes them, and then calls the RCU callback
  * function to free the memory
  */
-static void __clean_all_sock_info() {
+static void __remove_all_sock_info() {
     struct cds_lfht_iter  iter;
     struct sock_info     *si = NULL;
     struct cds_lfht_node *ht_node;
     int32_t               ret = 0;
 
-    debug("[PROC_SOCK] del all socks info");
+    debug("[PROC_SOCK] remove all sock_info");
 
     urcu_memb_read_lock();
 
@@ -192,7 +192,7 @@ void clean_all_sock_info_update_flag() {
     struct sock_info     *si;
     int32_t               ret = 0;
 
-    debug("[PROC_SOCK] clean all sock info update flag");
+    debug("[PROC_SOCK] clean all sock_info update flag");
 
     urcu_memb_read_lock();
 
@@ -213,7 +213,7 @@ void remove_all_not_update_sock_info() {
     struct sock_info     *si;
     int32_t               ret = 0;
 
-    debug("[PROC_SOCK] delete all not update sock info");
+    debug("[PROC_SOCK] remove all not update sock_info");
 
     urcu_memb_read_lock();
 
@@ -253,7 +253,7 @@ void fini_sock_info_mgr() {
         FREE_PROCFILE(g_proc_sock_info_mgr->proc_net_udp6);
 
         if (likely(g_proc_sock_info_mgr->sock_info_rcu_ht)) {
-            __clean_all_sock_info();
+            __remove_all_sock_info();
             cds_lfht_destroy(g_proc_sock_info_mgr->sock_info_rcu_ht, NULL);
         }
 
@@ -264,6 +264,6 @@ void fini_sock_info_mgr() {
         free(g_proc_sock_info_mgr);
         g_proc_sock_info_mgr = NULL;
 
-        debug("[PROC_SOCK] sockinfo manager finalize.");
+        debug("[PROC_SOCK] sock_info manager finalize.");
     }
 }
