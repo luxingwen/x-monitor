@@ -16,11 +16,9 @@
 
 ​		RCU对链表、hashTable都有使用场景。读取链表成员数据时通常只需要rcu_read_lock()，允许多个线程同时读取链表，并且允许同时修改链表，假设读线程遍历链表时，另一个线程删除一个节点，删除线程会把这个节点从链表中移出，但不会直接销毁。RCU会等到所有读线程读取完之后才销毁这个节点。
 
-​		可见删除一个链表节点，节点前后三个节点都要被读线程用RCU接口来更新。
-
 ## Memory Barriers
 
-​		有4种memory barriers：
+有4种memory barriers：
 
 - LoadLoad
 - LoadStore
@@ -50,6 +48,10 @@ rcu_dereference/rcu_assign_pointer是防止指令执行乱序的方法。
 ### 基础
 
 ​		**Update是整体覆盖，*不要试图修改rcu保护的struct某一个field，而应该用一个新的struct pointer去替换old struct pointer，使用rcu_assign_pointer方法**。
+
+### 使用场景
+
+![rcu_struct](./img/rcu_struct.jpg)
 
 **QSBR算法**
 

@@ -5,6 +5,8 @@
  * @Last Modified time: 2022-11-18 16:35:04
  */
 
+// look vsock.c
+
 #include "socks_info_mgr.h"
 
 #include "utils/common.h"
@@ -90,7 +92,7 @@ static void __free_sock_info(struct rcu_head *rcu) {
  * @return The inode number of the socket.
  */
 static int32_t __match_sock_info(struct cds_lfht_node *ht_node, const void *key) {
-    const uint32_t   *p_ino = (const uint32_t *)key;
+    const uint32_t *  p_ino = (const uint32_t *)key;
     struct sock_info *si = container_of(ht_node, struct sock_info, node);
     return (*p_ino) == si->ino;
 }
@@ -138,7 +140,7 @@ int32_t add_sock_info(struct sock_info *sock_info) {
  * @return A pointer to a sock_info struct.
  */
 struct sock_info *find_sock_info_i(uint32_t ino) {
-    struct sock_info     *si = NULL;
+    struct sock_info *    si = NULL;
     struct cds_lfht_iter  iter; /* For iteration on hash table */
     struct cds_lfht_node *ht_node;
 
@@ -163,7 +165,7 @@ struct sock_info *find_sock_info_i(uint32_t ino) {
  */
 static void __remove_all_sock_info() {
     struct cds_lfht_iter  iter;
-    struct sock_info     *si = NULL;
+    struct sock_info *    si = NULL;
     struct cds_lfht_node *ht_node;
     int32_t               ret = 0;
 
@@ -190,7 +192,7 @@ static void __remove_all_sock_info() {
 void clean_all_sock_info_update_flag() {
     struct cds_lfht_iter  iter;
     struct cds_lfht_node *ht_node;
-    struct sock_info     *si;
+    struct sock_info *    si;
     int32_t               ret = 0;
 
     debug("[PROC_SOCK] clean all sock_info update flag");
@@ -208,7 +210,7 @@ void clean_all_sock_info_update_flag() {
 void remove_all_not_update_sock_info() {
     struct cds_lfht_iter  iter;
     struct cds_lfht_node *ht_node;
-    struct sock_info     *si;
+    struct sock_info *    si;
     int32_t               ret = 0;
 
     debug("[PROC_SOCK] remove all not update sock_info");
