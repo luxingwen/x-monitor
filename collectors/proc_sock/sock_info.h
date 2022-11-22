@@ -12,6 +12,8 @@
 #include "urcu/urcu-memb.h"
 #include "urcu/rculfhash.h"
 
+#include "utils/atomic.h"
+
 // SOCK类型
 enum SOCK_TYPE { ST_UNKNOWN, ST_TCP, ST_TCP6, ST_UDP, ST_UDP6, ST_UNIX, ST_MAX };
 
@@ -42,5 +44,5 @@ struct sock_info {
     struct cds_lfht_node node;
     struct rcu_head      rcu;
 
-    int8_t is_update;
+    atomic_t is_update;
 };

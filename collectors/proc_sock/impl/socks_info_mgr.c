@@ -196,12 +196,9 @@ void clean_all_sock_info_update_flag() {
     debug("[PROC_SOCK] clean all sock_info update flag");
 
     urcu_memb_read_lock();
-
     cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_rcu_ht, &iter, si, node) {
-        ht_node = cds_lfht_iter_get_node(&iter);
-        si->is_update = 0;
+        atomic_dec(&si->is_update);
     }
-
     urcu_memb_read_unlock();
 }
 
@@ -220,7 +217,7 @@ void remove_all_not_update_sock_info() {
 
     cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_rcu_ht, &iter, si, node) {
         ht_node = cds_lfht_iter_get_node(&iter);
-        if (si->is_update == 0) {
+        if (atomic_read(si->is_update) == 0) {
             ret = cds_lfht_del(g_proc_sock_info_mgr->sock_info_rcu_ht, ht_node);
             if (!ret) {
                 urcu_memb_call_rcu(&si->rcu, __free_sock_info);

@@ -224,6 +224,8 @@ static inline void list_splice_init(struct list_head *list, struct list_head *he
  * list_for_each	-	iterate over a list
  * @pos:	the &struct list_head to use as a loop counter.
  * @head:	the head for your list.
+ * prefetch是内核中一个预热内存函数,
+ * 历链表时下次访问的内存为pos->next，故在每次遍历时对pos->next进行预热，从而提升性能。
  */
 #define list_for_each(pos, head) \
     for (pos = (head)->next; prefetch(pos->next), pos != (head); pos = pos->next)

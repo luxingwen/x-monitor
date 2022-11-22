@@ -144,7 +144,7 @@ static int32_t __collect_tcp_socks_info(struct proc_sock_info_mgr   *psim,
         si->sock_state = str2uint32_t(procfile_lineword(*ppf, l, 5));
         si->sock_type = sfi->sock_type;
         si->ino = str2uint32_t(procfile_lineword(*ppf, l, 13));
-        si->is_update = 1;
+        si->is_update = ATOMIC_INIT(1);
 
         const char *loc_addr = procfile_lineword(*ppf, l, 1);
         const char *loc_port = procfile_lineword(*ppf, l, 2);
