@@ -20,9 +20,8 @@ void *collect_routine(void *arg) {
     urcu_memb_register_thread();
 
     for (size_t i = 0; i < n; i++) {
-        debug("---------------------collect %lu----------------------", pthread_self());
         collect_socks_info();
-        sleep(3);
+        sleep(1);
     }
 
     urcu_memb_unregister_thread();
@@ -36,12 +35,11 @@ void *read_routine(void *arg) {
     urcu_memb_register_thread();
 
     while (atomic_read(&__exit_flag) == 0) {
-        debug("---------------------read %lu----------------------", pthread_self());
         find_batch_sock_info(0, NULL);
-        sleep(1);
+        usleep(20);
     }
 
-    debug("---------------------read %lu exit----------------------", pthread_self());
+    // debug("---------------------read %lu exit----------------------", pthread_self());
     urcu_memb_unregister_thread();
 
     return NULL;
