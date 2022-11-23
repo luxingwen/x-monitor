@@ -146,9 +146,9 @@ int32_t add_sock_info_node(struct sock_info_node *new_sin) {
             xm_mempool_free(g_proc_sock_info_mgr->sock_info_node_xmp, new_sin);
         } else {
             // 如果不存在，添加到hash table
-            pthread_spin_lock(&g_proc_sock_info_mgr->spin_lock);
+            // pthread_spin_lock(&g_proc_sock_info_mgr->spin_lock);
             cds_lfht_add(g_proc_sock_info_mgr->sock_info_node_rcu_ht, hash, &new_sin->hash_node);
-            pthread_spin_unlock(&g_proc_sock_info_mgr->spin_lock);
+            // pthread_spin_unlock(&g_proc_sock_info_mgr->spin_lock);
             debug("[PROC_SOCK] add sock_info_node ino:%u, type:%d, is_update:%d, hash:%u",
                   new_sin->si.ino, new_sin->si.sock_type, atomic_read(&new_sin->is_update), hash);
         }
@@ -163,6 +163,7 @@ struct sock_info_batch *find_batch_sock_info_i(uint32_t *ino_array, uint32_t ino
     struct cds_lfht_iter    iter; /* For iteration on hash table */
     struct cds_lfht_node   *ht_node;
     struct sock_info_batch *sib = NULL;
+    uint32_t                count = 0;
 
     // // 计算sock inode hash值
     // uint32_t hash = XXH32(&ino, sizeof(ino), (uint32_t)time(NULL));
@@ -178,11 +179,15 @@ struct sock_info_batch *find_batch_sock_info_i(uint32_t *ino_array, uint32_t ino
     // }
 
     urcu_memb_read_lock();
+
     cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_node_rcu_ht, &iter, sin, hash_node) {
-        debug("[PROC_SOCK] find sock_info_node ino: %u, sock_type:%d", sin->si.ino,
-              sin->si.sock_type);
+        count++;
     }
+
     urcu_memb_read_unlock();
+
+    debug("[PROC_SOCK] find '%u' sock_info_nodes ", count);
+
     return sib;
 }
 
@@ -200,8 +205,6 @@ static void __remove_all_sock_info() {
 
     urcu_memb_read_lock();
 
-    pthread_spin_lock(&g_proc_sock_info_mgr->spin_lock);
-
     cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_node_rcu_ht, &iter, sin, hash_node) {
         ht_node = cds_lfht_iter_get_node(&iter);
         ret = cds_lfht_del(g_proc_sock_info_mgr->sock_info_node_rcu_ht, ht_node);
@@ -211,8 +214,6 @@ static void __remove_all_sock_info() {
             urcu_memb_call_rcu(&sin->rcu_node, __free_sock_info_node);
         }
     }
-
-    pthread_spin_unlock(&g_proc_sock_info_mgr->spin_lock);
 
     urcu_memb_read_unlock();
     // wait for all call_rcu() to complete

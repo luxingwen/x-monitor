@@ -8,8 +8,11 @@
 #include "utils/common.h"
 #include "utils/compiler.h"
 #include "utils/log.h"
+#include "utils/atomic.h"
 
 #include "collectors/proc_sock/proc_sock.h"
+
+static atomic_t __exit_flag = ATOMIC_INIT(0);
 
 void *collect_routine(void *arg) {
     uint32_t n = *(uint32_t *)arg;
@@ -24,20 +27,21 @@ void *collect_routine(void *arg) {
 
     urcu_memb_unregister_thread();
 
+    atomic_inc(&__exit_flag);
+
     return NULL;
 }
 
 void *read_routine(void *arg) {
-    uint32_t n = *(uint32_t *)arg;
-
     urcu_memb_register_thread();
 
-    for (size_t i = 0; i < n; i++) {
+    while (atomic_read(&__exit_flag) == 0) {
         debug("---------------------read %lu----------------------", pthread_self());
         find_batch_sock_info(0, NULL);
         sleep(1);
     }
 
+    debug("---------------------read %lu exit----------------------", pthread_self());
     urcu_memb_unregister_thread();
 
     return NULL;
@@ -46,7 +50,7 @@ void *read_routine(void *arg) {
 int32_t main(int32_t argc, char *argv[]) {
     int32_t ret = 0;
 
-    pthread_t tids[2] = { 0, 0 };
+    pthread_t tids[3] = { 0, 0, 0 };
 
     if (log_init("../examples/log.cfg", "proc_sock_test") != 0) {
         fprintf(stderr, "log init failed\n");
@@ -59,11 +63,13 @@ int32_t main(int32_t argc, char *argv[]) {
         return -1;
     }
 
-    pthread_create(&tids[0], NULL, collect_routine, &(uint32_t){ 7 });
-    pthread_create(&tids[1], NULL, read_routine, &(uint32_t){ 9 });
+    pthread_create(&tids[0], NULL, collect_routine, &(uint32_t){ 10 });
+    pthread_create(&tids[1], NULL, read_routine, NULL);
+    pthread_create(&tids[2], NULL, read_routine, NULL);
 
     pthread_join(tids[0], NULL);
     pthread_join(tids[1], NULL);
+    pthread_join(tids[2], NULL);
 
     fini_proc_socks();
     log_fini();
