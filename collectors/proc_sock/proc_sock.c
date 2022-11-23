@@ -12,7 +12,7 @@
 #include "utils/consts.h"
 #include "utils/log.h"
 
-#include "impl/socks_info_mgr.h"
+#include "impl/sock_info_mgr.h"
 
 static const char *const __socket_state_name[] = {
     "UNKNOWN",
@@ -50,8 +50,8 @@ void collect_socks_info() {
     collect_socks_info_i();
 }
 
-struct sock_info *find_sock_info(uint32_t ino) {
-    return find_sock_info_i(ino);
+struct sock_info_batch *find_batch_sock_info(uint32_t *ino_array, uint32_t ino_count) {
+    return find_batch_sock_info_i(ino_array, ino_count);
 }
 
 void fini_proc_socks() {

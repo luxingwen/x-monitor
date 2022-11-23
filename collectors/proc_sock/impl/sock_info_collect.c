@@ -64,7 +64,7 @@ timer_active:
 4 zero window probe timer is pending
 */
 
-#include "socks_info_mgr.h"
+#include "sock_info_mgr.h"
 
 #include "utils/common.h"
 #include "utils/compiler.h"
@@ -138,21 +138,21 @@ static int32_t __collect_tcp_socks_info(struct proc_sock_info_mgr   *psim,
             continue;
         }
 
-        struct sock_info *si = alloc_sock_info();
+        struct sock_info_node *sin = alloc_sock_info_node();
         // tcp 状态
         uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
-        si->sock_state = str2uint32_t(procfile_lineword(*ppf, l, 5));
-        si->sock_type = sfi->sock_type;
-        si->ino = str2uint32_t(procfile_lineword(*ppf, l, 13));
-        si->is_update = ATOMIC_INIT(1);
+        sin->si.sock_state = str2uint32_t(procfile_lineword(*ppf, l, 5));
+        sin->si.sock_type = sfi->sock_type;
+        sin->si.ino = str2uint32_t(procfile_lineword(*ppf, l, 13));
+        atomic_set(&sin->is_update, 1);
 
         const char *loc_addr = procfile_lineword(*ppf, l, 1);
         const char *loc_port = procfile_lineword(*ppf, l, 2);
         const char *rem_addr = procfile_lineword(*ppf, l, 3);
         const char *rem_port = procfile_lineword(*ppf, l, 4);
-        __sock_print(sl, loc_addr, loc_port, rem_addr, rem_port, si->ino, family);
+        //__sock_print(sl, loc_addr, loc_port, rem_addr, rem_port, sin->si.ino, family);
 
-        add_sock_info(si);
+        add_sock_info_node(sin);
     }
 
     return 0;

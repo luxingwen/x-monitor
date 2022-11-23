@@ -39,10 +39,9 @@ struct sock_info {
     uint32_t        ino;   // sock inode
     enum SOCK_TYPE  sock_type;
     enum SOCK_STATE sock_state;
+};
 
-    // for rcu hash table
-    struct cds_lfht_node node;
-    struct rcu_head      rcu;
-
-    atomic_t is_update;
+struct sock_info_batch {
+    uint16_t          si_count;
+    struct sock_info *si_array;
 };

@@ -79,7 +79,7 @@ cpu.share and cpu.cfs_quota_us are working together.
 Given a total cpu quota, we should firstly distribute the cpu.share of each cgroup. Then find the cgroups whose exact quota exceeds their cpu.cfs_quota_us, find all such cgroups and keep their quota as their cpu.cfs_quota_us, and collect the exceeded part as unused cpu pool. Distribute these unused cpu pool among other cgroups by cpu.share again, and iterate as above, until no cgroup is exceeding the upper limit.
 ```
 
-##### cpu资源报告
+##### CPU资源报告
 
 提供了CPU资源用量的统计
 
