@@ -33,9 +33,14 @@ void *collect_routine(void *arg) {
 
 void *read_routine(void *arg) {
     urcu_memb_register_thread();
+    uint32_t count = 0;
 
     while (atomic_read(&__exit_flag) == 0) {
-        find_batch_sock_info(0, NULL);
+        uint32_t curr_count = sock_info_count();
+        if (curr_count != count) {
+            count = curr_count;
+            debug("sock info count: %u", count);
+        }
         usleep(20);
     }
 

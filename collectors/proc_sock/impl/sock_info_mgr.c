@@ -49,7 +49,7 @@ int32_t init_sock_info_mgr() {
             goto FAILED;
         }
 
-        pthread_spin_init(&g_proc_sock_info_mgr->spin_lock, PTHREAD_PROCESS_PRIVATE);
+        // pthread_spin_init(&g_proc_sock_info_mgr->spin_lock, PTHREAD_PROCESS_PRIVATE);
     });
 
     debug("[PROC_SOCK] sock_info_node manager init successed.");
@@ -64,7 +64,7 @@ FAILED:
         free(g_proc_sock_info_mgr);
     }
 
-    pthread_spin_destroy(&g_proc_sock_info_mgr->spin_lock);
+    // pthread_spin_destroy(&g_proc_sock_info_mgr->spin_lock);
     return -1;
 }
 
@@ -106,16 +106,15 @@ static int32_t __match_sock_info(struct cds_lfht_node *ht_node, const void *key)
 }
 
 /**
- * It adds a new sock_info_node to the hash table
+ * It adds a new node to a hash table
  *
- * @param sin the data to be added to the hash table
- *
- * @return the node.
+ * @param new_sin the new sock_info_node to be added
  */
 int32_t add_sock_info_node(struct sock_info_node *new_sin) {
     struct cds_lfht_node  *ht_node;
     struct cds_lfht_iter   iter;
     struct sock_info_node *old_sin;
+    bool                   use_new = false;
 
     if (likely(new_sin)) {
         cds_lfht_node_init(&new_sin->hash_node);
@@ -131,26 +130,37 @@ int32_t add_sock_info_node(struct sock_info_node *new_sin) {
         if (likely(ht_node)) {
             old_sin = container_of(ht_node, struct sock_info_node, hash_node);
 
-            // 如果类型不同，更新类型
-            pthread_spin_lock(&g_proc_sock_info_mgr->spin_lock);
-            if (old_sin->si.sock_type != new_sin->si.sock_type) {
-                old_sin->si.sock_type = new_sin->si.sock_type;
-            }
-
-            atomic_inc(&old_sin->is_update);
-            pthread_spin_unlock(&g_proc_sock_info_mgr->spin_lock);
-
-            // debug("[PROC_SOCK] update sock_info_node ino:%u, type:%d, is_update:%d, hash:%u",
-            //       old_sin->si.ino, old_sin->si.sock_type, atomic_read(&old_sin->is_update),
-            //       hash);
-            xm_mempool_free(g_proc_sock_info_mgr->sock_info_node_xmp, new_sin);
-        } else {
-            // 如果不存在，添加到hash table
+            // 如果类型不同，替换
             // pthread_spin_lock(&g_proc_sock_info_mgr->spin_lock);
-            cds_lfht_add(g_proc_sock_info_mgr->sock_info_node_rcu_ht, hash, &new_sin->hash_node);
-            // pthread_spin_unlock(&g_proc_sock_info_mgr->spin_lock);
-            debug("[PROC_SOCK] add sock_info_node ino:%u, type:%d, is_update:%d, hash:%u",
-                  new_sin->si.ino, new_sin->si.sock_type, atomic_read(&new_sin->is_update), hash);
+            if (old_sin->si.sock_type != new_sin->si.sock_type
+                || old_sin->si.sock_state != new_sin->si.sock_state) {
+                use_new = true;
+            } else {
+                atomic_inc(&old_sin->is_update);
+                xm_mempool_free(g_proc_sock_info_mgr->sock_info_node_xmp, new_sin);
+            }
+        } else {
+            use_new = true;
+        }
+
+        if (use_new) {
+            // 替换或者添加
+            ht_node =
+                cds_lfht_add_replace(g_proc_sock_info_mgr->sock_info_node_rcu_ht, hash,
+                                     __match_sock_info, &new_sin->si.ino, &new_sin->hash_node);
+            if (ht_node) {
+                debug("[PROC_SOCK] replace old sock_info_node ino:%u, type:%d, state:%d ===> new "
+                      "sock_info_node ino:%d, type:%d, state:%d",
+                      old_sin->si.ino, old_sin->si.sock_type, old_sin->si.sock_state,
+                      new_sin->si.ino, new_sin->si.sock_type, new_sin->si.sock_state);
+
+                old_sin = container_of(ht_node, struct sock_info_node, hash_node);
+                urcu_memb_call_rcu(&old_sin->rcu_node, __free_sock_info_node);
+            } else {
+                debug("[PROC_SOCK] add sock_info_node ino:%u, type:%d, is_update:%d, hash:%u",
+                      new_sin->si.ino, new_sin->si.sock_type, atomic_read(&new_sin->is_update),
+                      hash);
+            }
         }
 
         urcu_memb_read_unlock();
@@ -158,37 +168,56 @@ int32_t add_sock_info_node(struct sock_info_node *new_sin) {
     return 0;
 }
 
-struct sock_info_batch *find_batch_sock_info_i(uint32_t *ino_array, uint32_t ino_count) {
-    struct sock_info_node  *sin = NULL;
-    struct cds_lfht_iter    iter; /* For iteration on hash table */
-    struct cds_lfht_node   *ht_node;
-    struct sock_info_batch *sib = NULL;
-    uint32_t                count = 0;
+int32_t find_sock_info_i(uint32_t ino, struct sock_info *res) {
+    struct sock_info_node *sin = NULL;
+    struct cds_lfht_iter   iter; /* For iteration on hash table */
+    struct cds_lfht_node  *ht_node;
+    int32_t                ret = 0;
 
-    // // 计算sock inode hash值
-    // uint32_t hash = XXH32(&ino, sizeof(ino), (uint32_t)time(NULL));
+    if (unlikely(!res)) {
+        return -1;
+    }
 
-    // // 在hash table中查找，first use hash value，second use key
-    // cds_lfht_lookup(g_proc_sock_info_mgr->sock_info_node_rcu_ht, hash, __match_sock_info, &ino,
-    //                 &iter);
-    // ht_node = cds_lfht_iter_get_node(&iter);
-    // if (likely(ht_node)) {
-    //     si = container_of(ht_node, struct sock_info_node, node);
-    //     debug("[PROC_SOCK] find sock_info_node successed. ino: %u, sock_type:%d", si->ino,
-    //           si->sock_type);
-    // }
+    // 计算sock inode hash值
+    uint32_t hash = XXH32(&ino, sizeof(ino), __rand_seed);
 
     urcu_memb_read_lock();
-
-    cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_node_rcu_ht, &iter, sin, hash_node) {
-        count++;
+    // 在hash table中查找，first use hash value，second use key
+    cds_lfht_lookup(g_proc_sock_info_mgr->sock_info_node_rcu_ht, hash, __match_sock_info, &ino,
+                    &iter);
+    ht_node = cds_lfht_iter_get_node(&iter);
+    if (likely(ht_node)) {
+        sin = container_of(ht_node, struct sock_info_node, hash_node);
+        __builtin_memcpy(res, &sin->si, sizeof(struct sock_info));
+        ret = 0;
+        debug("[PROC_SOCK] find sock_info_node successed. ino: %u, sock_type:%d", res->ino,
+              res->sock_type);
+    } else {
+        debug("[PROC_SOCK] sock_info_node ino: %u not found", ino);
+        ret = -1;
     }
 
     urcu_memb_read_unlock();
 
-    debug("[PROC_SOCK] find '%u' sock_info_nodes ", count);
+    return ret;
+}
 
-    return sib;
+/**
+ * "For each entry in the hash table, increment the count."
+ *
+ * @return The number of elements in the hash table.
+ */
+uint32_t sock_info_count_i() {
+    struct sock_info_node *sin = NULL;
+    struct cds_lfht_iter   iter; /* For iteration on hash table */
+    uint32_t               count = 0;
+
+    urcu_memb_read_lock();
+    cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_node_rcu_ht, &iter, sin, hash_node) {
+        count++;
+    }
+    urcu_memb_read_unlock();
+    return count;
 }
 
 /**
@@ -254,7 +283,7 @@ void remove_all_not_update_sock_info() {
     cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_node_rcu_ht, &iter, sin, hash_node) {
         ht_node = cds_lfht_iter_get_node(&iter);
         if (atomic_read(&sin->is_update) == 0) {
-            debug("[PROC_SOCK] remove sock_info_node ino: %u, sock_type:%d", sin->si.ino,
+            debug("[PROC_SOCK] remove not update sock_info_node ino: %u, sock_type:%d", sin->si.ino,
                   sin->si.sock_type);
             ret = cds_lfht_del(g_proc_sock_info_mgr->sock_info_node_rcu_ht, ht_node);
             if (!ret) {
@@ -297,7 +326,7 @@ void fini_sock_info_mgr() {
             xm_mempool_fini(g_proc_sock_info_mgr->sock_info_node_xmp);
         }
 
-        pthread_spin_destroy(&g_proc_sock_info_mgr->spin_lock);
+        // pthread_spin_destroy(&g_proc_sock_info_mgr->spin_lock);
 
         free(g_proc_sock_info_mgr);
         g_proc_sock_info_mgr = NULL;

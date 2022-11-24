@@ -14,4 +14,5 @@ extern int32_t     init_proc_socks();
 extern void        collect_socks_info();
 extern void        fini_proc_socks();
 
-extern struct sock_info_batch *find_batch_sock_info(uint32_t *ino_array, uint32_t ino_count);
+extern int32_t  find_sock_info(uint32_t ino, struct sock_info *res);
+extern uint32_t sock_info_count();

@@ -27,7 +27,7 @@ struct proc_sock_info_mgr {
     struct cds_lfht     *sock_info_node_rcu_ht;
     struct xm_mempool_s *sock_info_node_xmp;
 
-    pthread_spinlock_t spin_lock;   // for rcu write-side
+    // pthread_spinlock_t spin_lock;   // for rcu write-side but only one thread write, so no need
 
     struct proc_file *proc_net_tcp;
     struct proc_file *proc_net_tcp6;
@@ -41,10 +41,11 @@ extern struct proc_sock_info_mgr *g_proc_sock_info_mgr;
 extern int32_t init_sock_info_mgr();
 extern void    fini_sock_info_mgr();
 
-extern struct sock_info_node  *alloc_sock_info_node();
-extern int32_t                 add_sock_info_node(struct sock_info_node *sin);
-extern struct sock_info_batch *find_batch_sock_info_i(uint32_t *ino_array, uint32_t ino_count);
-extern void                    clean_all_sock_info_update_flag();
-extern void                    remove_all_not_update_sock_info();
+extern struct sock_info_node *alloc_sock_info_node();
+extern int32_t                add_sock_info_node(struct sock_info_node *sin);
+extern int32_t                find_sock_info_i(uint32_t ino, struct sock_info *res);
+extern uint32_t               sock_info_count_i();
+extern void                   clean_all_sock_info_update_flag();
+extern void                   remove_all_not_update_sock_info();
 
 extern void collect_socks_info_i();

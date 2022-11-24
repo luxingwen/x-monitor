@@ -50,8 +50,12 @@ void collect_socks_info() {
     collect_socks_info_i();
 }
 
-struct sock_info_batch *find_batch_sock_info(uint32_t *ino_array, uint32_t ino_count) {
-    return find_batch_sock_info_i(ino_array, ino_count);
+int32_t find_sock_info(uint32_t ino, struct sock_info *res) {
+    return find_sock_info_i(ino, res);
+}
+
+uint32_t sock_info_count() {
+    return sock_info_count_i();
 }
 
 void fini_proc_socks() {

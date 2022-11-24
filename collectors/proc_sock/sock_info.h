@@ -40,8 +40,3 @@ struct sock_info {
     enum SOCK_TYPE  sock_type;
     enum SOCK_STATE sock_state;
 };
-
-struct sock_info_batch {
-    uint16_t          si_count;
-    struct sock_info *si_array;
-};

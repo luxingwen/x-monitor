@@ -81,16 +81,18 @@ static struct sock_file_info {
 };
 
 static void __sock_print(uint32_t sl, const char *loc_addr, const char *loc_port,
-                         const char *rem_addr, const char *rem_port, uint32_t ino, int32_t family) {
+                         const char *rem_addr, const char *rem_port, uint32_t ino, int32_t family,
+                         enum SOCK_TYPE st) {
     if (family == AF_INET) {
         struct in_addr loc_in, rem_in;
 
         loc_in.s_addr = strtol(loc_addr, NULL, 16);
         rem_in.s_addr = strtol(rem_addr, NULL, 16);
 
-        debug("[PROC_SOCK]family:AF_INET sl:%d, local: %s:%ld, remote: %s:%ld, ino:%u", sl,
-              inet_ntoa(loc_in), strtol(loc_port, NULL, 16), inet_ntoa(rem_in),
-              strtol(rem_port, NULL, 16), ino);
+        debug(
+            "[PROC_SOCK]family:AF_INET sock_type:%d, sl:%d, local: %s:%ld, remote: %s:%ld, ino:%u",
+            st, sl, inet_ntoa(loc_in), strtol(loc_port, NULL, 16), inet_ntoa(rem_in),
+            strtol(rem_port, NULL, 16), ino);
     } else if (family == AF_INET6) {
         struct in6_addr loc_in6, rem_in6;
         char            loc_addr6[INET6_ADDRSTRLEN], rem_addr6[INET6_ADDRSTRLEN];
@@ -103,24 +105,30 @@ static void __sock_print(uint32_t sl, const char *loc_addr, const char *loc_port
         inet_ntop(AF_INET6, &loc_in6, loc_addr6, sizeof(loc_addr6));
         inet_ntop(AF_INET6, &rem_in6, rem_addr6, sizeof(rem_addr6));
 
-        debug("[PROC_SOCK]family:AF_INET6 sl:%d local: %s:%ld, remote: %s:%ld, ino:%u", sl,
-              loc_addr6, strtol(loc_port, NULL, 16), rem_addr6, strtol(rem_port, NULL, 16), ino);
+        debug(
+            "[PROC_SOCK]family:AF_INET6 sock_type:%d, sl:%d local: %s:%ld, remote: %s:%ld, ino:%u",
+            st, sl, loc_addr6, strtol(loc_port, NULL, 16), rem_addr6, strtol(rem_port, NULL, 16),
+            ino);
     }
 }
 
-static int32_t __collect_tcp_socks_info(struct proc_sock_info_mgr   *psim,
-                                        const struct sock_file_info *sfi) {
-    debug("[PROC_SOCK] start collect tcp:'%s' socks info.", sfi->sock_file);
+static int32_t __collect_tcp_udp_socks_info(struct proc_sock_info_mgr   *psim,
+                                            const struct sock_file_info *sfi) {
+    debug("[PROC_SOCK] start collect '%s' socks info.", sfi->sock_file);
 
-    int32_t family = (sfi->sock_type == ST_TCP) ? AF_INET : AF_INET6;
+    int32_t family = (sfi->sock_type == ST_TCP || sfi->sock_type == ST_UDP) ? AF_INET : AF_INET6;
 
     struct proc_file **ppf = &(psim->proc_net_tcp);
     if (sfi->sock_type == ST_TCP6) {
         ppf = &(psim->proc_net_tcp6);
+    } else if (sfi->sock_type == ST_UDP) {
+        ppf = &(psim->proc_net_udp);
+    } else if (sfi->sock_type == ST_UDP6) {
+        ppf = &(psim->proc_net_udp6);
     }
 
     *ppf = procfile_reopen(*ppf, sfi->sock_file, " \t:", PROCFILE_FLAG_DEFAULT);
-    if (unlikely(!ppf)) {
+    if (unlikely(!*ppf)) {
         return -1;
     }
 
@@ -139,7 +147,7 @@ static int32_t __collect_tcp_socks_info(struct proc_sock_info_mgr   *psim,
         }
 
         struct sock_info_node *sin = alloc_sock_info_node();
-        // tcp 状态
+
         uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
         sin->si.sock_state = str2uint32_t(procfile_lineword(*ppf, l, 5));
         sin->si.sock_type = sfi->sock_type;
@@ -150,17 +158,12 @@ static int32_t __collect_tcp_socks_info(struct proc_sock_info_mgr   *psim,
         const char *loc_port = procfile_lineword(*ppf, l, 2);
         const char *rem_addr = procfile_lineword(*ppf, l, 3);
         const char *rem_port = procfile_lineword(*ppf, l, 4);
-        //__sock_print(sl, loc_addr, loc_port, rem_addr, rem_port, sin->si.ino, family);
+        //__sock_print(sl, loc_addr, loc_port, rem_addr, rem_port, sin->si.ino, family,
+        //             sfi->sock_type);
 
         add_sock_info_node(sin);
     }
 
-    return 0;
-}
-
-static int32_t __collect_udp_socks_info(struct proc_sock_info_mgr   *psim,
-                                        const struct sock_file_info *sfi) {
-    debug("[PROC_SOCK] start collect udp:'%s' socks info.", sfi->sock_file);
     return 0;
 }
 
@@ -184,10 +187,9 @@ void collect_socks_info_i() {
     // 收集sock信息
     for (size_t i = 0; i < ARRAY_SIZE(__sock_file_infos); i++) {
         struct sock_file_info *sfi = &__sock_file_infos[i];
-        if (sfi->sock_type == ST_TCP || sfi->sock_type == ST_TCP6) {
-            __collect_tcp_socks_info(g_proc_sock_info_mgr, sfi);
-        } else if (sfi->sock_type == ST_UDP || sfi->sock_type == ST_UDP6) {
-            __collect_udp_socks_info(g_proc_sock_info_mgr, sfi);
+        if (sfi->sock_type == ST_TCP || sfi->sock_type == ST_TCP6 || sfi->sock_type == ST_UDP
+            || sfi->sock_type == ST_UDP6) {
+            __collect_tcp_udp_socks_info(g_proc_sock_info_mgr, sfi);
         } else if (sfi->sock_type == ST_UNIX) {
             __collect_unix_socks_info(g_proc_sock_info_mgr, sfi);
         }
