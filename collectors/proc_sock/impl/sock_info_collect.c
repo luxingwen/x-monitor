@@ -112,8 +112,8 @@ static void __sock_print(uint32_t sl, const char *loc_addr, const char *loc_port
     }
 }
 
-static int32_t __collect_tcp_udp_socks_info(struct proc_sock_info_mgr   *psim,
-                                            const struct sock_file_info *sfi) {
+static int32_t __collect_proc_socks_info(struct proc_sock_info_mgr   *psim,
+                                         const struct sock_file_info *sfi) {
     debug("[PROC_SOCK] start collect '%s' socks info.", sfi->sock_file);
 
     int32_t family = (sfi->sock_type == ST_TCP || sfi->sock_type == ST_UDP) ? AF_INET : AF_INET6;
@@ -125,6 +125,8 @@ static int32_t __collect_tcp_udp_socks_info(struct proc_sock_info_mgr   *psim,
         ppf = &(psim->proc_net_udp);
     } else if (sfi->sock_type == ST_UDP6) {
         ppf = &(psim->proc_net_udp6);
+    } else if (sfi->sock_type == ST_UNIX) {
+        ppf = &(psim->proc_net_unix);
     }
 
     *ppf = procfile_reopen(*ppf, sfi->sock_file, " \t:", PROCFILE_FLAG_DEFAULT);
@@ -134,42 +136,50 @@ static int32_t __collect_tcp_udp_socks_info(struct proc_sock_info_mgr   *psim,
 
     *ppf = procfile_readall(*ppf);
     if (unlikely(!*ppf)) {
-        error("[PROC_SOCK] read proc file:'%s' failed.", sfi->sock_file);
+        error("[PROC_SOCK] read proc sock file:'%s' failed.", sfi->sock_file);
         return -1;
     }
 
-    size_t lines = procfile_lines(*ppf);
+    struct sock_info_node *sin = NULL;
+    size_t                 lines = procfile_lines(*ppf);
     // skip header
     for (size_t l = 1; l < lines; l++) {
         size_t words = procfile_linewords(*ppf, l);
-        if (words < 14) {
-            continue;
+
+        if (ST_TCP <= sfi->sock_type && sfi->sock_type <= ST_UDP6) {
+            if (words < 14) {
+                continue;
+            }
+
+            sin = alloc_sock_info_node();
+
+            uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
+            sin->si.sock_state = str2uint32_t(procfile_lineword(*ppf, l, 5));
+            sin->si.sock_type = sfi->sock_type;
+            sin->si.ino = str2uint32_t(procfile_lineword(*ppf, l, 13));
+            atomic_set(&sin->is_update, 1);
+
+            const char *loc_addr = procfile_lineword(*ppf, l, 1);
+            const char *loc_port = procfile_lineword(*ppf, l, 2);
+            const char *rem_addr = procfile_lineword(*ppf, l, 3);
+            const char *rem_port = procfile_lineword(*ppf, l, 4);
+            //__sock_print(sl, loc_addr, loc_port, rem_addr, rem_port, sin->si.ino, family,
+            //             sfi->sock_type);
+
+            add_sock_info_node(sin);
+        } else if (sfi->sock_type == ST_UNIX) {
+            sin = alloc_sock_info_node();
+
+            uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
+            sin->si.sock_state = str2uint32_t(procfile_lineword(*ppf, l, 5));
+            sin->si.sock_type = ST_UNIX;
+            sin->si.ino = str2uint32_t(procfile_lineword(*ppf, l, 6));
+            atomic_set(&sin->is_update, 1);
+
+            add_sock_info_node(sin);
         }
-
-        struct sock_info_node *sin = alloc_sock_info_node();
-
-        uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
-        sin->si.sock_state = str2uint32_t(procfile_lineword(*ppf, l, 5));
-        sin->si.sock_type = sfi->sock_type;
-        sin->si.ino = str2uint32_t(procfile_lineword(*ppf, l, 13));
-        atomic_set(&sin->is_update, 1);
-
-        const char *loc_addr = procfile_lineword(*ppf, l, 1);
-        const char *loc_port = procfile_lineword(*ppf, l, 2);
-        const char *rem_addr = procfile_lineword(*ppf, l, 3);
-        const char *rem_port = procfile_lineword(*ppf, l, 4);
-        //__sock_print(sl, loc_addr, loc_port, rem_addr, rem_port, sin->si.ino, family,
-        //             sfi->sock_type);
-
-        add_sock_info_node(sin);
     }
 
-    return 0;
-}
-
-static int32_t __collect_unix_socks_info(struct proc_sock_info_mgr   *psim,
-                                         const struct sock_file_info *sfi) {
-    debug("[PROC_SOCK] start collect unix:'%s' socks info.", sfi->sock_file);
     return 0;
 }
 
@@ -188,10 +198,8 @@ void collect_socks_info_i() {
     for (size_t i = 0; i < ARRAY_SIZE(__sock_file_infos); i++) {
         struct sock_file_info *sfi = &__sock_file_infos[i];
         if (sfi->sock_type == ST_TCP || sfi->sock_type == ST_TCP6 || sfi->sock_type == ST_UDP
-            || sfi->sock_type == ST_UDP6) {
-            __collect_tcp_udp_socks_info(g_proc_sock_info_mgr, sfi);
-        } else if (sfi->sock_type == ST_UNIX) {
-            __collect_unix_socks_info(g_proc_sock_info_mgr, sfi);
+            || sfi->sock_type == ST_UDP6 || sfi->sock_type == ST_UNIX) {
+            __collect_proc_socks_info(g_proc_sock_info_mgr, sfi);
         }
     }
 

@@ -39,7 +39,7 @@ void *read_routine(void *arg) {
         uint32_t curr_count = sock_info_count();
         if (curr_count != count) {
             count = curr_count;
-            debug("sock info count: %u", count);
+            debug("read thread:%lu, sock info count: %u", pthread_self(), count);
         }
         usleep(20);
     }
