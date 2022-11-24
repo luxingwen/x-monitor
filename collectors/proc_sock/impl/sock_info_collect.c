@@ -62,6 +62,16 @@ timer_active:
 2 another timer (e.g. delayed ack or keepalive) is pending
 3 this is a socket in TIME_WAIT state. Not all field will contain data.
 4 zero window probe timer is pending
+
+/proc/net/unix
+The code that generates this file is in the unix_seq_show() function in net/unix/af_unix.c in the
+kernel source. Looking at include/net/af_unix.h is also helpful, to see the data structures in use.
+
+Here 'Num' is the kernel table slot number, 'RefCount' is the number of users of the socket,
+'Protocol' is currently always 0, 'Flags' represent the internal kernel flags holding the status of
+the socket. Currently, type is always '1' (Unix domain data-gram sockets are not yet supported in
+the kernel). 'St' is the internal state of the socket and Path is the bound path (if any) of the
+socket.
 */
 
 #include "sock_info_mgr.h"
