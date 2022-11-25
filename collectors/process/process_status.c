@@ -55,14 +55,14 @@ struct process_status *new_process_status(pid_t pid, struct xm_mempool_s *xmp) {
     MAKE_PROCESS_FULL_FILENAME(ps->stat_full_filename, __proc_pid_stat_path_fmt, pid);
     MAKE_PROCESS_FULL_FILENAME(ps->status_full_filename, __proc_pid_status_path_fmt, pid);
     MAKE_PROCESS_FULL_FILENAME(ps->io_full_filename, __proc_pid_io_path_fmt, pid);
-    MAKE_PROCESS_FULL_FILENAME(ps->fd_full_filename, __proc_pid_fd_path_fmt, pid);
+    MAKE_PROCESS_FULL_FILENAME(ps->fd_dir_fullname, __proc_pid_fd_path_fmt, pid);
     MAKE_PROCESS_FULL_FILENAME(ps->oom_score_full_filename, __proc_pid_oom_score_fmt, pid);
     MAKE_PROCESS_FULL_FILENAME(ps->oom_score_adj_full_filename, __proc_pid_oom_score_adj_fmt, pid);
 
     debug("[PROCESS] new_process_status: pid: %d, stat_file: '%s', status_file: '%s', io_file: "
           "'%s', fd_file: '%s'",
           pid, ps->stat_full_filename, ps->status_full_filename, ps->io_full_filename,
-          ps->fd_full_filename);
+          ps->fd_dir_fullname);
 
     return ps;
 }
@@ -89,8 +89,8 @@ void free_process_status(struct process_status *ps, struct xm_mempool_s *xmp) {
             free(ps->io_full_filename);
         }
 
-        if (likely(ps->fd_full_filename)) {
-            free(ps->fd_full_filename);
+        if (likely(ps->fd_dir_fullname)) {
+            free(ps->fd_dir_fullname);
         }
 
         if (likely(ps->oom_score_full_filename)) {

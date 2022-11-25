@@ -18,6 +18,8 @@
 
 #include "app_config/app_config.h"
 
+#include "collectors/proc_sock/proc_sock.h"
+
 #include "apps_filter_rule.h"
 #include "apps_status.h"
 
@@ -26,13 +28,15 @@ static const char *__config_name = "collector_plugin_appstatus";
 
 struct collector_appstat {
     sig_atomic_t exit_flag;
-    pthread_t    thread_id;                       // routine执行的线程ids
-    int32_t      update_every;                    // 指标采集时间间隔
-    int32_t      update_every_for_app;            // 应用更新时间间隔
-    int32_t      update_every_for_filter_rules;   //
+    pthread_t    thread_id;                        // routine执行的线程ids
+    int32_t      update_every;                     // 指标采集时间间隔
+    int32_t      update_every_for_app;             // 应用更新时间间隔
+    int32_t      update_every_for_filter_rules;    // 过滤规则更新时间间隔
+    int32_t      update_every_for_app_sock_diag;   // 应用sock诊断更新时间间隔
 
     usec_t last_update_for_app_usec;
     usec_t last_update_for_filter_rules_usecs;
+    usec_t last_update_for_app_sock_diag_usecs;
 };
 
 static struct collector_appstat __collector_appstat = {
@@ -65,9 +69,13 @@ int32_t appstat_collector_routine_init() {
         appconfig_get_int("collector_plugin_appstatus.update_every_for_app", 10);
     __collector_appstat.update_every_for_filter_rules =
         appconfig_get_int("collector_plugin_appstatus.update_every_for_filter_rules", 60);
+    __collector_appstat.update_every_for_app_sock_diag =
+        appconfig_get_int("collector_plugin_appstatus.update_every_for_app_sock_diag", 3);
 
     __collector_appstat.last_update_for_app_usec = 0;
     __collector_appstat.last_update_for_filter_rules_usecs = 0;
+
+    init_proc_socks();
 
     debug("[%s] routine init successed", __name);
     return 0;
@@ -82,6 +90,8 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
     usec_t step_usecs_for_app = __collector_appstat.update_every_for_app * USEC_PER_SEC;
     usec_t step_usecs_for_filter_rules =
         __collector_appstat.update_every_for_filter_rules * USEC_PER_SEC;
+    usec_t step_usecs_for_app_sock_diag =
+        __collector_appstat.update_every_for_app_sock_diag * USEC_PER_SEC;
 
     if (unlikely(0 != init_apps_collector())) {
         urcu_memb_unregister_thread();
@@ -128,6 +138,14 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
             __collector_appstat.last_update_for_app_usec = now_usecs;
         }
 
+        // 定时采集系统sock诊断信息
+        if (!__collector_appstat.exit_flag
+            && now_usecs - __collector_appstat.last_update_for_app_sock_diag_usecs
+                   >= step_usecs_for_app_sock_diag) {
+            collect_socks_info();
+            __collector_appstat.last_update_for_app_sock_diag_usecs = now_usecs;
+        }
+
         if (!__collector_appstat.exit_flag && afr->rule_count > 0) {
             collecting_apps_usage();
         }
@@ -147,6 +165,7 @@ void appstat_collector_routine_stop() {
     pthread_join(__collector_appstat.thread_id, NULL);
 
     free_apps_collector();
+    fini_proc_socks();
     debug("[%s] routine has completely stopped", __name);
     return;
 }

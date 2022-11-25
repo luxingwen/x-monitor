@@ -14,6 +14,34 @@
 struct proc_file;
 struct xm_mempool_s;
 
+struct process_tcp_sock_statistic {
+    uint16_t tcp_established;
+    uint16_t tcp_syn_sent;
+    uint16_t tcp_syn_recv;
+    uint16_t tcp_fin_wait1;
+    uint16_t tcp_fin_wait2;
+    uint16_t tcp_time_wait;
+    uint16_t tcp_close;
+    uint16_t tcp_close_wait;
+    uint16_t tcp_last_ack;
+    uint16_t tcp_listen;
+    uint16_t tcp_closing;
+    uint32_t total;
+};
+
+struct process_udp_sock_statistic {
+    uint16_t udp_established;
+    uint16_t udp_close;
+    uint32_t total;
+};
+
+struct process_unix_sock_statistic {
+    uint16_t unix_established;
+    uint16_t unix_send;
+    uint16_t unix_recv;
+    uint32_t total;
+};
+
 struct process_status {
     pid_t pid;
     pid_t ppid;
@@ -22,7 +50,7 @@ struct process_status {
     char *stat_full_filename;
     char *status_full_filename;
     char *io_full_filename;
-    char *fd_full_filename;
+    char *fd_dir_fullname;
     char *oom_score_full_filename;
     char *oom_score_adj_full_filename;
 
@@ -120,6 +148,12 @@ struct process_status {
 
     // 进程打开文件句柄数
     int32_t process_open_fds;
+
+    struct process_tcp_sock_statistic  tcp_statistic;
+    struct process_tcp_sock_statistic  tcp6_statistic;
+    struct process_udp_sock_statistic  udp_statistic;
+    struct process_udp_sock_statistic  udp6_statistic;
+    struct process_unix_sock_statistic unix_statistic;
 
     // oom
     int16_t oom_score;

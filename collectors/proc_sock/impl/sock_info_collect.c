@@ -141,6 +141,7 @@ static int32_t __collect_proc_socks_info(struct proc_sock_info_mgr   *psim,
 
     *ppf = procfile_reopen(*ppf, sfi->sock_file, " \t:", PROCFILE_FLAG_DEFAULT);
     if (unlikely(!*ppf)) {
+        error("[PROC_SOCK] open proc sock file:'%s' failed.", sfi->sock_file);
         return -1;
     }
 
