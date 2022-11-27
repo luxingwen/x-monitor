@@ -14,7 +14,7 @@
 struct proc_file;
 struct xm_mempool_s;
 
-struct sock_tcp_statistic {
+struct sock_statistic {
     uint16_t tcp_established;
     uint16_t tcp_syn_sent;
     uint16_t tcp_syn_recv;
@@ -26,20 +26,24 @@ struct sock_tcp_statistic {
     uint16_t tcp_last_ack;
     uint16_t tcp_listen;
     uint16_t tcp_closing;
-    uint32_t total;
-};
-
-struct sock_udp_statistic {
+    uint16_t tcp6_established;
+    uint16_t tcp6_syn_sent;
+    uint16_t tcp6_syn_recv;
+    uint16_t tcp6_fin_wait1;
+    uint16_t tcp6_fin_wait2;
+    uint16_t tcp6_time_wait;
+    uint16_t tcp6_close;
+    uint16_t tcp6_close_wait;
+    uint16_t tcp6_last_ack;
+    uint16_t tcp6_listen;
+    uint16_t tcp6_closing;
     uint16_t udp_established;
     uint16_t udp_close;
-    uint32_t total;
-};
-
-struct sock_unix_statistic {
+    uint16_t udp6_established;
+    uint16_t udp6_close;
     uint16_t unix_established;
     uint16_t unix_send;
     uint16_t unix_recv;
-    uint32_t total;
 };
 
 struct process_status {
@@ -148,12 +152,8 @@ struct process_status {
 
     // 进程打开文件句柄数
     int32_t process_open_fds;
-
-    struct sock_tcp_statistic  tcp_statistic;
-    struct sock_tcp_statistic  tcp6_statistic;
-    struct sock_udp_statistic  udp_statistic;
-    struct sock_udp_statistic  udp6_statistic;
-    struct sock_unix_statistic unix_statistic;
+    // 套接字统计
+    struct sock_statistic st;
 
     // oom
     int16_t oom_score;
