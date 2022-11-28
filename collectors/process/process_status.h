@@ -153,7 +153,7 @@ struct process_status {
     // 进程打开文件句柄数
     int32_t process_open_fds;
     // 套接字统计
-    struct sock_statistic st;
+    struct sock_statistic sst;
 
     // oom
     int16_t oom_score;

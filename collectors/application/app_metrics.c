@@ -74,6 +74,9 @@ const char *__app_metric_io_cancelled_write_bytes_help =
     "this field represents the number of bytes which this process caused to not "
     "happen, by truncating pagecache.";
 const char *__app_metric_open_fds_help = "The number of open file descriptors";
+const char *__app_metric_sock_tcp_help = "The number of tcp socket states";
+const char *__app_metric_sock_udp_help = "The number of udp socket states";
+const char *__app_metric_sock_unix_help = "The number of unix socket states";
 const char *__app_metric_max_oom_score_help =
     "This file displays the current score that the kernel gives to this process for the purpose of "
     "selecting a process for the OOM-killer.  A higher score means that the process is more likely "

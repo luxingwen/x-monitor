@@ -12,11 +12,10 @@
 #include <sys/types.h>
 #include "utils/list.h"
 #include "utils/consts.h"
-
+#include "collectors/process/process_status.h"
 #include "app_metrics.h"
 
 struct app_filter_rules;
-struct process_status;
 
 // 应用统计结构
 struct app_status {
@@ -59,6 +58,8 @@ struct app_status {
     uint64_t io_storage_bytes_written;
     int32_t  io_cancelled_write_bytes;
     int32_t  open_fds;
+
+    struct sock_statistic sst;
 
     int16_t max_oom_score;
     int16_t max_oom_score_adj;

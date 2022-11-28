@@ -60,6 +60,8 @@ int32_t main(int32_t argc, char *argv[]) {
         return -1;
     }
 
+    urcu_memb_register_thread();
+
     ret = init_proc_socks();
     if (ret != 0) {
         error("init proc socks failed.");
@@ -75,6 +77,9 @@ int32_t main(int32_t argc, char *argv[]) {
     pthread_join(tids[2], NULL);
 
     fini_proc_socks();
+
+    urcu_memb_unregister_thread();
+
     log_fini();
 
     sleep(1);

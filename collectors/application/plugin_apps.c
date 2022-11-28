@@ -13,13 +13,9 @@
 #include "utils/compiler.h"
 #include "utils/consts.h"
 #include "utils/log.h"
-
 #include "urcu/urcu-memb.h"
-
 #include "app_config/app_config.h"
-
 #include "collectors/proc_sock/proc_sock.h"
-
 #include "apps_filter_rule.h"
 #include "apps_status.h"
 
@@ -75,8 +71,6 @@ int32_t appstat_collector_routine_init() {
     __collector_appstat.last_update_for_app_usec = 0;
     __collector_appstat.last_update_for_filter_rules_usecs = 0;
 
-    init_proc_socks();
-
     debug("[%s] routine init successed", __name);
     return 0;
 }
@@ -85,6 +79,8 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
     debug("[%s] routine, thread id: %lu start", __name, pthread_self());
 
     urcu_memb_register_thread();
+
+    init_proc_socks();
 
     usec_t step_usecs = __collector_appstat.update_every * USEC_PER_SEC;
     usec_t step_usecs_for_app = __collector_appstat.update_every_for_app * USEC_PER_SEC;
@@ -154,6 +150,8 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
     free_filter_rules(afr);
     afr = NULL;
 
+    fini_proc_socks();
+
     urcu_memb_unregister_thread();
     debug("[%s] routine exit", __name);
 
@@ -165,7 +163,6 @@ void appstat_collector_routine_stop() {
     pthread_join(__collector_appstat.thread_id, NULL);
 
     free_apps_collector();
-    fini_proc_socks();
     debug("[%s] routine has completely stopped", __name);
     return;
 }

@@ -231,9 +231,7 @@ static void __remove_all_sock_info() {
     int32_t                ret = 0;
 
     debug("[PROC_SOCK] remove all sock_info_node");
-
     urcu_memb_read_lock();
-
     cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_node_rcu_ht, &iter, sin, hash_node) {
         ht_node = cds_lfht_iter_get_node(&iter);
         ret = cds_lfht_del(g_proc_sock_info_mgr->sock_info_node_rcu_ht, ht_node);
@@ -243,10 +241,13 @@ static void __remove_all_sock_info() {
             urcu_memb_call_rcu(&sin->rcu_node, __free_sock_info_node);
         }
     }
-
     urcu_memb_read_unlock();
-    // wait for all call_rcu() to complete
-    sleep(1);
+    /*
+     * Waiting for previously called call_rcu handlers to complete
+     * before program exits, or in library destructors, is a good
+     * practice.
+     */
+    urcu_memb_barrier();
 }
 
 /**
@@ -279,7 +280,6 @@ void remove_all_not_update_sock_info() {
     debug("[PROC_SOCK] remove all not update sock_info_node");
 
     urcu_memb_read_lock();
-
     cds_lfht_for_each_entry(g_proc_sock_info_mgr->sock_info_node_rcu_ht, &iter, sin, hash_node) {
         ht_node = cds_lfht_iter_get_node(&iter);
         if (atomic_read(&sin->is_update) == 0) {
@@ -291,7 +291,6 @@ void remove_all_not_update_sock_info() {
             }
         }
     }
-
     urcu_memb_read_unlock();
 }
 

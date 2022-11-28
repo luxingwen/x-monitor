@@ -7,7 +7,6 @@
 
 #include "config.h"
 #include "routine.h"
-
 #include "utils/clocks.h"
 #include "utils/common.h"
 #include "utils/compiler.h"
@@ -18,11 +17,9 @@
 #include "utils/popen.h"
 #include "utils/signals.h"
 #include "utils/strings.h"
-
 #include "app_config/app_config.h"
 #include "plugins.d/plugins_d.h"
 #include "app_register/exporter_register.h"
-
 #include "prometheus-client-c/promhttp.h"
 
 #define BUF_SIZE 1024
