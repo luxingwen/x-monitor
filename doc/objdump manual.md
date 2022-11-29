@@ -155,7 +155,7 @@
 
 7. 看内核函数的反汇编
 
-   ![objdump vmlinux](./img/objdump vmlinux.jpg)
+   ![objdump vmlinux](./img/objdump_vmlinux.jpg)
 
 ## 参考资料
 
