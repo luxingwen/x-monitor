@@ -190,8 +190,8 @@ int32_t find_sock_info_i(uint32_t ino, struct sock_info *res) {
         sin = container_of(ht_node, struct sock_info_node, hash_node);
         __builtin_memcpy(res, &sin->si, sizeof(struct sock_info));
         ret = 0;
-        debug("[PROC_SOCK] find sock_info_node successed. ino: %u, sock_type:%d", res->ino,
-              res->sock_type);
+        debug("[PROC_SOCK] find sock_info_node successed. ino: %u, sock_type:%d, sock_stat:%d",
+              res->ino, res->sock_type, res->sock_state);
     } else {
         debug("[PROC_SOCK] sock_info_node ino: %u not found", ino);
         ret = -1;

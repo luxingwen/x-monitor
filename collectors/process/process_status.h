@@ -20,7 +20,7 @@ struct sock_statistic {
     uint16_t tcp_syn_recv;
     uint16_t tcp_fin_wait1;
     uint16_t tcp_fin_wait2;
-    uint16_t tcp_time_wait;
+    // uint16_t tcp_time_wait;
     uint16_t tcp_close;
     uint16_t tcp_close_wait;
     uint16_t tcp_last_ack;
@@ -31,7 +31,7 @@ struct sock_statistic {
     uint16_t tcp6_syn_recv;
     uint16_t tcp6_fin_wait1;
     uint16_t tcp6_fin_wait2;
-    uint16_t tcp6_time_wait;
+    // uint16_t tcp6_time_wait;
     uint16_t tcp6_close;
     uint16_t tcp6_close_wait;
     uint16_t tcp6_last_ack;

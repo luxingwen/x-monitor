@@ -153,6 +153,7 @@ static int32_t __collect_proc_socks_info(struct proc_sock_info_mgr   *psim,
 
     struct sock_info_node *sin = NULL;
     size_t                 lines = procfile_lines(*ppf);
+    uint32_t               so_ino = 0;
     // skip header
     for (size_t l = 1; l < lines; l++) {
         size_t words = procfile_linewords(*ppf, l);
@@ -162,31 +163,39 @@ static int32_t __collect_proc_socks_info(struct proc_sock_info_mgr   *psim,
                 continue;
             }
 
+            so_ino = str2uint32_t(procfile_lineword(*ppf, l, 13));
+            if (0 == so_ino) {
+                continue;
+            }
+
             sin = alloc_sock_info_node();
 
             uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
-            sin->si.sock_state = str2uint32_t(procfile_lineword(*ppf, l, 5));
+            sin->si.sock_state = strtol(procfile_lineword(*ppf, l, 5), NULL, 16);
             sin->si.sock_type = sfi->sock_type;
-            sin->si.ino = str2uint32_t(procfile_lineword(*ppf, l, 13));
+            sin->si.ino = so_ino;
             atomic_set(&sin->is_update, 1);
 
-            const char *loc_addr = procfile_lineword(*ppf, l, 1);
-            const char *loc_port = procfile_lineword(*ppf, l, 2);
-            const char *rem_addr = procfile_lineword(*ppf, l, 3);
-            const char *rem_port = procfile_lineword(*ppf, l, 4);
+            // const char *loc_addr = procfile_lineword(*ppf, l, 1);
+            // const char *loc_port = procfile_lineword(*ppf, l, 2);
+            // const char *rem_addr = procfile_lineword(*ppf, l, 3);
+            // const char *rem_port = procfile_lineword(*ppf, l, 4);
             //__sock_print(sl, loc_addr, loc_port, rem_addr, rem_port, sin->si.ino, family,
             //             sfi->sock_type);
 
             add_sock_info_node(sin);
         } else if (sfi->sock_type == ST_UNIX) {
+            so_ino = str2uint32_t(procfile_lineword(*ppf, l, 6));
+            if (0 == so_ino) {
+                continue;
+            }
+
             sin = alloc_sock_info_node();
-
             uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
-            sin->si.sock_state = str2uint32_t(procfile_lineword(*ppf, l, 5));
+            sin->si.sock_state = strtol(procfile_lineword(*ppf, l, 5), NULL, 16);
             sin->si.sock_type = ST_UNIX;
-            sin->si.ino = str2uint32_t(procfile_lineword(*ppf, l, 6));
+            sin->si.ino = so_ino;
             atomic_set(&sin->is_update, 1);
-
             add_sock_info_node(sin);
         }
     }
