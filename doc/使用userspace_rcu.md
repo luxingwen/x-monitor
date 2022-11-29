@@ -51,7 +51,7 @@ RCU对链表、hashTable都有使用场景。读取链表成员数据时通常�
 
 rcu_dereference/rcu_assign_pointer是防止指令执行乱序的方法。RCU是全局的，而且没有区域的追踪，所以给我的感觉是是一个时序操作，synchronize_rcu只要关注跨越removal的read-side critical sections退出即可。**切记是全局的，不是针对某个资源的**。
 
-![grace period](./img/grace period.jpg)
+![grace period](./img/grace_period.jpg)
 
 ### 使用场景
 
