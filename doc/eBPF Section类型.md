@@ -238,11 +238,45 @@ int do_sample(struct bpf_perf_event_data *ctx)
 
 什么时候运行？取决于perf事件触发和所选择的采样率，这些采样率由perf事件属性结构中的freq和sample_period字段指定。每个采样间隔执行一次。
 
+### fmod_ret
+
+原理，如果fmod_ret函数返回非0，不会调用原生函数。可以用来拦截系统调用
+
+```
+Here is an example of how a fmod_ret program behaves:
+
+int func_to_be_attached(int a, int b)
+{  <--- do_fentry
+
+do_fmod_ret:
+   <update ret by calling fmod_ret>
+   if (ret != 0)
+        goto do_fexit;
+
+original_function:
+
+    <side_effects_happen_here>
+
+}  <--- do_fexit
+
+ALLOW_ERROR_INJECTION(func_to_be_attached, ERRNO)
+
+The fmod_ret program attached to this function can be defined as:
+
+SEC("fmod_ret/func_to_be_attached")
+BPF_PROG(func_name, int a, int b, int ret)
+{
+        // This will skip the original function logic.
+        return -1;
+}
+```
+
 ## 资料
 
 - [x86-64汇编入门 - nifengz](https://nifengz.com/introduction_x64_assembly/)
 - [bcc/reference_guide.md at master · iovisor/bcc (github.com)](https://github.com/iovisor/bcc/blob/master/docs/reference_guide.md)
 - [ebpf/libbpf 程序使用 btf raw tracepoint 的常见问题 - mozillazg's Blog](https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec)
+- [Introduce BPF_MODIFY_RET tracing progs. [LWN.net\]](https://lwn.net/Articles/813724/)
 
 
 

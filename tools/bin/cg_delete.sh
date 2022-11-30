@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cgdelete -g memory,cpu:/hello-cg
+cgdelete -g memory,cpu:/user.slice/hello-cg

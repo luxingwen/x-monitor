@@ -518,33 +518,16 @@ int32_t update_app_collection(struct app_filter_rules *afr) {
 static void __gather_sock_statistics(struct sock_statistic *app_sst,
                                      struct sock_statistic *ps_sst) {
     app_sst->tcp_established += ps_sst->tcp_established;
-    // app_sst->tcp_syn_sent += ps_sst->tcp_syn_sent;
-    // app_sst->tcp_syn_recv += ps_sst->tcp_syn_recv;
-    // app_sst->tcp_fin_wait1 += ps_sst->tcp_fin_wait1;
-    // app_sst->tcp_fin_wait2 += ps_sst->tcp_fin_wait2;
-    // app_sst->tcp_time_wait += ps_sst->tcp_time_wait;
-    // app_sst->tcp_close += ps_sst->tcp_close;
     app_sst->tcp_close_wait += ps_sst->tcp_close_wait;
-    // app_sst->tcp_last_ack += ps_sst->tcp_last_ack;
     app_sst->tcp_listen += ps_sst->tcp_listen;
-    // app_sst->tcp_closing += ps_sst->tcp_closing;
     app_sst->tcp6_established = ps_sst->tcp6_established;
-    // app_sst->tcp6_syn_sent += ps_sst->tcp6_syn_sent;
-    // app_sst->tcp6_syn_recv += ps_sst->tcp6_syn_recv;
-    // app_sst->tcp6_fin_wait1 += ps_sst->tcp6_fin_wait1;
-    // app_sst->tcp6_fin_wait2 += ps_sst->tcp6_fin_wait2;
-    // app_sst->tcp6_time_wait += ps_sst->tcp6_time_wait;
-    // app_sst->tcp6_close += ps_sst->tcp6_close;
     app_sst->tcp6_close_wait += ps_sst->tcp6_close_wait;
-    // app_sst->tcp6_last_ack += ps_sst->tcp6_last_ack;
     app_sst->tcp6_listen += ps_sst->tcp6_listen;
-    // app_sst->tcp6_closing += ps_sst->tcp6_closing;
     app_sst->udp_established += ps_sst->udp_established;
     app_sst->udp_close += ps_sst->udp_close;
     app_sst->udp6_established += ps_sst->udp6_established;
     app_sst->udp6_close += ps_sst->udp6_close;
     app_sst->unix_established += ps_sst->unix_established;
-    // app_sst->unix_send += ps_sst->unix_send;
     app_sst->unix_recv += ps_sst->unix_recv;
 }
 
@@ -553,67 +536,20 @@ static void __set_app_sock_metrics(struct app_status *as, const char *app_name,
     prom_gauge_set(
         as->metrics.metric_sock_fds, as->sst.tcp_established,
         (const char *[]){ app_name, app_type_name, sock_state_name(SS_ESTABLISHED), "Tcp" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp_syn_sent,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_SYN_SENT), "Tcp" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp_syn_recv,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_SYN_RECV), "Tcp" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp_fin_wait1,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_FIN_WAIT1), "Tcp" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp_fin_wait2,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_FIN_WAIT2), "Tcp" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp_time_wait,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_TIME_WAIT), "Tcp" });
-    // prom_gauge_set(as->metrics.metric_sock_fds, as->sst.tcp_close,
-    //                (const char *[]){ app_name, app_type_name, sock_state_name(SS_CLOSE), "Tcp"
-    //                });
     prom_gauge_set(
         as->metrics.metric_sock_fds, as->sst.tcp_close_wait,
         (const char *[]){ app_name, app_type_name, sock_state_name(SS_CLOSE_WAIT), "Tcp" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp_last_ack,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_LAST_ACK), "Tcp" });
     prom_gauge_set(as->metrics.metric_sock_fds, as->sst.tcp_listen,
                    (const char *[]){ app_name, app_type_name, sock_state_name(SS_LISTEN), "Tcp" });
-    // prom_gauge_set(as->metrics.metric_sock_fds, as->sst.tcp_closing,
-    //                (const char *[]){ app_name, app_type_name, sock_state_name(SS_CLOSING), "Tcp"
-    //                });
+
     prom_gauge_set(
         as->metrics.metric_sock_fds, as->sst.tcp6_established,
         (const char *[]){ app_name, app_type_name, sock_state_name(SS_ESTABLISHED), "Tcp6" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp6_syn_sent,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_SYN_SENT), "Tcp6" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp6_syn_recv,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_SYN_RECV), "Tcp6" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp6_fin_wait1,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_FIN_WAIT1), "Tcp6" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp6_fin_wait2,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_FIN_WAIT2), "Tcp6" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp6_time_wait,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_TIME_WAIT), "Tcp6" });
-    // prom_gauge_set(as->metrics.metric_sock_fds, as->sst.tcp6_close,
-    //                (const char *[]){ app_name, app_type_name, sock_state_name(SS_CLOSE), "Tcp6"
-    //                });
     prom_gauge_set(
         as->metrics.metric_sock_fds, as->sst.tcp6_close_wait,
         (const char *[]){ app_name, app_type_name, sock_state_name(SS_CLOSE_WAIT), "Tcp6" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp6_last_ack,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_LAST_ACK), "Tcp6" });
     prom_gauge_set(as->metrics.metric_sock_fds, as->sst.tcp6_listen,
                    (const char *[]){ app_name, app_type_name, sock_state_name(SS_LISTEN), "Tcp6" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.tcp6_closing,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_CLOSING), "Tcp6" });
 
     prom_gauge_set(
         as->metrics.metric_sock_fds, as->sst.udp_established,
@@ -631,9 +567,6 @@ static void __set_app_sock_metrics(struct app_status *as, const char *app_name,
     prom_gauge_set(
         as->metrics.metric_sock_fds, as->sst.unix_established,
         (const char *[]){ app_name, app_type_name, sock_state_name(SS_ESTABLISHED), "UnixDomain" });
-    // prom_gauge_set(
-    //     as->metrics.metric_sock_fds, as->sst.unix_send,
-    //     (const char *[]){ app_name, app_type_name, sock_state_name(SS_SYN_SENT), "UnixDomain" });
     prom_gauge_set(
         as->metrics.metric_sock_fds, as->sst.unix_recv,
         (const char *[]){ app_name, app_type_name, sock_state_name(SS_SYN_RECV), "UnixDomain" });

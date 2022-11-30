@@ -7,16 +7,16 @@ cat /proc/cmdline | grep -q "systemd.unified_cgroup_hierarchy=1"
 if [ $? -ne 0 ] ;then
     echo "system cgroup version is v1"
 
-    cgcreate -g memory,cpu:/x-monitor
+    cgcreate -g memory,cpu:/system.slice/x-monitor
     # 限制内存使用为1G
-    cgset -r memory.limit_in_bytes=1024M /x-monitor
+    cgset -r memory.limit_in_bytes=1024M /system.slice/x-monitor
     # 限制cpu的使用为1core
-    cgset -r cpu.cfs_period_us=100000 /x-monitor
-    cgset -r cpu.cfs_quota_us=100000 /x-monitor
+    cgset -r cpu.cfs_period_us=100000 /system.slice/x-monitor
+    cgset -r cpu.cfs_quota_us=100000 /system.slice/x-monitor
 
-    cgget -g memory,cpu:/x-monitor 
+    cgget -g memory,cpu:/system.slice/x-monitor 
 
-    cgexec -g memory:/x-monitor -g cpu:/x-monitor ./x-monitor -c ../env/config/x-monitor.cfg
+    cgexec -g memory,cpu:/system.slice/x-monitor ./x-monitor -c ../env/config/x-monitor.cfg
 else
     echo "system cgroup version is v2"
 

@@ -65,36 +65,12 @@ int32_t collector_process_fd_usage(struct process_status *ps) {
                     case SS_ESTABLISHED:
                         ps->sst.tcp_established++;
                         break;
-                    // case SS_SYN_SENT:
-                    //     ps->sst.tcp_syn_sent++;
-                    //     break;
-                    // case SS_SYN_RECV:
-                    //     ps->sst.tcp_syn_recv++;
-                    //     break;
-                    // case SS_FIN_WAIT1:
-                    //     ps->sst.tcp_fin_wait1++;
-                    //     break;
-                    // case SS_FIN_WAIT2:
-                    //     ps->sst.tcp_fin_wait2++;
-                    //     break;
-                    // case SS_TIME_WAIT:
-                    //     ps->sst.tcp_time_wait++;
-                    //     break;
-                    // case SS_CLOSE:
-                    //     ps->sst.tcp_close++;
-                    //     break;
                     case SS_CLOSE_WAIT:
                         ps->sst.tcp_close_wait++;
                         break;
-                    // case SS_LAST_ACK:
-                    //     ps->sst.tcp_last_ack++;
-                    //     break;
                     case SS_LISTEN:
                         ps->sst.tcp_listen++;
                         break;
-                        // case SS_CLOSING:
-                        //     ps->sst.tcp_closing++;
-                        //     break;
                     }
                     break;
                 case ST_TCP6:
@@ -102,36 +78,12 @@ int32_t collector_process_fd_usage(struct process_status *ps) {
                     case SS_ESTABLISHED:
                         ps->sst.tcp6_established++;
                         break;
-                    // case SS_SYN_SENT:
-                    //     ps->sst.tcp6_syn_sent++;
-                    //     break;
-                    // case SS_SYN_RECV:
-                    //     ps->sst.tcp6_syn_recv++;
-                    //     break;
-                    // case SS_FIN_WAIT1:
-                    //     ps->sst.tcp6_fin_wait1++;
-                    //     break;
-                    // case SS_FIN_WAIT2:
-                    //     ps->sst.tcp6_fin_wait2++;
-                    //     break;
-                    // case SS_TIME_WAIT:
-                    //     ps->sst.tcp6_time_wait++;
-                    //     break;
-                    // case SS_CLOSE:
-                    //     ps->sst.tcp6_close++;
-                    //     break;
                     case SS_CLOSE_WAIT:
                         ps->sst.tcp6_close_wait++;
                         break;
-                    // case SS_LAST_ACK:
-                    //     ps->sst.tcp6_last_ack++;
-                    //     break;
                     case SS_LISTEN:
                         ps->sst.tcp6_listen++;
                         break;
-                        // case SS_CLOSING:
-                        //     ps->sst.tcp6_closing++;
-                        //     break;
                     }
                     break;
                 case ST_UDP:
@@ -159,9 +111,6 @@ int32_t collector_process_fd_usage(struct process_status *ps) {
                     case SS_ESTABLISHED:
                         ps->sst.unix_established++;
                         break;
-                    // case SS_SYN_SENT:
-                    //     ps->sst.unix_send++;
-                    //     break;
                     case SS_SYN_RECV:
                         ps->sst.unix_recv++;
                         break;
