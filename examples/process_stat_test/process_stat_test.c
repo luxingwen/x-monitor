@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-31 10:24:17
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-11-18 11:34:04
+ * @Last Modified time: 2022-12-04 11:50:01
  */
 
 #include "utils/common.h"
@@ -14,14 +14,15 @@
 #include "utils/clocks.h"
 #include "utils/mempool.h"
 #include "collectors/process/process_status.h"
+#include "collectors/proc_sock/proc_sock.h"
 
 // 计算进程的cpu占用 https://www.cnblogs.com/songhaibin/p/13885403.html
 
 static int32_t __sig_exit = 0;
 // static const int32_t __def_loop_count = 500000000;
-static const char       *__proc_stat_filename = "/proc/stat";
+static const char *      __proc_stat_filename = "/proc/stat";
 static struct proc_file *__pf_stat = NULL;
-static char              __smaps_file[128];
+// static char              __smaps_file[128];
 
 static void __sig_handler(int sig) {
     __sig_exit = 1;
@@ -68,6 +69,14 @@ int32_t main(int32_t argc, char **argv) {
         return -1;
     }
 
+    urcu_memb_register_thread();
+
+    int32_t ret = init_proc_socks();
+    if (ret != 0) {
+        error("init proc socks failed.");
+        return -1;
+    }
+
     pid_t pid = str2int32_t(argv[1]);
     if (unlikely(0 == pid)) {
         fatal("./process_stat_test <pid>\n");
@@ -89,14 +98,10 @@ int32_t main(int32_t argc, char **argv) {
         return -1;
     }
 
-    snprintf(__smaps_file, 128, "/proc/%d/smaps", pid);
-
     struct process_smaps_info psmaps;
 
     uint32_t cores = get_cpu_cores_num();
     get_system_hz();
-
-    // pid_t self = getpid();
 
     debug("process_stat_test pid: %d", pid);
 
@@ -110,8 +115,6 @@ int32_t main(int32_t argc, char **argv) {
 
     signal(SIGINT, __sig_handler);
     signal(SIGTERM, __sig_handler);
-
-    int32_t ret = 0;
 
     double curr_total_cpu_jiffies = 0.0, prev_total_cpu_jiffies = 0.0;
     double curr_process_cpu_jiffies = 0.0, prev_process_cpu_jiffies = 0.0;
@@ -156,6 +159,8 @@ int32_t main(int32_t argc, char **argv) {
     free_process_status(ps, xmp);
     procfile_close(__pf_stat);
     xm_mempool_fini(xmp);
+    fini_proc_socks();
+    urcu_memb_unregister_thread();
     log_fini();
 
     return 0;

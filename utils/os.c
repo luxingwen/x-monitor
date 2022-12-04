@@ -183,6 +183,7 @@ static __thread char __proc_pid_cmdline_file[XM_PROC_FILENAME_MAX] = { 0 };
 int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
     int32_t            fd;
     int32_t            rc = 0;
+    ssize_t            bytes = 0;
     static const char *unknown_cmdline = "<unknown>";
 
     snprintf(__proc_pid_cmdline_file, XM_PROC_FILENAME_MAX - 1, "/proc/%d/cmdline", pid);
@@ -190,15 +191,15 @@ int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
     fd = open(__proc_pid_cmdline_file, O_RDONLY | O_NOFOLLOW, 0666);
     if (unlikely(fd == -1)) {
         rc = -1;
-        goto __EXIT;
+        goto __error;
     }
 
-    ssize_t bytes = read(fd, cmdline, size);
+    bytes = read(fd, cmdline, size);
     close(fd);
 
     if (unlikely(bytes < 0)) {
         rc = -2;
-        goto __EXIT;
+        goto __error;
     }
 
     // ** 要特殊处理
@@ -208,7 +209,7 @@ int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
             cmdline[i] = ' ';
     }
 
-__EXIT:
+__error:
     if (rc != 0) {
         /*
          * The process went away before we could read its process name. Try
@@ -293,12 +294,6 @@ pid_t get_system_pid_max() {
     return system_pid_max;
 }
 
-static const char *const __smaps_tags[] = { "Size:",          "Rss:",           "Pss:",
-                                            "Pss_Anon:",      "Pss_File:",      "Pss_Shmem:",
-                                            "Private_Clean:", "Private_Dirty:", "Swap:" };
-static const size_t      __smaps_tags_len[] = { 5, 4, 4, 9, 9, 10, 14, 14, 5 };
-static __thread char     __proc_smaps_line[XM_PROC_LINE_SIZE] = { 0 };
-
 enum smaps_line_type {
     LINE_IS_NORMAL,
     LINE_IS_VMSIZE,
@@ -310,6 +305,20 @@ enum smaps_line_type {
     LINE_IS_USS,
     LINE_IS_SWAP,
 };
+
+struct SmapsLineTagInfo {
+    enum smaps_line_type type;
+    const char *         fmt;
+};
+
+static struct SmapsLineTagInfo __smaps_line_tags[] = {
+    { LINE_IS_VMSIZE, "Size: %lu kB" },       { LINE_IS_RSS, "Rss: %lu kB" },
+    { LINE_IS_PSS, "Pss: %lu KB" },           { LINE_IS_PSS_ANON, "Pss_Anon: %lu kB" },
+    { LINE_IS_PSS_FILE, "Pss_File: %lu kB" }, { LINE_IS_PSS_SHMEM, "Pss_Shmem: %lu kB" },
+    { LINE_IS_USS, "Private_Clean: %lu kB" }, { LINE_IS_USS, "Private_Dirty: %lu kB" },
+    { LINE_IS_SWAP, "Swap: %lu kB" },
+};
+
 // https://www.jianshu.com/p/8203457a11cc
 // https://www.kernel.org/doc/Documentation/ABI/testing/procfs-smaps_rollup
 
@@ -319,101 +328,112 @@ static const char *__proc_pid_smaps_fmt = "/proc/%d/smaps";
 static const char *__proc_pid_smaps_rollup_fmt = "/proc/%d/smaps_rollup";
 
 int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
-    char  f_smaps_path[XM_PROC_FILENAME_MAX] = { 0 };
-    char  f_smaps_rollup_path[XM_PROC_FILENAME_MAX] = { 0 };
-    FILE *fp = NULL;
+    char f_smaps_path[XM_PROC_FILENAME_MAX] = { 0 };
+    char f_smaps_rollup_path[XM_PROC_FILENAME_MAX] = { 0 };
+
+    int32_t smaps_fd = -1;
 
     snprintf(f_smaps_path, XM_PROC_FILENAME_MAX, __proc_pid_smaps_fmt, pid);
     snprintf(f_smaps_rollup_path, XM_PROC_FILENAME_MAX, __proc_pid_smaps_rollup_fmt, pid);
 
+    __builtin_memset(info, 0, sizeof(struct process_smaps_info));
+
     // 判断文件是否存在
-    if (file_exists(f_smaps_rollup_path)) {
-        fp = fopen(f_smaps_rollup_path, "r");
+    // if (file_exists(f_smaps_rollup_path)) {
+    //     smaps_fd = open(f_smaps_rollup_path, O_RDONLY);
 
-        if (unlikely(!fp)) {
-            error("open smaps '%s' failed", f_smaps_rollup_path);
-            memset(info, 0, sizeof(struct process_smaps_info));
-            return -1;
-        }
+    //     if (unlikely(-1 == smaps_fd)) {
+    //         error("open smaps '%s' failed", f_smaps_rollup_path);
+    //         return -1;
+    //     }
 
-    } else {
-        fp = fopen(f_smaps_path, "r");
+    // } else {
+    smaps_fd = open(f_smaps_path, O_RDONLY);
 
-        if (unlikely(!fp)) {
-            error("open smaps '%s' failed", f_smaps_path);
-            memset(info, 0, sizeof(struct process_smaps_info));
-            return -1;
+    if (unlikely(-1 == smaps_fd)) {
+        error("open smaps '%s' failed", f_smaps_path);
+        return -1;
+    }
+    // }
+
+    char     block_buf[1024];
+    ssize_t  bytes_in_block = 0;
+    char *   cursor = NULL, *line_end = NULL;
+    uint64_t val = 0;
+
+    // block read
+    while ((bytes_in_block = read(smaps_fd, block_buf + bytes_in_block, 1024 - bytes_in_block - 1))
+           > 0) {
+        block_buf[bytes_in_block] = '\0';
+        debug("smaps: read %lu bytes from smaps", bytes_in_block);
+        // parse block
+        cursor = block_buf;
+
+        while (1) {
+            // 找到换行符
+            line_end = strchr(cursor, '\n');
+
+            if (unlikely(NULL == line_end)) {
+                if (likely(bytes_in_block > 0)) {
+                    // 剩余缓冲区中不足一行，排干
+                    memmove(block_buf, cursor, bytes_in_block);
+                    debug("smaps: %lu bytes left in block", bytes_in_block);
+                }
+                break;
+            } else {
+                *line_end = '\0';
+                debug("smaps: line---'%s'", cursor);
+
+                // parse line
+                for (size_t i = 0; i < ARRAY_SIZE(__smaps_line_tags); i++) {
+                    if (1 == sscanf(cursor, __smaps_line_tags[i].fmt, &val)) {
+
+                        debug("smaps tag:'%s', val:%lu", cursor, val);
+
+                        switch (__smaps_line_tags[i].type) {
+                        case LINE_IS_VMSIZE:
+                            info->vmsize += val;
+                            break;
+                        case LINE_IS_RSS:
+                            info->rss += val;
+                            break;
+                        case LINE_IS_PSS:
+                            info->pss += val;
+                            break;
+                        case LINE_IS_PSS_ANON:
+                            info->pss_anon += val;
+                            break;
+                        case LINE_IS_PSS_FILE:
+                            info->pss_file += val;
+                            break;
+                        case LINE_IS_PSS_SHMEM:
+                            info->pss_shmem += val;
+                            break;
+                        case LINE_IS_USS:
+                            info->uss += val;
+                            break;
+                        case LINE_IS_SWAP:
+                            info->swap += val;
+                            break;
+                        }
+                        break;
+                    }
+                }
+
+                bytes_in_block -= (line_end - cursor + 1);
+                if (unlikely(0 == bytes_in_block)) {
+                    // 刚好读完一行，一块读取完毕
+                    break;
+                } else {
+                    // 跳过换行符，指向下一行开始
+                    cursor = line_end + 1;
+                }
+            }
         }
     }
 
-    char *               cursor = NULL, *num = NULL;
-    enum smaps_line_type type = LINE_IS_NORMAL;
-
-    while (NULL != fgets(__proc_smaps_line, XM_PROC_LINE_SIZE, fp)) {
-        type = 0;
-
-        if (0 == strncmp(__proc_smaps_line, __smaps_tags[0], __smaps_tags_len[0])) {
-            type = LINE_IS_VMSIZE;
-            cursor = __proc_smaps_line + __smaps_tags_len[0];
-        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[1], __smaps_tags_len[1])) {
-            type = LINE_IS_RSS;
-            cursor = __proc_smaps_line + __smaps_tags_len[1];
-        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[2], __smaps_tags_len[2])) {
-            type = LINE_IS_PSS;
-            cursor = __proc_smaps_line + __smaps_tags_len[2];
-        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[3], __smaps_tags_len[3])) {
-            type = LINE_IS_PSS_ANON;
-            cursor = __proc_smaps_line + __smaps_tags_len[3];
-        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[4], __smaps_tags_len[4])) {
-            type = LINE_IS_PSS_FILE;
-            cursor = __proc_smaps_line + __smaps_tags_len[4];
-        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[5], __smaps_tags_len[5])) {
-            type = LINE_IS_PSS_SHMEM;
-            cursor = __proc_smaps_line + __smaps_tags_len[5];
-        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[6], __smaps_tags_len[6])) {
-            type = LINE_IS_USS;
-            cursor = __proc_smaps_line + __smaps_tags_len[6];
-        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[7], __smaps_tags_len[7])) {
-            type = LINE_IS_USS;
-            cursor = __proc_smaps_line + __smaps_tags_len[7];
-        } else if (0 == strncmp(__proc_smaps_line, __smaps_tags[8], __smaps_tags_len[8])) {
-            type = LINE_IS_SWAP;
-            cursor = __proc_smaps_line + __smaps_tags_len[8];
-        } else {
-            continue;
-        }
-
-        while (*cursor == ' ' || *cursor == '\t')
-            cursor++;
-        num = cursor;
-        while (*cursor >= '0' && *cursor <= '9')
-            cursor++;
-        if (*cursor != 0) {
-            *cursor = 0;
-        }
-
-        if (LINE_IS_VMSIZE == type) {
-            info->vmsize += str2uint64_t(num);
-        } else if (LINE_IS_RSS == type) {
-            info->rss += str2uint64_t(num);
-        } else if (LINE_IS_PSS == type) {
-            info->pss += str2uint64_t(num);
-        } else if (LINE_IS_USS == type) {
-            info->uss += str2uint64_t(num);
-        } else if (LINE_IS_SWAP == type) {
-            info->swap += str2uint64_t(num);
-        } else if (LINE_IS_PSS_ANON == type) {
-            info->pss_anon = str2uint64_t(num);
-        } else if (LINE_IS_PSS_FILE == type) {
-            info->pss_file = str2uint64_t(num);
-        } else if (LINE_IS_PSS_SHMEM == type) {
-            info->pss_shmem = str2uint64_t(num);
-        }
-    }
-
-    if (likely(fp)) {
-        fclose(fp);
-        fp = NULL;
+    if (likely(-1 != smaps_fd)) {
+        close(smaps_fd);
     }
 
     return 0;
@@ -498,7 +518,6 @@ int32_t get_block_device_sector_size(const char *disk) {
 int32_t get_default_gateway_and_iface(in_addr_t *addr, char *iface) {
     uint32_t destination = 0;
     int32_t  nread = 0, gateway = 0;
-    char     route_line_buff[XM_PROC_LINE_SIZE] = { 0 };
 
     FILE *fp = fopen("/proc/net/route", "r");
     if (unlikely(!fp)) {
