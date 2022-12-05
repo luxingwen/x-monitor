@@ -183,6 +183,7 @@ add_subdirectory(collectors/proc_sock)
 
 add_subdirectory(examples/construct_init)
 add_subdirectory(examples/procfile_cli)
+add_subdirectory(examples/read_smaps)
 
 # add_subdirectory(examples/proto_statistics_cli)
 add_subdirectory(examples/simplepattern_test)

@@ -20,7 +20,7 @@
 
 static int32_t __sig_exit = 0;
 // static const int32_t __def_loop_count = 500000000;
-static const char *      __proc_stat_filename = "/proc/stat";
+static const char       *__proc_stat_filename = "/proc/stat";
 static struct proc_file *__pf_stat = NULL;
 // static char              __smaps_file[128];
 
@@ -159,8 +159,10 @@ int32_t main(int32_t argc, char **argv) {
     free_process_status(ps, xmp);
     procfile_close(__pf_stat);
     xm_mempool_fini(xmp);
+
     fini_proc_socks();
     urcu_memb_unregister_thread();
+
     log_fini();
 
     return 0;

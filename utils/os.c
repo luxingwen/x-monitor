@@ -17,9 +17,9 @@
 uint32_t cpu_cores_num = 1;
 uint32_t system_hz = 0;
 
-static const char *  __def_ipaddr = "0.0.0.0";
-static const char *  __def_macaddr = "00:00:00:00:00:00";
-static const char *  __def_hostname = "unknown";
+static const char   *__def_ipaddr = "0.0.0.0";
+static const char   *__def_macaddr = "00:00:00:00:00:00";
+static const char   *__def_hostname = "unknown";
 static __thread char __hostname[HOST_NAME_MAX] = { 0 };
 static const char    __no_user[] = "";
 
@@ -146,7 +146,7 @@ uint32_t get_cpu_cores_num() {
 int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high) {
     int32_t ret = 0;
     char    rd_buffer[1024] = { 0 };
-    char *  start = NULL, *end = NULL;
+    char   *start = NULL, *end = NULL;
 
     ret = read_file("/proc/sys/net/ipv4/tcp_mem", rd_buffer, 1023);
     if (unlikely(ret < 0)) {
@@ -244,7 +244,7 @@ void get_system_hz() {
  * @return The uptime of the system in centiseconds.
  */
 uint64_t get_uptime() {
-    FILE *   fp = NULL;
+    FILE    *fp = NULL;
     char     line[XM_PROC_LINE_SIZE] = { 0 };
     uint32_t up_sec = 0, up_cent = 0;
     uint64_t uptime = 0;
@@ -308,7 +308,7 @@ enum smaps_line_type {
 
 struct SmapsLineTagInfo {
     enum smaps_line_type type;
-    const char *         fmt;
+    const char          *fmt;
 };
 
 static struct SmapsLineTagInfo __smaps_line_tags[] = {
@@ -357,80 +357,90 @@ int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
     // }
 
     char     block_buf[1024];
-    ssize_t  bytes_in_block = 0;
-    char *   cursor = NULL, *line_end = NULL;
+    ssize_t  rest_bytes = 0, read_bytes = 0, line_size = 0;
+    char    *cursor = NULL, *line_end = NULL;
     uint64_t val = 0;
+    uint8_t *match_tags = (uint8_t *)calloc(ARRAY_SIZE(__smaps_line_tags), sizeof(uint8_t));
+
+#define __CLEAN_TAGS(tags)                                             \
+    do {                                                               \
+        for (uint32_t i = 0; i < ARRAY_SIZE(__smaps_line_tags); ++i) { \
+            tags[i] = 0;                                               \
+        }                                                              \
+    } while (0)
+
+    __CLEAN_TAGS(match_tags);
 
     // block read
-    while ((bytes_in_block = read(smaps_fd, block_buf + bytes_in_block, 1024 - bytes_in_block - 1))
-           > 0) {
-        block_buf[bytes_in_block] = '\0';
-        debug("smaps: read %lu bytes from smaps", bytes_in_block);
-        // parse block
+    while ((read_bytes = read(smaps_fd, block_buf + rest_bytes, 1024 - rest_bytes - 1)) > 0) {
+        rest_bytes += read_bytes;
+        block_buf[rest_bytes] = '\0';
         cursor = block_buf;
 
-        while (1) {
-            // 找到换行符
-            line_end = strchr(cursor, '\n');
+        while ((line_end = strchr(cursor, '\n')) != NULL) {
+            line_size = line_end - cursor + 1;
+            *line_end = '\0';
 
-            if (unlikely(NULL == line_end)) {
-                if (likely(bytes_in_block > 0)) {
-                    // 剩余缓冲区中不足一行，排干
-                    memmove(block_buf, cursor, bytes_in_block);
-                    debug("smaps: %lu bytes left in block", bytes_in_block);
-                }
-                break;
-            } else {
-                *line_end = '\0';
-                debug("smaps: line---'%s'", cursor);
+            // parse line
+            for (size_t i = 0; i < ARRAY_SIZE(__smaps_line_tags); i++) {
+                if (0 == match_tags[i] && 1 == sscanf(cursor, __smaps_line_tags[i].fmt, &val)) {
 
-                // parse line
-                for (size_t i = 0; i < ARRAY_SIZE(__smaps_line_tags); i++) {
-                    if (1 == sscanf(cursor, __smaps_line_tags[i].fmt, &val)) {
+                    // debug("smaps tag:'%s', val:%lu", cursor, val);
 
-                        debug("smaps tag:'%s', val:%lu", cursor, val);
-
-                        switch (__smaps_line_tags[i].type) {
-                        case LINE_IS_VMSIZE:
-                            info->vmsize += val;
-                            break;
-                        case LINE_IS_RSS:
-                            info->rss += val;
-                            break;
-                        case LINE_IS_PSS:
-                            info->pss += val;
-                            break;
-                        case LINE_IS_PSS_ANON:
-                            info->pss_anon += val;
-                            break;
-                        case LINE_IS_PSS_FILE:
-                            info->pss_file += val;
-                            break;
-                        case LINE_IS_PSS_SHMEM:
-                            info->pss_shmem += val;
-                            break;
-                        case LINE_IS_USS:
-                            info->uss += val;
-                            break;
-                        case LINE_IS_SWAP:
-                            info->swap += val;
-                            break;
-                        }
+                    switch (__smaps_line_tags[i].type) {
+                    case LINE_IS_VMSIZE:
+                        info->vmsize += val;
+                        match_tags[i] = 1;
+                        break;
+                    case LINE_IS_RSS:
+                        info->rss += val;
+                        match_tags[i] = 1;
+                        break;
+                    case LINE_IS_PSS:
+                        // debug("%s", cursor);
+                        info->pss += val;
+                        match_tags[i] = 1;
+                        break;
+                    case LINE_IS_PSS_ANON:
+                        info->pss_anon += val;
+                        match_tags[i] = 1;
+                        break;
+                    case LINE_IS_PSS_FILE:
+                        info->pss_file += val;
+                        match_tags[i] = 1;
+                        break;
+                    case LINE_IS_PSS_SHMEM:
+                        info->pss_shmem += val;
+                        match_tags[i] = 1;
+                        break;
+                    case LINE_IS_USS:
+                        info->uss += val;
+                        match_tags[i] = 1;
+                        break;
+                    case LINE_IS_SWAP:
+                        info->swap += val;
+                        match_tags[i] = 1;
                         break;
                     }
-                }
-
-                bytes_in_block -= (line_end - cursor + 1);
-                if (unlikely(0 == bytes_in_block)) {
-                    // 刚好读完一行，一块读取完毕
                     break;
-                } else {
-                    // 跳过换行符，指向下一行开始
-                    cursor = line_end + 1;
                 }
             }
+            __CLEAN_TAGS(match_tags);
+
+            rest_bytes -= line_size;
+            if (rest_bytes > 0) {
+                cursor = line_end + 1;
+            } else {
+                break;
+            }
+        }
+
+        if (rest_bytes > 0) {
+            memmove(block_buf, cursor, rest_bytes);
         }
     }
+
+    free(match_tags);
 
     if (likely(-1 != smaps_fd)) {
         close(smaps_fd);
