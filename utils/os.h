@@ -63,7 +63,7 @@ extern uint64_t get_uptime();
 
 extern pid_t get_system_pid_max();
 
-extern int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info);
+extern int32_t get_mss_from_smaps(pid_t pid, struct process_smaps_info *info);
 
 // 获得进程所有的后代进程pid
 extern int32_t get_process_descendant_pids(pid_t pid, struct process_descendant_pids *pd_pids);

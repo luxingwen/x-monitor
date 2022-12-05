@@ -17,9 +17,9 @@
 uint32_t cpu_cores_num = 1;
 uint32_t system_hz = 0;
 
-static const char   *__def_ipaddr = "0.0.0.0";
-static const char   *__def_macaddr = "00:00:00:00:00:00";
-static const char   *__def_hostname = "unknown";
+static const char *  __def_ipaddr = "0.0.0.0";
+static const char *  __def_macaddr = "00:00:00:00:00:00";
+static const char *  __def_hostname = "unknown";
 static __thread char __hostname[HOST_NAME_MAX] = { 0 };
 static const char    __no_user[] = "";
 
@@ -146,7 +146,7 @@ uint32_t get_cpu_cores_num() {
 int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high) {
     int32_t ret = 0;
     char    rd_buffer[1024] = { 0 };
-    char   *start = NULL, *end = NULL;
+    char *  start = NULL, *end = NULL;
 
     ret = read_file("/proc/sys/net/ipv4/tcp_mem", rd_buffer, 1023);
     if (unlikely(ret < 0)) {
@@ -244,7 +244,7 @@ void get_system_hz() {
  * @return The uptime of the system in centiseconds.
  */
 uint64_t get_uptime() {
-    FILE    *fp = NULL;
+    FILE *   fp = NULL;
     char     line[XM_PROC_LINE_SIZE] = { 0 };
     uint32_t up_sec = 0, up_cent = 0;
     uint64_t uptime = 0;
@@ -296,27 +296,29 @@ pid_t get_system_pid_max() {
 
 enum smaps_line_type {
     LINE_IS_NORMAL,
-    LINE_IS_VMSIZE,
     LINE_IS_RSS,
     LINE_IS_PSS,
     LINE_IS_PSS_ANON,
     LINE_IS_PSS_FILE,
     LINE_IS_PSS_SHMEM,
     LINE_IS_USS,
-    LINE_IS_SWAP,
 };
 
 struct SmapsLineTagInfo {
     enum smaps_line_type type;
-    const char          *fmt;
+    const char *         m_tag;
+    size_t               m_tag_len;
+    const char *         fmt;
 };
 
 static struct SmapsLineTagInfo __smaps_line_tags[] = {
-    { LINE_IS_VMSIZE, "Size: %lu kB" },       { LINE_IS_RSS, "Rss: %lu kB" },
-    { LINE_IS_PSS, "Pss: %lu KB" },           { LINE_IS_PSS_ANON, "Pss_Anon: %lu kB" },
-    { LINE_IS_PSS_FILE, "Pss_File: %lu kB" }, { LINE_IS_PSS_SHMEM, "Pss_Shmem: %lu kB" },
-    { LINE_IS_USS, "Private_Clean: %lu kB" }, { LINE_IS_USS, "Private_Dirty: %lu kB" },
-    { LINE_IS_SWAP, "Swap: %lu kB" },
+    { LINE_IS_RSS, "Rss:", 4, "Rss: %lu kB" },
+    { LINE_IS_PSS, "Pss:", 4, "Pss: %lu KB" },
+    { LINE_IS_PSS_ANON, "Pss_Anon:", 9, "Pss_Anon: %lu kB" },
+    { LINE_IS_PSS_FILE, "Pss_File:", 9, "Pss_File: %lu kB" },
+    { LINE_IS_PSS_SHMEM, "Pss_Shmem:", 10, "Pss_Shmem: %lu kB" },
+    { LINE_IS_USS, "Private_Clean:", 14, "Private_Clean: %lu kB" },
+    { LINE_IS_USS, "Private_Dirty:", 14, "Private_Dirty: %lu kB" },
 };
 
 // https://www.jianshu.com/p/8203457a11cc
@@ -327,7 +329,7 @@ static struct SmapsLineTagInfo __smaps_line_tags[] = {
 static const char *__proc_pid_smaps_fmt = "/proc/%d/smaps";
 static const char *__proc_pid_smaps_rollup_fmt = "/proc/%d/smaps_rollup";
 
-int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
+int32_t get_mss_from_smaps(pid_t pid, struct process_smaps_info *info) {
     char f_smaps_path[XM_PROC_FILENAME_MAX] = { 0 };
     char f_smaps_rollup_path[XM_PROC_FILENAME_MAX] = { 0 };
 
@@ -358,7 +360,7 @@ int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
 
     char     block_buf[XM_PROC_CONTENT_BUF_SIZE];
     ssize_t  rest_bytes = 0, read_bytes = 0, line_size = 0;
-    char    *cursor = NULL, *line_end = NULL;
+    char *   cursor = NULL, *line_end = NULL;
     uint64_t val = 0;
     uint8_t *match_tags = (uint8_t *)calloc(ARRAY_SIZE(__smaps_line_tags), sizeof(uint8_t));
 
@@ -387,19 +389,12 @@ int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
             for (size_t i = 0; i < ARRAY_SIZE(__smaps_line_tags); i++) {
                 if (0 == match_tags[i] && 1 == sscanf(cursor, __smaps_line_tags[i].fmt, &val)) {
 
-                    // debug("smaps tag:'%s', val:%lu", cursor, val);
-
                     switch (__smaps_line_tags[i].type) {
-                    case LINE_IS_VMSIZE:
-                        info->vmsize += val;
-                        match_tags[i] = 1;
-                        break;
                     case LINE_IS_RSS:
                         info->rss += val;
                         match_tags[i] = 1;
                         break;
                     case LINE_IS_PSS:
-                        // debug("%s", cursor);
                         info->pss += val;
                         match_tags[i] = 1;
                         break;
@@ -417,10 +412,6 @@ int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
                         break;
                     case LINE_IS_USS:
                         info->uss += val;
-                        match_tags[i] = 1;
-                        break;
-                    case LINE_IS_SWAP:
-                        info->swap += val;
                         match_tags[i] = 1;
                         break;
                     }

@@ -108,7 +108,7 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
 
     // pm_process_destroy(pm_proc);
     memset(&pid_smaps, 0, sizeof(struct process_smaps_info));
-    get_process_smaps_info(ps->pid, &pid_smaps);
+    get_mss_from_smaps(ps->pid, &pid_smaps);
 
     // 获取进程的内存使用指标，转换成KB
     ps->vmsize = pid_smaps.vmsize;   // /proc/pid/status.VmSize

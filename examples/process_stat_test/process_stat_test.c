@@ -20,7 +20,7 @@
 
 static int32_t __sig_exit = 0;
 // static const int32_t __def_loop_count = 500000000;
-static const char       *__proc_stat_filename = "/proc/stat";
+static const char *      __proc_stat_filename = "/proc/stat";
 static struct proc_file *__pf_stat = NULL;
 // static char              __smaps_file[128];
 
@@ -131,7 +131,7 @@ int32_t main(int32_t argc, char **argv) {
         }
 
         memset(&psmaps, 0, sizeof(struct process_smaps_info));
-        get_process_smaps_info(pid, &psmaps);
+        get_mss_from_smaps(pid, &psmaps);
 
         debug("process: %d, vmszie: %lu kB, rss: %lu kB, pss: %lu kB, pss_anon: %lu kB, pss_file: "
               "%lu kB, pss_shem: %lu kB, uss: %lu kB, swap: %lu kB",
