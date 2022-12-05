@@ -339,24 +339,24 @@ int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
     __builtin_memset(info, 0, sizeof(struct process_smaps_info));
 
     // 判断文件是否存在
-    // if (file_exists(f_smaps_rollup_path)) {
-    //     smaps_fd = open(f_smaps_rollup_path, O_RDONLY);
+    if (file_exists(f_smaps_rollup_path)) {
+        smaps_fd = open(f_smaps_rollup_path, O_RDONLY);
 
-    //     if (unlikely(-1 == smaps_fd)) {
-    //         error("open smaps '%s' failed", f_smaps_rollup_path);
-    //         return -1;
-    //     }
+        if (unlikely(-1 == smaps_fd)) {
+            error("open smaps '%s' failed", f_smaps_rollup_path);
+            return -1;
+        }
 
-    // } else {
-    smaps_fd = open(f_smaps_path, O_RDONLY);
+    } else {
+        smaps_fd = open(f_smaps_path, O_RDONLY);
 
-    if (unlikely(-1 == smaps_fd)) {
-        error("open smaps '%s' failed", f_smaps_path);
-        return -1;
+        if (unlikely(-1 == smaps_fd)) {
+            error("open smaps '%s' failed", f_smaps_path);
+            return -1;
+        }
     }
-    // }
 
-    char     block_buf[1024];
+    char     block_buf[XM_PROC_CONTENT_BUF_SIZE];
     ssize_t  rest_bytes = 0, read_bytes = 0, line_size = 0;
     char    *cursor = NULL, *line_end = NULL;
     uint64_t val = 0;
@@ -372,7 +372,9 @@ int32_t get_process_smaps_info(pid_t pid, struct process_smaps_info *info) {
     __CLEAN_TAGS(match_tags);
 
     // block read
-    while ((read_bytes = read(smaps_fd, block_buf + rest_bytes, 1024 - rest_bytes - 1)) > 0) {
+    while ((read_bytes =
+                read(smaps_fd, block_buf + rest_bytes, XM_PROC_CONTENT_BUF_SIZE - rest_bytes - 1))
+           > 0) {
         rest_bytes += read_bytes;
         block_buf[rest_bytes] = '\0';
         cursor = block_buf;
