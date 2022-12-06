@@ -17,9 +17,9 @@
 uint32_t cpu_cores_num = 1;
 uint32_t system_hz = 0;
 
-static const char *  __def_ipaddr = "0.0.0.0";
-static const char *  __def_macaddr = "00:00:00:00:00:00";
-static const char *  __def_hostname = "unknown";
+static const char   *__def_ipaddr = "0.0.0.0";
+static const char   *__def_macaddr = "00:00:00:00:00:00";
+static const char   *__def_hostname = "unknown";
 static __thread char __hostname[HOST_NAME_MAX] = { 0 };
 static const char    __no_user[] = "";
 
@@ -146,7 +146,7 @@ uint32_t get_cpu_cores_num() {
 int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high) {
     int32_t ret = 0;
     char    rd_buffer[1024] = { 0 };
-    char *  start = NULL, *end = NULL;
+    char   *start = NULL, *end = NULL;
 
     ret = read_file("/proc/sys/net/ipv4/tcp_mem", rd_buffer, 1023);
     if (unlikely(ret < 0)) {
@@ -244,7 +244,7 @@ void get_system_hz() {
  * @return The uptime of the system in centiseconds.
  */
 uint64_t get_uptime() {
-    FILE *   fp = NULL;
+    FILE    *fp = NULL;
     char     line[XM_PROC_LINE_SIZE] = { 0 };
     uint32_t up_sec = 0, up_cent = 0;
     uint64_t uptime = 0;
@@ -298,27 +298,94 @@ enum smaps_line_type {
     LINE_IS_NORMAL,
     LINE_IS_RSS,
     LINE_IS_PSS,
-    LINE_IS_PSS_ANON,
-    LINE_IS_PSS_FILE,
-    LINE_IS_PSS_SHMEM,
+    // LINE_IS_PSS_ANON,
+    // LINE_IS_PSS_FILE,
+    // LINE_IS_PSS_SHMEM,
     LINE_IS_USS,
 };
 
+static __always_inline bool __check_line_is_rss(const char *line) {
+    if (line[0] == 'R' && line[1] == 's' && line[2] == 's' && line[3] == ':')
+        return true;
+    return false;
+}
+
+static __always_inline bool __check_line_is_pss(const char *line) {
+    if (line[0] == 'P' && line[1] == 's' && line[2] == 's') {
+        if (line[3] == ':')
+            return true;
+        if (line[3] == '_' && line[4] == 'A' && line[5] == 'n' && line[6] == 'o' && line[7] == 'n'
+            && line[8] == ':')
+            return true;
+        if (line[3] == '_' && line[4] == 'F' && line[5] == 'i' && line[6] == 'l' && line[7] == 'e'
+            && line[8] == ':')
+            return true;
+        if (line[3] == '_' && line[4] == 'S' && line[5] == 'h' && line[6] == 'm' && line[7] == 'e'
+            && line[8] == 'm' && line[9] == ':')
+            return true;
+    }
+    return false;
+}
+
+static __always_inline bool __check_line_is_uss(const char *line) {
+    if (line[0] == 'P' && line[1] == 'r' && line[2] == 'i' && line[3] == 'v' && line[4] == 'a'
+        && line[5] == 't' && line[6] == 'e' && line[7] == '_') {
+        if (line[8] == 'C' || line[8] == 'D') {
+            return true;
+        }
+    }
+    return false;
+}
+
+static __always_inline uint64_t __get_mss_val(char *line) {
+    uint64_t val = 0;
+
+    while (*line) {
+        if (*line >= '0' && *line <= '9') {
+            val *= 10;
+            val += *line - '0';
+        } else if (val > 0) {
+            return val;
+        }
+        line++;
+    }
+    return val;
+}
+
 struct SmapsLineTagInfo {
     enum smaps_line_type type;
-    const char *         m_tag;
-    size_t               m_tag_len;
-    const char *         fmt;
+    bool (*check_line)(const char *line);
 };
 
 static struct SmapsLineTagInfo __smaps_line_tags[] = {
-    { LINE_IS_RSS, "Rss:", 4, "Rss: %lu kB" },
-    { LINE_IS_PSS, "Pss:", 4, "Pss: %lu KB" },
-    { LINE_IS_PSS_ANON, "Pss_Anon:", 9, "Pss_Anon: %lu kB" },
-    { LINE_IS_PSS_FILE, "Pss_File:", 9, "Pss_File: %lu kB" },
-    { LINE_IS_PSS_SHMEM, "Pss_Shmem:", 10, "Pss_Shmem: %lu kB" },
-    { LINE_IS_USS, "Private_Clean:", 14, "Private_Clean: %lu kB" },
-    { LINE_IS_USS, "Private_Dirty:", 14, "Private_Dirty: %lu kB" },
+    {
+        LINE_IS_RSS,
+        __check_line_is_rss,
+    },
+    {
+        LINE_IS_PSS,
+        __check_line_is_pss,
+    },
+    // {
+    //     LINE_IS_PSS_ANON,
+    //     __check_line_is_pss,
+    // },
+    // {
+    //     LINE_IS_PSS_FILE,
+    //     __check_line_is_pss,
+    // },
+    // {
+    //     LINE_IS_PSS_SHMEM,
+    //     __check_line_is_pss,
+    // },
+    {
+        LINE_IS_USS,
+        __check_line_is_uss,
+    },
+    {
+        LINE_IS_USS,
+        __check_line_is_uss,
+    },
 };
 
 // https://www.jianshu.com/p/8203457a11cc
@@ -360,8 +427,7 @@ int32_t get_mss_from_smaps(pid_t pid, struct process_smaps_info *info) {
 
     char     block_buf[XM_PROC_CONTENT_BUF_SIZE];
     ssize_t  rest_bytes = 0, read_bytes = 0, line_size = 0;
-    char *   cursor = NULL, *line_end = NULL;
-    uint64_t val = 0;
+    char    *cursor = NULL, *line_end = NULL;
     uint8_t *match_tags = (uint8_t *)calloc(ARRAY_SIZE(__smaps_line_tags), sizeof(uint8_t));
 
 #define __CLEAN_TAGS(tags)                                             \
@@ -387,31 +453,31 @@ int32_t get_mss_from_smaps(pid_t pid, struct process_smaps_info *info) {
 
             // parse line
             for (size_t i = 0; i < ARRAY_SIZE(__smaps_line_tags); i++) {
-                if (0 == match_tags[i] && 1 == sscanf(cursor, __smaps_line_tags[i].fmt, &val)) {
+                if (0 == match_tags[i] && __smaps_line_tags[i].check_line(cursor)) {
 
                     switch (__smaps_line_tags[i].type) {
                     case LINE_IS_RSS:
-                        info->rss += val;
+                        info->rss += __get_mss_val(cursor);
                         match_tags[i] = 1;
                         break;
                     case LINE_IS_PSS:
-                        info->pss += val;
+                        info->pss += __get_mss_val(cursor);
                         match_tags[i] = 1;
                         break;
-                    case LINE_IS_PSS_ANON:
-                        info->pss_anon += val;
-                        match_tags[i] = 1;
-                        break;
-                    case LINE_IS_PSS_FILE:
-                        info->pss_file += val;
-                        match_tags[i] = 1;
-                        break;
-                    case LINE_IS_PSS_SHMEM:
-                        info->pss_shmem += val;
-                        match_tags[i] = 1;
-                        break;
+                    // case LINE_IS_PSS_ANON:
+                    //     info->pss_anon += __get_mss_val(cursor);
+                    //     match_tags[i] = 1;
+                    //     break;
+                    // case LINE_IS_PSS_FILE:
+                    //     info->pss_file += __get_mss_val(cursor);
+                    //     match_tags[i] = 1;
+                    //     break;
+                    // case LINE_IS_PSS_SHMEM:
+                    //     info->pss_shmem += __get_mss_val(cursor);
+                    //     match_tags[i] = 1;
+                    //     break;
                     case LINE_IS_USS:
-                        info->uss += val;
+                        info->uss += __get_mss_val(cursor);
                         match_tags[i] = 1;
                         break;
                     }

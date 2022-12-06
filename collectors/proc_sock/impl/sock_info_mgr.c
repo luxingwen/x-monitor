@@ -100,7 +100,7 @@ static void __free_sock_info_node(struct rcu_head *rcu_node) {
  * @return The inode number of the socket.
  */
 static int32_t __match_sock_info(struct cds_lfht_node *ht_node, const void *key) {
-    const uint32_t *       p_ino = (const uint32_t *)key;
+    const uint32_t        *p_ino = (const uint32_t *)key;
     struct sock_info_node *sin = container_of(ht_node, struct sock_info_node, hash_node);
     return (*p_ino) == sin->si.ino;
 }
@@ -111,7 +111,7 @@ static int32_t __match_sock_info(struct cds_lfht_node *ht_node, const void *key)
  * @param new_sin the new sock_info_node to be added
  */
 int32_t add_sock_info_node(struct sock_info_node *new_sin) {
-    struct cds_lfht_node * ht_node;
+    struct cds_lfht_node  *ht_node;
     struct cds_lfht_iter   iter;
     struct sock_info_node *old_sin;
     bool                   use_new = false;
@@ -171,7 +171,7 @@ int32_t add_sock_info_node(struct sock_info_node *new_sin) {
 int32_t find_sock_info_i(uint32_t ino, struct sock_info *res) {
     struct sock_info_node *sin = NULL;
     struct cds_lfht_iter   iter; /* For iteration on hash table */
-    struct cds_lfht_node * ht_node;
+    struct cds_lfht_node  *ht_node;
     int32_t                ret = 0;
 
     if (unlikely(!res)) {
@@ -226,7 +226,7 @@ uint32_t sock_info_count_i() {
  */
 static void __remove_all_sock_info() {
     struct cds_lfht_iter   iter;
-    struct cds_lfht_node * ht_node;
+    struct cds_lfht_node  *ht_node;
     struct sock_info_node *sin = NULL;
     int32_t                ret = 0;
 
@@ -255,7 +255,7 @@ static void __remove_all_sock_info() {
  */
 void clean_all_sock_info_update_flag() {
     struct cds_lfht_iter   iter;
-    struct cds_lfht_node * ht_node;
+    struct cds_lfht_node  *ht_node;
     struct sock_info_node *sin;
     int32_t                ret = 0;
 
@@ -273,7 +273,7 @@ void clean_all_sock_info_update_flag() {
  */
 void remove_all_not_update_sock_info() {
     struct cds_lfht_iter   iter;
-    struct cds_lfht_node * ht_node;
+    struct cds_lfht_node  *ht_node;
     struct sock_info_node *sin;
     int32_t                ret = 0;
 

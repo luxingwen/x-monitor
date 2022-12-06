@@ -27,7 +27,7 @@ static void test_read_write_smaps() {
 
     char    block_buf[BLOCK_BUF_SIZE];
     ssize_t rest_bytes = 0, read_bytes = 0;
-    char *  cursor = NULL, *line_end = NULL;
+    char   *cursor = NULL, *line_end = NULL;
     ssize_t line_index = 1, line_size = 0;
 
     while ((read_bytes = read(smaps_fd, block_buf + rest_bytes, BLOCK_BUF_SIZE - rest_bytes - 1))
@@ -87,8 +87,9 @@ int32_t main(int32_t argc, char **argv) {
 
     get_mss_from_smaps(pid, &psi);
 
-    debug("pid: %d, vmsize: %lu, rss: %lu, pss: %lu, uss: %lu", pid, psi.vmsize, psi.rss, psi.pss,
-          psi.uss);
+    debug("pid: %d, vmsize: %lu, rss: %lu, pss: %lu, uss: %lu, pss_anon: %lu, pss_file: %lu, "
+          "pss_shmem: %lu",
+          pid, psi.vmsize, psi.rss, psi.pss, psi.uss, psi.pss_anon, psi.pss_file, psi.pss_shmem);
 
     log_fini();
 

@@ -80,7 +80,7 @@ static const int32_t     __status_tags_len[] = { 7, 8, 8, 9, 7, 24, 27, 0 };
  */
 int32_t collector_process_mem_usage(struct process_status *ps) {
     // int32_t                   ret = 0;
-    char                      proc_stauts_buff[2048] = { 0 };
+    char                      mem_status_buf[XM_PROC_CONTENT_BUF_SIZE] = { 0 };
     struct process_smaps_info pid_smaps;
 
     // ret = pthread_once(&__init_pm_ker_once, __process_mem_init_pm_kernel);
@@ -111,9 +111,7 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
     get_mss_from_smaps(ps->pid, &pid_smaps);
 
     // 获取进程的内存使用指标，转换成KB
-    ps->vmsize = pid_smaps.vmsize;   // /proc/pid/status.VmSize
     ps->vmrss = pid_smaps.rss;
-    ps->vmswap = pid_smaps.swap;
     ps->pss = pid_smaps.pss;
     ps->uss = pid_smaps.uss;
     ps->pss_anon = pid_smaps.pss_anon;
@@ -126,7 +124,7 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
         error("[PROCESS:mem] open '%s' failed, errno: %d", ps->status_full_filename, errno);
         return -1;
     }
-    ssize_t proc_stauts_buff_len = read(fd_status, proc_stauts_buff, sizeof(proc_stauts_buff) - 1);
+    ssize_t proc_stauts_buff_len = read(fd_status, mem_status_buf, XM_PROC_CONTENT_BUF_SIZE - 1);
 
     if (unlikely(proc_stauts_buff_len <= 0)) {
         error("[PROCESS:mem] could not read /proc/%d/status, ret: %lu", ps->pid,
@@ -136,13 +134,13 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
     }
     close(fd_status);
 
-    proc_stauts_buff[proc_stauts_buff_len] = '\0';
+    mem_status_buf[proc_stauts_buff_len] = '\0';
 
     uint64_t *status[] = { &(ps->vmsize), &(ps->rss_anon), &(ps->rss_file), &(ps->rss_shmem),
                            &(ps->vmswap), &(ps->nvcsw),    &(ps->nivcsw) };
     size_t    num_found = 0;
 
-    char *p = proc_stauts_buff;
+    char *p = mem_status_buf;
     while (*p && num_found < ARRAY_SIZE(status)) {
         int i = 0;
         while (__status_tags[i]) {
