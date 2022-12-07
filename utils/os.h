@@ -8,21 +8,22 @@
 #pragma once
 
 #include <unistd.h>
+#include <netinet/in.h>
 #include "compiler.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct process_smaps_info {
-    uint64_t vmsize;
+struct smaps_info {
+    int32_t smaps_fd;
+
     uint64_t rss;
     uint64_t pss;
     uint64_t pss_anon;
     uint64_t pss_file;
     uint64_t pss_shmem;
     uint64_t uss;
-    uint64_t swap;
 };
 
 struct process_descendant_pids {
@@ -63,7 +64,7 @@ extern uint64_t get_uptime();
 
 extern pid_t get_system_pid_max();
 
-extern int32_t get_mss_from_smaps(pid_t pid, struct process_smaps_info *info);
+extern int32_t get_mss_from_smaps(pid_t pid, struct smaps_info *info);
 
 // 获得进程所有的后代进程pid
 extern int32_t get_process_descendant_pids(pid_t pid, struct process_descendant_pids *pd_pids);

@@ -70,28 +70,23 @@ static const int32_t     __status_tags_len[] = { 7, 8, 8, 9, 7, 24, 27, 0 };
  * @return Returning 0 means success, non-zero means failure.
  */
 int32_t collector_process_mem_usage(struct process_status *ps) {
-    char                      mem_status_buf[XM_PROC_CONTENT_BUF_SIZE] = { 0 };
-    struct process_smaps_info pid_smaps;
+    char mem_status_buf[XM_PROC_CONTENT_BUF_SIZE] = { 0 };
 
     if (unlikely(NULL == ps || ps->pid <= 0)) {
         error("[PROCESS:mem] process_status is NULL or pid <= 0");
         return -1;
     }
+    // 通过读取smaps文件获取rss pss uss信息
+    ps->smaps.rss = ps->smaps.uss = ps->smaps.pss = ps->smaps.pss_anon = ps->smaps.pss_file =
+        ps->smaps.pss_shmem = 0;
 
-    // pm_process_destroy(pm_proc);
-    memset(&pid_smaps, 0, sizeof(struct process_smaps_info));
-    get_mss_from_smaps(ps->pid, &pid_smaps);
-
-    // 获取进程的内存使用指标，转换成KB
-    ps->vmrss = pid_smaps.rss;
-    ps->pss = pid_smaps.pss;
-    ps->uss = pid_smaps.uss;
-    ps->pss_anon = pid_smaps.pss_anon;
-    ps->pss_file = pid_smaps.pss_file;
-    ps->pss_shmem = pid_smaps.pss_shmem;
+    if (unlikely(get_mss_from_smaps(ps->pid, &ps->smaps) < 0)) {
+        error("[PROCESS:mem] read pid:%d smaps failed, errno: %d", ps->pid);
+        return -1;
+    }
 
     // 读取/proc/pid/status.RssAnon status.RssFile status.RssShmem
-    if (unlikely(0 == ps->mem_status_fd)) {
+    if (unlikely(ps->mem_status_fd <= 0)) {
         ps->mem_status_fd = open(ps->status_full_filename, O_RDONLY);
         if (unlikely(ps->mem_status_fd < 0)) {
             error("[PROCESS:mem] open '%s' failed, errno: %d", ps->status_full_filename, errno);
@@ -101,18 +96,16 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
         lseek(ps->mem_status_fd, 0, SEEK_SET);
     }
 
-    ssize_t proc_stauts_buff_len =
-        read(ps->mem_status_fd, mem_status_buf, XM_PROC_CONTENT_BUF_SIZE - 1);
+    ssize_t ret = read(ps->mem_status_fd, mem_status_buf, XM_PROC_CONTENT_BUF_SIZE - 1);
 
-    if (unlikely(proc_stauts_buff_len <= 0)) {
-        error("[PROCESS:mem] could not read /proc/%d/status, ret: %lu", ps->pid,
-              proc_stauts_buff_len);
+    if (unlikely(ret <= 0)) {
+        error("[PROCESS:mem] could not read /proc/%d/status, ret: %lu", ps->pid, ret);
         close(ps->mem_status_fd);
         ps->mem_status_fd = 0;
         return -1;
     }
 
-    mem_status_buf[proc_stauts_buff_len] = '\0';
+    mem_status_buf[ret] = '\0';
 
     uint64_t *status[] = { &(ps->vmsize), &(ps->rss_anon), &(ps->rss_file), &(ps->rss_shmem),
                            &(ps->vmswap), &(ps->nvcsw),    &(ps->nivcsw) };
@@ -150,8 +143,9 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
           "kB, pss_anon: %lu kB, pss_file: %lu, pss_shmem: %lu, uss: %lu kB, rss_anon: %lu kB, "
           "rss_file: %lu kB, rss_shmem: %lu kB, voluntary_ctxt_switches: %lu, "
           "involuntary_ctxt_switches: %lu",
-          ps->pid, ps->vmsize, ps->vmrss, ps->vmswap, ps->pss, ps->pss_anon, ps->pss_file,
-          ps->pss_shmem, ps->uss, ps->rss_anon, ps->rss_file, ps->rss_shmem, ps->nvcsw, ps->nivcsw);
+          ps->pid, ps->vmsize, ps->smaps.rss, ps->vmswap, ps->smaps.pss, ps->smaps.pss_anon,
+          ps->smaps.pss_file, ps->smaps.pss_shmem, ps->smaps.uss, ps->rss_anon, ps->rss_file,
+          ps->rss_shmem, ps->nvcsw, ps->nivcsw);
 
     return 0;
 }

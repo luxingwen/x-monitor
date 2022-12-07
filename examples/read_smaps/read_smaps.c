@@ -82,14 +82,21 @@ int32_t main(int32_t argc, char **argv) {
 
     // test_read_write_smaps();
 
-    struct process_smaps_info psi;
+    struct smaps_info psi;
     __builtin_memset(&psi, 0, sizeof(psi));
 
-    get_mss_from_smaps(pid, &psi);
+    for (int32_t i = 0; i < 3; i++) {
+        get_mss_from_smaps(pid, &psi);
 
-    debug("pid: %d, vmsize: %lu, rss: %lu, pss: %lu, uss: %lu, pss_anon: %lu, pss_file: %lu, "
-          "pss_shmem: %lu",
-          pid, psi.vmsize, psi.rss, psi.pss, psi.uss, psi.pss_anon, psi.pss_file, psi.pss_shmem);
+        debug("pid: %d, rss: %lu, pss: %lu, uss: %lu, pss_anon: %lu, pss_file: %lu, pss_shmem: %lu",
+              pid, psi.rss, psi.pss, psi.uss, psi.pss_anon, psi.pss_file, psi.pss_shmem);
+
+        sleep(2);
+
+        psi.pss = psi.pss_anon = psi.pss_file = psi.pss_shmem = psi.rss = psi.uss = 0;
+    }
+
+    close(psi.smaps_fd);
 
     log_fini();
 

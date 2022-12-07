@@ -396,33 +396,36 @@ static struct SmapsLineTagInfo __smaps_line_tags[] = {
 static const char *__proc_pid_smaps_fmt = "/proc/%d/smaps";
 static const char *__proc_pid_smaps_rollup_fmt = "/proc/%d/smaps_rollup";
 
-int32_t get_mss_from_smaps(pid_t pid, struct process_smaps_info *info) {
-    char f_smaps_path[XM_PROC_FILENAME_MAX] = { 0 };
-    char f_smaps_rollup_path[XM_PROC_FILENAME_MAX] = { 0 };
+int32_t get_mss_from_smaps(pid_t pid, struct smaps_info *info) {
 
-    int32_t smaps_fd = -1;
+    if (info->smaps_fd <= 0) {
+        char f_smaps_path[XM_PROC_FILENAME_MAX] = { 0 };
+        char f_smaps_rollup_path[XM_PROC_FILENAME_MAX] = { 0 };
 
-    snprintf(f_smaps_path, XM_PROC_FILENAME_MAX, __proc_pid_smaps_fmt, pid);
-    snprintf(f_smaps_rollup_path, XM_PROC_FILENAME_MAX, __proc_pid_smaps_rollup_fmt, pid);
+        snprintf(f_smaps_path, XM_PROC_FILENAME_MAX, __proc_pid_smaps_fmt, pid);
+        snprintf(f_smaps_rollup_path, XM_PROC_FILENAME_MAX, __proc_pid_smaps_rollup_fmt, pid);
 
-    __builtin_memset(info, 0, sizeof(struct process_smaps_info));
+        __builtin_memset(info, 0, sizeof(struct smaps_info));
 
-    // 判断文件是否存在
-    if (file_exists(f_smaps_rollup_path)) {
-        smaps_fd = open(f_smaps_rollup_path, O_RDONLY);
+        // 判断文件是否存在
+        if (file_exists(f_smaps_rollup_path)) {
+            info->smaps_fd = open(f_smaps_rollup_path, O_RDONLY);
 
-        if (unlikely(-1 == smaps_fd)) {
-            error("open smaps '%s' failed", f_smaps_rollup_path);
-            return -1;
+            if (unlikely(-1 == info->smaps_fd)) {
+                error("open smaps '%s' failed", f_smaps_rollup_path);
+                return -1;
+            }
+
+        } else {
+            info->smaps_fd = open(f_smaps_path, O_RDONLY);
+
+            if (unlikely(-1 == info->smaps_fd)) {
+                error("open smaps '%s' failed", f_smaps_path);
+                return -1;
+            }
         }
-
     } else {
-        smaps_fd = open(f_smaps_path, O_RDONLY);
-
-        if (unlikely(-1 == smaps_fd)) {
-            error("open smaps '%s' failed", f_smaps_path);
-            return -1;
-        }
+        lseek(info->smaps_fd, 0, SEEK_SET);
     }
 
     char     block_buf[XM_PROC_CONTENT_BUF_SIZE];
@@ -440,8 +443,8 @@ int32_t get_mss_from_smaps(pid_t pid, struct process_smaps_info *info) {
     __CLEAN_TAGS(match_tags);
 
     // block read
-    while ((read_bytes =
-                read(smaps_fd, block_buf + rest_bytes, XM_PROC_CONTENT_BUF_SIZE - rest_bytes - 1))
+    while ((read_bytes = read(info->smaps_fd, block_buf + rest_bytes,
+                              XM_PROC_CONTENT_BUF_SIZE - rest_bytes - 1))
            > 0) {
         rest_bytes += read_bytes;
         block_buf[rest_bytes] = '\0';
@@ -501,8 +504,11 @@ int32_t get_mss_from_smaps(pid_t pid, struct process_smaps_info *info) {
 
     free(match_tags);
 
-    if (likely(-1 != smaps_fd)) {
-        close(smaps_fd);
+    if (read_bytes < 0) {
+        error("read smaps failed");
+        close(info->smaps_fd);
+        info->smaps_fd = 0;
+        return -1;
     }
 
     return 0;

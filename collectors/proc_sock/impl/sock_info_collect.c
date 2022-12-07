@@ -139,8 +139,8 @@ static int32_t __collect_proc_socks_info(struct proc_sock_info_mgr   *psim,
         ppf = &(psim->proc_net_unix);
     }
 
-    if((unlikely(NULL == *ppf)) {
-        *ppf = procfile_open(*ppf, sfi->sock_file, " \t:", PROCFILE_FLAG_DEFAULT);
+    if (unlikely(NULL == *ppf)) {
+        *ppf = procfile_open(sfi->sock_file, " \t:", PROCFILE_FLAG_DEFAULT);
 
         if (unlikely(!*ppf)) {
             error("[PROC_SOCK] open proc sock file:'%s' failed.", sfi->sock_file);
@@ -173,7 +173,7 @@ static int32_t __collect_proc_socks_info(struct proc_sock_info_mgr   *psim,
 
             sin = alloc_sock_info_node();
 
-            uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
+            // uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
             sin->si.sock_state = strtol(procfile_lineword(*ppf, l, 5), NULL, 16);
             sin->si.sock_type = sfi->sock_type;
             sin->si.ino = so_ino;
@@ -194,7 +194,7 @@ static int32_t __collect_proc_socks_info(struct proc_sock_info_mgr   *psim,
             }
 
             sin = alloc_sock_info_node();
-            uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
+            // uint32_t sl = str2uint32_t(procfile_lineword(*ppf, l, 0));
             sin->si.sock_state = strtol(procfile_lineword(*ppf, l, 5), NULL, 16);
             sin->si.sock_type = ST_UNIX;
             sin->si.ino = so_ino;

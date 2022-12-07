@@ -106,9 +106,9 @@ void free_process_status(struct process_status *ps, struct xm_mempool_s *xmp) {
             ps->mem_status_fd = 0;
         }
 
-        if (likely(ps->mem_smaps_fd > 0)) {
-            close(ps->mem_smaps_fd);
-            ps->mem_smaps_fd = 0;
+        if (likely(ps->smaps.smaps_fd > 0)) {
+            close(ps->smaps.smaps_fd);
+            ps->smaps.smaps_fd = 0;
         }
 
         debug("[PROCESS] free_process_status: pid: %d, comm: %s", ps->pid, ps->comm);

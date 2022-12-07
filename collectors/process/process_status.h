@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include "utils/consts.h"
+#include "utils/os.h"
 
 struct proc_file;
 struct xm_mempool_s;
@@ -61,9 +62,6 @@ struct process_status {
     struct proc_file *pf_proc_pid_stat;
     struct proc_file *pf_proc_pid_io;
 
-    int32_t mem_smaps_fd;    // /proc/<pid>/smaps or /proc/<pid>/smaps_rollup
-    int32_t mem_status_fd;   // proc/<pid>/status
-
     // /proc/<pid>/stat
     uint64_t minflt_raw;   // 该任务不需要从硬盘拷数据而发生的缺页（次缺页）的次数
     uint64_t cminflt_raw;   // 累计的该任务的所有的waited-for进程曾经发生的次缺页的次数目
@@ -87,26 +85,17 @@ struct process_status {
     double start_time;
 
     // /proc/<pid>/status
-    uint64_t vmsize;   // 当前虚拟内存的实际使用量。
-    uint64_t vmrss;   // 应用程序实际占用的物理内存大小，但。。。。更确切应该看pss和uss
-    uint64_t rss_anon;    // 匿名RSS内存大小 kB
-    uint64_t rss_file;    // 文件RSS内存大小 kB
-    uint64_t rss_shmem;   // 共享内存RSS内存大小。
-    uint64_t vmswap;      // 进程swap使用量
+    int32_t  mem_status_fd;   // proc/<pid>/status
+    uint64_t vmsize;          // 当前虚拟内存的实际使用量。
+    uint64_t rss_anon;        // 匿名RSS内存大小 kB
+    uint64_t rss_file;        // 文件RSS内存大小 kB
+    uint64_t rss_shmem;       // 共享内存RSS内存大小。
+    uint64_t vmswap;          // 进程swap使用量
     // /proc/<pid>/pmaps
-    uint64_t
-        pss;   // **  Proportional Set Size, is a much more useful memory management metric, It
-               // ** works exactly like RSS, but with the added difference of partitioning shared
-               // ** libraries.
-    uint64_t pss_anon;
-    uint64_t pss_file;
-    uint64_t pss_shmem;
-
-    uint64_t uss;   // ** The Unique Set Size, or USS, represents the private memory of a process.
-                    // ** it shows libraries and pages allocated only to this process.
+    struct smaps_info smaps;
 
     // /proc/<pid>/io
-    //     I/O counter: chars read
+    // I/O counter: chars read
     // The number of bytes which this task has caused to be read from storage. This
     // is simply the sum of bytes which this process passed to read() and pread().
     // It includes things like tty IO and it is unaffected by whether or not actual
