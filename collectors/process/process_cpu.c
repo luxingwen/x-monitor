@@ -28,12 +28,13 @@
 int32_t collector_process_cpu_usage(struct process_status *ps) {
     int32_t set_quotes = (NULL == ps->pf_proc_pid_stat) ? 1 : 0;
 
-    // process随时都会结束，所以每次采集都要重新打开
-    ps->pf_proc_pid_stat = procfile_reopen(ps->pf_proc_pid_stat, ps->stat_full_filename, NULL,
-                                           PROCFILE_FLAG_NO_ERROR_ON_FILE_IO);
     if (unlikely(NULL == ps->pf_proc_pid_stat)) {
-        error("[PROCESS:cpu] procfile_reopen '%s' failed.", ps->stat_full_filename);
-        return -1;
+        ps->pf_proc_pid_stat = procfile_open(ps->pf_proc_pid_stat, ps->stat_full_filename, NULL,
+                                             PROCFILE_FLAG_NO_ERROR_ON_FILE_IO);
+        if (unlikely(NULL == ps->pf_proc_pid_stat)) {
+            error("[PROCESS:cpu] procfile_open '%s' failed.", ps->stat_full_filename);
+            return -1;
+        }
     }
 
     if (unlikely(0 == set_quotes)) {

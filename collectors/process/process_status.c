@@ -40,7 +40,7 @@ struct process_status *new_process_status(pid_t pid, struct xm_mempool_s *xmp) {
     struct process_status *ps = NULL;
     if (likely(xmp)) {
         ps = (struct process_status *)xm_mempool_malloc(xmp);
-        memset(ps, 0, sizeof(struct process_status));
+        __builtin_memset(ps, 0, sizeof(struct process_status));
     } else {
         ps = (struct process_status *)calloc(1, sizeof(struct process_status));
     }
@@ -99,6 +99,16 @@ void free_process_status(struct process_status *ps, struct xm_mempool_s *xmp) {
 
         if (likely(ps->oom_score_adj_full_filename)) {
             free(ps->oom_score_adj_full_filename);
+        }
+
+        if (likely(ps->mem_status_fd > 0)) {
+            close(ps->mem_status_fd);
+            ps->mem_status_fd = 0;
+        }
+
+        if (likely(ps->mem_smaps_fd > 0)) {
+            close(ps->mem_smaps_fd);
+            ps->mem_smaps_fd = 0;
         }
 
         debug("[PROCESS] free_process_status: pid: %d, comm: %s", ps->pid, ps->comm);

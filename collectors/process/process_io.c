@@ -19,11 +19,13 @@
 #include "utils/os.h"
 
 int32_t collector_process_io_usage(struct process_status *ps) {
-    ps->pf_proc_pid_io = procfile_reopen(ps->pf_proc_pid_io, ps->io_full_filename, NULL,
-                                         PROCFILE_FLAG_NO_ERROR_ON_FILE_IO);
     if (unlikely(NULL == ps->pf_proc_pid_io)) {
-        error("[PROCESS] procfile_reopen '%s' failed.", ps->io_full_filename);
-        return -1;
+        ps->pf_proc_pid_io = procfile_open(ps->pf_proc_pid_io, ps->io_full_filename, NULL,
+                                           PROCFILE_FLAG_NO_ERROR_ON_FILE_IO);
+        if (unlikely(NULL == ps->pf_proc_pid_io)) {
+            error("[PROCESS] procfile_reopen '%s' failed.", ps->io_full_filename);
+            return -1;
+        }
     }
 
     ps->pf_proc_pid_io = procfile_readall(ps->pf_proc_pid_io);

@@ -61,6 +61,9 @@ struct process_status {
     struct proc_file *pf_proc_pid_stat;
     struct proc_file *pf_proc_pid_io;
 
+    int32_t mem_smaps_fd;    // /proc/<pid>/smaps or /proc/<pid>/smaps_rollup
+    int32_t mem_status_fd;   // proc/<pid>/status
+
     // /proc/<pid>/stat
     uint64_t minflt_raw;   // 该任务不需要从硬盘拷数据而发生的缺页（次缺页）的次数
     uint64_t cminflt_raw;   // 累计的该任务的所有的waited-for进程曾经发生的次缺页的次数目
