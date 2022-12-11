@@ -27,16 +27,16 @@ static const char *__config_name = "collector_plugin_proc";
 
 struct proc_metric_collector {
     const char *name;
-    int32_t     enabled;
-    int32_t (*init_func)();                              // 初始化函数
-    int32_t (*do_func)(int32_t, usec_t, const char *);   // 执行函数
-    void (*fini_func)();                                 //
-    usec_t duration;                                     // 执行的耗时
+    int32_t enabled;
+    int32_t (*init_func)(); // 初始化函数
+    int32_t (*do_func)(int32_t, usec_t, const char *); // 执行函数
+    void (*fini_func)(); //
+    usec_t duration; // 执行的耗时
 };
 
 struct proc_metrics_module {
-    sig_atomic_t                 exit_flag;
-    pthread_t                    thread_id;   // routine执行的线程id
+    sig_atomic_t exit_flag;
+    pthread_t thread_id; // routine执行的线程id
     struct proc_metric_collector collectors[];
 };
 
@@ -59,15 +59,18 @@ static struct proc_metrics_module
                                   REGISTER_PROC_COLLECTOR(cgroups),
                                   REGISTER_PROC_COLLECTOR(schedstat),
                                   // the terminator of this array
-                                  { .name = NULL, .do_func = NULL, .fini_func = NULL },
+                                  { .name = NULL,
+                                    .do_func = NULL,
+                                    .fini_func = NULL },
                               } };
 
 __attribute__((constructor)) static void collector_proc_register_routine() {
     // fprintf(stderr, "---register_collector_proc_routine---\n");
     struct xmonitor_static_routine *xsr =
-        (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
+        (struct xmonitor_static_routine *)calloc(
+            1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;
-    xsr->config_name = __config_name;   //配置文件中节点名
+    xsr->config_name = __config_name; //配置文件中节点名
     xsr->enabled = 0;
     xsr->thread_id = &__proc_metrics_module.thread_id;
     xsr->init_routine = proc_routine_init;
@@ -86,14 +89,17 @@ int32_t proc_routine_init() {
     // check the enabled status for each module
     for (int32_t i = 0; __proc_metrics_module.collectors[i].name; i++) {
         //
-        struct proc_metric_collector *pmc = &__proc_metrics_module.collectors[i];
+        struct proc_metric_collector *pmc =
+            &__proc_metrics_module.collectors[i];
 
-        snprintf(proc_module_cfgname, XM_CONFIG_NAME_MAX, "collector_plugin_proc.%s", pmc->name);
+        snprintf(proc_module_cfgname, XM_CONFIG_NAME_MAX,
+                 "collector_plugin_proc.%s", pmc->name);
 
-        pmc->enabled = appconfig_get_member_bool(proc_module_cfgname, "enable", 0);
+        pmc->enabled =
+            appconfig_get_member_bool(proc_module_cfgname, "enable", 0);
 
-        debug("config '%s' [%s] module '%s' is %s", proc_module_cfgname, __name, pmc->name,
-              pmc->enabled ? "enabled" : "disabled");
+        debug("config '%s' [%s] module '%s' is %s", proc_module_cfgname, __name,
+              pmc->name, pmc->enabled ? "enabled" : "disabled");
 
         if (likely(pmc->enabled && pmc->init_func)) {
             if (pmc->init_func() != 0) {
@@ -112,7 +118,8 @@ void *proc_routine_start(void *UNUSED(arg)) {
     urcu_memb_register_thread();
 
     int32_t index = 0;
-    int32_t update_every = appconfig_get_int("collector_plugin_proc.update_every", 1);
+    int32_t update_every =
+        appconfig_get_int("collector_plugin_proc.update_every", 1);
 
     static char module_config_path[XM_CONFIG_NAME_MAX + 1] = { 0 };
 
@@ -131,12 +138,14 @@ void *proc_routine_start(void *UNUSED(arg)) {
         }
 
         for (index = 0; __proc_metrics_module.collectors[index].name; index++) {
-            struct proc_metric_collector *pmc = &__proc_metrics_module.collectors[index];
+            struct proc_metric_collector *pmc =
+                &__proc_metrics_module.collectors[index];
             if (unlikely(!pmc->enabled)) {
                 continue;
             }
 
-            snprintf(module_config_path, XM_CONFIG_NAME_MAX, "collector_plugin_proc.%s", pmc->name);
+            snprintf(module_config_path, XM_CONFIG_NAME_MAX,
+                     "collector_plugin_proc.%s", pmc->name);
 
             pmc->do_func(update_every, dt, module_config_path);
 
@@ -154,9 +163,10 @@ void proc_routine_stop() {
     __proc_metrics_module.exit_flag = 1;
     pthread_join(__proc_metrics_module.thread_id, NULL);
 
-    for (int32_t index = 0; __proc_metrics_module.collectors[index].name; index++) {
-
-        struct proc_metric_collector *pmc = &__proc_metrics_module.collectors[index];
+    for (int32_t index = 0; __proc_metrics_module.collectors[index].name;
+         index++) {
+        struct proc_metric_collector *pmc =
+            &__proc_metrics_module.collectors[index];
 
         if (likely(pmc->enabled && pmc->fini_func)) {
             pmc->fini_func();

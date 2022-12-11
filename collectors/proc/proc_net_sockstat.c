@@ -18,11 +18,11 @@
 
 #include "app_config/app_config.h"
 
-static const char       *__proc_net_socksat_filename = "/proc/net/sockstat";
-static const char       *__cfg_proc_net_socksat_filename = NULL;
+static const char *__proc_net_socksat_filename = "/proc/net/sockstat";
+static const char *__cfg_proc_net_socksat_filename = NULL;
 static struct proc_file *__pf_net_sockstat = NULL;
-static ARL_BASE *__arl_sockets = NULL, *__arl_tcp = NULL, *__arl_udp = NULL, *__arl_udplite = NULL,
-                *__arl_raw = NULL, *__arl_frag = NULL;
+static ARL_BASE *__arl_sockets = NULL, *__arl_tcp = NULL, *__arl_udp = NULL,
+                *__arl_udplite = NULL, *__arl_raw = NULL, *__arl_frag = NULL;
 
 /*
 两种情况会出发 “Out of socket memory” 的信息：
@@ -31,37 +31,47 @@ static ARL_BASE *__arl_sockets = NULL, *__arl_tcp = NULL, *__arl_udp = NULL, *__
 */
 
 static struct proc_net_sockstat {
-    uint64_t sockets_used;   // 已使用的所有协议套接字总量
+    uint64_t sockets_used; // 已使用的所有协议套接字总量
 
-    uint64_t tcp_inuse;   // 正在使用（正在侦听）的TCP套接字数量 netstat –lnt | grep ^tcp | wc –l
-    uint64_t tcp_orphan;   // 无主（不属于任何进程）的TCP连接数（无用、待销毁的TCP socket数）
-    uint64_t tcp_tw;   // 等待关闭的TCP连接数。其值等于netstat –ant | grep TIME_WAIT | wc –l
-    uint64_t tcp_alloc;   // 已分配（已建立、已申请到sk_buff）的TCP套接字数量。其值等于netstat –ant
-                          // | grep ^tcp | wc –l
-    uint64_t tcp_mem;   // 套接字缓冲区使用量 套接字缓冲区使用量（单位页） the socket descriptors
-                        // in-kernel send queues (stuff waiting to be sent out by the NIC) in-kernel
-                        // receive queues (stuff that's been received, but hasn't yet been read by
-                        // user space yet).
+    uint64_t tcp_inuse; // 正在使用（正在侦听）的TCP套接字数量 netstat –lnt |
+                        // grep ^tcp | wc –l
+    uint64_t tcp_orphan; // 无主（不属于任何进程）的TCP连接数（无用、待销毁的TCP
+                         // socket数）
+    uint64_t tcp_tw; // 等待关闭的TCP连接数。其值等于netstat –ant | grep
+                     // TIME_WAIT | wc –l
+    uint64_t tcp_alloc; // 已分配（已建立、已申请到sk_buff）的TCP套接字数量。其值等于netstat
+                        // –ant | grep ^tcp | wc –l
+    uint64_t tcp_mem; // 套接字缓冲区使用量 套接字缓冲区使用量（单位页） the
+                      // socket descriptors in-kernel send queues (stuff waiting
+                      // to be sent out by the NIC) in-kernel receive queues
+                      // (stuff that's been received, but hasn't yet been read
+                      // by user space yet).
 
-    uint64_t udp_inuse;   // 正在使用的UDP套接字数量
-    uint64_t udp_mem;     // 单位是page
+    uint64_t udp_inuse; // 正在使用的UDP套接字数量
+    uint64_t udp_mem; // 单位是page
 
     uint64_t raw_inuse;
 
     uint64_t frag_inuse;
     uint64_t frag_memory;
 
-    uint64_t tcp_mem_low_threshold;   // proc/sys/net/ipv4/tcp_mem 这个单位是page，统一转换为kB
+    uint64_t tcp_mem_low_threshold; // proc/sys/net/ipv4/tcp_mem
+                                    // 这个单位是page，统一转换为kB
     uint64_t tcp_mem_pressure_threshold;
     uint64_t tcp_mem_high_threshold;
     uint64_t tcp_max_orphans;
 } __proc_net_sockstat = { 0 };
 
-static prom_gauge_t *__metric_sockstat_sockets_used = NULL, *__metric_sockstat_tcp_inuse = NULL,
-                    *__metric_sockstat_tcp_orphan = NULL, *__metric_sockstat_tcp_tw = NULL,
-                    *__metric_sockstat_tcp_alloc = NULL, *__metric_sockstat_tcp_mem = NULL,
-                    *__metric_sockstat_udp_inuse = NULL, *__metric_sockstat_udp_mem = NULL,
-                    *__metric_sockstat_raw_inuse = NULL, *__metric_sockstat_frag_inuse = NULL,
+static prom_gauge_t *__metric_sockstat_sockets_used = NULL,
+                    *__metric_sockstat_tcp_inuse = NULL,
+                    *__metric_sockstat_tcp_orphan = NULL,
+                    *__metric_sockstat_tcp_tw = NULL,
+                    *__metric_sockstat_tcp_alloc = NULL,
+                    *__metric_sockstat_tcp_mem = NULL,
+                    *__metric_sockstat_udp_inuse = NULL,
+                    *__metric_sockstat_udp_mem = NULL,
+                    *__metric_sockstat_raw_inuse = NULL,
+                    *__metric_sockstat_frag_inuse = NULL,
                     *__metric_sockstat_frag_memory = NULL,
                     *__metric_sockstat_tcp_mem_low_threshold = NULL,
                     *__metric_sockstat_tcp_mem_pressure_threshold = NULL,
@@ -113,61 +123,81 @@ int32_t init_collector_proc_net_sockstat() {
     arl_expect(__arl_frag, "memory", &__proc_net_sockstat.frag_memory);
 
     // 初始化指标
-    __metric_sockstat_sockets_used = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_sockets_used", "the total amount of all protocol sockets used", 1,
-        (const char *[]){ "sockstat" }));
+    __metric_sockstat_sockets_used =
+        prom_collector_registry_must_register_metric(
+            prom_gauge_new("node_sockstat_sockets_used",
+                           "the total amount of all protocol sockets used", 1,
+                           (const char *[]){ "sockstat" }));
     __metric_sockstat_tcp_inuse = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_sockstat_TCP_inuse",
-                       "The number of TCP sockets in use (listening). Its value ≤ netstat -lnt | "
+                       "The number of TCP sockets in use (listening). Its "
+                       "value ≤ netstat -lnt | "
                        "grep ^tcp | wc -l",
                        1, (const char *[]){ "sockstat" }));
     __metric_sockstat_tcp_orphan = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_sockstat_TCP_orphan",
-                       "The number of unowned (not belonging to any process) TCP connections (the "
+                       "The number of unowned (not belonging to any process) "
+                       "TCP connections (the "
                        "number of useless TCP sockets to be destroyed)",
                        1, (const char *[]){ "sockstat" }));
     __metric_sockstat_tcp_tw = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_sockstat_TCP_tw",
-                       "The number of TCP connections waiting to be closed. Its value is equal to "
+                       "The number of TCP connections waiting to be closed. "
+                       "Its value is equal to "
                        "netstat -ant | grep TIME_WAIT | wc -l",
                        1, (const char *[]){ "sockstat" }));
-    __metric_sockstat_tcp_alloc = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_TCP_alloc",
-        "alloc(allocated): The number of TCP sockets that have been allocated (established and "
-        "applied to sk_buff). Its value is equal to netstat -ant | grep ^tcp | wc -l",
-        1, (const char *[]){ "sockstat" }));
-    __metric_sockstat_tcp_mem = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_TCP_mem",
-        "socket buffer usage, (unit pages. Measured with scp, when the speed is 4803.9kB/s: its "
-        "value = 11, the corresponding 22 port in netstat -ant Recv-Q = 0, Send-Q ≈400)",
-        1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_alloc = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_sockstat_TCP_alloc",
+                       "alloc(allocated): The number of TCP sockets that have "
+                       "been allocated (established and "
+                       "applied to sk_buff). Its value is equal to netstat "
+                       "-ant | grep ^tcp | wc -l",
+                       1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_mem = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_sockstat_TCP_mem",
+                       "socket buffer usage, (unit pages. Measured with scp, "
+                       "when the speed is 4803.9kB/s: its "
+                       "value = 11, the corresponding 22 port in netstat -ant "
+                       "Recv-Q = 0, Send-Q ≈400)",
+                       1, (const char *[]){ "sockstat" }));
     __metric_sockstat_udp_inuse = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_sockstat_UDP_inuse", "the number of UDP sockets in use", 1,
+        prom_gauge_new("node_sockstat_UDP_inuse",
+                       "the number of UDP sockets in use", 1,
                        (const char *[]){ "sockstat" }));
     __metric_sockstat_udp_mem = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_sockstat_UDP_mem", "IPv4 UDP Sockets Memory, unit pages", 1,
+        prom_gauge_new("node_sockstat_UDP_mem",
+                       "IPv4 UDP Sockets Memory, unit pages", 1,
                        (const char *[]){ "sockstat" }));
-    __metric_sockstat_raw_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_sockstat_RAW_inuse", "IPv4 RAW Sockets inuse", 1, (const char *[]){ "sockstat" }));
-    __metric_sockstat_frag_memory = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_sockstat_FRAG_memory", "IPv4 FRAG Sockets Memory, KiB", 1,
+    __metric_sockstat_raw_inuse = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_sockstat_RAW_inuse", "IPv4 RAW Sockets inuse", 1,
                        (const char *[]){ "sockstat" }));
-    __metric_sockstat_frag_inuse = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_sockstat_FRAG_inuse", "Number of IP segments used", 1,
-                       (const char *[]){ "sockstat" }));
-
-    __metric_sockstat_tcp_mem_low_threshold = prom_collector_registry_must_register_metric(
-        prom_gauge_new("tcp_mem_low_threshold", "IPv4 TCP Sockets Memory Low Threshold, KiB", 1,
-                       (const char *[]){ "sockstat" }));
-    __metric_sockstat_tcp_mem_high_threshold = prom_collector_registry_must_register_metric(
-        prom_gauge_new("tcp_mem_high_threshold", "IPv4 TCP Sockets Memory High Threshold, KiB", 1,
-                       (const char *[]){ "sockstat" }));
-    __metric_sockstat_tcp_mem_pressure_threshold =
+    __metric_sockstat_frag_memory =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_tcp_mem_pressure_threshold", "IPv4 TCP Sockets Memory Pressure Threshold, KiB", 1,
+            "node_sockstat_FRAG_memory", "IPv4 FRAG Sockets Memory, KiB", 1,
             (const char *[]){ "sockstat" }));
-    __metric_sockstat_tcp_max_orphans = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "node_tcp_max_orphans", "IPv4 TCP Sockets Max Orphans", 1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_frag_inuse = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_sockstat_FRAG_inuse", "Number of IP segments used",
+                       1, (const char *[]){ "sockstat" }));
+
+    __metric_sockstat_tcp_mem_low_threshold =
+        prom_collector_registry_must_register_metric(
+            prom_gauge_new("tcp_mem_low_threshold",
+                           "IPv4 TCP Sockets Memory Low Threshold, KiB", 1,
+                           (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_mem_high_threshold =
+        prom_collector_registry_must_register_metric(
+            prom_gauge_new("tcp_mem_high_threshold",
+                           "IPv4 TCP Sockets Memory High Threshold, KiB", 1,
+                           (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_mem_pressure_threshold =
+        prom_collector_registry_must_register_metric(
+            prom_gauge_new("node_tcp_mem_pressure_threshold",
+                           "IPv4 TCP Sockets Memory Pressure Threshold, KiB", 1,
+                           (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_max_orphans =
+        prom_collector_registry_must_register_metric(prom_gauge_new(
+            "node_tcp_max_orphans", "IPv4 TCP Sockets Max Orphans", 1,
+            (const char *[]){ "sockstat" }));
 
     // 直接设置指标的值
     int32_t pg_size_kb = get_pgsize_kb();
@@ -185,31 +215,34 @@ int32_t init_collector_proc_net_sockstat() {
     prom_gauge_set(__metric_sockstat_tcp_mem_high_threshold,
                    __proc_net_sockstat.tcp_mem_high_threshold * pg_size_kb,
                    (const char *[]){ "tcp" });
-    prom_gauge_set(__metric_sockstat_tcp_max_orphans, __proc_net_sockstat.tcp_max_orphans,
+    prom_gauge_set(__metric_sockstat_tcp_max_orphans,
+                   __proc_net_sockstat.tcp_max_orphans,
                    (const char *[]){ "tcp" });
 
     debug("[PLUGIN_PROC:proc_net_sockstat] init successed");
     return 0;
 }
 
-int32_t collector_proc_net_sockstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
+int32_t collector_proc_net_sockstat(int32_t UNUSED(update_every),
+                                    usec_t UNUSED(dt),
                                     const char *config_path) {
     debug("[PLUGIN_PROC:proc_net_sockstat] config:%s running", config_path);
 
     if (unlikely(!__cfg_proc_net_socksat_filename)) {
-        __cfg_proc_net_socksat_filename =
-            appconfig_get_member_str(config_path, "monitor_file", __proc_net_socksat_filename);
+        __cfg_proc_net_socksat_filename = appconfig_get_member_str(
+            config_path, "monitor_file", __proc_net_socksat_filename);
     }
 
     if (unlikely(!__pf_net_sockstat)) {
-        __pf_net_sockstat =
-            procfile_open(__cfg_proc_net_socksat_filename, " \t:", PROCFILE_FLAG_DEFAULT);
+        __pf_net_sockstat = procfile_open(__cfg_proc_net_socksat_filename,
+                                          " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_net_sockstat)) {
             error("[PLUGIN_PROC:proc_net_sockstat] Cannot open %s",
                   __cfg_proc_net_socksat_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_net_sockstat] opened '%s'", __cfg_proc_net_socksat_filename);
+        debug("[PLUGIN_PROC:proc_net_sockstat] opened '%s'",
+              __cfg_proc_net_socksat_filename);
     }
 
     __pf_net_sockstat = procfile_readall(__pf_net_sockstat);
@@ -228,10 +261,10 @@ int32_t collector_proc_net_sockstat(int32_t UNUSED(update_every), usec_t UNUSED(
     arl_begin(__arl_udplite);
 
     for (size_t l = 0; l < lines; l++) {
-        size_t      words = procfile_linewords(__pf_net_sockstat, l);
+        size_t words = procfile_linewords(__pf_net_sockstat, l);
         const char *key = procfile_lineword(__pf_net_sockstat, l, 0);
 
-        size_t    w = 1;
+        size_t w = 1;
         ARL_BASE *base = NULL;
         if (strncmp("sockets", key, 7) == 0) {
             base = __arl_sockets;
@@ -262,22 +295,26 @@ int32_t collector_proc_net_sockstat(int32_t UNUSED(update_every), usec_t UNUSED(
 
     // 设置指标值
     int32_t pg_size_kb = get_pgsize_kb();
-    prom_gauge_set(__metric_sockstat_sockets_used, __proc_net_sockstat.sockets_used,
+    prom_gauge_set(__metric_sockstat_sockets_used,
+                   __proc_net_sockstat.sockets_used,
                    (const char *[]){ "sockets" });
 
     prom_gauge_set(__metric_sockstat_tcp_inuse, __proc_net_sockstat.tcp_inuse,
                    (const char *[]){ "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_orphan, __proc_net_sockstat.tcp_orphan,
                    (const char *[]){ "tcp" });
-    prom_gauge_set(__metric_sockstat_tcp_tw, __proc_net_sockstat.tcp_tw, (const char *[]){ "tcp" });
+    prom_gauge_set(__metric_sockstat_tcp_tw, __proc_net_sockstat.tcp_tw,
+                   (const char *[]){ "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_alloc, __proc_net_sockstat.tcp_alloc,
                    (const char *[]){ "tcp" });
-    prom_gauge_set(__metric_sockstat_tcp_mem, __proc_net_sockstat.tcp_mem * pg_size_kb,
+    prom_gauge_set(__metric_sockstat_tcp_mem,
+                   __proc_net_sockstat.tcp_mem * pg_size_kb,
                    (const char *[]){ "tcp" });
 
     prom_gauge_set(__metric_sockstat_udp_inuse, __proc_net_sockstat.udp_inuse,
                    (const char *[]){ "udp" });
-    prom_gauge_set(__metric_sockstat_udp_mem, __proc_net_sockstat.udp_mem * pg_size_kb,
+    prom_gauge_set(__metric_sockstat_udp_mem,
+                   __proc_net_sockstat.udp_mem * pg_size_kb,
                    (const char *[]){ "udp" });
 
     prom_gauge_set(__metric_sockstat_raw_inuse, __proc_net_sockstat.raw_inuse,
@@ -285,15 +322,19 @@ int32_t collector_proc_net_sockstat(int32_t UNUSED(update_every), usec_t UNUSED(
 
     prom_gauge_set(__metric_sockstat_frag_inuse, __proc_net_sockstat.frag_inuse,
                    (const char *[]){ "frag_sockets" });
-    prom_gauge_set(__metric_sockstat_frag_memory, __proc_net_sockstat.frag_memory * pg_size_kb,
+    prom_gauge_set(__metric_sockstat_frag_memory,
+                   __proc_net_sockstat.frag_memory * pg_size_kb,
                    (const char *[]){ "frag_sockets" });
 
-    debug("[PLUGIN_PROC:proc_net_sockstat] socket_used: %lu, tcp_inuse: %lu, tcp_orphan: %lu, "
-          "tcp_tw: %lu, tcp_alloc: %lu, tcp_mem: %lu, udp_inuse: %lu, udp_mem: %lu, raw_inuse: "
+    debug("[PLUGIN_PROC:proc_net_sockstat] socket_used: %lu, tcp_inuse: %lu, "
+          "tcp_orphan: %lu, "
+          "tcp_tw: %lu, tcp_alloc: %lu, tcp_mem: %lu, udp_inuse: %lu, udp_mem: "
+          "%lu, raw_inuse: "
           "%lu, frag_inuse: %lu, frag_memory: %lu",
           __proc_net_sockstat.sockets_used, __proc_net_sockstat.tcp_inuse,
-          __proc_net_sockstat.tcp_orphan, __proc_net_sockstat.tcp_tw, __proc_net_sockstat.tcp_alloc,
-          __proc_net_sockstat.tcp_mem, __proc_net_sockstat.udp_inuse, __proc_net_sockstat.udp_mem,
+          __proc_net_sockstat.tcp_orphan, __proc_net_sockstat.tcp_tw,
+          __proc_net_sockstat.tcp_alloc, __proc_net_sockstat.tcp_mem,
+          __proc_net_sockstat.udp_inuse, __proc_net_sockstat.udp_mem,
           __proc_net_sockstat.raw_inuse, __proc_net_sockstat.frag_inuse,
           __proc_net_sockstat.frag_memory);
 

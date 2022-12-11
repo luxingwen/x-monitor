@@ -19,20 +19,22 @@ int32_t collector_process_oom(struct process_status *ps) {
 
     ret = read_file_to_int64(ps->oom_score_full_filename, &oom_score);
     if (unlikely(ret < 0)) {
-        error("[PROCESS:oom] open '%s' failed, errno: %d", ps->oom_score_full_filename, errno);
+        error("[PROCESS:oom] open '%s' failed, errno: %d",
+              ps->oom_score_full_filename, errno);
         return -1;
     }
 
     ret = read_file_to_int64(ps->oom_score_adj_full_filename, &oom_score_adj);
     if (unlikely(ret < 0)) {
-        error("[PROCESS:oom] open '%s' failed, errno: %d", ps->oom_score_adj_full_filename, errno);
+        error("[PROCESS:oom] open '%s' failed, errno: %d",
+              ps->oom_score_adj_full_filename, errno);
         return -1;
     }
 
     ps->oom_score = (int16_t)oom_score;
     ps->oom_score_adj = (int16_t)oom_score_adj;
 
-    debug("[PROCESS:oom] pid: %d, oom_score: %d, oom_score_adj: %d", ps->pid, ps->oom_score,
-          ps->oom_score_adj);
+    debug("[PROCESS:oom] pid: %d, oom_score: %d, oom_score_adj: %d", ps->pid,
+          ps->oom_score, ps->oom_score_adj);
     return 0;
 }

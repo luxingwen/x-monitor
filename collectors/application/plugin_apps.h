@@ -10,5 +10,5 @@
 #include <stdint.h>
 
 extern int32_t appstat_collector_routine_init();
-extern void   *appstat_collector_routine_start(void *arg);
-extern void    appstat_collector_routine_stop();
+extern void *appstat_collector_routine_start(void *arg);
+extern void appstat_collector_routine_stop();

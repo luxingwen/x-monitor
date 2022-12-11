@@ -18,7 +18,7 @@
 #define DEBUGFS "/sys/kernel/debug/tracing/"
 #define MAX_SYMS 300000
 static struct ksym __syms[MAX_SYMS];
-static int32_t     __sym_cnt;
+static int32_t __sym_cnt;
 static const char *__ksym_empty_name = "";
 
 static const char *__xdp_action_names[XDP_ACTION_MAX] = {
@@ -54,10 +54,10 @@ static __always_inline int32_t __ksym_cmp(const void *p1, const void *p2) {
 }
 
 int32_t xm_load_kallsyms() {
-    FILE   *f = fopen("/proc/kallsyms", "r");
-    char    func[256], buf[256];
-    char    symbol;
-    void   *addr;
+    FILE *f = fopen("/proc/kallsyms", "r");
+    char func[256], buf[256];
+    char symbol;
+    void *addr;
     int32_t i = 0;
 
     if (!f)
@@ -119,10 +119,10 @@ long xm_ksym_get_addr(const char *name) {
 
 /* open kallsyms and find addresses on the fly, faster than load + search. */
 extern int32_t xm_kallsyms_find(const char *sym, unsigned long long *addr) {
-    char               type, name[500];
+    char type, name[500];
     unsigned long long value;
-    int                err = 0;
-    FILE              *f;
+    int err = 0;
+    FILE *f;
 
     f = fopen("/proc/kallsyms", "r");
     if (!f)
@@ -156,7 +156,7 @@ const char *xm_bpf_get_ksym_name(uint64_t addr) {
 
 int32_t open_raw_sock(const char *iface) {
     struct sockaddr_ll sll;
-    int32_t            sock;
+    int32_t sock;
 
     sock = socket(PF_PACKET, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC,
                   htons(ETH_P_ALL));
@@ -207,7 +207,7 @@ int32_t xm_bpf_get_bpf_map_info(int32_t map_fd, struct bpf_map_info *info,
     return 0;
 }
 
-static void xdp_stats_map_get_value_array(int32_t  xdp_stats_map_fd,
+static void xdp_stats_map_get_value_array(int32_t xdp_stats_map_fd,
                                           uint32_t key,
                                           struct xdp_stats_datarec *value) {
     if (unlikely(bpf_map_lookup_elem(xdp_stats_map_fd, &key, value))) {
@@ -325,7 +325,7 @@ int32_t xm_bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags,
 int32_t xm_bpf_xdp_link_detach(int32_t ifindex, uint32_t xdp_flags,
                                uint32_t expected_prog_id) {
     uint32_t curr_prog_id = 0;
-    int32_t  ret;
+    int32_t ret;
 
     ret = bpf_xdp_query_id(ifindex, xdp_flags, &curr_prog_id);
     if (unlikely(ret)) {

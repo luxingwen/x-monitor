@@ -18,8 +18,8 @@
 
 #include "app_config/app_config.h"
 
-static const char       *__def_proc_cgroups_filename = "/proc/cgroups";
-static const char       *__cfg_proc_cgroups_filename = NULL;
+static const char *__def_proc_cgroups_filename = "/proc/cgroups";
+static const char *__cfg_proc_cgroups_filename = NULL;
 static struct proc_file *__pf_cgroups = NULL;
 
 static prom_gauge_t *__metric_cgroup_subsys_hierarchy_count = NULL,
@@ -33,17 +33,21 @@ static prom_gauge_t *__metric_cgroup_subsys_hierarchy_count = NULL,
  */
 int32_t init_collector_proc_cgroups() {
     __metric_cgroup_subsys_hierarchy_count =
+        prom_collector_registry_must_register_metric(
+            prom_gauge_new("node_cgroup_subsys_hierarchy_count",
+                           "node cgroup subsystem hierarchy count", 1,
+                           (const char *[]){ "subsys_name" }));
+
+    __metric_cgroup_subsys_num_cgroups_count =
+        prom_collector_registry_must_register_metric(
+            prom_gauge_new("node_cgroup_subsys_num_cgroups",
+                           "node cgroup subsystem cgroup count", 1,
+                           (const char *[]){ "subsys_name" }));
+
+    __metric_cgroup_subsys_enabled =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "node_cgroup_subsys_hierarchy_count", "node cgroup subsystem hierarchy count", 1,
+            "node_cgroup_subsys_enabled", "node cgroup subsystem enabled", 1,
             (const char *[]){ "subsys_name" }));
-
-    __metric_cgroup_subsys_num_cgroups_count = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_cgroup_subsys_num_cgroups", "node cgroup subsystem cgroup count", 1,
-                       (const char *[]){ "subsys_name" }));
-
-    __metric_cgroup_subsys_enabled = prom_collector_registry_must_register_metric(
-        prom_gauge_new("node_cgroup_subsys_enabled", "node cgroup subsystem enabled", 1,
-                       (const char *[]){ "subsys_name" }));
 
     debug("[PLUGIN_PROC:proc_cgroups] init successed");
     return 0;
@@ -54,17 +58,20 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     debug("[PLUGIN_PROC:proc_cgroups] config:%s running", config_path);
 
     if (unlikely(!__cfg_proc_cgroups_filename)) {
-        __cfg_proc_cgroups_filename =
-            appconfig_get_member_str(config_path, "monitor_file", __def_proc_cgroups_filename);
+        __cfg_proc_cgroups_filename = appconfig_get_member_str(
+            config_path, "monitor_file", __def_proc_cgroups_filename);
     }
 
     if (unlikely(!__pf_cgroups)) {
-        __pf_cgroups = procfile_open(__cfg_proc_cgroups_filename, " \t", PROCFILE_FLAG_DEFAULT);
+        __pf_cgroups = procfile_open(__cfg_proc_cgroups_filename, " \t",
+                                     PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_cgroups)) {
-            error("[PLUGIN_PROC:proc_cgroups] Cannot open %s", __cfg_proc_cgroups_filename);
+            error("[PLUGIN_PROC:proc_cgroups] Cannot open %s",
+                  __cfg_proc_cgroups_filename);
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_cgroups] opened '%s'", __cfg_proc_cgroups_filename);
+        debug("[PLUGIN_PROC:proc_cgroups] opened '%s'",
+              __cfg_proc_cgroups_filename);
     }
 
     __pf_cgroups = procfile_readall(__pf_cgroups);
@@ -89,7 +96,8 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     for (size_t l = 1; l < lines - 1; l++) {
         words = procfile_linewords(__pf_cgroups, l);
         if (unlikely(words < 4)) {
-            error("[PLUGIN_PROC:proc_cgroups] '%s' line %lu has less than 4 words",
+            error("[PLUGIN_PROC:proc_cgroups] '%s' line %lu has less than 4 "
+                  "words",
                   __cfg_proc_cgroups_filename, l);
             continue;
         }
@@ -100,7 +108,8 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         num_cgroups = strtoull(procfile_lineword(__pf_cgroups, l, 2), NULL, 10);
         enabled = strtoull(procfile_lineword(__pf_cgroups, l, 3), NULL, 10);
 
-        debug("[PLUGIN_PROC:proc_cgroups] subsys: '%s' hierarchy: %lu, num_cgroups: %lu, enabled: "
+        debug("[PLUGIN_PROC:proc_cgroups] subsys: '%s' hierarchy: %lu, "
+              "num_cgroups: %lu, enabled: "
               "%lu",
               subsys_name, hierarchy, num_cgroups, enabled);
 
@@ -109,7 +118,8 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                        (const char *[]){ subsys_name });
         prom_gauge_set(__metric_cgroup_subsys_num_cgroups_count, num_cgroups,
                        (const char *[]){ subsys_name });
-        prom_gauge_set(__metric_cgroup_subsys_enabled, enabled, (const char *[]){ subsys_name });
+        prom_gauge_set(__metric_cgroup_subsys_enabled, enabled,
+                       (const char *[]){ subsys_name });
     }
 
     return 0;

@@ -10,5 +10,5 @@
 #include <stdint.h>
 
 extern int32_t diskspace_routine_init();
-extern void   *diskspace_routine_start(void *arg);
-extern void    diskspace_routine_stop();
+extern void *diskspace_routine_start(void *arg);
+extern void diskspace_routine_stop();

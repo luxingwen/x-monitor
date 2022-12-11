@@ -16,18 +16,18 @@ enum app_bind_process_type { APP_BIND_PROCESSTREE = 0, APP_BIND_PROCESS };
 struct app_process_filter_rule {
     struct list_head l_member;
 
-    int32_t                    enable;
-    char                       app_type_name[XM_APP_NAME_SIZE];
-    char                       app_name[XM_APP_NAME_SIZE];
+    int32_t enable;
+    char app_type_name[XM_APP_NAME_SIZE];
+    char app_name[XM_APP_NAME_SIZE];
     enum app_bind_process_type assign_type;
-    char                     **keys;         // 多个匹配key
-    uint16_t                   key_count;    // 匹配key的个数
-    uint8_t                    is_matched;   // 是否匹配过
+    char **keys; // 多个匹配key
+    uint16_t key_count; // 匹配key的个数
+    uint8_t is_matched; // 是否匹配过
 };
 
 struct app_filter_rules {
     struct list_head rule_list_head;
-    int16_t          rule_count;
+    int16_t rule_count;
 };
 
 // 通过配置文件生成app实例的过滤规则，返回规则的个数

@@ -27,13 +27,13 @@ int32_t collector_process_fd_usage(struct process_status *ps) {
         return -1;
     }
 
-    char             fd_path[PATH_MAX] = { 0 };
-    char             lnk_path[64] = { 0 };
-    ssize_t          lnk_len = 0;
-    uint32_t         sock_ino = 0;
-    size_t           dir_size = strlen(ps->fd_dir_fullname);
+    char fd_path[PATH_MAX] = { 0 };
+    char lnk_path[64] = { 0 };
+    ssize_t lnk_len = 0;
+    uint32_t sock_ino = 0;
+    size_t dir_size = strlen(ps->fd_dir_fullname);
     struct sock_info si;
-    struct dirent   *fd_entry = NULL;
+    struct dirent *fd_entry = NULL;
 
     strlcpy(fd_path, ps->fd_dir_fullname, sizeof(fd_path));
 
@@ -42,7 +42,8 @@ int32_t collector_process_fd_usage(struct process_status *ps) {
             ps->process_open_fds++;
 
             // fd的全路径
-            snprintf(fd_path + dir_size, PATH_MAX - dir_size, "/%s", fd_entry->d_name);
+            snprintf(fd_path + dir_size, PATH_MAX - dir_size, "/%s",
+                     fd_entry->d_name);
             // fd的链接路径
             lnk_len = readlink(fd_path, lnk_path, 63);
             if (unlikely(-1 == lnk_len)) {
@@ -123,6 +124,7 @@ int32_t collector_process_fd_usage(struct process_status *ps) {
     closedir(fds);
     fds = NULL;
 
-    debug("[PROCESS:fds] process '%d' open fds: %d", ps->pid, ps->process_open_fds);
+    debug("[PROCESS:fds] process '%d' open fds: %d", ps->pid,
+          ps->process_open_fds);
     return 0;
 }

@@ -10,9 +10,9 @@
 #include "sock_info.h"
 
 extern const char *sock_state_name(enum SOCK_STATE ss);
-extern int32_t     init_proc_socks();
-extern void        collect_socks_info();
-extern void        fini_proc_socks();
+extern int32_t init_proc_socks();
+extern void collect_socks_info();
+extern void fini_proc_socks();
 
-extern int32_t  find_sock_info(uint32_t ino, struct sock_info *res);
+extern int32_t find_sock_info(uint32_t ino, struct sock_info *res);
 extern uint32_t sock_info_count();

@@ -24,11 +24,11 @@ static const char *__config_name = "collector_plugin_appstatus";
 
 struct collector_appstat {
     sig_atomic_t exit_flag;
-    pthread_t    thread_id;                        // routine执行的线程ids
-    int32_t      update_every;                     // 指标采集时间间隔
-    int32_t      update_every_for_app;             // 应用更新时间间隔
-    int32_t      update_every_for_filter_rules;    // 过滤规则更新时间间隔
-    int32_t      update_every_for_app_sock_diag;   // 应用sock诊断更新时间间隔
+    pthread_t thread_id; // routine执行的线程ids
+    int32_t update_every; // 指标采集时间间隔
+    int32_t update_every_for_app; // 应用更新时间间隔
+    int32_t update_every_for_filter_rules; // 过滤规则更新时间间隔
+    int32_t update_every_for_app_sock_diag; // 应用sock诊断更新时间间隔
 
     usec_t last_update_for_app_usec;
     usec_t last_update_for_filter_rules_usecs;
@@ -43,12 +43,14 @@ static struct collector_appstat __collector_appstat = {
     .update_every_for_filter_rules = 60,
 };
 
-__attribute__((constructor)) static void collector_appstatus_register_routine() {
+__attribute__((constructor)) static void
+collector_appstatus_register_routine() {
     // fprintf(stderr, "---register_collector_appstatus_routine---\n");
     struct xmonitor_static_routine *xsr =
-        (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
+        (struct xmonitor_static_routine *)calloc(
+            1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;
-    xsr->config_name = __config_name;   //配置文件中节点名
+    xsr->config_name = __config_name; //配置文件中节点名
     xsr->enabled = 0;
     xsr->thread_id = &__collector_appstat.thread_id;
     xsr->init_routine = appstat_collector_routine_init;
@@ -61,12 +63,12 @@ int32_t appstat_collector_routine_init() {
     // 读取配置文件
     __collector_appstat.update_every =
         appconfig_get_int("collector_plugin_appstatus.update_every", 1);
-    __collector_appstat.update_every_for_app =
-        appconfig_get_int("collector_plugin_appstatus.update_every_for_app", 10);
-    __collector_appstat.update_every_for_filter_rules =
-        appconfig_get_int("collector_plugin_appstatus.update_every_for_filter_rules", 60);
-    __collector_appstat.update_every_for_app_sock_diag =
-        appconfig_get_int("collector_plugin_appstatus.update_every_for_app_sock_diag", 3);
+    __collector_appstat.update_every_for_app = appconfig_get_int(
+        "collector_plugin_appstatus.update_every_for_app", 10);
+    __collector_appstat.update_every_for_filter_rules = appconfig_get_int(
+        "collector_plugin_appstatus.update_every_for_filter_rules", 60);
+    __collector_appstat.update_every_for_app_sock_diag = appconfig_get_int(
+        "collector_plugin_appstatus.update_every_for_app_sock_diag", 3);
 
     __collector_appstat.last_update_for_app_usec = 0;
     __collector_appstat.last_update_for_filter_rules_usecs = 0;
@@ -83,7 +85,8 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
     init_proc_socks();
 
     usec_t step_usecs = __collector_appstat.update_every * USEC_PER_SEC;
-    usec_t step_usecs_for_app = __collector_appstat.update_every_for_app * USEC_PER_SEC;
+    usec_t step_usecs_for_app =
+        __collector_appstat.update_every_for_app * USEC_PER_SEC;
     usec_t step_usecs_for_filter_rules =
         __collector_appstat.update_every_for_filter_rules * USEC_PER_SEC;
     usec_t step_usecs_for_app_sock_diag =
@@ -103,7 +106,8 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
         urcu_memb_unregister_thread();
         return NULL;
     }
-    __collector_appstat.last_update_for_filter_rules_usecs = now_monotonic_usec();
+    __collector_appstat.last_update_for_filter_rules_usecs =
+        now_monotonic_usec();
 
     while (!__collector_appstat.exit_flag) {
         usec_t now_usecs = now_monotonic_usec();
@@ -112,10 +116,12 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
 
         // 定时更新过滤规则
         if (!__collector_appstat.exit_flag
-            && now_usecs - __collector_appstat.last_update_for_filter_rules_usecs
+            && now_usecs
+                       - __collector_appstat.last_update_for_filter_rules_usecs
                    >= step_usecs_for_filter_rules) {
             // 更新过滤规则
-            struct app_filter_rules *tmp_afr = create_filter_rules(__config_name);
+            struct app_filter_rules *tmp_afr =
+                create_filter_rules(__config_name);
             if (likely(tmp_afr)) {
                 free_filter_rules(afr);
                 afr = tmp_afr;
@@ -126,7 +132,8 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
 
         // 定时更新应用
         if (!__collector_appstat.exit_flag && afr->rule_count > 0
-            && now_usecs - __collector_appstat.last_update_for_app_usec >= step_usecs_for_app) {
+            && now_usecs - __collector_appstat.last_update_for_app_usec
+                   >= step_usecs_for_app) {
             // 清理规则匹配标志，更新应用
             clean_filter_rules(afr);
             // 匹配进程cmdline，找到应用对应进程，更新应用集合
@@ -136,7 +143,8 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
 
         // 定时采集系统sock诊断信息
         if (!__collector_appstat.exit_flag
-            && now_usecs - __collector_appstat.last_update_for_app_sock_diag_usecs
+            && now_usecs
+                       - __collector_appstat.last_update_for_app_sock_diag_usecs
                    >= step_usecs_for_app_sock_diag) {
             collect_socks_info();
             __collector_appstat.last_update_for_app_sock_diag_usecs = now_usecs;

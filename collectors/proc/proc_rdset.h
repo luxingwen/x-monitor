@@ -27,20 +27,20 @@ struct proc_cpu_rdset {
 };
 
 struct proc_schedstat {
-    double   schedstat_running_secs;
-    double   schedstat_waiting_secs;
+    double schedstat_running_secs;
+    double schedstat_waiting_secs;
     uint64_t schedstat_timeslices;
 };
 
 struct proc_stat_rdset {
     struct proc_cpu_rdset *core_rdsets;
-    struct proc_cpu_rdset  cpu_rdset;
-    uint16_t               cpu_count;
-    uint64_t               interrupts_from_boot;
-    uint64_t               context_switches_from_boot;
-    uint64_t               processes_from_boot;
-    uint64_t               processes_running;   // is gauge type
-    uint64_t               processes_blocked;   // is gauge type
+    struct proc_cpu_rdset cpu_rdset;
+    uint16_t cpu_count;
+    uint64_t interrupts_from_boot;
+    uint64_t context_switches_from_boot;
+    uint64_t processes_from_boot;
+    uint64_t processes_running; // is gauge type
+    uint64_t processes_blocked; // is gauge type
 };
 
 struct proc_rdset {

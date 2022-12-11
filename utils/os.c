@@ -85,7 +85,8 @@ const char *get_macaddr_by_iface(const char *iface, char *mac_buf, size_t mac_bu
     return mac_buf;
 }
 
-// 锁定内存限制 BCC 已经无条件地将此限制设置为无穷大，但 libbpf 不会自动执行此操作（按照设计）。
+// 锁定内存限制 BCC 已经无条件地将此限制设置为无穷大，但 libbpf
+// 不会自动执行此操作（按照设计）。
 int32_t bump_memlock_rlimit(void) {
     struct rlimit rlim_new = {
         .rlim_cur = RLIM_INFINITY,
@@ -110,8 +111,9 @@ uint32_t get_cpu_cores_num() {
 
     struct proc_file *pf_stat = procfile_open("/proc/stat", NULL, PROCFILE_FLAG_DEFAULT);
     if (unlikely(!pf_stat)) {
-        error("Cannot open /proc/stat. Assuming system has %d processors. error: %s", cpu_cores_num,
-              strerror(errno));
+        error("Cannot open /proc/stat. Assuming system has %d processors. "
+              "error: %s",
+              cpu_cores_num, strerror(errno));
         return cpu_cores_num;
     }
 
@@ -154,7 +156,8 @@ int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high) {
     }
 
     start = rd_buffer;
-    // *解析C-stringstr将其内容解释为指定内容的整数base，它以type的值形式返回unsigned long long
+    // *解析C-stringstr将其内容解释为指定内容的整数base，它以type的值形式返回unsigned
+    // long long
     // *int。如果endptr不是空指针，该函数还会设置endptr指向数字后的第一个字符。
     *low = strtoull(start, &end, 10);
 
@@ -238,8 +241,8 @@ void get_system_hz() {
 }
 
 /**
- * It reads the first line of /proc/uptime, and returns the first number in that line, multiplied by
- * 100
+ * It reads the first line of /proc/uptime, and returns the first number in that
+ * line, multiplied by 100
  * /proc/uptime的进度是百分之一秒，统一规范为百分之一秒为单位
  * @return The uptime of the system in centiseconds.
  */
@@ -265,7 +268,8 @@ uint64_t get_uptime() {
 
 pid_t system_pid_max = 32768;
 /**
- * Read the system's maximum pid value from /proc/sys/kernel/pid_max and return it.
+ * Read the system's maximum pid value from /proc/sys/kernel/pid_max and return
+ * it.
  *
  * @return The maximum number of processes that can be created on the system.
  */
@@ -279,13 +283,15 @@ pid_t get_system_pid_max() {
 
     uint64_t max_pid = 0;
     if (unlikely(0 != read_file_to_uint64("/proc/sys/kernel/pid_max", &max_pid))) {
-        error("Cannot open file '/proc/sys/kernel/pid_max'. Assuming system supports %d pids",
+        error("Cannot open file '/proc/sys/kernel/pid_max'. Assuming system "
+              "supports %d pids",
               system_pid_max);
         return system_pid_max;
     }
 
     if (unlikely(!max_pid)) {
-        error("Cannot parse file '/proc/sys/kernel/pid_max'. Assuming system supports %d pids.",
+        error("Cannot parse file '/proc/sys/kernel/pid_max'. Assuming system "
+              "supports %d pids.",
               system_pid_max);
         return system_pid_max;
     }
@@ -397,7 +403,6 @@ static const char *__proc_pid_smaps_fmt = "/proc/%d/smaps";
 static const char *__proc_pid_smaps_rollup_fmt = "/proc/%d/smaps_rollup";
 
 int32_t get_mss_from_smaps(pid_t pid, struct smaps_info *info) {
-
     if (info->smaps_fd <= 0) {
         char f_smaps_path[XM_PROC_FILENAME_MAX] = { 0 };
         char f_smaps_rollup_path[XM_PROC_FILENAME_MAX] = { 0 };
@@ -408,22 +413,22 @@ int32_t get_mss_from_smaps(pid_t pid, struct smaps_info *info) {
         __builtin_memset(info, 0, sizeof(struct smaps_info));
 
         // 判断文件是否存在
-        if (file_exists(f_smaps_rollup_path)) {
-            info->smaps_fd = open(f_smaps_rollup_path, O_RDONLY);
+        // if (file_exists(f_smaps_rollup_path)) {
+        //     info->smaps_fd = open(f_smaps_rollup_path, O_RDONLY);
 
-            if (unlikely(-1 == info->smaps_fd)) {
-                error("open smaps '%s' failed", f_smaps_rollup_path);
-                return -1;
-            }
+        //     if (unlikely(-1 == info->smaps_fd)) {
+        //         error("open smaps '%s' failed", f_smaps_rollup_path);
+        //         return -1;
+        //     }
 
-        } else {
-            info->smaps_fd = open(f_smaps_path, O_RDONLY);
+        // } else {
+        info->smaps_fd = open(f_smaps_path, O_RDONLY);
 
-            if (unlikely(-1 == info->smaps_fd)) {
-                error("open smaps '%s' failed", f_smaps_path);
-                return -1;
-            }
+        if (unlikely(-1 == info->smaps_fd)) {
+            error("open smaps '%s' failed", f_smaps_path);
+            return -1;
         }
+        // }
     } else {
         lseek(info->smaps_fd, 0, SEEK_SET);
     }
@@ -457,7 +462,6 @@ int32_t get_mss_from_smaps(pid_t pid, struct smaps_info *info) {
             // parse line
             for (size_t i = 0; i < ARRAY_SIZE(__smaps_line_tags); i++) {
                 if (0 == match_tags[i] && __smaps_line_tags[i].check_line(cursor)) {
-
                     switch (__smaps_line_tags[i].type) {
                     case LINE_IS_RSS:
                         info->rss += __get_mss_val(cursor);

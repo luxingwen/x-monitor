@@ -46,14 +46,14 @@ extern int debugLevel;
 extern FILE *debugFile;
 
 #ifdef DEBUG
-#define DEBUG_ENABLED 1  // debug code available at runtime
+#define DEBUG_ENABLED 1 // debug code available at runtime
 #else
 /** This macro controls whether all debugging code is optimized out of the
  *  executable, or is compiled and controlled at runtime by the
  *  <tt>debugLevel</tt> variable. The value (0/1) depends on whether
  *  the macro <tt>DEBUG</tt> is defined during the compile.
  */
-#define DEBUG_ENABLED 0  // all debug code optimized out
+#define DEBUG_ENABLED 0 // all debug code optimized out
 #endif
 
 /** Print the file name, line number, function name and "HERE" */
@@ -77,17 +77,19 @@ extern FILE *debugFile;
  *  @param level the level at which this information should be printed
  *  @param fmt the formatting string (<b>MUST</b> be a literal
  */
-#define lDebug(level, fmt, ...)                                                                                                     \
-    do {                                                                                                                            \
-        if (DEBUG_ENABLED && (debugLevel >= level)) {                                                                               \
-            char       ts[ 32 ];                                                                                                    \
-            time_t     t;                                                                                                           \
-            struct tm *tm;                                                                                                          \
-            time(&t);                                                                                                               \
-            tm = localtime(&t);                                                                                                     \
-            strftime(ts, sizeof(ts), "%m-%d %H:%M:%S", tm);                                                                         \
-            fprintf((debugFile ? debugFile : stderr), "%s %s[%d] %s() " fmt "\n", ts, __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
-        }                                                                                                                           \
+#define lDebug(level, fmt, ...)                                         \
+    do {                                                                \
+        if (DEBUG_ENABLED && (debugLevel >= level)) {                   \
+            char ts[32];                                                \
+            time_t t;                                                   \
+            struct tm *tm;                                              \
+            time(&t);                                                   \
+            tm = localtime(&t);                                         \
+            strftime(ts, sizeof(ts), "%m-%d %H:%M:%S", tm);             \
+            fprintf((debugFile ? debugFile : stderr),                   \
+                    "%s %s[%d] %s() " fmt "\n", ts, __FILE__, __LINE__, \
+                    __func__, ##__VA_ARGS__);                           \
+        }                                                               \
     } while (0)
 
 #ifdef __cplusplus

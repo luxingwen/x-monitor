@@ -16,8 +16,8 @@ extern "C" {
 #endif
 
 extern int32_t proc_routine_init();
-extern void   *proc_routine_start(void *arg);
-extern void    proc_routine_stop();
+extern void *proc_routine_start(void *arg);
+extern void proc_routine_stop();
 
 enum disk_type {
     DISK_TYPE_UNKNOWN,
@@ -30,7 +30,7 @@ enum disk_type {
     extern int32_t init_collector_proc_##name();                          \
     extern int32_t collector_proc_##name(int32_t update_every, usec_t dt, \
                                          const char *config_path);        \
-    extern void    fini_collector_proc_##name();
+    extern void fini_collector_proc_##name();
 
 #define REGISTER_PROC_COLLECTOR(ca)                                            \
     {                                                                          \

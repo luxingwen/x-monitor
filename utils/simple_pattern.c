@@ -12,18 +12,18 @@
 #include "log.h"
 
 struct simple_pattern {
-    const char             *match;
-    size_t                  len;
+    const char *match;
+    size_t len;
     enum SIMPLE_PREFIX_MODE mode;
-    char                    negative;
-    struct simple_pattern  *child;
-    struct simple_pattern  *next;
+    char negative;
+    struct simple_pattern *child;
+    struct simple_pattern *next;
 };
 
 static struct simple_pattern *
 __parse_pattern(char *str, enum SIMPLE_PREFIX_MODE default_mode) {
     enum SIMPLE_PREFIX_MODE mode;
-    struct simple_pattern  *child = NULL;
+    struct simple_pattern *child = NULL;
 
     char *s = str, *c = str;
 
@@ -155,17 +155,17 @@ SIMPLE_PATTERN *simple_pattern_create(const char *list, const char *separators,
         return root;
 
     int32_t isseparator[256] = {
-        [' '] = 1   // space
+        [' '] = 1 // space
         ,
-        ['\t'] = 1   // tab
+        ['\t'] = 1 // tab
         ,
-        ['\r'] = 1   // carriage return
+        ['\r'] = 1 // carriage return
         ,
-        ['\n'] = 1   // new line
+        ['\n'] = 1 // new line
         ,
-        ['\f'] = 1   // form feed
+        ['\f'] = 1 // form feed
         ,
-        ['\v'] = 1   // vertical tab
+        ['\v'] = 1 // vertical tab
     };
 
     if (unlikely(separators && *separators)) {
@@ -174,7 +174,7 @@ SIMPLE_PATTERN *simple_pattern_create(const char *list, const char *separators,
             isseparator[(unsigned char)*separators++] = 1;
     }
 
-    char       *buf = malloc(strlen(list) + 1);
+    char *buf = malloc(strlen(list) + 1);
     const char *s = list;
 
     while (s && *s) {
@@ -237,7 +237,7 @@ SIMPLE_PATTERN *simple_pattern_create(const char *list, const char *separators,
 }
 
 int32_t simple_pattern_matches_extract(SIMPLE_PATTERN *list, const char *str,
-                                       char  *wildcarded,
+                                       char *wildcarded,
                                        size_t wildcarded_size) {
     struct simple_pattern *m, *root = (struct simple_pattern *)list;
 
@@ -246,13 +246,12 @@ int32_t simple_pattern_matches_extract(SIMPLE_PATTERN *list, const char *str,
 
     size_t len = strlen(str);
     for (m = root; m; m = m->next) {
-        char  *ws = wildcarded;
+        char *ws = wildcarded;
         size_t wss = wildcarded_size;
         if (unlikely(ws))
             *ws = '\0';
 
         if (__match_pattern(m, str, len, ws, &wss)) {
-
             // if(ws && wss)
             //    fprintf(stderr, "FINAL WILDCARDED '%s' of length %zu\n", ws,
             //    strlen(ws));
@@ -354,7 +353,7 @@ int32_t simple_pattern_is_potential_name(SIMPLE_PATTERN *p) {
 }
 
 const char *simple_pattern_iterate(SIMPLE_PATTERN **p) {
-    struct simple_pattern  *root = (struct simple_pattern *)*p;
+    struct simple_pattern *root = (struct simple_pattern *)*p;
     struct simple_pattern **Proot = (struct simple_pattern **)p;
 
     (*Proot) = (*Proot)->next;

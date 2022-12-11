@@ -28,9 +28,9 @@ static void regex_free_values(struct xm_regex *re) {
 }
 
 int32_t regex_create(struct xm_regex **repp, const char *pattern) {
-    int32_t          error;
+    int32_t error;
     struct xm_regex *re;
-    PCRE2_SIZE       error_offset;
+    PCRE2_SIZE error_offset;
 
     if (pattern == NULL) {
         *repp = NULL;
@@ -60,7 +60,7 @@ int32_t regex_create(struct xm_regex **repp, const char *pattern) {
 }
 
 bool regex_match(struct xm_regex *re, const char *s) {
-    int32_t           error;
+    int32_t error;
     pcre2_match_data *match;
 
     if (re == NULL) {
@@ -82,10 +82,10 @@ int32_t regex_match_values(struct xm_regex *re, const char *subject) {
         return -1;
     }
 
-    int32_t           rc = 0;
+    int32_t rc = 0;
     pcre2_match_data *match_data = NULL;
-    PCRE2_SIZE       *ovector = NULL;
-    PCRE2_SIZE        subject_length = (PCRE2_SIZE)strlen(subject);
+    PCRE2_SIZE *ovector = NULL;
+    PCRE2_SIZE subject_length = (PCRE2_SIZE)strlen(subject);
 
     regex_free_values(re);
 

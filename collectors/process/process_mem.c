@@ -7,11 +7,10 @@
 
 /*
 VmRSS                       size of memory portions. It contains the three
-                            following parts (VmRSS = RssAnon + RssFile + RssShmem)
-RssAnon                     size of resident anonymous memory
-RssFile                     size of resident file mappings
-RssShmem                    size of resident shmem memory (includes SysV shm,
-                            mapping of tmpfs and shared anonymous mappings)
+                            following parts (VmRSS = RssAnon + RssFile +
+RssShmem) RssAnon                     size of resident anonymous memory RssFile
+size of resident file mappings RssShmem                    size of resident
+shmem memory (includes SysV shm, mapping of tmpfs and shared anonymous mappings)
 
 /proc/<pid>/statm  单位是PAGE
  Field    Content
@@ -60,7 +59,7 @@ static const char *const __status_tags[] = { "VmSize:",
                                              "voluntary_ctxt_switches:",
                                              "nonvoluntary_ctxt_switches:",
                                              NULL };
-static const int32_t     __status_tags_len[] = { 7, 8, 8, 9, 7, 24, 27, 0 };
+static const int32_t __status_tags_len[] = { 7, 8, 8, 9, 7, 24, 27, 0 };
 
 /**
  * Collects the memory usage of a process
@@ -77,8 +76,8 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
         return -1;
     }
     // 通过读取smaps文件获取rss pss uss信息
-    ps->smaps.rss = ps->smaps.uss = ps->smaps.pss = ps->smaps.pss_anon = ps->smaps.pss_file =
-        ps->smaps.pss_shmem = 0;
+    ps->smaps.rss = ps->smaps.uss = ps->smaps.pss = ps->smaps.pss_anon =
+        ps->smaps.pss_file = ps->smaps.pss_shmem = 0;
 
     if (unlikely(get_mss_from_smaps(ps->pid, &ps->smaps) < 0)) {
         error("[PROCESS:mem] read pid:%d smaps failed, errno: %d", ps->pid);
@@ -89,17 +88,20 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
     if (unlikely(ps->mem_status_fd <= 0)) {
         ps->mem_status_fd = open(ps->status_full_filename, O_RDONLY);
         if (unlikely(ps->mem_status_fd < 0)) {
-            error("[PROCESS:mem] open '%s' failed, errno: %d", ps->status_full_filename, errno);
+            error("[PROCESS:mem] open '%s' failed, errno: %d",
+                  ps->status_full_filename, errno);
             return -1;
         }
     } else {
         lseek(ps->mem_status_fd, 0, SEEK_SET);
     }
 
-    ssize_t ret = read(ps->mem_status_fd, mem_status_buf, XM_PROC_CONTENT_BUF_SIZE - 1);
+    ssize_t ret =
+        read(ps->mem_status_fd, mem_status_buf, XM_PROC_CONTENT_BUF_SIZE - 1);
 
     if (unlikely(ret <= 0)) {
-        error("[PROCESS:mem] could not read /proc/%d/status, ret: %lu", ps->pid, ret);
+        error("[PROCESS:mem] could not read /proc/%d/status, ret: %lu", ps->pid,
+              ret);
         close(ps->mem_status_fd);
         ps->mem_status_fd = 0;
         return -1;
@@ -107,9 +109,10 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
 
     mem_status_buf[ret] = '\0';
 
-    uint64_t *status[] = { &(ps->vmsize), &(ps->rss_anon), &(ps->rss_file), &(ps->rss_shmem),
-                           &(ps->vmswap), &(ps->nvcsw),    &(ps->nivcsw) };
-    size_t    num_found = 0;
+    uint64_t *status[] = { &(ps->vmsize),    &(ps->rss_anon), &(ps->rss_file),
+                           &(ps->rss_shmem), &(ps->vmswap),   &(ps->nvcsw),
+                           &(ps->nivcsw) };
+    size_t num_found = 0;
 
     char *p = mem_status_buf;
     while (*p && num_found < ARRAY_SIZE(status)) {
@@ -139,13 +142,16 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
             p++;
     }
 
-    debug("[PROCESS:mem] process: '%d', vmsize: %lu kB, vmrss: %lu kB, vmswap: %lu kB, pss: %lu "
-          "kB, pss_anon: %lu kB, pss_file: %lu, pss_shmem: %lu, uss: %lu kB, rss_anon: %lu kB, "
+    debug("[PROCESS:mem] process: '%d', vmsize: %lu kB, vmrss: %lu kB, vmswap: "
+          "%lu kB, pss: %lu "
+          "kB, pss_anon: %lu kB, pss_file: %lu, pss_shmem: %lu, uss: %lu kB, "
+          "rss_anon: %lu kB, "
           "rss_file: %lu kB, rss_shmem: %lu kB, voluntary_ctxt_switches: %lu, "
           "involuntary_ctxt_switches: %lu",
-          ps->pid, ps->vmsize, ps->smaps.rss, ps->vmswap, ps->smaps.pss, ps->smaps.pss_anon,
-          ps->smaps.pss_file, ps->smaps.pss_shmem, ps->smaps.uss, ps->rss_anon, ps->rss_file,
-          ps->rss_shmem, ps->nvcsw, ps->nivcsw);
+          ps->pid, ps->vmsize, ps->smaps.rss, ps->vmswap, ps->smaps.pss,
+          ps->smaps.pss_anon, ps->smaps.pss_file, ps->smaps.pss_shmem,
+          ps->smaps.uss, ps->rss_anon, ps->rss_file, ps->rss_shmem, ps->nvcsw,
+          ps->nivcsw);
 
     return 0;
 }

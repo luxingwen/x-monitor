@@ -22,14 +22,16 @@ int32_t init_proc_rdset() {
             return -1;
         }
 
-        proc_rds->stat_rdset.core_rdsets =
-            (struct proc_cpu_rdset *)calloc(cpu_cores_num, sizeof(struct proc_cpu_rdset));
+        proc_rds->stat_rdset.core_rdsets = (struct proc_cpu_rdset *)calloc(
+            cpu_cores_num, sizeof(struct proc_cpu_rdset));
 
-        proc_rds->schedstats =
-            (struct proc_schedstat *)calloc(cpu_cores_num, sizeof(struct proc_schedstat));
+        proc_rds->schedstats = (struct proc_schedstat *)calloc(
+            cpu_cores_num, sizeof(struct proc_schedstat));
 
-        if (unlikely(!proc_rds->stat_rdset.core_rdsets || !proc_rds->schedstats)) {
-            error("calloc struct proc_cpu_rdset or proc_schedstat object failed");
+        if (unlikely(!proc_rds->stat_rdset.core_rdsets
+                     || !proc_rds->schedstats)) {
+            error("calloc struct proc_cpu_rdset or proc_schedstat object "
+                  "failed");
             goto INIT_FAILED;
         }
     }

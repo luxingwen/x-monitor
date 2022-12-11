@@ -39,8 +39,8 @@ void debugInit(int *argc, const char *argv[]) {
     debugFile = stderr;
 
     if (*argc > 1) {
-        const char *arg1 = argv[ 1 ];
-        size_t      len  = strlen(prefix);
+        const char *arg1 = argv[1];
+        size_t len = strlen(prefix);
 
         if (strncmp(arg1, prefix, len) == 0) {
             debugLevel = 1;
@@ -55,10 +55,10 @@ void debugInit(int *argc, const char *argv[]) {
             if (strlen(arg1) > len)
                 debugLevel = atoi(arg1 + len);
 
-            (*argc)--;  // decrement number of arguments
+            (*argc)--; // decrement number of arguments
 
-            for (int i = 1; i < *argc; i++)  // remove first argument
-                argv[ i ] = argv[ i + 1 ];
+            for (int i = 1; i < *argc; i++) // remove first argument
+                argv[i] = argv[i + 1];
         }
     }
 }
@@ -70,7 +70,7 @@ void debugInit(int *argc, const char *argv[]) {
 void debugToFile(const char *fileName) {
     debugClose();
 
-    FILE *f = fopen(fileName, "w");  // "w+" ?
+    FILE *f = fopen(fileName, "w"); // "w+" ?
 
     if (f)
         debugFile = f;

@@ -11,10 +11,10 @@
 #include "log.h"
 
 struct signals_waiting {
-    int32_t                 signo;           // 信号
-    const char             *signame;         // 信号名称
-    uint32_t                receive_count;   //
-    enum signal_action_mode action_mode;     //
+    int32_t signo; // 信号
+    const char *signame; // 信号名称
+    uint32_t receive_count; //
+    enum signal_action_mode action_mode; //
 };
 
 static struct signals_waiting __signal_waiting_list[] = {
@@ -51,7 +51,7 @@ void signals_init(void) {
     struct sigaction sa;
     // sa_flags 字段指定对信号进行处理的各个选项。例如SA_NOCLDWAIT
     sa.sa_flags = 0;
-    sigfillset(&sa.sa_mask);   // 调用信号处理函数时，要屏蔽所有的信号。
+    sigfillset(&sa.sa_mask); // 调用信号处理函数时，要屏蔽所有的信号。
 
     int32_t i = 0;
     for (i = 0; i < (int32_t)ARRAY_SIZE(__signal_waiting_list); i++) {
