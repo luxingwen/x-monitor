@@ -17,11 +17,11 @@
 uint32_t cpu_cores_num = 1;
 uint32_t system_hz = 0;
 
-static const char   *__def_ipaddr = "0.0.0.0";
-static const char   *__def_macaddr = "00:00:00:00:00:00";
-static const char   *__def_hostname = "unknown";
+static const char *__def_ipaddr = "0.0.0.0";
+static const char *__def_macaddr = "00:00:00:00:00:00";
+static const char *__def_hostname = "unknown";
 static __thread char __hostname[HOST_NAME_MAX] = { 0 };
-static const char    __no_user[] = "";
+static const char __no_user[] = "";
 
 const char *get_hostname() {
     if (unlikely(0 == __hostname[0])) {
@@ -33,7 +33,8 @@ const char *get_hostname() {
     return __hostname;
 }
 
-const char *get_ipaddr_by_iface(const char *iface, char *ip_buf, size_t ip_buf_size) {
+const char *get_ipaddr_by_iface(const char *iface, char *ip_buf,
+                                size_t ip_buf_size) {
     if (unlikely(NULL == iface)) {
         return __def_ipaddr;
     }
@@ -58,7 +59,8 @@ const char *get_ipaddr_by_iface(const char *iface, char *ip_buf, size_t ip_buf_s
     return ip_buf;
 }
 
-const char *get_macaddr_by_iface(const char *iface, char *mac_buf, size_t mac_buf_size) {
+const char *get_macaddr_by_iface(const char *iface, char *mac_buf,
+                                 size_t mac_buf_size) {
     if (unlikely(NULL == iface)) {
         return __def_ipaddr;
     }
@@ -78,8 +80,8 @@ const char *get_macaddr_by_iface(const char *iface, char *mac_buf, size_t mac_bu
 
     uint8_t *mac = (uint8_t *)ifr.ifr_hwaddr.sa_data;
 
-    snprintf(mac_buf, mac_buf_size, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", mac[0], mac[1], mac[2],
-             mac[3], mac[4], mac[5]);
+    snprintf(mac_buf, mac_buf_size, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", mac[0],
+             mac[1], mac[2], mac[3], mac[4], mac[5]);
     mac_buf[mac_buf_size - 1] = '\0';
 
     return mac_buf;
@@ -109,7 +111,8 @@ uint32_t get_cpu_cores_num() {
     if (cpu_cores_num > 1)
         return cpu_cores_num;
 
-    struct proc_file *pf_stat = procfile_open("/proc/stat", NULL, PROCFILE_FLAG_DEFAULT);
+    struct proc_file *pf_stat =
+        procfile_open("/proc/stat", NULL, PROCFILE_FLAG_DEFAULT);
     if (unlikely(!pf_stat)) {
         error("Cannot open /proc/stat. Assuming system has %d processors. "
               "error: %s",
@@ -119,7 +122,8 @@ uint32_t get_cpu_cores_num() {
 
     pf_stat = procfile_readall(pf_stat);
     if (unlikely(!pf_stat)) {
-        error("Cannot read /proc/stat. Assuming system has %d __processors.", cpu_cores_num);
+        error("Cannot read /proc/stat. Assuming system has %d __processors.",
+              cpu_cores_num);
         return cpu_cores_num;
     }
 
@@ -147,8 +151,8 @@ uint32_t get_cpu_cores_num() {
 
 int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high) {
     int32_t ret = 0;
-    char    rd_buffer[1024] = { 0 };
-    char   *start = NULL, *end = NULL;
+    char rd_buffer[1024] = { 0 };
+    char *start = NULL, *end = NULL;
 
     ret = read_file("/proc/sys/net/ipv4/tcp_mem", rd_buffer, 1023);
     if (unlikely(ret < 0)) {
@@ -167,13 +171,16 @@ int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high) {
     start = end;
     *high = strtoull(start, &end, 10);
 
-    debug("TCP MEM low = %lu, pressure = %lu, high = %lu", *low, *pressure, *high);
+    debug("TCP MEM low = %lu, pressure = %lu, high = %lu", *low, *pressure,
+          *high);
 
     return 0;
 }
 
 __always_inline int32_t read_tcp_max_orphans(uint64_t *tcp_max_orphans) {
-    if (unlikely(read_file_to_uint64("/proc/sys/net/ipv4/tcp_max_orphans", tcp_max_orphans) < 0)) {
+    if (unlikely(read_file_to_uint64("/proc/sys/net/ipv4/tcp_max_orphans",
+                                     tcp_max_orphans)
+                 < 0)) {
         return -1;
     }
 
@@ -184,12 +191,13 @@ __always_inline int32_t read_tcp_max_orphans(uint64_t *tcp_max_orphans) {
 static __thread char __proc_pid_cmdline_file[XM_PROC_FILENAME_MAX] = { 0 };
 
 int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
-    int32_t            fd;
-    int32_t            rc = 0;
-    ssize_t            bytes = 0;
+    int32_t fd;
+    int32_t rc = 0;
+    ssize_t bytes = 0;
     static const char *unknown_cmdline = "<unknown>";
 
-    snprintf(__proc_pid_cmdline_file, XM_PROC_FILENAME_MAX - 1, "/proc/%d/cmdline", pid);
+    snprintf(__proc_pid_cmdline_file, XM_PROC_FILENAME_MAX - 1,
+             "/proc/%d/cmdline", pid);
 
     fd = open(__proc_pid_cmdline_file, O_RDONLY | O_NOFOLLOW, 0666);
     if (unlikely(fd == -1)) {
@@ -247,8 +255,8 @@ void get_system_hz() {
  * @return The uptime of the system in centiseconds.
  */
 uint64_t get_uptime() {
-    FILE    *fp = NULL;
-    char     line[XM_PROC_LINE_SIZE] = { 0 };
+    FILE *fp = NULL;
+    char line[XM_PROC_LINE_SIZE] = { 0 };
     uint32_t up_sec = 0, up_cent = 0;
     uint64_t uptime = 0;
 
@@ -282,7 +290,8 @@ pid_t get_system_pid_max() {
     read = 1;
 
     uint64_t max_pid = 0;
-    if (unlikely(0 != read_file_to_uint64("/proc/sys/kernel/pid_max", &max_pid))) {
+    if (unlikely(
+            0 != read_file_to_uint64("/proc/sys/kernel/pid_max", &max_pid))) {
         error("Cannot open file '/proc/sys/kernel/pid_max'. Assuming system "
               "supports %d pids",
               system_pid_max);
@@ -320,22 +329,23 @@ static __always_inline bool __check_line_is_pss(const char *line) {
     if (line[0] == 'P' && line[1] == 's' && line[2] == 's') {
         if (line[3] == ':')
             return true;
-        if (line[3] == '_' && line[4] == 'A' && line[5] == 'n' && line[6] == 'o' && line[7] == 'n'
-            && line[8] == ':')
+        if (line[3] == '_' && line[4] == 'A' && line[5] == 'n' && line[6] == 'o'
+            && line[7] == 'n' && line[8] == ':')
             return true;
-        if (line[3] == '_' && line[4] == 'F' && line[5] == 'i' && line[6] == 'l' && line[7] == 'e'
-            && line[8] == ':')
+        if (line[3] == '_' && line[4] == 'F' && line[5] == 'i' && line[6] == 'l'
+            && line[7] == 'e' && line[8] == ':')
             return true;
-        if (line[3] == '_' && line[4] == 'S' && line[5] == 'h' && line[6] == 'm' && line[7] == 'e'
-            && line[8] == 'm' && line[9] == ':')
+        if (line[3] == '_' && line[4] == 'S' && line[5] == 'h' && line[6] == 'm'
+            && line[7] == 'e' && line[8] == 'm' && line[9] == ':')
             return true;
     }
     return false;
 }
 
 static __always_inline bool __check_line_is_uss(const char *line) {
-    if (line[0] == 'P' && line[1] == 'r' && line[2] == 'i' && line[3] == 'v' && line[4] == 'a'
-        && line[5] == 't' && line[6] == 'e' && line[7] == '_') {
+    if (line[0] == 'P' && line[1] == 'r' && line[2] == 'i' && line[3] == 'v'
+        && line[4] == 'a' && line[5] == 't' && line[6] == 'e'
+        && line[7] == '_') {
         if (line[8] == 'C' || line[8] == 'D') {
             return true;
         }
@@ -388,10 +398,6 @@ static struct SmapsLineTagInfo __smaps_line_tags[] = {
         LINE_IS_USS,
         __check_line_is_uss,
     },
-    {
-        LINE_IS_USS,
-        __check_line_is_uss,
-    },
 };
 
 // https://www.jianshu.com/p/8203457a11cc
@@ -408,35 +414,37 @@ int32_t get_mss_from_smaps(pid_t pid, struct smaps_info *info) {
         char f_smaps_rollup_path[XM_PROC_FILENAME_MAX] = { 0 };
 
         snprintf(f_smaps_path, XM_PROC_FILENAME_MAX, __proc_pid_smaps_fmt, pid);
-        snprintf(f_smaps_rollup_path, XM_PROC_FILENAME_MAX, __proc_pid_smaps_rollup_fmt, pid);
+        snprintf(f_smaps_rollup_path, XM_PROC_FILENAME_MAX,
+                 __proc_pid_smaps_rollup_fmt, pid);
 
         __builtin_memset(info, 0, sizeof(struct smaps_info));
 
         // 判断文件是否存在
-        // if (file_exists(f_smaps_rollup_path)) {
-        //     info->smaps_fd = open(f_smaps_rollup_path, O_RDONLY);
+        if (file_exists(f_smaps_rollup_path)) {
+            info->smaps_fd = open(f_smaps_rollup_path, O_RDONLY);
 
-        //     if (unlikely(-1 == info->smaps_fd)) {
-        //         error("open smaps '%s' failed", f_smaps_rollup_path);
-        //         return -1;
-        //     }
+            if (unlikely(-1 == info->smaps_fd)) {
+                error("open smaps '%s' failed", f_smaps_rollup_path);
+                return -1;
+            }
 
-        // } else {
-        info->smaps_fd = open(f_smaps_path, O_RDONLY);
+        } else {
+            info->smaps_fd = open(f_smaps_path, O_RDONLY);
 
-        if (unlikely(-1 == info->smaps_fd)) {
-            error("open smaps '%s' failed", f_smaps_path);
-            return -1;
+            if (unlikely(-1 == info->smaps_fd)) {
+                error("open smaps '%s' failed", f_smaps_path);
+                return -1;
+            }
         }
-        // }
     } else {
         lseek(info->smaps_fd, 0, SEEK_SET);
     }
 
-    char     block_buf[XM_PROC_CONTENT_BUF_SIZE];
-    ssize_t  rest_bytes = 0, read_bytes = 0, line_size = 0;
-    char    *cursor = NULL, *line_end = NULL;
-    uint8_t *match_tags = (uint8_t *)calloc(ARRAY_SIZE(__smaps_line_tags), sizeof(uint8_t));
+    char block_buf[XM_PROC_CONTENT_BUF_SIZE];
+    ssize_t rest_bytes = 0, read_bytes = 0, line_size = 0;
+    char *cursor = NULL, *line_end = NULL;
+    uint8_t *match_tags =
+        (uint8_t *)calloc(ARRAY_SIZE(__smaps_line_tags), sizeof(uint8_t));
 
 #define __CLEAN_TAGS(tags)                                             \
     do {                                                               \
@@ -461,14 +469,15 @@ int32_t get_mss_from_smaps(pid_t pid, struct smaps_info *info) {
 
             // parse line
             for (size_t i = 0; i < ARRAY_SIZE(__smaps_line_tags); i++) {
-                if (0 == match_tags[i] && __smaps_line_tags[i].check_line(cursor)) {
+                if (0 == match_tags[i]
+                    && __smaps_line_tags[i].check_line(cursor)) {
                     switch (__smaps_line_tags[i].type) {
                     case LINE_IS_RSS:
                         info->rss += __get_mss_val(cursor);
                         match_tags[i] = 1;
                         break;
                     case LINE_IS_PSS:
-                        info->pss += __get_mss_val(cursor);
+                        ： info->pss += __get_mss_val(cursor);
                         match_tags[i] = 1;
                         break;
                     // case LINE_IS_PSS_ANON:
@@ -518,25 +527,28 @@ int32_t get_mss_from_smaps(pid_t pid, struct smaps_info *info) {
     return 0;
 }
 
-static void __get_all_childpids(pid_t ppid, struct process_descendant_pids *pd_pids) {
-    int32_t  read_size = 0;
-    int32_t  child_pids_size = 0;
-    char     proc_children_file[XM_PROC_CHILDREN_FILENAME_SIZE] = { 0 };
-    char     proc_children_line[XM_PROC_CHILDREN_LINE_SIZE] = { 0 };
+static void __get_all_childpids(pid_t ppid,
+                                struct process_descendant_pids *pd_pids) {
+    int32_t read_size = 0;
+    int32_t child_pids_size = 0;
+    char proc_children_file[XM_PROC_CHILDREN_FILENAME_SIZE] = { 0 };
+    char proc_children_line[XM_PROC_CHILDREN_LINE_SIZE] = { 0 };
     uint64_t children_pids[XM_CHILDPID_COUNT_MAX] = { 0 };
 
     // ** /proc/pid/task/tid/children读取该文件，分解为pid列表
-    snprintf(proc_children_file, XM_PROC_CHILDREN_FILENAME_SIZE, "/proc/%d/task/%d/children", ppid,
-             ppid);
+    snprintf(proc_children_file, XM_PROC_CHILDREN_FILENAME_SIZE,
+             "/proc/%d/task/%d/children", ppid, ppid);
 
-    read_size = read_file(proc_children_file, proc_children_line, XM_PROC_CHILDREN_LINE_SIZE - 1);
+    read_size = read_file(proc_children_file, proc_children_line,
+                          XM_PROC_CHILDREN_LINE_SIZE - 1);
     if (likely(read_size > 0)) {
-        child_pids_size =
-            strsplit_to_nums(proc_children_line, " ", children_pids, XM_CHILDPID_COUNT_MAX);
+        child_pids_size = strsplit_to_nums(
+            proc_children_line, " ", children_pids, XM_CHILDPID_COUNT_MAX);
 
         if (likely(child_pids_size > 0)) {
             pd_pids->pids = (pid_t *)realloc(
-                pd_pids->pids, sizeof(pid_t) * (pd_pids->pids_size + child_pids_size));
+                pd_pids->pids,
+                sizeof(pid_t) * (pd_pids->pids_size + child_pids_size));
             if (unlikely(!pd_pids->pids)) {
                 error("realloc child_pids failed");
                 return;
@@ -555,7 +567,8 @@ static void __get_all_childpids(pid_t ppid, struct process_descendant_pids *pd_p
     }
 }
 
-int32_t get_process_descendant_pids(pid_t pid, struct process_descendant_pids *pd_pids) {
+int32_t get_process_descendant_pids(pid_t pid,
+                                    struct process_descendant_pids *pd_pids) {
     if (unlikely(NULL == pd_pids || pid < 0)) {
         return -1;
     }
@@ -568,13 +581,16 @@ int32_t get_process_descendant_pids(pid_t pid, struct process_descendant_pids *p
 int32_t get_block_device_sector_size(const char *disk) {
     char *block_size_full_path = NULL;
 
-    int32_t ret = asprintf(&block_size_full_path, "/sys/block/%s/queue/logical_block_size", disk);
+    int32_t ret = asprintf(&block_size_full_path,
+                           "/sys/block/%s/queue/logical_block_size", disk);
     if (likely(-1 != ret)) {
         // 判断文件是否存在
         if (likely(file_exists(block_size_full_path))) {
             // 读取文件
             int64_t sector_size = 0;
-            if (likely(0 == read_file_to_int64(block_size_full_path, &sector_size))) {
+            if (likely(0
+                       == read_file_to_int64(block_size_full_path,
+                                             &sector_size))) {
                 ret = (int32_t)sector_size;
             }
         } else {
@@ -596,7 +612,7 @@ int32_t get_block_device_sector_size(const char *disk) {
  */
 int32_t get_default_gateway_and_iface(in_addr_t *addr, char *iface) {
     uint32_t destination = 0;
-    int32_t  nread = 0, gateway = 0;
+    int32_t nread = 0, gateway = 0;
 
     FILE *fp = fopen("/proc/net/route", "r");
     if (unlikely(!fp)) {
