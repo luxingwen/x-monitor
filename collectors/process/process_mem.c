@@ -143,11 +143,10 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
     }
 
     debug("[PROCESS:mem] process: '%d', vmsize: %lu kB, vmrss: %lu kB, vmswap: "
-          "%lu kB, pss: %lu "
-          "kB, pss_anon: %lu kB, pss_file: %lu, pss_shmem: %lu, uss: %lu kB, "
-          "rss_anon: %lu kB, "
-          "rss_file: %lu kB, rss_shmem: %lu kB, voluntary_ctxt_switches: %lu, "
-          "involuntary_ctxt_switches: %lu",
+          "%lu kB, pss: %lu kB, pss_anon: %lu kB, pss_file: %lu, pss_shmem: "
+          "%lu, uss: %lu kB, rss_anon: %lu kB, rss_file: %lu kB, rss_shmem: "
+          "%lu kB, voluntary_ctxt_switches: %lu, involuntary_ctxt_switches: "
+          "%lu",
           ps->pid, ps->vmsize, ps->smaps.rss, ps->vmswap, ps->smaps.pss,
           ps->smaps.pss_anon, ps->smaps.pss_file, ps->smaps.pss_shmem,
           ps->smaps.uss, ps->rss_anon, ps->rss_file, ps->rss_shmem, ps->nvcsw,

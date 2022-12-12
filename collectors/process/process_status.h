@@ -63,12 +63,14 @@ struct process_status {
     struct proc_file *pf_proc_pid_io;
 
     // /proc/<pid>/stat
-    uint64_t minflt_raw; // 该任务不需要从硬盘拷数据而发生的缺页（次缺页）的次数
-    uint64_t
-        cminflt_raw; // 累计的该任务的所有的waited-for进程曾经发生的次缺页的次数目
-    uint64_t majflt_raw; // 该任务需要从硬盘拷数据而发生的缺页（主缺页）的次数
-    uint64_t
-        cmajflt_raw; // 累计的该任务的所有的waited-for进程曾经发生的主缺页的次数目
+    // 该任务不需要从硬盘拷数据而发生的缺页（次缺页）的次数
+    uint64_t minflt_raw;
+    // 累计的该任务的所有的waited-for进程曾经发生的次缺页的次数目
+    uint64_t cminflt_raw;
+    // 该任务需要从硬盘拷数据而发生的缺页（主缺页）的次数
+    uint64_t majflt_raw;
+    // 累计的该任务的所有的waited-for进程曾经发生的主缺页的次数目
+    uint64_t cmajflt_raw;
 
     // 该任务在用户态运行的时间，单位为jiffies
     uint64_t utime_raw;

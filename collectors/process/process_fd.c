@@ -27,96 +27,96 @@ int32_t collector_process_fd_usage(struct process_status *ps) {
         return -1;
     }
 
-    char fd_path[PATH_MAX] = { 0 };
-    char lnk_path[64] = { 0 };
+    char lnk_path[32] = { 0 };
     ssize_t lnk_len = 0;
     uint32_t sock_ino = 0;
     size_t dir_size = strlen(ps->fd_dir_fullname);
     struct sock_info si;
     struct dirent *fd_entry = NULL;
-
-    strlcpy(fd_path, ps->fd_dir_fullname, sizeof(fd_path));
+    int32_t cwd_fd = dirfd(fds);
 
     while (NULL != (fd_entry = readdir(fds))) {
         if (likely(isdigit(fd_entry->d_name[0]))) {
             ps->process_open_fds++;
 
             // fd的全路径
-            snprintf(fd_path + dir_size, PATH_MAX - dir_size, "/%s",
-                     fd_entry->d_name);
-            // fd的链接路径
-            lnk_len = readlink(fd_path, lnk_path, 63);
-            if (unlikely(-1 == lnk_len)) {
-                continue;
-            }
-            lnk_path[lnk_len] = '\0';
+            if (fd_entry->d_type == DT_LNK) {
+                // fd的链接路径
+                lnk_len = readlinkat(cwd_fd, fd_entry->d_name, lnk_path, 31);
+                if (unlikely(-1 == lnk_len)) {
+                    continue;
+                }
+                lnk_path[lnk_len] = '\0';
 
-            // // 判断前缀是否是socket
-            // if (str_has_pfx(lnk_path, "socket:[")) {
-            // 获取socket的ino
-            if (unlikely(1 != sscanf(lnk_path, "socket:[%u]", &sock_ino))) {
-                continue;
-            }
+                // // 判断前缀是否是socket
+                if (str_has_pfx(lnk_path, "socket:[")) {
+                    // 获取socket的ino
+                    if (unlikely(
+                            1 != sscanf(lnk_path, "socket:[%u]", &sock_ino))) {
+                        continue;
+                    }
 
-            // 获取socket的状态
-            if (likely(0 == find_sock_info(sock_ino, &si))) {
-                switch (si.sock_type) {
-                case ST_TCP:
-                    switch (si.sock_state) {
-                    case SS_ESTABLISHED:
-                        ps->sst.tcp_established++;
-                        break;
-                    case SS_CLOSE_WAIT:
-                        ps->sst.tcp_close_wait++;
-                        break;
-                    case SS_LISTEN:
-                        ps->sst.tcp_listen++;
-                        break;
+                    // 获取socket的状态
+                    if (likely(0 == find_sock_info(sock_ino, &si))) {
+                        switch (si.sock_type) {
+                        case ST_TCP:
+                            switch (si.sock_state) {
+                            case SS_ESTABLISHED:
+                                ps->sst.tcp_established++;
+                                break;
+                            case SS_CLOSE_WAIT:
+                                ps->sst.tcp_close_wait++;
+                                break;
+                            case SS_LISTEN:
+                                ps->sst.tcp_listen++;
+                                break;
+                            }
+                            break;
+                        case ST_TCP6:
+                            switch (si.sock_state) {
+                            case SS_ESTABLISHED:
+                                ps->sst.tcp6_established++;
+                                break;
+                            case SS_CLOSE_WAIT:
+                                ps->sst.tcp6_close_wait++;
+                                break;
+                            case SS_LISTEN:
+                                ps->sst.tcp6_listen++;
+                                break;
+                            }
+                            break;
+                        case ST_UDP:
+                            switch (si.sock_state) {
+                            case SS_ESTABLISHED:
+                                ps->sst.udp_established++;
+                                break;
+                            case SS_CLOSE:
+                                ps->sst.udp_close++;
+                                break;
+                            }
+                            break;
+                        case ST_UDP6:
+                            switch (si.sock_state) {
+                            case SS_ESTABLISHED:
+                                ps->sst.udp6_established++;
+                                break;
+                            case SS_CLOSE:
+                                ps->sst.udp6_close++;
+                                break;
+                            }
+                            break;
+                        case ST_UNIX:
+                            switch (si.sock_state) {
+                            case SS_ESTABLISHED:
+                                ps->sst.unix_established++;
+                                break;
+                            case SS_SYN_RECV:
+                                ps->sst.unix_recv++;
+                                break;
+                            }
+                            break;
+                        }
                     }
-                    break;
-                case ST_TCP6:
-                    switch (si.sock_state) {
-                    case SS_ESTABLISHED:
-                        ps->sst.tcp6_established++;
-                        break;
-                    case SS_CLOSE_WAIT:
-                        ps->sst.tcp6_close_wait++;
-                        break;
-                    case SS_LISTEN:
-                        ps->sst.tcp6_listen++;
-                        break;
-                    }
-                    break;
-                case ST_UDP:
-                    switch (si.sock_state) {
-                    case SS_ESTABLISHED:
-                        ps->sst.udp_established++;
-                        break;
-                    case SS_CLOSE:
-                        ps->sst.udp_close++;
-                        break;
-                    }
-                    break;
-                case ST_UDP6:
-                    switch (si.sock_state) {
-                    case SS_ESTABLISHED:
-                        ps->sst.udp6_established++;
-                        break;
-                    case SS_CLOSE:
-                        ps->sst.udp6_close++;
-                        break;
-                    }
-                    break;
-                case ST_UNIX:
-                    switch (si.sock_state) {
-                    case SS_ESTABLISHED:
-                        ps->sst.unix_established++;
-                        break;
-                    case SS_SYN_RECV:
-                        ps->sst.unix_recv++;
-                        break;
-                    }
-                    break;
                 }
             }
         }
