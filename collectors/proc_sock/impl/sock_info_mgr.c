@@ -23,7 +23,7 @@ static uint32_t __rand_seed = 0;
 /**
  * It initializes a global hash table and a global memory pool
  */
-int32_t init_sock_info_mgr() {
+__hidden int32_t init_sock_info_mgr() {
     RUN_ONCE({
         __rand_seed = (uint32_t)time(NULL);
 
@@ -76,7 +76,7 @@ FAILED:
  *
  * @return A pointer to a struct sock_info_node
  */
-struct sock_info_node *alloc_sock_info_node() {
+__hidden struct sock_info_node *alloc_sock_info_node() {
     struct sock_info_node *sin = (struct sock_info_node *)xm_mempool_malloc(
         g_proc_sock_info_mgr->sock_info_node_xmp);
     return sin;
@@ -118,7 +118,7 @@ static int32_t __match_sock_info(struct cds_lfht_node *ht_node,
  *
  * @param new_sin the new sock_info_node to be added
  */
-int32_t add_sock_info_node(struct sock_info_node *new_sin) {
+__hidden int32_t add_sock_info_node(struct sock_info_node *new_sin) {
     struct cds_lfht_node *ht_node;
     struct cds_lfht_iter iter;
     struct sock_info_node *old_sin;
@@ -181,7 +181,7 @@ int32_t add_sock_info_node(struct sock_info_node *new_sin) {
     return 0;
 }
 
-int32_t find_sock_info_i(uint32_t ino, struct sock_info *res) {
+__hidden int32_t find_sock_info_i(uint32_t ino, struct sock_info *res) {
     struct sock_info_node *sin = NULL;
     struct cds_lfht_iter iter; /* For iteration on hash table */
     struct cds_lfht_node *ht_node;
@@ -221,7 +221,7 @@ int32_t find_sock_info_i(uint32_t ino, struct sock_info *res) {
  *
  * @return The number of elements in the hash table.
  */
-uint32_t sock_info_count_i() {
+__hidden uint32_t sock_info_count_i() {
     struct sock_info_node *sin = NULL;
     struct cds_lfht_iter iter; /* For iteration on hash table */
     uint32_t count = 0;
@@ -272,7 +272,7 @@ static void __remove_all_sock_info() {
  * It iterates through a hash table, and sets a flag to 0 for each entry in the
  * hash table
  */
-void clean_all_sock_info_update_flag() {
+__hidden void clean_all_sock_info_update_flag() {
     struct cds_lfht_iter iter;
     struct cds_lfht_node *ht_node;
     struct sock_info_node *sin;
@@ -292,7 +292,7 @@ void clean_all_sock_info_update_flag() {
  * It iterates over a hash table, and deletes all entries that have a certain
  * flag set
  */
-void remove_all_not_update_sock_info() {
+__hidden void remove_all_not_update_sock_info() {
     struct cds_lfht_iter iter;
     struct cds_lfht_node *ht_node;
     struct sock_info_node *sin;
@@ -322,7 +322,7 @@ void remove_all_not_update_sock_info() {
  * It deletes all the socket info objects from the hash table, destroys the hash
  * table, and destroys the memory pool
  */
-void fini_sock_info_mgr() {
+__hidden void fini_sock_info_mgr() {
 #define FREE_PROCFILE(pf)       \
     do {                        \
         if (likely(pf)) {       \

@@ -127,3 +127,7 @@ macro 結果為 true ，則可以在 compile-time 的時候被告知有錯
             runcode;              \
         }                         \
     } while (0)
+
+#ifndef __hidden
+#define __hidden __attribute__((visibility("hidden")))
+#endif

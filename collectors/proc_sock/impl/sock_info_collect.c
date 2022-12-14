@@ -193,7 +193,7 @@ static int32_t __collect_proc_socks_info(struct proc_sock_info_mgr *psim,
             // const char *rem_addr = procfile_lineword(*ppf, l, 3);
             // const char *rem_port = procfile_lineword(*ppf, l, 4);
             //__sock_print(sl, loc_addr, loc_port, rem_addr, rem_port,
-            //sin->si.ino, family,
+            // sin->si.ino, family,
             //             sfi->sock_type);
 
             add_sock_info_node(sin);
@@ -222,7 +222,7 @@ static int32_t __collect_proc_socks_info(struct proc_sock_info_mgr *psim,
  * /proc/net/udp6, and /proc/net/unix files, and parses the contents of each
  * file to extract information about the sockets
  */
-void collect_socks_info_i() {
+__hidden void collect_socks_info_i() {
     debug("[PROC_SOCK] start collect socks info.");
 
     // 清除所有sock_info查询标志位

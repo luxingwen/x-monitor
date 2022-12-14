@@ -28,12 +28,14 @@ struct app_status {
     int32_t process_count; // 应用关联的进程数量
 
     // 汇总的统计指标
-    uint64_t minflt_raw; // 该任务不需要从硬盘拷数据而发生的缺页（次缺页）的次数
-    uint64_t
-        cminflt_raw; // 累计的该任务的所有的waited-for进程曾经发生的次缺页的次数目
-    uint64_t majflt_raw; // 该任务需要从硬盘拷数据而发生的缺页（主缺页）的次数
-    uint64_t
-        cmajflt_raw; // 累计的该任务的所有的waited-for进程曾经发生的主缺页的次数目
+    // 该任务不需要从硬盘拷数据而发生的缺页（次缺页）的次数
+    uint64_t minflt_raw;
+    // 累计的该任务的所有的waited-for进程曾经发生的次缺页的次数目
+    uint64_t cminflt_raw;
+    // 该任务需要从硬盘拷数据而发生的缺页（主缺页）的次数
+    uint64_t majflt_raw;
+    // 累计的该任务的所有的waited-for进程曾经发生的主缺页的次数目
+    uint64_t cmajflt_raw;
     uint64_t utime_raw;
     uint64_t stime_raw;
     uint64_t cutime_raw;

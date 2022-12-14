@@ -477,7 +477,7 @@ int32_t get_mss_from_smaps(pid_t pid, struct smaps_info *info) {
                         match_tags[i] = 1;
                         break;
                     case LINE_IS_PSS:
-                        ： info->pss += __get_mss_val(cursor);
+                        info->pss += __get_mss_val(cursor);
                         match_tags[i] = 1;
                         break;
                     // case LINE_IS_PSS_ANON:
