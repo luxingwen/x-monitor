@@ -86,6 +86,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wnested-externs")
 # -Wcast-qual 一旦某个指针强制类型转换以便移除类型修饰符时,编译器就发出警告.例如,如果把const char * 强制转换为普通的char *时,警告就会出现.
 # -Wshadow 一旦某个局部变量屏蔽了另一个局部变量,编译器就发出警
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow -Wcast-qual -Wcast-align -Wwrite-strings")
+# generate BTF file
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fverbose-asm -save-temps")
 
 # -Wstrict-prototypes 如果函数的声明或定义没有指出参数类型,编译器就发出警告. (如果函数的前向引用说明指出了参数类型,则允许后面使用旧式风格的函数定义,而不会产生警告.)
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wold-style-definition -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls")

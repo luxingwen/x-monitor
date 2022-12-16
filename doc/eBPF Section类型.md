@@ -65,7 +65,7 @@ static const struct bpf_sec_def section_defs[] = {
 
 ## SEC的函数编写
 
-编写最多的是kprobe、tracepoint、btf raw tracepoint的函数，为了简便函数定义和参数读取，下面分类描述
+编写最多的是kprobe、tracepoint、**btf raw tracepoint**的函数，为了简便函数定义和参数读取，下面分类描述。
 
 ### tracepoint enter函数
 
@@ -102,6 +102,8 @@ static const struct bpf_sec_def section_defs[] = {
   SEC("tp/syscalls/sys_enter_openat")
   int handle_openat_enter(struct trace_event_raw_sys_enter *ctx)
   ```
+
+  可以通过查看`/sys/kernel/debug/tracing/available_events` 文件的内容找到 **raw tracepoint 可监控**的事件。在写tracepoint函数前，最好先确认下是否有btf raw tracepoint存在，这样读取参数简化。
 
 ### tracepoint exit函数
 
