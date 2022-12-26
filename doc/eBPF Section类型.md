@@ -104,6 +104,16 @@ static const struct bpf_sec_def section_defs[] = {
   ```
 
   可以通过查看`/sys/kernel/debug/tracing/available_events` 文件的内容找到 **raw tracepoint 可监控**的事件。在写tracepoint函数前，最好先确认下是否有btf raw tracepoint存在，这样读取参数简化。
+  
+  **在vmlinux.h文件中，找*btf_开头的函数指针，就可以作为btf raw tracepoint事件处理函数了**。
+  
+  ```
+  typedef void (*btf_trace_local_timer_entry)(void *, int);
+  typedef void (*btf_trace_local_timer_exit)(void *, int);
+  typedef void (*btf_trace_spurious_apic_entry)(void *, int);
+  typedef void (*btf_trace_spurious_apic_exit)(void *, int);
+  typedef void (*btf_trace_error_apic_entry)(void *, int);
+  ```
 
 ### tracepoint exit函数
 
@@ -279,6 +289,7 @@ BPF_PROG(func_name, int a, int b, int ret)
 - [bcc/reference_guide.md at master · iovisor/bcc (github.com)](https://github.com/iovisor/bcc/blob/master/docs/reference_guide.md)
 - [ebpf/libbpf 程序使用 btf raw tracepoint 的常见问题 - mozillazg's Blog](https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec)
 - [Introduce BPF_MODIFY_RET tracing progs. [LWN.net\]](https://lwn.net/Articles/813724/)
+- [ebpf/libbpf 程序使用 btf raw tracepoint 的常见问题 - mozillazg's Blog](https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html)
 
 
 

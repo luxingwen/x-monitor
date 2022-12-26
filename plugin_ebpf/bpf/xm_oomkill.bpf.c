@@ -16,13 +16,13 @@ https://lore.kernel.org/linux-mm/20170531163928.GZ27783@dhcp22.suse.cz/
 */
 
 #include <vmlinux.h>
-#include "xm_bpf_common.h"
+#include "xm_bpf_helpers_common.h"
 
 #define XM_EBPF_OOMKILL_MAX_ENTRIES 64
 
 struct oomkill_info {
     pid_t pid;
-    char  comm[TASK_COMM_LEN];
+    char comm[TASK_COMM_LEN];
 };
 
 struct {
@@ -35,7 +35,7 @@ struct {
 SEC("tp/oom/mark_victim")
 __s32 BPF_PROG(xm_oom_mark_victim, struct trace_event_raw_mark_victim *evt) {
     struct oomkill_info info = {};
-    __u8                val = 0;
+    __u8 val = 0;
 
     bpf_get_current_comm(&info.comm, sizeof(info.comm));
     info.pid = (pid_t)(evt->pid);

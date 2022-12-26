@@ -6,8 +6,7 @@
  */
 
 #include <vmlinux.h>
-#include "xm_bpf_common.h"
-#include "xm_bpf_parsing_helpers.h"
+#include "xm_bpf_helpers_common.h"
 
 // struct cachestat_key {
 //     __u32 pid; // 进程ID
@@ -15,15 +14,15 @@
 
 struct cachestat_value {
     __u64 add_to_page_cache_lru;
-    __u64 ip_add_to_page_cache;   // IP寄存器的值í
+    __u64 ip_add_to_page_cache; // IP寄存器的值í
     __u64 mark_page_accessed;
-    __u64 ip_mark_page_accessed;   // IP寄存器的值
+    __u64 ip_mark_page_accessed; // IP寄存器的值
     __u64 account_page_dirtied;
-    __u64 ip_account_page_dirtied;   // IP寄存器的值
+    __u64 ip_account_page_dirtied; // IP寄存器的值
     __u64 mark_buffer_dirty;
-    __u64 ip_mark_buffer_dirty;   // IP寄存器的值
-    __u32 uid;                    // 用户ID
-    char  comm[TASK_COMM_LEN];    // 进程名
+    __u64 ip_mark_buffer_dirty; // IP寄存器的值
+    __u32 uid; // 用户ID
+    char comm[TASK_COMM_LEN]; // 进程名
 };
 
 #define CACHE_STATE_MAX_SIZE 1024
@@ -59,7 +58,7 @@ struct {
 // };
 
 static const struct ftiler_symbol {
-    char  name[32];
+    char name[32];
     __s32 length;
 } symbols[FILTER_SYMBOL_COUNT] = {
     {
@@ -109,8 +108,8 @@ static __s32 filter_out_symbol(char comm[TASK_COMM_LEN]) {
  ***********************************************************************************/
 SEC("kprobe/add_to_page_cache_lru")
 __s32 xmonitor_bpf_add_to_page_cache_lru(struct pt_regs *ctx) {
-    __s32                   ret = 0;
-    __u32                   pid;
+    __s32 ret = 0;
+    __u32 pid;
     struct cachestat_value *fill;
 
     // 得到进程ID
@@ -147,8 +146,8 @@ __s32 xmonitor_bpf_add_to_page_cache_lru(struct pt_regs *ctx) {
 
 SEC("kprobe/mark_page_accessed")
 __s32 xmonitor_bpf_mark_page_accessed(struct pt_regs *ctx) {
-    __s32                   ret = 0;
-    __u32                   pid;
+    __s32 ret = 0;
+    __u32 pid;
     struct cachestat_value *fill;
 
     // 得到进程ID
@@ -159,9 +158,9 @@ __s32 xmonitor_bpf_mark_page_accessed(struct pt_regs *ctx) {
         __xm_update_u64(&fill->mark_page_accessed, 1);
         // 有可能因为execve导致comm改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
-        bpf_printk(
-            "xmonitor update mark_page_accessed pcomm: '%s' pid: %d value: %lu",
-            fill->comm, pid, fill->mark_page_accessed);
+        bpf_printk("xmonitor update mark_page_accessed pcomm: '%s' pid: %d "
+                   "value: %lu",
+                   fill->comm, pid, fill->mark_page_accessed);
 
     } else {
         struct cachestat_value init_value = {
@@ -185,8 +184,8 @@ __s32 xmonitor_bpf_mark_page_accessed(struct pt_regs *ctx) {
 
 SEC("kprobe/account_page_dirtied")
 __s32 xmonitor_bpf_account_page_dirtied(struct pt_regs *ctx) {
-    __s32                   ret = 0;
-    __u32                   pid;
+    __s32 ret = 0;
+    __u32 pid;
     struct cachestat_value *fill;
 
     // 得到进程ID
@@ -222,8 +221,8 @@ __s32 xmonitor_bpf_account_page_dirtied(struct pt_regs *ctx) {
 
 SEC("kprobe/mark_buffer_dirty")
 __s32 xmonitor_bpf_mark_buffer_dirty(struct pt_regs *ctx) {
-    __s32                   ret = 0;
-    __u32                   pid;
+    __s32 ret = 0;
+    __u32 pid;
     struct cachestat_value *fill;
 
     // 得到进程ID
@@ -234,9 +233,9 @@ __s32 xmonitor_bpf_mark_buffer_dirty(struct pt_regs *ctx) {
         __xm_update_u64(&fill->mark_buffer_dirty, 1);
         // 有可能因为execve导致comm改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
-        bpf_printk(
-            "xmonitor update mark_buffer_dirty pcomm: '%s' pid: %d value: %lu",
-            fill->comm, pid, fill->mark_buffer_dirty);
+        bpf_printk("xmonitor update mark_buffer_dirty pcomm: '%s' pid: %d "
+                   "value: %lu",
+                   fill->comm, pid, fill->mark_buffer_dirty);
         // bpf_map_update_elem(&cachestat_map, &pid, fill, BPF_ANY);
     } else {
         struct cachestat_value init_value = {

@@ -14,7 +14,7 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("kprobe/do_unlinkat")
 int BPF_KPROBE(do_unlinkat, int dfd, struct filename *name) {
-    pid_t       pid;
+    pid_t pid;
     const char *filename;
 
     pid = bpf_get_current_pid_tgid() >> 32;

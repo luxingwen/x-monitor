@@ -6,8 +6,7 @@
  */
 
 #include <vmlinux.h>
-#include "xm_bpf_common.h"
-#include "xm_bpf_parsing_helpers.h"
+#include "xm_bpf_helpers_common.h"
 
 #include "../bpf_and_user.h"
 
@@ -18,11 +17,11 @@ struct {
 
 struct syscalls_enter_ptrace_args {
     long long pad;
-    __s32     syscall_nr;
-    __s64     request;
-    __s64     pid;
-    __u64     addr;
-    __u64     data;
+    __s32 syscall_nr;
+    __s64 request;
+    __s64 pid;
+    __u64 addr;
+    __u64 data;
 };
 
 // 拒绝ptrace的pid

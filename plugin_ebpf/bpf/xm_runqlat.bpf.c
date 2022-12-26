@@ -6,10 +6,10 @@
  */
 
 #include <vmlinux.h>
-#include "xm_bpf_common.h"
-#include "xm_bpf_parsing_helpers.h"
-#include "xm_bpf_maps.h"
-#include "xm_bpf_math.h"
+#include "xm_bpf_helpers_common.h"
+#include "xm_bpf_helpers_net.h"
+#include "xm_bpf_helpers_maps.h"
+#include "xm_bpf_helpers_math.h"
 
 #include "../bpf_and_user.h"
 
@@ -20,7 +20,9 @@
 // 这里使用btf raw tracepoint，其和常规的raw tracepoint有一定的差别
 // https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec
 
-const volatile struct xm_runqlat_args runqlat_args = { .filter_type = FILTER_DEF_OS, .id = 0 };
+const volatile struct xm_runqlat_args runqlat_args = { .filter_type =
+                                                           FILTER_DEF_OS,
+                                                       .id = 0 };
 
 // 只支持一个cgroup
 struct {
@@ -63,16 +65,19 @@ static __always_inline __s32 __trace_enqueue(__u32 tgid, __u32 pid) {
     // 得到wakeup时间，单位纳秒
     __u64 wakeup_ns = bpf_ktime_get_ns();
     // 更新map，记录thread wakeup time
-    bpf_map_update_elem(&xm_runqlat_thread_wakeup_map, &pid, &wakeup_ns, BPF_ANY);
+    bpf_map_update_elem(&xm_runqlat_thread_wakeup_map, &pid, &wakeup_ns,
+                        BPF_ANY);
     return 0;
 }
 
-SEC("tp_btf/sched_wakeup") __s32 BPF_PROG(xm_btp_sched_wakeup, struct task_struct *ts) {
+SEC("tp_btf/sched_wakeup")
+__s32 BPF_PROG(xm_btp_sched_wakeup, struct task_struct *ts) {
     // ts被唤醒
     return __trace_enqueue(ts->tgid, ts->pid);
 }
 
-SEC("tp_btf/sched_wakeup_new") __s32 BPF_PROG(xm_btp_sched_wakeup_new, struct task_struct *ts) {
+SEC("tp_btf/sched_wakeup_new")
+__s32 BPF_PROG(xm_btp_sched_wakeup_new, struct task_struct *ts) {
     // ts被唤醒
     return __trace_enqueue(ts->tgid, ts->pid);
 }
@@ -82,14 +87,15 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
                struct task_struct *next) {
     struct xm_runqlat_hist *hist = NULL;
 
-    // 调度出cpu的task，如果状态还是RUNNING，继续插入wakeup map，算成一种重新唤醒
+    // 调度出cpu的task，如果状态还是RUNNING，继续插入wakeup
+    // map，算成一种重新唤醒
     if (__xm_get_task_state(prev) == TASK_RUNNING) {
         __trace_enqueue(prev->tgid, prev->pid);
     }
 
     // 应为是raw tracepoint，所以可以直接使用内核结构
     // next是被选中，即将上cpu的ts
-    pid_t  pid = next->pid;
+    pid_t pid = next->pid;
     __u64 *wakeup_ns = bpf_map_lookup_elem(&xm_runqlat_thread_wakeup_map, &pid);
     if (!wakeup_ns) {
         // wakeup 时间不存在
@@ -110,7 +116,8 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
         hkey = __xm_get_pid_namespace(next);
     }
 
-    hist = bpf_map_lookup_or_try_init(&xm_runqlat_hists_map, &hkey, &__zero_hist);
+    hist = __xm_bpf_map_lookup_or_try_init(&xm_runqlat_hists_map, &hkey,
+                                           &__zero_hist);
     if (!hist) {
         goto cleanup;
     }

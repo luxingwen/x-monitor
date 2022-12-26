@@ -20,8 +20,9 @@
  * @returns The value in the map, or the value initialized by init_val if the
  *          map didn't exist.
  */
-static __always_inline void *bpf_map_lookup_or_try_init(void *map, const void *key,
-                                                        const void *init_val) {
+static __always_inline void *
+__xm_bpf_map_lookup_or_try_init(void *map, const void *key,
+                                const void *init_val) {
     void *val = bpf_map_lookup_elem(map, key);
     if (val) {
         return val;

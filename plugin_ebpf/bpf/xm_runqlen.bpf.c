@@ -8,8 +8,7 @@
 // 采样CPU运行队列的长度信息，可以统计有多少个线程正在等待运行
 
 #include <vmlinux.h>
-#include "xm_bpf_common.h"
-#include "xm_bpf_parsing_helpers.h"
+#include "xm_bpf_helpers_common.h"
 
 #include "../bpf_and_user.h"
 

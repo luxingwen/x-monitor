@@ -8,7 +8,7 @@
 #pragma once
 
 #include <vmlinux.h>
-#include "xm_bpf_common.h"
+#include "xm_bpf_helpers_common.h"
 
 #define MAX_FILENAME_LEN 128
 
@@ -19,7 +19,7 @@ struct bootstrap_ev {
     __u16 exit_code;
     __u64 start_ns;
     __u64 duration_ns;
-    char  comm[TASK_COMM_LEN];
-    char  filename[MAX_FILENAME_LEN];
-    bool  exit_event;
+    char comm[TASK_COMM_LEN];
+    char filename[MAX_FILENAME_LEN];
+    bool exit_event;
 };
