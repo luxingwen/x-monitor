@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-11 10:36:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-15 15:22:34
+ * @Last Modified time: 2022-12-28 11:11:16
  */
 #include "utils/common.h"
 #include "utils/compiler.h"
@@ -23,24 +23,27 @@ enum xdp_action_type {
 };
 
 struct args {
-    int32_t              itf_index;
+    int32_t itf_index;
     enum xdp_action_type action_type;
-    uint32_t             xdp_flags;
-    bool                 verbose;
+    uint32_t xdp_flags;
+    bool verbose;
 } env = {
-    .itf_index = -1,   // 所有的网卡
+    .itf_index = -1, // 所有的网卡
     .xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST,
     .verbose = true,
 };
 
-static uint32_t     __prog_id;
+static uint32_t __prog_id;
 static sig_atomic_t __sig_exit = 0;
-static const char  *__optstr = "i:sfv";
+static const char *__optstr = "i:sfv";
 
 static const struct option __opts[] = {
-    { "itf", required_argument, NULL, 'i' }, { "type", required_argument, NULL, 't' },
-    { "skb", no_argument, NULL, 's' },       { "force_load", no_argument, NULL, 'f' },
-    { "verbose", no_argument, NULL, 'v' },   { 0, 0, 0, 0 },
+    { "itf", required_argument, NULL, 'i' },
+    { "type", required_argument, NULL, 't' },
+    { "skb", no_argument, NULL, 's' },
+    { "force_load", no_argument, NULL, 'f' },
+    { "verbose", no_argument, NULL, 'v' },
+    { 0, 0, 0, 0 },
 };
 
 static void usage(const char *prog) {
@@ -72,9 +75,10 @@ static void sig_handler(int sig) {
     return;
 }
 
-static void poll_stats(int32_t map_fd, int32_t xdp_stats_map_fd, int32_t interval) {
+static void poll_stats(int32_t map_fd, int32_t xdp_stats_map_fd,
+                       int32_t interval) {
     uint32_t nr_cpus = xm_bpf_num_possible_cpus();
-    int32_t  ret = 0;
+    int32_t ret = 0;
     debug("nr_cpus: %u", nr_cpus);
 
     BPF_DECLARE_PERCPU(uint64_t, values);
@@ -93,15 +97,16 @@ static void poll_stats(int32_t map_fd, int32_t xdp_stats_map_fd, int32_t interva
                 break;
 
             uint64_t sum = 0;
-            // TODO: values是个core核数的数组，这是BPF_MAP_TYPE_PERCPU_ARRAY特性？
+            // TODO:
+            // values是个core核数的数组，这是BPF_MAP_TYPE_PERCPU_ARRAY特性？
             ret = bpf_map_lookup_elem(map_fd, &key, values);
             if (0 == ret) {
                 for (uint32_t i = 0; i < nr_cpus; i++) {
                     // sum += values[i];
                     sum += bpf_percpu(values, i);
                 }
-                // debug("proto: %d, lookup_key: %d sum: %lu, prev_sum: %lu\n", next_key,
-                // lookup_key, sum,
+                // debug("proto: %d, lookup_key: %d sum: %lu, prev_sum: %lu\n",
+                // next_key, lookup_key, sum,
                 //       prev[next_key]);
                 if (sum > prev[key]) {
                     debug("proto %d: sum rx_cnt: %lu, %lu pkt/s", key, sum,
@@ -109,8 +114,8 @@ static void poll_stats(int32_t map_fd, int32_t xdp_stats_map_fd, int32_t interva
                 }
                 prev[key] = sum;
             } else {
-                error("ERR: bpf_map_lookup_elem failed key:0x%X (ret:%d): %s", key, ret,
-                      strerror(-ret));
+                error("ERR: bpf_map_lookup_elem failed key:0x%X (ret:%d): %s",
+                      key, ret, strerror(-ret));
             }
             // lookup_key = next_key;
         }
@@ -132,7 +137,8 @@ int32_t main(int32_t argc, char **argv) {
         case 'i':
             env.itf_index = if_nametoindex(optarg);
             if (unlikely(!env.itf_index)) {
-                fprintf(stderr, "invalid interface name: %s, err: %s\n", optarg, strerror(errno));
+                fprintf(stderr, "invalid interface name: %s, err: %s\n", optarg,
+                        strerror(errno));
                 exit(EXIT_FAILURE);
             }
             fprintf(stdout, "ift_index:%d, itf_name:%s", env.itf_index, optarg);
@@ -179,11 +185,12 @@ int32_t main(int32_t argc, char **argv) {
 
     ret = bump_memlock_rlimit();
     if (ret) {
-        fprintf(stderr, "failed to increase memlock rlimit: %s\n", strerror(errno));
+        fprintf(stderr, "failed to increase memlock rlimit: %s\n",
+                strerror(errno));
         return -1;
     }
 
-    if (log_init("../cli/xdp_libbpf_test/log.cfg", "xdp_libbpf_test") != 0) {
+    if (log_init("../../log.cfg", "xdp_libbpf_test") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }
@@ -210,14 +217,16 @@ int32_t main(int32_t argc, char **argv) {
         debug("BPF object loaded");
     }
 
-    // debug("xdp_prog_simple name: %s sec_name: %s", obj->progs.xdp_prog_simple->name,
+    // debug("xdp_prog_simple name: %s sec_name: %s",
+    // obj->progs.xdp_prog_simple->name,
     //       obj->progs.xdp_prog_simple->sec_name);
 
     struct bpf_map_info map_info;
 
     int32_t ipproto_rx_cnt_map_fd = bpf_map__fd(obj->maps.ipproto_rx_cnt_map);
     xm_bpf_get_bpf_map_info(ipproto_rx_cnt_map_fd, &map_info, 1);
-    debug("ipproto_rx_cnt map fd:%d, id: %d", ipproto_rx_cnt_map_fd, map_info.id);
+    debug("ipproto_rx_cnt map fd:%d, id: %d", ipproto_rx_cnt_map_fd,
+          map_info.id);
 
     int32_t xdp_stats_map_fd = bpf_map__fd(obj->maps.xdp_stats_map);
     xm_bpf_get_bpf_map_info(xdp_stats_map_fd, &map_info, 1);
@@ -236,14 +245,15 @@ int32_t main(int32_t argc, char **argv) {
     ret = xm_bpf_xdp_link_attach(env.itf_index, env.xdp_flags, prog_fd);
     // ret = bpf_set_link_xdp_fd(env.itf_index, prog_fd, env.xdp_flags);
     if (ret < 0) {
-        fprintf(stderr, "link set xdp fd failed. ret: %d err: %s\n", ret, strerror(errno));
+        fprintf(stderr, "link set xdp fd failed. ret: %d err: %s\n", ret,
+                strerror(errno));
         goto cleanup;
     } else {
         debug("BPF programs attached");
     }
 
     struct bpf_prog_info info = { 0 };
-    uint32_t             info_len = sizeof(info);
+    uint32_t info_len = sizeof(info);
 
     ret = bpf_obj_get_info_by_fd(prog_fd, &info, &info_len);
     if (ret) {

@@ -39,7 +39,7 @@ struct {
     __uint(max_entries, XM_MAX_SYSCALL_NR);
     __type(key, u32); // tid
     __type(value, __u64); // 系统调用起始时间
-} xm_trace_syscalls_start_time_map;
+} xm_trace_syscalls_start_time_map SEC(".maps");
 
 // vmlinux.h typedef void (*btf_trace_sys_enter)(void *, struct pt_regs *, long
 // int);
@@ -57,8 +57,8 @@ __s32 BPF_PROG(xm_btf_rtp__sys_enter, struct pt_regs *regs, __s64 syscall_nr) {
     bpf_map_update_elem(&xm_trace_syscalls_start_time_map, &tid, &call_start_ns,
                         BPF_ANY);
 
-    bpf_printk("xm trace_syscalls enter: pid=%d, syscall_nr=%ld", pid,
-               syscall_nr);
+    bpf_printk("xm trace_syscalls enter: pid=%d, tid:=%d syscall_nr=%ld", pid,
+               tid, syscall_nr);
 
     return 0;
 }
@@ -66,14 +66,15 @@ __s32 BPF_PROG(xm_btf_rtp__sys_enter, struct pt_regs *regs, __s64 syscall_nr) {
 // typedef void (*btf_trace_sys_exit)(void *, struct pt_regs *, long int);
 
 SEC("tp_btf/sys_exit")
-__s32 BPF_PROG(xm_btf_rtp__sys_exit, struct pt_regs *regs, __s32 ret) {
+__s32 BPF_PROG(xm_btf_rtp__sys_exit, struct pt_regs *regs, __s64 ret) {
     pid_t pid = __xm_get_pid();
     __u32 tid = __xm_get_tid();
     __u64 delay_ns = 0;
     static struct xm_trace_syscall_datarec zero = { 0 };
 
     // 怎么从sys_exit中得到syscall_nr呢
-    __s64 syscall_nr = BPF_CORE_READ(regs, r8); // regs->r8;
+    __s64 syscall_nr = 0;
+    bpf_probe_read(&syscall_nr, sizeof(__s64), (void *)PT_REGS_PARM5(regs));
 
     if (!xm_trace_syscall_filter_pid && pid != xm_trace_syscall_filter_pid)
         return 0;
@@ -101,10 +102,11 @@ __s32 BPF_PROG(xm_btf_rtp__sys_exit, struct pt_regs *regs, __s32 ret) {
             val->syscall_errno = ret;
         }
 
-        bpf_printk("xm trace_syscalls exit: pid: %d, syscall_nr: %ld, ret: %d, "
-                   "delay_ns: %lu",
-                   pid, syscall_nr, ret, delay_ns);
+        // 参数不能操作3个，搞死人
+        bpf_printk("xm trace_syscalls exit: tid: %d syscall_nr: %ld, ret: %d",
+                   tid, syscall_nr, ret);
     }
+
     return 0;
 }
 
