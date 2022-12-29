@@ -73,8 +73,9 @@ type TraceProcessSyscallsProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type TraceProcessSyscallsMapSpecs struct {
-	XmFilterSyscallsMap       *ebpf.MapSpec `ebpf:"xm_filter_syscalls_map"`
-	XmTraceSyscallsDatarecMap *ebpf.MapSpec `ebpf:"xm_trace_syscalls_datarec_map"`
+	XmFilterSyscallsMap         *ebpf.MapSpec `ebpf:"xm_filter_syscalls_map"`
+	XmTraceSyscallsDatarecMap   *ebpf.MapSpec `ebpf:"xm_trace_syscalls_datarec_map"`
+	XmTraceSyscallsStartTimeMap *ebpf.MapSpec `ebpf:"xm_trace_syscalls_start_time_map"`
 }
 
 // TraceProcessSyscallsObjects contains all objects after they have been loaded into the kernel.
@@ -96,14 +97,16 @@ func (o *TraceProcessSyscallsObjects) Close() error {
 //
 // It can be passed to LoadTraceProcessSyscallsObjects or ebpf.CollectionSpec.LoadAndAssign.
 type TraceProcessSyscallsMaps struct {
-	XmFilterSyscallsMap       *ebpf.Map `ebpf:"xm_filter_syscalls_map"`
-	XmTraceSyscallsDatarecMap *ebpf.Map `ebpf:"xm_trace_syscalls_datarec_map"`
+	XmFilterSyscallsMap         *ebpf.Map `ebpf:"xm_filter_syscalls_map"`
+	XmTraceSyscallsDatarecMap   *ebpf.Map `ebpf:"xm_trace_syscalls_datarec_map"`
+	XmTraceSyscallsStartTimeMap *ebpf.Map `ebpf:"xm_trace_syscalls_start_time_map"`
 }
 
 func (m *TraceProcessSyscallsMaps) Close() error {
 	return _TraceProcessSyscallsClose(
 		m.XmFilterSyscallsMap,
 		m.XmTraceSyscallsDatarecMap,
+		m.XmTraceSyscallsStartTimeMap,
 	)
 }
 
