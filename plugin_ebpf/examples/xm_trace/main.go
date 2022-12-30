@@ -23,6 +23,10 @@ import (
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 )
 
+const (
+	_perf_max_stack_depth = 127
+)
+
 var (
 	_pid int
 )
@@ -115,7 +119,22 @@ func main() {
 
 		// float64(syscall_evt.DelayNs)/float64(time.Millisecond)
 		glog.Infof("pid:%d, tid:%d, (%f ms) syscall_nr:%d = %d",
-			syscall_evt.Pid, syscall_evt.Tid, float64(syscall_evt.DelayNs)/float64(time.Millisecond), syscall_evt.SyscallNr, syscall_evt.SyscallRet)
+			syscall_evt.Pid, syscall_evt.Tid, float64(syscall_evt.DelayNs)/float64(time.Millisecond),
+			syscall_evt.SyscallNr, syscall_evt.SyscallRet)
+
+		var ip [_perf_max_stack_depth]uint64
+
+		err = objs.XmSyscallsStackMap.Lookup(syscall_evt.StackId, &ip)
+		if err != nil {
+			glog.Errorf("failed to lookup stack_id: %d, err: %v", syscall_evt.StackId, err)
+		} else {
+			for i := _perf_max_stack_depth - 1; i >= 0; i-- {
+				if ip[i] == 0 {
+					continue
+				}
+				glog.Infof("\t0xip[%d]: %x", i, ip[i])
+			}
+		}
 	}
 
 	glog.Infof("trace process syscalls exit")

@@ -57,7 +57,7 @@ static __always_inline __u32 __xm_get_pid() {
 }
 
 // 线程id
-static __always_inline __s32 __xm_get_tid() {
+static __always_inline __u32 __xm_get_tid() {
     return bpf_get_current_pid_tgid() & 0xFFFFFFFF;
 }
 

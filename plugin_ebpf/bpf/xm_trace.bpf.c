@@ -29,7 +29,7 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
-    __uint(max_entries, 1 << 16); // 16k
+    __uint(max_entries, 1 << 24); // 16M
 } xm_syscalls_event_map SEC(".maps");
 
 struct {
@@ -39,12 +39,19 @@ struct {
     __type(value, __u64); // 系统调用起始时间
 } xm_syscalls_start_time_map SEC(".maps");
 
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, XM_MAX_SYSCALL_NR);
+    __type(key, __u32); // tid
+    __type(value, __s32); // 系统调用堆栈id
+} xm_syscalls_stackid_map SEC(".maps");
+
 // #define PERF_MAX_STACK_DEPTH		127
 struct {
     __uint(type, BPF_MAP_TYPE_STACK_TRACE);
     __uint(key_size, sizeof(__u32));
-    __uint(max_entries, 1024);
     __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64));
+    __uint(max_entries, 1024);
 } xm_syscalls_stack_map SEC(".maps");
 
 const struct syscall_event *unused __attribute__((unused));
@@ -63,8 +70,11 @@ __s32 BPF_PROG(xm_btf_rtp__sys_enter, struct pt_regs *regs, __s64 syscall_nr) {
         return 0;
 
     __u64 call_start_ns = bpf_ktime_get_ns();
+    __s32 stack_id =
+        bpf_get_stackid(ctx, &xm_syscalls_stack_map, 0 | BPF_F_FAST_STACK_CMP);
     bpf_map_update_elem(&xm_syscalls_start_time_map, &tid, &call_start_ns,
                         BPF_ANY);
+    bpf_map_update_elem(&xm_syscalls_stackid_map, &tid, &stack_id, BPF_ANY);
 
     return 0;
 }
@@ -103,12 +113,16 @@ __s32 BPF_PROG(xm_btf_rtp__sys_exit, struct pt_regs *regs, __s64 ret) {
         evt->syscall_nr = syscall_nr;
         evt->syscall_ret = ret;
         evt->delay_ns = delay_ns;
-        evt->stack_id = bpf_get_stackid(ctx, &xm_syscalls_stack_map, 0);
-        if (evt->stack_id < 0) {
-            bpf_printk("xm_trace_syscalls failed to get syscall_nr: %ld stack "
-                       ": %d",
-                       syscall_nr, evt->stack_id);
+
+        __s32 *stack_id = bpf_map_lookup_elem(&xm_syscalls_stackid_map, &tid);
+        if (!stack_id || *stack_id < 0) {
+            bpf_printk("xm_trace_syscalls failed to get syscall_nr: %ld "
+                       "stack_id",
+                       syscall_nr);
             evt->stack_id = 0;
+        } else {
+            evt->stack_id = *stack_id;
+            // bpf_printk("xm_trace_syscalls stack_id: %d", evt->stack_id);
         }
         bpf_ringbuf_submit(evt, 0);
     }
