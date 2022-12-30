@@ -57,12 +57,12 @@ struct xm_runqlat_hist {
 #define XM_MAX_SYSCALL_NR \
     512 // 最多支持1024个系统调用, 该文件可查看最大系统调用号
         // /usr/include/asm/unistd_64.h
-struct xm_trace_syscall_datarec {
-    __u64 syscall_total_count; // 系统调用总次数
-    __u64 syscall_failed_count; // 系统调用失败次数
-    __u64 syscall_total_ns; // 系统调用总耗时, 纳秒
-    __u64 syscall_slowest_ns; // 系统调用最慢耗时, 纳秒
-    __u64 syscall_slowest_nr; // 系统调用最慢耗时的系统调用号
-    __u64 syscall_failed_nr; // 系统调用失败的系统调用号
-    __s32 syscall_errno; // 系统调用失败的错误码
+
+struct syscall_event {
+    pid_t pid;
+    __u32 tid;
+    __s64 syscall_nr;
+    __s64 syscall_ret; // 调用返回值
+    __u64 delay_ns; // 调用耗时
+    __u32 stack_id; // 调用堆栈
 };

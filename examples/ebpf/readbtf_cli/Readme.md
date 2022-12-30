@@ -2,6 +2,10 @@
 
 类似于bpftool btf dump命令。只要内核编译时加上了CONFIG_DEBUG_INFO_BTF=y，vmlinux就带上自描述信息。可以通过btf的api来读取。
 
+```
+bpftool btf dump file /sys/kernel/btf/vmlinux format c
+```
+
 ## 编译
 
 ```

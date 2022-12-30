@@ -83,4 +83,18 @@ bpf_task_storage_delete(&start, next);
 
 ## BPF_MAP_TYPE_RINGBUF
 
-内核5.8引入，
+内核5.8引入，很多场景下需要将数据发送到user-space，例如log event。相对于之前的实际标准BPF_MAP_TYPE_PERF_EVENT_ARRAY解决了浪费内存、事件顺序无法保证的问题。ringbuf map有三个特点
+
+- 降低内存开销
+- 保证事件顺序
+- 减少数据复制
+
+ringbuf是一个多生产者，单消费者队列，可安全的在多个CPU之间共享和操作，在user-space可以使用epoll或busy loop两种方式获取数据。
+
+在使用是，可以使用工具看看内核是否支持ringbuf map。
+
+```
+ ⚡ root@localhost  ~  bpftool feature
+ eBPF map_type ringbuf is available
+```
+

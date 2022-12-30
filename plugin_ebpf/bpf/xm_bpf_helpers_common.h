@@ -19,24 +19,29 @@
 #define __stringify_1(x...) #x
 #define __stringify(x...) __stringify_1(x)
 
+#ifndef PERF_MAX_STACK_DEPTH
+#define PERF_MAX_STACK_DEPTH 127
+#endif
+
 // bpf_probe_read_kernel(&exit_code, sizeof(exit_code), &task->exit_code);
 
-#define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                        \
-    __s32 __##tpfn(void *ctx) {                                                      \
-        __u32 pid = __xm_get_pid();                                                  \
-        char  comm[TASK_COMM_LEN];                                                   \
-        bpf_get_current_comm(&comm, sizeof(comm));                                   \
-                                                                                     \
-        __s32 ret = bpf_map_delete_elem(&hash_map, &pid);                            \
-        if (0 == ret) {                                                              \
-            struct task_struct *task = (struct task_struct *)bpf_get_current_task(); \
-            __s32               exit_code = BPF_CORE_READ(task, exit_code);          \
-                                                                                     \
-            bpf_printk("xmonitor pcomm: '%s' pid: %d exit_code: %d. remove "         \
-                       "element from hash_map.",                                     \
-                       comm, pid, exit_code);                                        \
-        }                                                                            \
-        return 0;                                                                    \
+#define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                \
+    __s32 __##tpfn(void *ctx) {                                              \
+        __u32 pid = __xm_get_pid();                                          \
+        char comm[TASK_COMM_LEN];                                            \
+        bpf_get_current_comm(&comm, sizeof(comm));                           \
+                                                                             \
+        __s32 ret = bpf_map_delete_elem(&hash_map, &pid);                    \
+        if (0 == ret) {                                                      \
+            struct task_struct *task =                                       \
+                (struct task_struct *)bpf_get_current_task();                \
+            __s32 exit_code = BPF_CORE_READ(task, exit_code);                \
+                                                                             \
+            bpf_printk("xmonitor pcomm: '%s' pid: %d exit_code: %d. remove " \
+                       "element from hash_map.",                             \
+                       comm, pid, exit_code);                                \
+        }                                                                    \
+        return 0;                                                            \
     }
 
 static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
@@ -64,7 +69,7 @@ static __always_inline __s32 __xm_get_tid() {
  * @returns The parent process ID of the given task.
  */
 static __always_inline __s32 __xm_get_ppid(struct task_struct *task) {
-    __u32               ppid;
+    __u32 ppid;
     struct task_struct *parent = NULL;
     BPF_CORE_READ_INTO(&parent, task, real_parent);
     BPF_CORE_READ_INTO(&ppid, parent, tgid);
@@ -78,7 +83,8 @@ static __always_inline __s32 __xm_get_ppid(struct task_struct *task) {
  *
  * @returns The start time of the process.
  */
-static __always_inline __u64 __xm_get_process_start_time(struct task_struct *task) {
+static __always_inline __u64
+__xm_get_process_start_time(struct task_struct *task) {
     __u64 start_time = 0;
     BPF_CORE_READ_INTO(&start_time, task, start_time);
     return start_time;
@@ -91,9 +97,9 @@ static __always_inline __u64 __xm_get_process_start_time(struct task_struct *tas
  */
 static __always_inline __u32 __xm_get_pid_namespace(struct task_struct *task) {
     struct pid *thread_pid = NULL;
-    __u32       level;
+    __u32 level;
     struct upid upid;
-    __u32       ns_num = 0;
+    __u32 ns_num = 0;
 
     // thread_pid = task->thread_pid
     BPF_CORE_READ_INTO(&thread_pid, task, thread_pid);

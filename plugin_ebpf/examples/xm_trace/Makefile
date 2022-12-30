@@ -1,4 +1,4 @@
-TARGET := trace_process_syscalls
+TARGET := xm_trace
 VERSION ?= v0.0.1
 
 GIT_COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
@@ -41,4 +41,6 @@ build:
 		-o ../../../bin/$(TARGET) main.go
 
 clean:
-	-rm ../../bin/$(TARGET)		
+	-rm ../../../bin/$(TARGET)
+	-rm bpfmodule/*.o
+	-rm bpfmodule/*_bpf*.go

@@ -22,24 +22,32 @@ const volatile pid_t xm_trace_syscall_filter_pid = 0;
 // 过滤系统调用的map
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u32); // syscall_nr
-    __type(value, u32); // 返回值
+    __type(key, __s64); // syscall_nr
+    __type(value, __s64); // 返回值
     __uint(max_entries, XM_MAX_FILTER_SYSCALL_COUNT);
 } xm_filter_syscalls_map SEC(".maps");
 
 struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, pid_t);
-    __type(value, struct xm_trace_syscall_datarec);
-    __uint(max_entries, 1);
-} xm_trace_syscalls_datarec_map SEC(".maps");
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 1 << 16); // 16k
+} xm_syscalls_event_map SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, XM_MAX_SYSCALL_NR);
-    __type(key, u32); // tid
+    __type(key, __u32); // tid
     __type(value, __u64); // 系统调用起始时间
-} xm_trace_syscalls_start_time_map SEC(".maps");
+} xm_syscalls_start_time_map SEC(".maps");
+
+// #define PERF_MAX_STACK_DEPTH		127
+struct {
+    __uint(type, BPF_MAP_TYPE_STACK_TRACE);
+    __uint(key_size, sizeof(__u32));
+    __uint(max_entries, 1024);
+    __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64));
+} xm_syscalls_stack_map SEC(".maps");
+
+const struct syscall_event *unused __attribute__((unused));
 
 // vmlinux.h typedef void (*btf_trace_sys_enter)(void *, struct pt_regs *, long
 // int);
@@ -54,16 +62,9 @@ __s32 BPF_PROG(xm_btf_rtp__sys_enter, struct pt_regs *regs, __s64 syscall_nr) {
         || (xm_trace_syscall_filter_pid && pid != xm_trace_syscall_filter_pid))
         return 0;
 
-    // bpf_printk("xm_trace_syscalls_enter: pid=%d, filter_pid=%d", pid,
-    //            xm_trace_syscall_filter_pid);
-
     __u64 call_start_ns = bpf_ktime_get_ns();
-    bpf_map_update_elem(&xm_trace_syscalls_start_time_map, &tid, &call_start_ns,
+    bpf_map_update_elem(&xm_syscalls_start_time_map, &tid, &call_start_ns,
                         BPF_ANY);
-
-    // bpf_printk("xm_trace_syscalls_enter: pid=%d, tid=%d, syscall_nr=%ld",
-    // pid,
-    //            tid, syscall_nr);
 
     return 0;
 }
@@ -75,7 +76,6 @@ __s32 BPF_PROG(xm_btf_rtp__sys_exit, struct pt_regs *regs, __s64 ret) {
     pid_t pid = __xm_get_pid();
     __u32 tid = __xm_get_tid();
     __u64 delay_ns = 0;
-    static struct xm_trace_syscall_datarec zero = { 0 };
 
     // 怎么从sys_exit中得到syscall_nr呢 %ax寄存器保存的是返回结果,
     // orig_ax保存的是系统调用号
@@ -86,35 +86,31 @@ __s32 BPF_PROG(xm_btf_rtp__sys_exit, struct pt_regs *regs, __s64 ret) {
         || (xm_trace_syscall_filter_pid && pid != xm_trace_syscall_filter_pid))
         return 0;
 
-    // bpf_printk("xm_trace_syscalls_exit: pid=%d, filter_pid=%d, tid=%d", pid,
-    //            xm_trace_syscall_filter_pid, tid);
-
     __u64 *call_start_ns =
-        bpf_map_lookup_elem(&xm_trace_syscalls_start_time_map, &tid);
+        bpf_map_lookup_elem(&xm_syscalls_start_time_map, &tid);
     if (call_start_ns) {
         delay_ns = bpf_ktime_get_ns() - *call_start_ns;
     }
 
-    struct xm_trace_syscall_datarec *val = __xm_bpf_map_lookup_or_try_init(
-        &xm_trace_syscalls_datarec_map, &pid, &zero);
-    if (val) {
-        __xm_update_u64(&val->syscall_total_count, 1);
-        __xm_update_u64(&val->syscall_total_ns, delay_ns);
-
-        if (delay_ns > val->syscall_slowest_ns) {
-            val->syscall_slowest_ns = delay_ns;
-            val->syscall_slowest_nr = syscall_nr;
+    struct syscall_event *evt = bpf_ringbuf_reserve(
+        &xm_syscalls_event_map, sizeof(struct syscall_event), 0);
+    if (!evt) {
+        bpf_printk("xm_trace_syscalls pid: %d, tid: %d, syscall_nr: %ld lost",
+                   pid, tid, syscall_nr);
+    } else {
+        evt->pid = pid;
+        evt->tid = tid;
+        evt->syscall_nr = syscall_nr;
+        evt->syscall_ret = ret;
+        evt->delay_ns = delay_ns;
+        evt->stack_id = bpf_get_stackid(ctx, &xm_syscalls_stack_map, 0);
+        if (evt->stack_id < 0) {
+            bpf_printk("xm_trace_syscalls failed to get syscall_nr: %ld stack "
+                       ": %d",
+                       syscall_nr, evt->stack_id);
+            evt->stack_id = 0;
         }
-
-        if (ret < 0) {
-            __xm_update_u64(&val->syscall_failed_count, 1);
-            val->syscall_failed_nr = syscall_nr;
-            val->syscall_errno = ret;
-        }
-
-        // 参数不能操作3个，搞死人
-        // bpf_printk("xm_trace_syscalls_exit: syscall_nr: %ld, ret: %d",
-        //            syscall_nr, ret);
+        bpf_ringbuf_submit(evt, 0);
     }
 
     return 0;

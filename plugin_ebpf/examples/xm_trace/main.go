@@ -8,12 +8,17 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
+	"errors"
 	goflag "flag"
+	"time"
 
 	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/golang/glog"
-	"xmonitor.calmwu/plugin_ebpf/examples/trace_process_syscalls/bpfmodule"
+	"xmonitor.calmwu/plugin_ebpf/examples/xm_trace/bpfmodule"
 
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 )
@@ -37,9 +42,9 @@ func main() {
 		glog.Fatalf("failed to remove memlock limit: %v", err)
 	}
 
-	spec, err := bpfmodule.LoadTraceProcessSyscalls()
+	spec, err := bpfmodule.LoadXMTrace()
 	if err != nil {
-		glog.Fatalf("failed to invoke LoadTraceProcessSyscalls, err: %v", err)
+		glog.Fatalf("failed to invoke LoadXMTrace, err: %v", err)
 	}
 
 	// rewrite .rodata, bpftool btf dump file xm_trace_syscalls.bpf.o
@@ -50,10 +55,10 @@ func main() {
 		glog.Fatalf("failed to rewrite constants xm_trace_syscall_filter_pid, err: %v", err)
 	}
 
-	objs := bpfmodule.TraceProcessSyscallsObjects{}
+	objs := bpfmodule.XMTraceObjects{}
 	err = spec.LoadAndAssign(&objs, nil)
 	if err != nil {
-		glog.Fatalf("failed to load trace_process_syscalls: %v", err)
+		glog.Fatalf("failed to load XMTraceObjects, err: %v", err)
 	}
 
 	defer objs.Close()
@@ -74,7 +79,44 @@ func main() {
 	}
 	defer link_sys_exit.Close()
 
-	<-ctx.Done()
+	evt_rd, err := ringbuf.NewReader(objs.XmSyscallsEventMap)
+	if err != nil {
+		glog.Fatalf("failed to create ringbuf reader, error: %v", err)
+	}
+	defer evt_rd.Close()
+
+	go func() {
+		<-ctx.Done()
+
+		if err := evt_rd.Close(); err != nil {
+			glog.Fatalf("failed to close ringbuf reader, error: %v", err)
+		}
+	}()
+
+	glog.Infof("Start receiving events...")
+
+	var syscall_evt bpfmodule.XMTraceSyscallEvent
+	for {
+		record, err := evt_rd.Read()
+		if err != nil {
+			if errors.Is(err, ringbuf.ErrClosed) {
+				glog.Warningln("Received signal, exiting...")
+				return
+			}
+			glog.Errorf("reading from ringbuf failed, err: %v", err)
+			continue
+		}
+
+		// parse the ringbuf record into XMTraceSyscallEvent struct
+		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &syscall_evt); err != nil {
+			glog.Errorf("failed to parse syscall event, err: %v", err)
+			continue
+		}
+
+		// float64(syscall_evt.DelayNs)/float64(time.Millisecond)
+		glog.Infof("pid:%d, tid:%d, (%f ms) syscall_nr:%d = %d",
+			syscall_evt.Pid, syscall_evt.Tid, float64(syscall_evt.DelayNs)/float64(time.Millisecond), syscall_evt.SyscallNr, syscall_evt.SyscallRet)
+	}
 
 	glog.Infof("trace process syscalls exit")
 }
