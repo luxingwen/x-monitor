@@ -12,6 +12,7 @@ import (
 	"encoding/binary"
 	"errors"
 	goflag "flag"
+	"strconv"
 	"time"
 
 	"github.com/cilium/ebpf/link"
@@ -39,6 +40,8 @@ func main() {
 	goflag.Parse()
 
 	glog.Infof("start trace process:'%d' syscalls", _pid)
+
+	calmutils.LoadKallSyms()
 
 	ctx := calmutils.SetupSignalHandler()
 
@@ -132,7 +135,12 @@ func main() {
 				if ip[i] == 0 {
 					continue
 				}
-				glog.Infof("\t0xip[%d]: %x", i, ip[i])
+				addr := strconv.FormatUint(ip[i], 16)
+				sym, err := calmutils.FindKsym(addr)
+				if err != nil {
+					sym = "?"
+				}
+				glog.Infof("\t0xip[%d]: %s\t%s", i, addr, sym)
 			}
 		}
 	}

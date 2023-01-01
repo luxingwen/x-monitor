@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/golang/glog v1.0.0
-	github.com/wubo0067/calmwu-go v0.0.0-20210813025339-822f08ef54ad
+	github.com/wubo0067/calmwu-go v0.0.0-20230101044502-d3031bbc7387
 )
 
 require (
