@@ -92,7 +92,7 @@ github.com/spf13/afero/mem
 # github.com/ugorji/go/codec v1.1.7
 ## explicit
 github.com/ugorji/go/codec
-# github.com/wubo0067/calmwu-go v0.0.0-20230101044502-d3031bbc7387
+# github.com/wubo0067/calmwu-go v0.0.0-20230101100651-cd5b03487e05
 ## explicit
 github.com/wubo0067/calmwu-go/utils
 # go.uber.org/atomic v1.7.0

@@ -101,6 +101,7 @@ func main() {
 	}()
 
 	glog.Infof("Start receiving events...")
+	stackFrameSize := (strconv.IntSize / 8)
 
 	var syscall_evt bpfmodule.XMTraceSyscallEvent
 	for {
@@ -125,17 +126,21 @@ func main() {
 			syscall_evt.Pid, syscall_evt.Tid, float64(syscall_evt.DelayNs)/float64(time.Millisecond),
 			syscall_evt.SyscallNr, syscall_evt.SyscallRet)
 
-		var ip [_perf_max_stack_depth]uint64
+		//var stackAddrs [_perf_max_stack_depth]uint64
 
-		err = objs.XmSyscallsStackMap.Lookup(syscall_evt.StackId, &ip)
+		//err = objs.XmSyscallsStackMap.Lookup(syscall_evt.StackId, &stackAddrs)
+		stackBytes, err := objs.XmSyscallsStackMap.LookupBytes(syscall_evt.StackId)
 		if err != nil {
 			glog.Errorf("failed to lookup stack_id: %d, err: %v", syscall_evt.StackId, err)
 		} else {
-			for i := _perf_max_stack_depth - 1; i >= 0; i-- {
-				if ip[i] == 0 {
+			//for i := 0; i < _perf_max_stack_depth; i++ {
+			//for i, stackAddr := range stackAddrs {
+			for i := 0; i < len(stackBytes); i += stackFrameSize {
+				stackAddr := binary.LittleEndian.Uint64(stackBytes[i : i+stackFrameSize])
+				if stackAddr == 0 {
 					continue
 				}
-				addr := strconv.FormatUint(ip[i], 16)
+				addr := strconv.FormatUint(stackAddr, 16)
 				sym, err := calmutils.FindKsym(addr)
 				if err != nil {
 					sym = "?"
@@ -143,6 +148,7 @@ func main() {
 				glog.Infof("\t0xip[%d]: %s\t%s", i, addr, sym)
 			}
 		}
+		//objs.XmSyscallsStackMap.Delete(syscall_evt.StackId)
 	}
 
 	glog.Infof("trace process syscalls exit")

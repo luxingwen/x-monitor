@@ -64,5 +64,5 @@ struct syscall_event {
     __s64 syscall_nr;
     __s64 syscall_ret; // 调用返回值
     __u64 delay_ns; // 调用耗时
-    __s32 stack_id; // 调用堆栈
+    __u32 stack_id; // 调用堆栈
 };

@@ -19,10 +19,6 @@
 #define __stringify_1(x...) #x
 #define __stringify(x...) __stringify_1(x)
 
-#ifndef PERF_MAX_STACK_DEPTH
-#define PERF_MAX_STACK_DEPTH 127
-#endif
-
 // bpf_probe_read_kernel(&exit_code, sizeof(exit_code), &task->exit_code);
 
 #define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                \
