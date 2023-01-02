@@ -119,9 +119,7 @@ __s32 BPF_PROG(xm_btf_rtp__sys_exit, struct pt_regs *regs, __s64 ret) {
         evt->syscall_ret = ret;
         evt->delay_ns = delay_ns;
 
-        //__u32 *stack_id = bpf_map_lookup_elem(&xm_syscalls_stackid_map, &tid);
-        __s32 stack_id =
-            bpf_get_stackid(ctx, &xm_syscalls_stack_map, USER_STACKID_FLAGS);
+        __s32 stack_id = bpf_get_stackid(ctx, &xm_syscalls_stack_map, 0);
         if (stack_id >= 0) {
             evt->stack_id = stack_id;
             bpf_printk("xm_trace_syscalls stack_id: %d", evt->stack_id);
