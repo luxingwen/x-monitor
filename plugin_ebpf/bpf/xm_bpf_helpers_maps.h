@@ -12,7 +12,7 @@
 
 // max depth of each stack trace to track
 #ifndef PERF_MAX_STACK_DEPTH
-#define PERF_MAX_STACK_DEPTH 127
+#define PERF_MAX_STACK_DEPTH 20
 #endif
 
 #define BPF_MAP(_name, _type, _key_type, _value_type, _max_entries) \

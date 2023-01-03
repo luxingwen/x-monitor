@@ -54,15 +54,13 @@ struct xm_runqlat_hist {
 
 //------------------------ trace_syscall
 #define XM_MAX_FILTER_SYSCALL_COUNT 8 // 最多支持8个系统调用过滤
-#define XM_MAX_SYSCALL_NR \
-    512 // 最多支持1024个系统调用, 该文件可查看最大系统调用号
-        // /usr/include/asm/unistd_64.h
 
 struct syscall_event {
     pid_t pid;
     __u32 tid;
     __s64 syscall_nr;
     __s64 syscall_ret; // 调用返回值
-    __u64 delay_ns; // 调用耗时
+    __u64 call_start_ns; // 调用开始时间
+    __u64 call_delay_ns; // 调用耗时
     __u32 stack_id; // 调用堆栈
 };

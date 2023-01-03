@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	_perf_max_stack_depth = 127
+	_perf_max_stack_depth = 20
 )
 
 var (
@@ -71,20 +71,38 @@ func main() {
 	defer objs.Close()
 
 	// XmBtfRtpSysEnter name:Tracing(xm_btf_rtp__sys_enter)#12 type:26
-	glog.Infof("XmBtfRtpSysEnter name:%s type:%d", objs.XmBtfRtpSysEnter.String(), objs.XmBtfRtpSysEnter.Type())
+	glog.Infof("XmBtfRtpSysEnter name:%s type:%d", objs.XmTraceRtpSysEnter.String(), objs.XmTraceRtpSysEnter.Type())
 
 	// attach btf raw tracepoint program for link
-	link_sys_enter, err := link.AttachTracing(link.TracingOptions{Program: objs.XmBtfRtpSysEnter})
+	link_sys_enter, err := link.AttachTracing(link.TracingOptions{Program: objs.XmTraceRtpSysEnter})
 	if err != nil {
-		glog.Fatalf("failed to attach %s program for link, error: %v", objs.XmBtfRtpSysEnter.String(), err)
+		glog.Fatalf("failed to attach %s program for link, error: %v", objs.XmTraceRtpSysEnter.String(), err)
 	}
 	defer link_sys_enter.Close()
 
-	link_sys_exit, err := link.AttachTracing(link.TracingOptions{Program: objs.XmBtfRtpSysExit})
+	link_sys_exit, err := link.AttachTracing(link.TracingOptions{Program: objs.XmTraceRtpSysExit})
 	if err != nil {
-		glog.Fatalf("failed to attach %s program for link, error: %v", objs.XmBtfRtpSysExit.String(), err)
+		glog.Fatalf("failed to attach %s program for link, error: %v", objs.XmTraceRtpSysExit.String(), err)
 	}
 	defer link_sys_exit.Close()
+
+	link_kp_sys_readlinkat, err := link.Kprobe("sys_readlinkat", objs.XmTraceKpSysReadlinkat, nil)
+	if err != nil {
+		glog.Fatalf("failed to attach kprobe %s program for link, error: %v", objs.XmTraceKpSysReadlinkat.String(), err)
+	}
+	defer link_kp_sys_readlinkat.Close()
+
+	link_kp_sys_openat, err := link.Kprobe("sys_openat", objs.XmTraceKpSysOpenat, nil)
+	if err != nil {
+		glog.Fatalf("failed to attach kprobe %s program for link, error: %v", objs.XmTraceKpSysOpenat.String(), err)
+	}
+	defer link_kp_sys_openat.Close()
+
+	link_kp_sys_close, err := link.Kprobe("sys_close", objs.XmTraceKpSysClose, nil)
+	if err != nil {
+		glog.Fatalf("failed to attach kprobe %s program for link, error: %v", objs.XmTraceKpSysClose.String(), err)
+	}
+	defer link_kp_sys_close.Close()
 
 	evt_rd, err := ringbuf.NewReader(objs.XmSyscallsEventMap)
 	if err != nil {
@@ -101,7 +119,7 @@ func main() {
 	}()
 
 	glog.Infof("Start receiving events...")
-	stackFrameSize := (strconv.IntSize / 8)
+	//stackFrameSize := (strconv.IntSize / 8)
 
 	var syscall_evt bpfmodule.XMTraceSyscallEvent
 	for {
@@ -123,31 +141,34 @@ func main() {
 
 		// float64(syscall_evt.DelayNs)/float64(time.Millisecond)
 		glog.Infof("pid:%d, tid:%d, (%f ms) syscall_nr:%d = %d",
-			syscall_evt.Pid, syscall_evt.Tid, float64(syscall_evt.DelayNs)/float64(time.Millisecond),
+			syscall_evt.Pid, syscall_evt.Tid, float64(syscall_evt.CallDelayNs)/float64(time.Millisecond),
 			syscall_evt.SyscallNr, syscall_evt.SyscallRet)
 
-		//var stackAddrs [_perf_max_stack_depth]uint64
+		var stackAddrs [_perf_max_stack_depth]uint64
 
-		//err = objs.XmSyscallsStackMap.Lookup(syscall_evt.StackId, &stackAddrs)
-		stackBytes, err := objs.XmSyscallsStackMap.LookupBytes(syscall_evt.StackId)
-		if err != nil {
-			glog.Errorf("failed to lookup stack_id: %d, err: %v", syscall_evt.StackId, err)
-		} else {
-			//for i := 0; i < _perf_max_stack_depth; i++ {
-			//for i, stackAddr := range stackAddrs {
-			for i := 0; i < len(stackBytes); i += stackFrameSize {
-				stackAddr := binary.LittleEndian.Uint64(stackBytes[i : i+stackFrameSize])
-				if stackAddr == 0 {
-					continue
+		if syscall_evt.StackId > 0 {
+			// stackBytes, err := objs.XmSyscallsStackMap.LookupBytes(syscall_evt.StackId)
+			err = objs.XmSyscallsStackMap.Lookup(syscall_evt.StackId, &stackAddrs)
+			if err != nil {
+				glog.Errorf("failed to lookup stack_id: %d, err: %v", syscall_evt.StackId, err)
+			} else {
+				//for i := 0; i < _perf_max_stack_depth; i++ {
+				for i, stackAddr := range stackAddrs {
+					//for i := 0; i < len(stackBytes); i += stackFrameSize {
+					// stackAddr := binary.LittleEndian.Uint64(stackBytes[i : i+stackFrameSize])
+					// if stackAddr == 0 {
+					// 	continue
+					// }
+					addr := strconv.FormatUint(stackAddr, 16)
+					sym, err := calmutils.FindKsym(addr)
+					if err != nil {
+						sym = "?"
+					}
+					glog.Infof("\t0xip[%d]: %s\t%s", i, addr, sym)
 				}
-				addr := strconv.FormatUint(stackAddr, 16)
-				sym, err := calmutils.FindKsym(addr)
-				if err != nil {
-					sym = "?"
-				}
-				glog.Infof("\t0xip[%d]: %s\t%s", i, addr, sym)
 			}
 		}
+
 		//objs.XmSyscallsStackMap.Delete(syscall_evt.StackId)
 	}
 

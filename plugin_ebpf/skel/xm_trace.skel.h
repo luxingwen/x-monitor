@@ -9,188 +9,171 @@
 #include <bpf/libbpf.h>
 
 struct xm_trace_bpf {
-	struct bpf_object_skeleton *skeleton;
-	struct bpf_object *obj;
-	struct {
-		struct bpf_map *xm_filter_syscalls_map;
-		struct bpf_map *xm_syscalls_event_map;
-		struct bpf_map *xm_syscalls_start_time_map;
-		struct bpf_map *xm_syscalls_stackid_map;
-		struct bpf_map *xm_syscalls_stack_map;
-		struct bpf_map *rodata;
-		struct bpf_map *bss;
-	} maps;
-	struct {
-		struct bpf_program *xm_btf_rtp__sys_enter;
-		struct bpf_program *xm_btf_rtp__sys_exit;
-	} progs;
-	struct {
-		struct bpf_link *xm_btf_rtp__sys_enter;
-		struct bpf_link *xm_btf_rtp__sys_exit;
-	} links;
-	struct xm_trace_bpf__rodata {
-		pid_t xm_trace_syscall_filter_pid;
-	} *rodata;
-	struct xm_trace_bpf__bss {
-		struct syscall_event *unused;
-	} *bss;
+    struct bpf_object_skeleton *skeleton;
+    struct bpf_object *obj;
+    struct {
+        struct bpf_map *xm_filter_syscalls_map;
+        struct bpf_map *xm_syscalls_event_map;
+        struct bpf_map *xm_syscalls_start_time_map;
+        struct bpf_map *xm_syscalls_stackid_map;
+        struct bpf_map *xm_syscalls_stack_map;
+        struct bpf_map *rodata;
+        struct bpf_map *bss;
+    } maps;
+    struct {
+        struct bpf_program *xm_btf_rtp__sys_enter;
+        struct bpf_program *xm_btf_rtp__sys_exit;
+    } progs;
+    struct {
+        struct bpf_link *xm_btf_rtp__sys_enter;
+        struct bpf_link *xm_btf_rtp__sys_exit;
+    } links;
+    struct xm_trace_bpf__rodata {
+        pid_t xm_trace_syscall_filter_pid;
+    } * rodata;
+    struct xm_trace_bpf__bss {
+        struct syscall_event *unused;
+    } * bss;
 };
 
-static void
-xm_trace_bpf__destroy(struct xm_trace_bpf *obj)
-{
-	if (!obj)
-		return;
-	if (obj->skeleton)
-		bpf_object__destroy_skeleton(obj->skeleton);
-	free(obj);
+static void xm_trace_bpf__destroy(struct xm_trace_bpf *obj) {
+    if (!obj)
+        return;
+    if (obj->skeleton)
+        bpf_object__destroy_skeleton(obj->skeleton);
+    free(obj);
 }
 
-static inline int
-xm_trace_bpf__create_skeleton(struct xm_trace_bpf *obj);
+static inline int xm_trace_bpf__create_skeleton(struct xm_trace_bpf *obj);
 
 static inline struct xm_trace_bpf *
-xm_trace_bpf__open_opts(const struct bpf_object_open_opts *opts)
-{
-	struct xm_trace_bpf *obj;
-	int err;
+xm_trace_bpf__open_opts(const struct bpf_object_open_opts *opts) {
+    struct xm_trace_bpf *obj;
+    int err;
 
-	obj = (struct xm_trace_bpf *)calloc(1, sizeof(*obj));
-	if (!obj) {
-		errno = ENOMEM;
-		return NULL;
-	}
+    obj = (struct xm_trace_bpf *)calloc(1, sizeof(*obj));
+    if (!obj) {
+        errno = ENOMEM;
+        return NULL;
+    }
 
-	err = xm_trace_bpf__create_skeleton(obj);
-	if (err)
-		goto err_out;
+    err = xm_trace_bpf__create_skeleton(obj);
+    if (err)
+        goto err_out;
 
-	err = bpf_object__open_skeleton(obj->skeleton, opts);
-	if (err)
-		goto err_out;
+    err = bpf_object__open_skeleton(obj->skeleton, opts);
+    if (err)
+        goto err_out;
 
-	return obj;
+    return obj;
 err_out:
-	xm_trace_bpf__destroy(obj);
-	errno = -err;
-	return NULL;
+    xm_trace_bpf__destroy(obj);
+    errno = -err;
+    return NULL;
 }
 
-static inline struct xm_trace_bpf *
-xm_trace_bpf__open(void)
-{
-	return xm_trace_bpf__open_opts(NULL);
+static inline struct xm_trace_bpf *xm_trace_bpf__open(void) {
+    return xm_trace_bpf__open_opts(NULL);
 }
 
-static inline int
-xm_trace_bpf__load(struct xm_trace_bpf *obj)
-{
-	return bpf_object__load_skeleton(obj->skeleton);
+static inline int xm_trace_bpf__load(struct xm_trace_bpf *obj) {
+    return bpf_object__load_skeleton(obj->skeleton);
 }
 
-static inline struct xm_trace_bpf *
-xm_trace_bpf__open_and_load(void)
-{
-	struct xm_trace_bpf *obj;
-	int err;
+static inline struct xm_trace_bpf *xm_trace_bpf__open_and_load(void) {
+    struct xm_trace_bpf *obj;
+    int err;
 
-	obj = xm_trace_bpf__open();
-	if (!obj)
-		return NULL;
-	err = xm_trace_bpf__load(obj);
-	if (err) {
-		xm_trace_bpf__destroy(obj);
-		errno = -err;
-		return NULL;
-	}
-	return obj;
+    obj = xm_trace_bpf__open();
+    if (!obj)
+        return NULL;
+    err = xm_trace_bpf__load(obj);
+    if (err) {
+        xm_trace_bpf__destroy(obj);
+        errno = -err;
+        return NULL;
+    }
+    return obj;
 }
 
-static inline int
-xm_trace_bpf__attach(struct xm_trace_bpf *obj)
-{
-	return bpf_object__attach_skeleton(obj->skeleton);
+static inline int xm_trace_bpf__attach(struct xm_trace_bpf *obj) {
+    return bpf_object__attach_skeleton(obj->skeleton);
 }
 
-static inline void
-xm_trace_bpf__detach(struct xm_trace_bpf *obj)
-{
-	return bpf_object__detach_skeleton(obj->skeleton);
+static inline void xm_trace_bpf__detach(struct xm_trace_bpf *obj) {
+    return bpf_object__detach_skeleton(obj->skeleton);
 }
 
 static inline const void *xm_trace_bpf__elf_bytes(size_t *sz);
 
-static inline int
-xm_trace_bpf__create_skeleton(struct xm_trace_bpf *obj)
-{
-	struct bpf_object_skeleton *s;
+static inline int xm_trace_bpf__create_skeleton(struct xm_trace_bpf *obj) {
+    struct bpf_object_skeleton *s;
 
-	s = (struct bpf_object_skeleton *)calloc(1, sizeof(*s));
-	if (!s)
-		goto err;
+    s = (struct bpf_object_skeleton *)calloc(1, sizeof(*s));
+    if (!s)
+        goto err;
 
-	s->sz = sizeof(*s);
-	s->name = "xm_trace_bpf";
-	s->obj = &obj->obj;
+    s->sz = sizeof(*s);
+    s->name = "xm_trace_bpf";
+    s->obj = &obj->obj;
 
-	/* maps */
-	s->map_cnt = 7;
-	s->map_skel_sz = sizeof(*s->maps);
-	s->maps = (struct bpf_map_skeleton *)calloc(s->map_cnt, s->map_skel_sz);
-	if (!s->maps)
-		goto err;
+    /* maps */
+    s->map_cnt = 7;
+    s->map_skel_sz = sizeof(*s->maps);
+    s->maps = (struct bpf_map_skeleton *)calloc(s->map_cnt, s->map_skel_sz);
+    if (!s->maps)
+        goto err;
 
-	s->maps[0].name = "xm_filter_syscalls_map";
-	s->maps[0].map = &obj->maps.xm_filter_syscalls_map;
+    s->maps[0].name = "xm_filter_syscalls_map";
+    s->maps[0].map = &obj->maps.xm_filter_syscalls_map;
 
-	s->maps[1].name = "xm_syscalls_event_map";
-	s->maps[1].map = &obj->maps.xm_syscalls_event_map;
+    s->maps[1].name = "xm_syscalls_event_map";
+    s->maps[1].map = &obj->maps.xm_syscalls_event_map;
 
-	s->maps[2].name = "xm_syscalls_start_time_map";
-	s->maps[2].map = &obj->maps.xm_syscalls_start_time_map;
+    s->maps[2].name = "xm_syscalls_start_time_map";
+    s->maps[2].map = &obj->maps.xm_syscalls_start_time_map;
 
-	s->maps[3].name = "xm_syscalls_stackid_map";
-	s->maps[3].map = &obj->maps.xm_syscalls_stackid_map;
+    s->maps[3].name = "xm_syscalls_stackid_map";
+    s->maps[3].map = &obj->maps.xm_syscalls_stackid_map;
 
-	s->maps[4].name = "xm_syscalls_stack_map";
-	s->maps[4].map = &obj->maps.xm_syscalls_stack_map;
+    s->maps[4].name = "xm_syscalls_stack_map";
+    s->maps[4].map = &obj->maps.xm_syscalls_stack_map;
 
-	s->maps[5].name = "xm_trace.rodata";
-	s->maps[5].map = &obj->maps.rodata;
-	s->maps[5].mmaped = (void **)&obj->rodata;
+    s->maps[5].name = "xm_trace.rodata";
+    s->maps[5].map = &obj->maps.rodata;
+    s->maps[5].mmaped = (void **)&obj->rodata;
 
-	s->maps[6].name = "xm_trace.bss";
-	s->maps[6].map = &obj->maps.bss;
-	s->maps[6].mmaped = (void **)&obj->bss;
+    s->maps[6].name = "xm_trace.bss";
+    s->maps[6].map = &obj->maps.bss;
+    s->maps[6].mmaped = (void **)&obj->bss;
 
-	/* programs */
-	s->prog_cnt = 2;
-	s->prog_skel_sz = sizeof(*s->progs);
-	s->progs = (struct bpf_prog_skeleton *)calloc(s->prog_cnt, s->prog_skel_sz);
-	if (!s->progs)
-		goto err;
+    /* programs */
+    s->prog_cnt = 2;
+    s->prog_skel_sz = sizeof(*s->progs);
+    s->progs = (struct bpf_prog_skeleton *)calloc(s->prog_cnt, s->prog_skel_sz);
+    if (!s->progs)
+        goto err;
 
-	s->progs[0].name = "xm_btf_rtp__sys_enter";
-	s->progs[0].prog = &obj->progs.xm_btf_rtp__sys_enter;
-	s->progs[0].link = &obj->links.xm_btf_rtp__sys_enter;
+    s->progs[0].name = "xm_btf_rtp__sys_enter";
+    s->progs[0].prog = &obj->progs.xm_btf_rtp__sys_enter;
+    s->progs[0].link = &obj->links.xm_btf_rtp__sys_enter;
 
-	s->progs[1].name = "xm_btf_rtp__sys_exit";
-	s->progs[1].prog = &obj->progs.xm_btf_rtp__sys_exit;
-	s->progs[1].link = &obj->links.xm_btf_rtp__sys_exit;
+    s->progs[1].name = "xm_btf_rtp__sys_exit";
+    s->progs[1].prog = &obj->progs.xm_btf_rtp__sys_exit;
+    s->progs[1].link = &obj->links.xm_btf_rtp__sys_exit;
 
-	s->data = (void *)xm_trace_bpf__elf_bytes(&s->data_sz);
+    s->data = (void *)xm_trace_bpf__elf_bytes(&s->data_sz);
 
-	obj->skeleton = s;
-	return 0;
+    obj->skeleton = s;
+    return 0;
 err:
-	bpf_object__destroy_skeleton(s);
-	return -ENOMEM;
+    bpf_object__destroy_skeleton(s);
+    return -ENOMEM;
 }
 
-static inline const void *xm_trace_bpf__elf_bytes(size_t *sz)
-{
-	*sz = 9784;
-	return (const void *)"\
+static inline const void *xm_trace_bpf__elf_bytes(size_t *sz) {
+    *sz = 9784;
+    return (const void *)"\
 \x7f\x45\x4c\x46\x02\x01\x01\0\0\0\0\0\0\0\0\0\x01\0\xf7\0\x01\0\0\0\0\0\0\0\0\
 \0\0\0\0\0\0\0\0\0\0\0\xf8\x21\0\0\0\0\0\0\0\0\0\0\x40\0\0\0\0\0\x40\0\x11\0\
 \x01\0\xbf\x16\0\0\0\0\0\0\x85\0\0\0\x0e\0\0\0\xbf\x07\0\0\0\0\0\0\x85\0\0\0\

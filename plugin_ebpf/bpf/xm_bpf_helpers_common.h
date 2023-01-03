@@ -19,6 +19,14 @@
 #define __stringify_1(x...) #x
 #define __stringify(x...) __stringify_1(x)
 
+#ifdef __x86_64__
+#define SYSCALL(SYS) "__x64_" __stringify(SYS)
+#elif defined(__s390x__)
+#define SYSCALL(SYS) "__s390x_" __stringify(SYS)
+#else
+#define SYSCALL(SYS) __stringify(SYS)
+#endif
+
 // bpf_probe_read_kernel(&exit_code, sizeof(exit_code), &task->exit_code);
 
 #define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                \

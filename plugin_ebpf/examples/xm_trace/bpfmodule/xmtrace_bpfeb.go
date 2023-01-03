@@ -14,13 +14,14 @@ import (
 )
 
 type XMTraceSyscallEvent struct {
-	Pid        int32
-	Tid        uint32
-	SyscallNr  int64
-	SyscallRet int64
-	DelayNs    uint64
-	StackId    uint32
-	_          [4]byte
+	Pid         int32
+	Tid         uint32
+	SyscallNr   int64
+	SyscallRet  int64
+	CallStartNs uint64
+	CallDelayNs uint64
+	StackId     uint32
+	_           [4]byte
 }
 
 // LoadXMTrace returns the embedded CollectionSpec for XMTrace.
@@ -64,18 +65,21 @@ type XMTraceSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMTraceProgramSpecs struct {
-	XmBtfRtpSysEnter *ebpf.ProgramSpec `ebpf:"xm_btf_rtp__sys_enter"`
-	XmBtfRtpSysExit  *ebpf.ProgramSpec `ebpf:"xm_btf_rtp__sys_exit"`
+	XmTraceKpSysClose      *ebpf.ProgramSpec `ebpf:"xm_trace_kp__sys_close"`
+	XmTraceKpSysOpenat     *ebpf.ProgramSpec `ebpf:"xm_trace_kp__sys_openat"`
+	XmTraceKpSysReadlinkat *ebpf.ProgramSpec `ebpf:"xm_trace_kp__sys_readlinkat"`
+	XmTraceRtpSysEnter     *ebpf.ProgramSpec `ebpf:"xm_trace_rtp__sys_enter"`
+	XmTraceRtpSysExit      *ebpf.ProgramSpec `ebpf:"xm_trace_rtp__sys_exit"`
 }
 
 // XMTraceMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMTraceMapSpecs struct {
-	XmFilterSyscallsMap    *ebpf.MapSpec `ebpf:"xm_filter_syscalls_map"`
-	XmSyscallsEventMap     *ebpf.MapSpec `ebpf:"xm_syscalls_event_map"`
-	XmSyscallsStackMap     *ebpf.MapSpec `ebpf:"xm_syscalls_stack_map"`
-	XmSyscallsStartTimeMap *ebpf.MapSpec `ebpf:"xm_syscalls_start_time_map"`
+	XmFilterSyscallsMap *ebpf.MapSpec `ebpf:"xm_filter_syscalls_map"`
+	XmSyscallsEventMap  *ebpf.MapSpec `ebpf:"xm_syscalls_event_map"`
+	XmSyscallsRecordMap *ebpf.MapSpec `ebpf:"xm_syscalls_record_map"`
+	XmSyscallsStackMap  *ebpf.MapSpec `ebpf:"xm_syscalls_stack_map"`
 }
 
 // XMTraceObjects contains all objects after they have been loaded into the kernel.
@@ -97,18 +101,18 @@ func (o *XMTraceObjects) Close() error {
 //
 // It can be passed to LoadXMTraceObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMTraceMaps struct {
-	XmFilterSyscallsMap    *ebpf.Map `ebpf:"xm_filter_syscalls_map"`
-	XmSyscallsEventMap     *ebpf.Map `ebpf:"xm_syscalls_event_map"`
-	XmSyscallsStackMap     *ebpf.Map `ebpf:"xm_syscalls_stack_map"`
-	XmSyscallsStartTimeMap *ebpf.Map `ebpf:"xm_syscalls_start_time_map"`
+	XmFilterSyscallsMap *ebpf.Map `ebpf:"xm_filter_syscalls_map"`
+	XmSyscallsEventMap  *ebpf.Map `ebpf:"xm_syscalls_event_map"`
+	XmSyscallsRecordMap *ebpf.Map `ebpf:"xm_syscalls_record_map"`
+	XmSyscallsStackMap  *ebpf.Map `ebpf:"xm_syscalls_stack_map"`
 }
 
 func (m *XMTraceMaps) Close() error {
 	return _XMTraceClose(
 		m.XmFilterSyscallsMap,
 		m.XmSyscallsEventMap,
+		m.XmSyscallsRecordMap,
 		m.XmSyscallsStackMap,
-		m.XmSyscallsStartTimeMap,
 	)
 }
 
@@ -116,14 +120,20 @@ func (m *XMTraceMaps) Close() error {
 //
 // It can be passed to LoadXMTraceObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMTracePrograms struct {
-	XmBtfRtpSysEnter *ebpf.Program `ebpf:"xm_btf_rtp__sys_enter"`
-	XmBtfRtpSysExit  *ebpf.Program `ebpf:"xm_btf_rtp__sys_exit"`
+	XmTraceKpSysClose      *ebpf.Program `ebpf:"xm_trace_kp__sys_close"`
+	XmTraceKpSysOpenat     *ebpf.Program `ebpf:"xm_trace_kp__sys_openat"`
+	XmTraceKpSysReadlinkat *ebpf.Program `ebpf:"xm_trace_kp__sys_readlinkat"`
+	XmTraceRtpSysEnter     *ebpf.Program `ebpf:"xm_trace_rtp__sys_enter"`
+	XmTraceRtpSysExit      *ebpf.Program `ebpf:"xm_trace_rtp__sys_exit"`
 }
 
 func (p *XMTracePrograms) Close() error {
 	return _XMTraceClose(
-		p.XmBtfRtpSysEnter,
-		p.XmBtfRtpSysExit,
+		p.XmTraceKpSysClose,
+		p.XmTraceKpSysOpenat,
+		p.XmTraceKpSysReadlinkat,
+		p.XmTraceRtpSysEnter,
+		p.XmTraceRtpSysExit,
 	)
 }
 
