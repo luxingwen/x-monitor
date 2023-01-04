@@ -223,14 +223,17 @@ static const struct bpf_sec_def section_defs[] = {
 
     其中 `ctx[0]` 对应上面 `btf_trace_block_rq_complete` 中 `void *` 后面的第一个参数 `struct pt_regs *`, `ctx[1]` 是第二个参数 `struct request *` 。这两个参数的含义跟前面 [raw tracepoint](https://mozillazg.com/2022/05/ebpf-libbpf-raw-tracepoint-common-questions.html) 中所说的 `TP_PROTO(struct request *rq, int error, unsigned int nr_bytes)` 中的含义是一样的。
 
-  - 确定参数，所有事件在vmlinux中都存在一个名为btf_trace_<name>函数指针定义，以上面函数为例。**参数确定比raw tracepoing函数方便**
+  - 确定参数，所有btf_raw_tracepoint函数在vmlinux中都存在一个名为btf_trace_<name>函数指针定义，以上面函数为例。**参数确定比raw tracepoing函数方便**
 
     ```
-    typedef void (*btf_trace_block_rq_complete)(void *, struct request *, int, unsigned int);
+     calmwu@localhost  ~/program/cpp_space/x-monitor/plugin_ebpf/bpf/.output  grep btf_trace vmlinux.h 
+    	bool attach_btf_trace;
+    typedef void (*btf_trace_initcall_level)(void *, const char *);
+    typedef void (*btf_trace_initcall_start)(void *, initcall_t);
     ```
-
+    
     可以在内核源码中找到tracepoint函数定义
-
+    
     ```
     TRACE_EVENT(block_rq_complete,
     	TP_PROTO(struct request *rq, int error, unsigned int nr_bytes),
@@ -289,7 +292,6 @@ BPF_PROG(func_name, int a, int b, int ret)
 - [bcc/reference_guide.md at master · iovisor/bcc (github.com)](https://github.com/iovisor/bcc/blob/master/docs/reference_guide.md)
 - [ebpf/libbpf 程序使用 btf raw tracepoint 的常见问题 - mozillazg's Blog](https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec)
 - [Introduce BPF_MODIFY_RET tracing progs. [LWN.net\]](https://lwn.net/Articles/813724/)
-- [ebpf/libbpf 程序使用 btf raw tracepoint 的常见问题 - mozillazg's Blog](https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html)
 
 
 

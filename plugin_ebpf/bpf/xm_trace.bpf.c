@@ -151,57 +151,13 @@ __s32 BPF_PROG(xm_trace_rtp__sys_exit, struct pt_regs *regs, __s64 ret) {
         return 0;                                                         \
     }
 
-// asmlinkage long sys_readlinkat(int dfd, const char __user *path, char __user
-// *buf, int bufsiz);
-SEC("kprobe/" SYSCALL(sys_readlinkat))
-__s32 BPF_KPROBE(xm_trace_kp__sys_readlinkat, __s32 dfd, const char *path,
-                 char *buf, int bufsiz) {
-    pid_t pid = __xm_get_pid();
-    __u32 tid = __xm_get_tid();
-
-    if (!xm_trace_syscall_filter_pid
-        || (xm_trace_syscall_filter_pid && pid != xm_trace_syscall_filter_pid))
-        return 0;
-
-    struct syscall_event *se =
-        bpf_map_lookup_elem(&xm_syscalls_record_map, &tid);
-
-    if (se) {
-        __s32 stack_id =
-            bpf_get_stackid(ctx, &xm_syscalls_stack_map, KERN_STACKID_FLAGS);
-        if (stack_id > 0) {
-            se->stack_id = stack_id;
-        }
-    }
-
-    return 0;
-}
-
-SEC("kprobe/" SYSCALL(sys_openat))
-__s32 BPF_KPROBE(xm_trace_kp__sys_openat, __s32 dfd, const char *filename,
-                 __s32 flags, umode_t mode) {
-    pid_t pid = __xm_get_pid();
-    __u32 tid = __xm_get_tid();
-
-    if (!xm_trace_syscall_filter_pid
-        || (xm_trace_syscall_filter_pid && pid != xm_trace_syscall_filter_pid))
-        return 0;
-
-    struct syscall_event *se =
-        bpf_map_lookup_elem(&xm_syscalls_record_map, &tid);
-
-    if (se) {
-        __s32 stack_id =
-            bpf_get_stackid(ctx, &xm_syscalls_stack_map, KERN_STACKID_FLAGS);
-        if (stack_id > 0) {
-            se->stack_id = stack_id;
-        }
-    }
-
-    return 0;
-}
-
 SEC("kprobe/" SYSCALL(sys_close))
 XM_TRACE_KPROBE_PROG(sys_close)
+
+SEC("kprobe/" SYSCALL(sys_readlinkat))
+XM_TRACE_KPROBE_PROG(sys_readlinkat)
+
+SEC("kprobe/" SYSCALL(sys_openat))
+XM_TRACE_KPROBE_PROG(sys_openat)
 
 char LICENSE[] SEC("license") = "GPL";
