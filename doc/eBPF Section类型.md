@@ -313,6 +313,8 @@ BPF_PROG(func_name, int a, int b, int ret)
 - [ebpf/libbpf 程序使用 btf raw tracepoint 的常见问题 - mozillazg's Blog](https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec)
 - [Introduce BPF_MODIFY_RET tracing progs. [LWN.net\]](https://lwn.net/Articles/813724/)
 - [c++ - eBPF: raw_tracepoint arguments - Stack Overflow](https://stackoverflow.com/questions/70652825/ebpf-raw-tracepoint-arguments)
+- [Writing asm for eBPF programs with the Go eBPF library (fntlnz.wtf)](https://fntlnz.wtf/post/bpf-go-asm/)
+- [Introducing gobpf - Using eBPF from Go | Kinvolk](https://kinvolk.io/blog/2016/11/introducing-gobpf-using-ebpf-from-go/)
 
 
 
