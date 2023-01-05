@@ -133,26 +133,31 @@ __s32 BPF_PROG(xm_trace_btf_tp__sys_exit, struct pt_regs *regs, __s64 ret) {
 #endif
 // !!获取的堆栈栈帧地址不对，是不是不能使用btf_raw_tracepoint，试试raw_tracepoint
 
-#define XM_TRACE_KPROBE_PROG(name)                                        \
-    __s32 xm_trace_kp__##name(struct pt_regs *ctx) {                      \
-        pid_t pid = __xm_get_pid();                                       \
-        __u32 tid = __xm_get_tid();                                       \
-                                                                          \
-        if (!xm_trace_syscall_filter_pid                                  \
-            || (xm_trace_syscall_filter_pid                               \
-                && pid != xm_trace_syscall_filter_pid))                   \
-            return 0;                                                     \
-                                                                          \
-        struct syscall_event *se =                                        \
-            bpf_map_lookup_elem(&xm_syscalls_record_map, &tid);           \
-        if (se) {                                                         \
-            __s32 stack_id = bpf_get_stackid(ctx, &xm_syscalls_stack_map, \
-                                             KERN_STACKID_FLAGS);         \
-            if (stack_id > 0) {                                           \
-                se->stack_id = stack_id;                                  \
-            }                                                             \
-        }                                                                 \
-        return 0;                                                         \
+#define XM_TRACE_KPROBE_PROG(name)                                             \
+    __s32 xm_trace_kp__##name(struct pt_regs *ctx) {                           \
+        pid_t pid = __xm_get_pid();                                            \
+        __u32 tid = __xm_get_tid();                                            \
+                                                                               \
+        if (!xm_trace_syscall_filter_pid                                       \
+            || (xm_trace_syscall_filter_pid                                    \
+                && pid != xm_trace_syscall_filter_pid))                        \
+            return 0;                                                          \
+                                                                               \
+        struct syscall_event *se =                                             \
+            bpf_map_lookup_elem(&xm_syscalls_record_map, &tid);                \
+        if (se) {                                                              \
+            __s32 kernel_stack_id = bpf_get_stackid(                           \
+                ctx, &xm_syscalls_stack_map, KERN_STACKID_FLAGS);              \
+            __s32 user_stack_id = bpf_get_stackid(ctx, &xm_syscalls_stack_map, \
+                                                  USER_STACKID_FLAGS);         \
+            if (kernel_stack_id > 0) {                                         \
+                se->kernel_stack_id = kernel_stack_id;                         \
+            }                                                                  \
+            if (user_stack_id > 0) {                                           \
+                se->user_stack_id = user_stack_id;                             \
+            }                                                                  \
+        }                                                                      \
+        return 0;                                                              \
     }
 
 SEC("kprobe/" SYSCALL(sys_close))
@@ -187,6 +192,18 @@ __s32 xm_trace_raw_tp__sys_enter(struct bpf_raw_tracepoint_args *ctx) {
     se.syscall_nr = ctx->args[1];
     se.pid = pid;
     se.tid = tid;
+
+    // __s32 kernel_stack_id =
+    //     bpf_get_stackid(ctx, &xm_syscalls_stack_map, KERN_STACKID_FLAGS);
+    // __s32 user_stack_id =
+    //     bpf_get_stackid(ctx, &xm_syscalls_stack_map, USER_STACKID_FLAGS);
+    // if (kernel_stack_id > 0) {
+    //     se.kernel_stack_id = kernel_stack_id;
+    // }
+    // if (user_stack_id > 0) {
+    //     se.user_stack_id = user_stack_id;
+    // }
+
     bpf_map_update_elem(&xm_syscalls_record_map, &tid, &se, BPF_ANY);
 
     /*
@@ -218,7 +235,7 @@ __s32 xm_trace_raw_tp__sys_exit(struct bpf_raw_tracepoint_args *ctx) {
     struct syscall_event *se =
         bpf_map_lookup_elem(&xm_syscalls_record_map, &tid);
     if (se) {
-        se->call_delay_ns = bpf_ktime_get_ns() - se->call_delay_ns;
+        se->call_delay_ns = bpf_ktime_get_ns() - se->call_start_ns;
         se->syscall_ret = ctx->args[1];
 
         struct syscall_event *evt = bpf_ringbuf_reserve(
@@ -246,4 +263,20 @@ vmlinux:ffffffff82e2b9b0 t _eil_addr___x64_sys_openat
 vmlinux:ffffffff8132deb0 T __x64_sys_openat
  ⚡ root@localhost  /lib/modules/4.18.0/build  addr2line -e vmlinux
 ffffffff82e2b9b0 /usr/src/kernels/linux-4.18.0-348.7.1.el8_5/fs/open.c:1130
+
+get stack from raw_tracepoint/sys_enter
+I0105 16:39:35.254070 2630321 main.go:145] pid:342284, tid:342290,
+(248999017.365810 ms) syscall_nr:8 = 0 I0105 16:39:35.254127 2630321
+main.go:168] 	0xip[0]: ffffffffc0656e7c016x	entries_lock
+[binfmt_misc]+55ac I0105 16:39:35.254159 2630321 main.go:168] 	0xip[1]:
+ffffffffbaa0fe0e016x	bpf_get_stackid_raw_tp+4e I0105 16:39:35.254184 2630321
+main.go:168] 	0xip[2]: ffffffffc0656e7c016x	entries_lock
+[binfmt_misc]+55ac I0105 16:39:35.254204 2630321 main.go:168] 	0xip[3]:
+ffffffffbaa0de87016x	bpf_trace_run2+37 ^CI0105 16:39:35.254219 2630321
+main.go:168] 	0xip[4]: ffffffffba803f0e016x	syscall_trace_enter+29e I0105
+16:39:35.254233 2630321 main.go:168] 	0xip[5]: ffffffffba8043a9016x
+do_syscall_64+149 I0105 16:39:35.254256 2630321 main.go:168] 	0xip[6]:
+ffffffffbb2000ad016x	entry_SYSCALL_64_after_hwframe+65
+
+使用bcc trace命令：trace '__x64_sys_openat' -K -T -a -p 342284
 */

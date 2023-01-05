@@ -12,7 +12,6 @@ import (
 	"encoding/binary"
 	"errors"
 	goflag "flag"
-	"strconv"
 	"time"
 
 	"github.com/cilium/ebpf/link"
@@ -149,11 +148,11 @@ func main() {
 
 		var stackAddrs [_perf_max_stack_depth]uint64
 
-		if syscall_evt.StackId > 0 {
+		if syscall_evt.KernelStackId > 0 {
 			// stackBytes, err := objs.XmSyscallsStackMap.LookupBytes(syscall_evt.StackId)
-			err = objs.XmSyscallsStackMap.Lookup(syscall_evt.StackId, &stackAddrs)
+			err = objs.XmSyscallsStackMap.Lookup(syscall_evt.KernelStackId, &stackAddrs)
 			if err != nil {
-				glog.Errorf("failed to lookup stack_id: %d, err: %v", syscall_evt.StackId, err)
+				glog.Errorf("failed to lookup stack_id: %d, err: %v", syscall_evt.KernelStackId, err)
 			} else {
 				//for i := 0; i < _perf_max_stack_depth; i++ {
 				for i, stackAddr := range stackAddrs {
@@ -162,12 +161,33 @@ func main() {
 					if stackAddr == 0 {
 						continue
 					}
-					addr := strconv.FormatUint(stackAddr, 16)
-					sym, err := calmutils.FindKsym(addr)
+					sym, offset, err := calmutils.FindKsym(stackAddr)
 					if err != nil {
 						sym = "?"
 					}
-					glog.Infof("\t0xip[%d]: %s\t%s", i, addr, sym)
+					glog.Infof("\tip[%d]: 0x%016x\t%s+0x%x", i, stackAddr, sym, offset)
+				}
+			}
+		}
+
+		if syscall_evt.UserStackId > 0 {
+			err = objs.XmSyscallsStackMap.Lookup(syscall_evt.UserStackId, &stackAddrs)
+			if err != nil {
+				glog.Errorf("failed to lookup stack_id: %d, err: %v", syscall_evt.UserStackId, err)
+			} else {
+				//for i := 0; i < _perf_max_stack_depth; i++ {
+				for i, stackAddr := range stackAddrs {
+					//for i := 0; i < len(stackBytes); i += stackFrameSize {
+					// stackAddr := binary.LittleEndian.Uint64(stackBytes[i : i+stackFrameSize])
+					if stackAddr == 0 {
+						continue
+					}
+					//!! will read sym from elf
+					// sym, offset, err := calmutils.FindKsym(stackAddr)
+					// if err != nil {
+					// 	sym = "?"
+					// }
+					glog.Infof("\tip[%d]: 0x%016x\t ?", i, stackAddr)
 				}
 			}
 		}

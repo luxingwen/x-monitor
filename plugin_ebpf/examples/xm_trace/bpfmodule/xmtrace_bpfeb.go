@@ -14,14 +14,14 @@ import (
 )
 
 type XMTraceSyscallEvent struct {
-	Pid         int32
-	Tid         uint32
-	SyscallNr   int64
-	SyscallRet  int64
-	CallStartNs uint64
-	CallDelayNs uint64
-	StackId     uint32
-	_           [4]byte
+	Pid           int32
+	Tid           uint32
+	SyscallNr     int64
+	SyscallRet    int64
+	CallStartNs   uint64
+	CallDelayNs   uint64
+	KernelStackId uint32
+	UserStackId   uint32
 }
 
 // LoadXMTrace returns the embedded CollectionSpec for XMTrace.
