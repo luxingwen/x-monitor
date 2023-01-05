@@ -103,17 +103,6 @@ static const struct bpf_sec_def section_defs[] = {
   int handle_openat_enter(struct trace_event_raw_sys_enter *ctx)
   ```
 
-  可以通过查看`/sys/kernel/debug/tracing/available_events` 文件的内容找到 **raw tracepoint 可监控**的事件。在写tracepoint函数前，最好先确认下是否有btf raw tracepoint存在，这样读取参数简化。
-  
-  **在vmlinux.h文件中，找*btf_开头的函数指针，就可以作为btf raw tracepoint事件处理函数了**。
-  
-  ```
-  typedef void (*btf_trace_local_timer_entry)(void *, int);
-  typedef void (*btf_trace_local_timer_exit)(void *, int);
-  typedef void (*btf_trace_spurious_apic_entry)(void *, int);
-  typedef void (*btf_trace_spurious_apic_exit)(void *, int);
-  typedef void (*btf_trace_error_apic_entry)(void *, int);
-  ```
 
 ### tracepoint exit函数
 
@@ -192,6 +181,37 @@ static const struct bpf_sec_def section_defs[] = {
   ```
 
 - 获取函数返回值：int ret = PT_REGS_RC(ctx);
+
+### raw_tracepoint函数
+
+可以通过查看`/sys/kernel/debug/tracing/available_events` 文件的内容找到 **raw_tracepoint 可监控**的事件。raw_tracepoint相对于tracepoint不会讲函数参数展开，而是读取的原始参数
+
+- 函数定义，SEC格式：SEC("raw_tracepoint/<name>")或SEC("raw_tp/<name>")，参数类型struct bpf_raw_tracepoint_args *ctx，
+
+  ```
+  SEC("raw_tracepoint/cgroup_mkdir")
+  int tracepoint__cgroup__cgroup_mkdir(struct bpf_raw_tracepoint_args *ctx)
+  {
+      event_data_t data = {};
+      if (!init_event_data(&data, ctx))
+          return 0;
+  
+      struct cgroup *dst_cgrp = (struct cgroup *) ctx->args[0];
+      char *path = (char *) ctx->args[1];
+  ```
+
+- 参数定义，需要在内核代码中查找，而不是在format文件中
+
+  ```
+  DEFINE_EVENT(cgroup, cgroup_rmdir,
+  
+  	TP_PROTO(struct cgroup *cgrp, const char *path),
+  
+  	TP_ARGS(cgrp, path)
+  );
+  ```
+
+  在内核代码中宏DEFINE_EVENT、TRACE_EVENT、TRACE_EVENT_FN定义能找到参数定义TP_PROTO、TP_ARGS。
 
 ### tp_btf/fentry/fexit函数
 
@@ -292,6 +312,7 @@ BPF_PROG(func_name, int a, int b, int ret)
 - [bcc/reference_guide.md at master · iovisor/bcc (github.com)](https://github.com/iovisor/bcc/blob/master/docs/reference_guide.md)
 - [ebpf/libbpf 程序使用 btf raw tracepoint 的常见问题 - mozillazg's Blog](https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec)
 - [Introduce BPF_MODIFY_RET tracing progs. [LWN.net\]](https://lwn.net/Articles/813724/)
+- [c++ - eBPF: raw_tracepoint arguments - Stack Overflow](https://stackoverflow.com/questions/70652825/ebpf-raw-tracepoint-arguments)
 
 
 

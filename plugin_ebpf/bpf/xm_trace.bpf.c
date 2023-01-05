@@ -11,6 +11,8 @@
 // 3: 统计进程的系统调用耗时分布
 // 4: 过滤进程的系统调用
 
+// https://sysdig.com/blog/the-art-of-writing-ebpf-programs-a-primer/
+
 #include <vmlinux.h>
 #include "xm_bpf_helpers_common.h"
 #include "xm_bpf_helpers_maps.h"
@@ -51,9 +53,9 @@ const struct syscall_event *unused __attribute__((unused));
 
 // vmlinux.h typedef void (*btf_trace_sys_enter)(void *, struct pt_regs *, long
 // int);
-
+#if 0
 SEC("tp_btf/sys_enter")
-__s32 BPF_PROG(xm_trace_rtp__sys_enter, struct pt_regs *regs,
+__s32 BPF_PROG(xm_trace_btf_tp__sys_enter, struct pt_regs *regs,
                __s64 syscall_nr) {
     pid_t pid = __xm_get_pid();
     __u32 tid = __xm_get_tid();
@@ -87,7 +89,7 @@ __s32 BPF_PROG(xm_trace_rtp__sys_enter, struct pt_regs *regs,
 // typedef void (*btf_trace_sys_exit)(void *, struct pt_regs *, long int);
 
 SEC("tp_btf/sys_exit")
-__s32 BPF_PROG(xm_trace_rtp__sys_exit, struct pt_regs *regs, __s64 ret) {
+__s32 BPF_PROG(xm_trace_btf_tp__sys_exit, struct pt_regs *regs, __s64 ret) {
     pid_t pid = __xm_get_pid();
     __u32 tid = __xm_get_tid();
 
@@ -128,6 +130,8 @@ __s32 BPF_PROG(xm_trace_rtp__sys_exit, struct pt_regs *regs, __s64 ret) {
 
     return 0;
 }
+#endif
+// !!获取的堆栈栈帧地址不对，是不是不能使用btf_raw_tracepoint，试试raw_tracepoint
 
 #define XM_TRACE_KPROBE_PROG(name)                                        \
     __s32 xm_trace_kp__##name(struct pt_regs *ctx) {                      \
@@ -160,4 +164,86 @@ XM_TRACE_KPROBE_PROG(sys_readlinkat)
 SEC("kprobe/" SYSCALL(sys_openat))
 XM_TRACE_KPROBE_PROG(sys_openat)
 
-char LICENSE[] SEC("license") = "GPL";
+/*
+TRACE_EVENT_FN(sys_enter,
+    TP_PROTO(struct pt_regs *regs, long id),
+*/
+SEC("raw_tracepoint/sys_enter")
+__s32 xm_trace_raw_tp__sys_enter(struct bpf_raw_tracepoint_args *ctx) {
+    pid_t pid = __xm_get_pid();
+    __u32 tid = __xm_get_tid();
+    struct syscall_event se;
+
+    // 只过滤指定进程的系统调用
+    if (!xm_trace_syscall_filter_pid
+        || (xm_trace_syscall_filter_pid && pid != xm_trace_syscall_filter_pid))
+        return 0;
+
+    // load program: permission denied: invalid indirect read from stack R3 off
+    // -56+16 size 48 (67 line(s) omitted)
+    // 对于栈变量必须初始化，不然map操作在虚拟机校验过程中会报错
+    __builtin_memset(&se, 0, sizeof(struct syscall_event));
+    se.call_start_ns = bpf_ktime_get_ns();
+    se.syscall_nr = ctx->args[1];
+    se.pid = pid;
+    se.tid = tid;
+    bpf_map_update_elem(&xm_syscalls_record_map, &tid, &se, BPF_ANY);
+
+    /*
+    如果是字符串，先读取地址，在读取内容
+    if (syscall_id != __NR_openat) {
+        char buf[64];
+        //bpf_probe_read(&pathname, sizeof(pathname), &regs->si);
+        const char *pathname = PT_REGS_PARM2_CORE(regs);
+        bpf_probe_read_str(buf, sizeof(buf), pathname);
+    }
+    */
+
+    return 0;
+}
+
+/*
+TRACE_EVENT_FN(sys_exit,
+    TP_PROTO(struct pt_regs *regs, long ret),
+*/
+SEC("raw_tracepoint/sys_exit")
+__s32 xm_trace_raw_tp__sys_exit(struct bpf_raw_tracepoint_args *ctx) {
+    pid_t pid = __xm_get_pid();
+    __u32 tid = __xm_get_tid();
+
+    if (!xm_trace_syscall_filter_pid
+        || (xm_trace_syscall_filter_pid && pid != xm_trace_syscall_filter_pid))
+        return 0;
+
+    struct syscall_event *se =
+        bpf_map_lookup_elem(&xm_syscalls_record_map, &tid);
+    if (se) {
+        se->call_delay_ns = bpf_ktime_get_ns() - se->call_delay_ns;
+        se->syscall_ret = ctx->args[1];
+
+        struct syscall_event *evt = bpf_ringbuf_reserve(
+            &xm_syscalls_event_map, sizeof(struct syscall_event), 0);
+
+        if (!evt) {
+            bpf_printk("xm_trace_syscalls pid: %d, tid: %d, syscall_nr: %ld "
+                       "reserve ringbuf failed",
+                       pid, tid, se->syscall_nr);
+        } else {
+            __builtin_memcpy(evt, se, sizeof(struct syscall_event));
+            bpf_ringbuf_submit(evt, 0);
+            bpf_map_delete_elem(&xm_syscalls_record_map, &tid);
+        }
+    }
+
+    return 0;
+}
+
+char _license[] SEC("license") = "GPL";
+
+/*
+root@localhost  /lib/modules/4.18.0/build  nm -A vmlinux|grep __x64_sys_openat
+vmlinux:ffffffff82e2b9b0 t _eil_addr___x64_sys_openat
+vmlinux:ffffffff8132deb0 T __x64_sys_openat
+ ⚡ root@localhost  /lib/modules/4.18.0/build  addr2line -e vmlinux
+ffffffff82e2b9b0 /usr/src/kernels/linux-4.18.0-348.7.1.el8_5/fs/open.c:1130
+*/

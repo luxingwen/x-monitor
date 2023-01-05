@@ -70,19 +70,22 @@ func main() {
 
 	defer objs.Close()
 
-	// XmBtfRtpSysEnter name:Tracing(xm_btf_rtp__sys_enter)#12 type:26
-	glog.Infof("XmBtfRtpSysEnter name:%s type:%d", objs.XmTraceRtpSysEnter.String(), objs.XmTraceRtpSysEnter.Type())
+	glog.Infof("XmBtfRtpSysEnter name:%s type:%d", objs.XmTraceRawTpSysEnter.String(), objs.XmTraceRawTpSysEnter.Type())
 
 	// attach btf raw tracepoint program for link
-	link_sys_enter, err := link.AttachTracing(link.TracingOptions{Program: objs.XmTraceRtpSysEnter})
+	// link_sys_enter, err := link.AttachTracing(link.TracingOptions{Program: objs.XmTraceRtpSysEnter})
+
+	// attach raw_tracepoint program
+	link_sys_enter, err := link.AttachRawTracepoint(link.RawTracepointOptions{Name: "sys_enter", Program: objs.XmTraceRawTpSysEnter})
 	if err != nil {
-		glog.Fatalf("failed to attach %s program for link, error: %v", objs.XmTraceRtpSysEnter.String(), err)
+		glog.Fatalf("failed to attach %s program for link, error: %v", objs.XmTraceRawTpSysEnter.String(), err)
 	}
 	defer link_sys_enter.Close()
 
-	link_sys_exit, err := link.AttachTracing(link.TracingOptions{Program: objs.XmTraceRtpSysExit})
+	// link_sys_exit, err := link.AttachTracing(link.TracingOptions{Program: objs.XmTraceRtpSysExit})
+	link_sys_exit, err := link.AttachRawTracepoint(link.RawTracepointOptions{Name: "sys_exit", Program: objs.XmTraceRawTpSysExit})
 	if err != nil {
-		glog.Fatalf("failed to attach %s program for link, error: %v", objs.XmTraceRtpSysExit.String(), err)
+		glog.Fatalf("failed to attach %s program for link, error: %v", objs.XmTraceRawTpSysExit.String(), err)
 	}
 	defer link_sys_exit.Close()
 
@@ -156,9 +159,9 @@ func main() {
 				for i, stackAddr := range stackAddrs {
 					//for i := 0; i < len(stackBytes); i += stackFrameSize {
 					// stackAddr := binary.LittleEndian.Uint64(stackBytes[i : i+stackFrameSize])
-					// if stackAddr == 0 {
-					// 	continue
-					// }
+					if stackAddr == 0 {
+						continue
+					}
 					addr := strconv.FormatUint(stackAddr, 16)
 					sym, err := calmutils.FindKsym(addr)
 					if err != nil {
