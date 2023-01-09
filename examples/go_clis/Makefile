@@ -26,16 +26,22 @@ ifeq ($(VERSION), "")
     endif
 endif
 
-.PHONY: all clean snoop_socket
+.PHONY: all clean snoop_socket dump_elf_syms
 .IGNORE : lint
 
-all: snoop_socket
+all: snoop_socket dump_elf_syms
 
 snoop_socket:
 	go generate -v -x ./...
 	gofmt -s -w $(GOFILES)
 	GOOS=linux GOARCH=amd64 go build -mod=vendor \
-		-ldflags '-linkmode external -extldflags -static' -gcflags 'all=-N -l' -race  -o bin/snoop_socket ./snoop_socket
+		-ldflags '-linkmode external -extldflags -static' -gcflags 'all=-N -l' -race  -o ../../bin/snoop_socket ./snoop_socket
+
+dump_elf_syms:
+	gofmt -s -w $(GOFILES)
+	GOOS=linux GOARCH=amd64 go build -mod=vendor \
+		-ldflags '-linkmode external -extldflags -static' -gcflags 'all=-N -l' -race  -o ../../bin/dump_elf_syms ./dump_elf_syms        
 
 clean:
-	-rm bin/snoop_socket
+	-rm ../../bin/snoop_socket
+	-rm ../../bin/dump_elf_syms

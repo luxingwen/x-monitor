@@ -278,7 +278,7 @@ main.go:168] 	0xip[4]: ffffffffba803f0e016x	syscall_trace_enter+29e I0105
 do_syscall_64+149 I0105 16:39:35.254256 2630321 main.go:168] 	0xip[6]:
 ffffffffbb2000ad016x	entry_SYSCALL_64_after_hwframe+65
 
-使用bcc trace命令：trace '__x64_sys_openat' -K -T -a -p 342284
+使用bcc trace命令：trace '__x64_sys_openat' -K -U -T -a -p 342284
 
 dump prog指令：bpftool prog dump xlated id 209 linum
 */
