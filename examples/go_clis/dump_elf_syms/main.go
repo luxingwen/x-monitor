@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-01-09 15:23:25
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-01-09 16:54:48
+ * @Last Modified time: 2023-01-09 17:44:33
  */
 
 package main
@@ -15,9 +15,7 @@ import (
 	"github.com/golang/glog"
 )
 
-var (
-	_elf_file_path string
-)
+var _elf_file_path string
 
 func init() {
 	flag.StringVar(&_elf_file_path, "path", "/proc/self/exe", "execute or so file path")
@@ -34,21 +32,33 @@ func main() {
 	}
 	defer f.Close()
 
-	for _, section := range f.Sections {
-		glog.Infof("section: %s, type: %s", section.Name, section.Type.String())
+	for index, section := range f.Sections {
+		glog.Infof("[%d] section: %s, type: %s", index, section.Name, section.Type.String())
 	}
+
+	symbols, err := f.Symbols()
+	if err != nil {
+		glog.Fatalf("f.Symbols failed! err: %s", err.Error())
+	}
+	// glog.Info("dump SHT_SYMTAB")
+	for _, symbol := range symbols {
+		if int(symbol.Section) < len(f.Sections) && f.Sections[symbol.Section].Name == ".text" {
+			glog.Infof("[.text] %s: %#x", symbol.Name, symbol.Value)
+		}
+	}
+
+	// symbols, err = f.DynamicSymbols()
+	// if err != nil {
+	// 	glog.Fatal("f.DynamicSymbols failed! err: %s", err.Error())
+	// } else {
+	// 	for _, symbol := range symbols {
+	// 		glog.Infof("[.dynsym] %s: %#x, library: %s", symbol.Name, symbol.Value, symbol.Library)
+	// 	}
+	// }
 
 	// get the DWARF data，debug信息
 	dw, err := f.DWARF()
-	if err != nil {
-		symbols, err := f.Symbols()
-		if err != nil {
-			glog.Fatalf("f.Symbols failed! err: %s", err.Error())
-		}
-		for _, symbol := range symbols {
-			glog.Infof("%s: %#x", symbol.Name, symbol.Value)
-		}
-	} else {
+	if err == nil {
 		rdr := dw.Reader()
 		for {
 			entry, err := rdr.Next()
@@ -71,10 +81,19 @@ func main() {
 				if !ok {
 					continue
 				}
-				glog.Infof("%s: %#x", name, lowpc)
+				glog.Infof("[debug] %s: %#x", name, lowpc)
 			}
 		}
 	}
+
+	// glog.Info("dump SHT_DYNSYM")
+	// symbols, err := f.DynamicSymbols()
+	// if err != nil {
+	// 	glog.Fatalf("f.DynamicSymbols failed! err: %s", err.Error())
+	// }
+	// for _, symbol := range symbols {
+	// 	glog.Infof("\t%s: %#x, library: %s", symbol.Name, symbol.Value, symbol.Library)
+	// }
 
 	glog.Infof("dump '%s' address+symbols exit", _elf_file_path)
 }
