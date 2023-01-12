@@ -27,9 +27,7 @@ const (
 	_perf_max_stack_depth = 20
 )
 
-var (
-	_pid int
-)
+var _pid int
 
 func init() {
 	goflag.IntVar(&_pid, "pid", 0, "trace process syscalls pid")
@@ -41,6 +39,7 @@ func main() {
 	glog.Infof("start trace process:'%d' syscalls", _pid)
 
 	calmutils.LoadKallSyms()
+	procSyms, _ := calmutils.NewProcSyms(_pid)
 
 	ctx := calmutils.SetupSignalHandler()
 
@@ -121,7 +120,7 @@ func main() {
 	}()
 
 	glog.Infof("Start receiving events...")
-	//stackFrameSize := (strconv.IntSize / 8)
+	// stackFrameSize := (strconv.IntSize / 8)
 
 	var syscall_evt bpfmodule.XMTraceSyscallEvent
 	for {
@@ -154,9 +153,9 @@ func main() {
 			if err != nil {
 				glog.Errorf("failed to lookup stack_id: %d, err: %v", syscall_evt.KernelStackId, err)
 			} else {
-				//for i := 0; i < _perf_max_stack_depth; i++ {
+				// for i := 0; i < _perf_max_stack_depth; i++ {
 				for i, stackAddr := range stackAddrs {
-					//for i := 0; i < len(stackBytes); i += stackFrameSize {
+					// for i := 0; i < len(stackBytes); i += stackFrameSize {
 					// stackAddr := binary.LittleEndian.Uint64(stackBytes[i : i+stackFrameSize])
 					if stackAddr == 0 {
 						continue
@@ -175,24 +174,24 @@ func main() {
 			if err != nil {
 				glog.Errorf("failed to lookup stack_id: %d, err: %v", syscall_evt.UserStackId, err)
 			} else {
-				//for i := 0; i < _perf_max_stack_depth; i++ {
+				// for i := 0; i < _perf_max_stack_depth; i++ {
 				for i, stackAddr := range stackAddrs {
-					//for i := 0; i < len(stackBytes); i += stackFrameSize {
+					// for i := 0; i < len(stackBytes); i += stackFrameSize {
 					// stackAddr := binary.LittleEndian.Uint64(stackBytes[i : i+stackFrameSize])
 					if stackAddr == 0 {
 						continue
 					}
 					//!! will read sym from elf
-					// sym, offset, err := calmutils.FindKsym(stackAddr)
-					// if err != nil {
-					// 	sym = "?"
-					// }
-					glog.Infof("\tip[%d]: 0x%016x\t ?", i, stackAddr)
+					sym, offset, moduleName, err := procSyms.FindPsym(stackAddr)
+					if err != nil {
+						sym = "?"
+					}
+					glog.Infof("\tip[%d]: 0x%016x\t%s+0x%x [%s]", i, stackAddr, sym, offset, moduleName)
 				}
 			}
 		}
 
-		//objs.XmSyscallsStackMap.Delete(syscall_evt.StackId)
+		// objs.XmSyscallsStackMap.Delete(syscall_evt.StackId)
 	}
 
 	glog.Infof("trace process syscalls exit")
