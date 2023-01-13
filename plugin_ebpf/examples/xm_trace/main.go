@@ -115,6 +115,14 @@ func main() {
 					glog.Infof("attach RawTracepoint %s program for link successed.", bpfProg.String())
 					ebpfLinks = append(ebpfLinks, linkRawTP)
 				}
+			case ebpf.Tracing:
+				linkTracing, err := link.AttachTracing(link.TracingOptions{Program: bpfProg})
+				if err != nil {
+					glog.Fatalf("failed to attach %s program for link, error: %v", bpfProg.String(), err)
+				} else {
+					glog.Infof("attach BTFRawTracepoint %s program for link successed.", bpfProg.String())
+					ebpfLinks = append(ebpfLinks, linkTracing)
+				}
 			default:
 				glog.Fatalf("unsupported ebpf type: %d", bpfProg.Type())
 			}

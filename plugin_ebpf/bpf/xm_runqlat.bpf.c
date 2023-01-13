@@ -103,8 +103,8 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     }
 
     // 进程从被唤醒到on cpu的时间
-    __s64 wakeup_to_run_duration = bpf_ktime_get_ns() - *wakeup_ns;
-    if (wakeup_to_run_duration < 0)
+    __u64 wakeup_to_run_duration = bpf_ktime_get_ns() - *wakeup_ns;
+    if ((__s64)wakeup_to_run_duration < 0)
         goto cleanup;
 
     __u32 hkey = -1;
