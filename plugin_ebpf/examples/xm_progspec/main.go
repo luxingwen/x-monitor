@@ -51,6 +51,16 @@ func __test_asm_insns() {
 		asm.JEq.Imm(asm.R1, 0, "LBB0_3"),
 		// 16:	goto +0 <LBB0_1>, JaImm dst: r0 off: 0 imm: 0
 		asm.Ja.Label("LBB0_1"),
+		// 17:	r1 = 0 ll, LoadMapValue dst: r1, fd: 0 off: 0 <.rodata>
+		asm.LoadMapValue(asm.R1, 0, 0).WithSymbol("LBB0_1"),
+		// 19:	r1 = *(u32 *)(r1 + 0), LdXMemW dst: r1 src: r1 off: 0 imm: 0
+		asm.LoadMem(asm.R1, asm.R1, 0, asm.Word),
+		// if r1 == 0 goto +10 <LBB0_4>, JEqImm dst: r1 off: 10 imm: 0
+		asm.JEq.Imm(asm.R1, 0, "LBB0_4"),
+		// 21:	goto +0 <LBB0_2>, JaImm dst: r0 off: 0 imm: 0
+		asm.Ja.Label("LBB0_2"),
+		// 22:	r1 = *(u32 *)(r10 - 20), LdXMemW dst: r1 src: rfp off: -20 imm: 0
+		asm.LoadMem(asm.R1, asm.RFP, -20, asm.Word).WithSymbol("LBB0_2"),
 	}
 
 	glog.Info(insns.String())
