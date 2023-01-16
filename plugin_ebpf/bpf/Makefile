@@ -1,6 +1,6 @@
 OUTPUT := .output
 CLANG ?= clang
-LLVM_STRIP	?= llvm-strip
+LLVM_STRIP	?= llvm-strip #除去调试信息
 BPFTOOL ?= $(abspath ../../extra/libbpf/tools/bpftool)
 
 SRCS			= $(wildcard *.c)
@@ -63,8 +63,8 @@ all: $(BPF_KERN_OBJS) skels
 
 $(BPF_KERN_OBJS): $(OUTPUT)/%.bpf.o: $(OUTPUT)/vmlinux.h $(LIBBPF_OBJ) %.bpf.c
 	$(call msg,BPF,$@)
-	$(Q)$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.bpf.c,$^) -o $@
-	$(Q)$(LLVM_STRIP) -g $@ # strip useless DWARF info
+	$(Q)$(CLANG) -g -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.bpf.c,$^) -o $@
+	# $(Q)$(LLVM_STRIP) -g $@ # strip useless DWARF info
 
 
 # 两个变量写在一起，$@只是最后一个变量

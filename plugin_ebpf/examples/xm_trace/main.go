@@ -50,6 +50,7 @@ func main() {
 		glog.Fatalf("failed to remove memlock limit: %v", err)
 	}
 
+	// 加载字节码，生成ebpf.ProgramSpec
 	spec, err := bpfmodule.LoadXMTrace()
 	if err != nil {
 		glog.Fatalf("failed to invoke LoadXMTrace, err: %v", err)
