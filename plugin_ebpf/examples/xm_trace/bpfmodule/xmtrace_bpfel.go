@@ -66,7 +66,6 @@ type XMTraceSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMTraceProgramSpecs struct {
 	XmTraceKpSysClose      *ebpf.ProgramSpec `ebpf:"xm_trace_kp__sys_close"`
-	XmTraceKpSysOpenat     *ebpf.ProgramSpec `ebpf:"xm_trace_kp__sys_openat"`
 	XmTraceKpSysReadlinkat *ebpf.ProgramSpec `ebpf:"xm_trace_kp__sys_readlinkat"`
 	XmTraceRawTpSysEnter   *ebpf.ProgramSpec `ebpf:"xm_trace_raw_tp__sys_enter"`
 	XmTraceRawTpSysExit    *ebpf.ProgramSpec `ebpf:"xm_trace_raw_tp__sys_exit"`
@@ -121,7 +120,6 @@ func (m *XMTraceMaps) Close() error {
 // It can be passed to LoadXMTraceObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMTracePrograms struct {
 	XmTraceKpSysClose      *ebpf.Program `ebpf:"xm_trace_kp__sys_close"`
-	XmTraceKpSysOpenat     *ebpf.Program `ebpf:"xm_trace_kp__sys_openat"`
 	XmTraceKpSysReadlinkat *ebpf.Program `ebpf:"xm_trace_kp__sys_readlinkat"`
 	XmTraceRawTpSysEnter   *ebpf.Program `ebpf:"xm_trace_raw_tp__sys_enter"`
 	XmTraceRawTpSysExit    *ebpf.Program `ebpf:"xm_trace_raw_tp__sys_exit"`
@@ -130,7 +128,6 @@ type XMTracePrograms struct {
 func (p *XMTracePrograms) Close() error {
 	return _XMTraceClose(
 		p.XmTraceKpSysClose,
-		p.XmTraceKpSysOpenat,
 		p.XmTraceKpSysReadlinkat,
 		p.XmTraceRawTpSysEnter,
 		p.XmTraceRawTpSysExit,

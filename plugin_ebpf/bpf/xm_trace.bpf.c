@@ -166,8 +166,8 @@ XM_TRACE_KPROBE_PROG(sys_close)
 SEC("kprobe/" SYSCALL(sys_readlinkat))
 XM_TRACE_KPROBE_PROG(sys_readlinkat)
 
-SEC("kprobe/" SYSCALL(sys_openat))
-XM_TRACE_KPROBE_PROG(sys_openat)
+// SEC("kprobe/" SYSCALL(sys_openat))
+// XM_TRACE_KPROBE_PROG(sys_openat)
 
 /*
 TRACE_EVENT_FN(sys_enter,
