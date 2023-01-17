@@ -39,7 +39,8 @@ struct option_def {
 static const struct option_def option_definitions[] = {
     // opt description     arg name       default value
     { 'c', "Configuration file to load.", "filename", CONFIG_FILENAME },
-    { 'D', "Do not fork. Run in the foreground.", NULL, "run in the background" },
+    { 'D', "Do not fork. Run in the foreground.", NULL,
+      "run in the background" },
     { 'h', "Display this help message.", NULL, NULL },
     { 'v', "Print x-monitor version and exit.", NULL, NULL },
     { 'V', "Print x-monitor version and exit.", NULL, NULL }
@@ -52,10 +53,12 @@ static struct MHD_Daemon *__promhttp_daemon = NULL;
 struct xmonitor_static_routine_list {
     struct xmonitor_static_routine *root;
     struct xmonitor_static_routine *last;
-    int32_t                         static_routine_count;
+    int32_t static_routine_count;
 };
 
-static struct xmonitor_static_routine_list __xmonitor_static_routine_list = { NULL, NULL, 0 };
+static struct xmonitor_static_routine_list __xmonitor_static_routine_list = {
+    NULL, NULL, 0
+};
 
 void register_xmonitor_static_routine(struct xmonitor_static_routine *routine) {
     if (__xmonitor_static_routine_list.root == NULL) {
@@ -67,7 +70,8 @@ void register_xmonitor_static_routine(struct xmonitor_static_routine *routine) {
     }
     ++__xmonitor_static_routine_list.static_routine_count;
     // fprintf(stdout, "[%d] static_routine: '%s' registered\n",
-    //         __xmonitor_static_routine_list.static_routine_count, routine->name);
+    //         __xmonitor_static_routine_list.static_routine_count,
+    //         routine->name);
 }
 
 static __attribute__((section(".calmwu"), used)) void __help() {
@@ -110,8 +114,11 @@ static __attribute__((section(".calmwu"), used)) void __help() {
 
     // Output options description.
     for (i = 0; i < num_opts; i++) {
-        fprintf(stderr, "  -%c %-*s  %s", option_definitions[i].val, max_len_arg,
-                option_definitions[i].arg_name ? option_definitions[i].arg_name : "",
+        fprintf(stderr, "  -%c %-*s  %s", option_definitions[i].val,
+                max_len_arg,
+                option_definitions[i].arg_name ?
+                    option_definitions[i].arg_name :
+                    "",
                 option_definitions[i].description);
         if (option_definitions[i].default_value) {
             fprintf(stderr, "\n   %c %-*s  Default: %s\n", ' ', max_len_arg, "",
@@ -132,7 +139,8 @@ static void on_signal(int32_t UNUSED(signo), enum signal_action_mode mode) {
                 error("EXIT: cannot remove pid file '%s'", pid_file);
         }
 
-        struct xmonitor_static_routine *routine = __xmonitor_static_routine_list.root;
+        struct xmonitor_static_routine *routine =
+            __xmonitor_static_routine_list.root;
         struct xmonitor_static_routine *free_routine = NULL;
         while (routine) {
             if (routine->enabled && routine->stop_routine) {
@@ -162,8 +170,8 @@ static void on_signal(int32_t UNUSED(signo), enum signal_action_mode mode) {
 }
 
 int32_t main(int32_t argc, char *argv[]) {
-    char    UNUSED(buf[BUF_SIZE]) = { 0 };
-    pid_t   UNUSED(child_pid) = 0;
+    char UNUSED(buf[BUF_SIZE]) = { 0 };
+    pid_t UNUSED(child_pid) = 0;
     int32_t dont_fork = 0;
     int32_t config_loaded = 0;
     int32_t ret = 0;
@@ -171,7 +179,7 @@ int32_t main(int32_t argc, char *argv[]) {
     // parse options
     {
         int32_t opts_count = (int32_t)ARRAY_SIZE(option_definitions);
-        char    opt_str[(opts_count * 2) + 1];
+        char opt_str[(opts_count * 2) + 1];
         memset(opt_str, 0, sizeof(opt_str));
 
         int32_t opt_str_i = 0;
@@ -206,9 +214,10 @@ int32_t main(int32_t argc, char *argv[]) {
                 break;
             case 'V':
             case 'v':
-                fprintf(stderr, "\tVersion: %s.%s\n\tGit: %s:%s\n\tBuild Time: %s\n",
-                        XMonitor_VERSION_MAJOR, XMonitor_VERSION_MINOR, BRANCH_NAME, COMMIT_HASH,
-                        BUILD_TIME);
+                fprintf(stderr,
+                        "\tVersion: %s.%s\n\tGit: %s:%s\n\tBuild Time: %s\n",
+                        XMonitor_VERSION_MAJOR, XMonitor_VERSION_MINOR,
+                        BRANCH_NAME, COMMIT_HASH, BUILD_TIME);
                 return 0;
             case 'h':
             default:
@@ -243,12 +252,15 @@ int32_t main(int32_t argc, char *argv[]) {
     signals_init();
 
     // INIT routines
-    struct xmonitor_static_routine *routine = __xmonitor_static_routine_list.root;
+    struct xmonitor_static_routine *routine =
+        __xmonitor_static_routine_list.root;
     for (; routine; routine = routine->next) {
         // 判断是否enable
         if (routine->config_name) {
-            routine->enabled = appconfig_get_member_bool(routine->config_name, "enable", 0);
-            debug("Routine '%s' config '%s' is %s", routine->name, routine->config_name,
+            routine->enabled =
+                appconfig_get_member_bool(routine->config_name, "enable", 0);
+            debug("Routine '%s' config '%s' is %s", routine->name,
+                  routine->config_name,
                   routine->enabled ? "enabled" : "disabled");
         }
 
@@ -256,9 +268,11 @@ int32_t main(int32_t argc, char *argv[]) {
             // 初始化
             ret = routine->init_routine();
             if (0 == ret) {
-                info("init xmonitor-static-routine '%s' successed", routine->name);
+                info("init xmonitor-static-routine '%s' successed",
+                     routine->name);
             } else {
-                error("init xmonitor-static-routine '%s' failed", routine->name);
+                error("init xmonitor-static-routine '%s' failed",
+                      routine->name);
                 return 0;
             }
         } else {
@@ -269,7 +283,8 @@ int32_t main(int32_t argc, char *argv[]) {
     promhttp_set_active_collector_registry(NULL);
 
     // 守护进程
-    strlcpy(pid_file, appconfig_get_str("application.pid_file", DEFAULT_PIDFILE),
+    strlcpy(pid_file,
+            appconfig_get_str("application.pid_file", DEFAULT_PIDFILE),
             XM_PID_FILENAME_MAX);
     const char *user = appconfig_get_str("application.run_as_user", NULL);
     become_daemon(dont_fork, pid_file, user);
@@ -278,10 +293,10 @@ int32_t main(int32_t argc, char *argv[]) {
     sched_setscheduler(getpid(), SCHED_BATCH, NULL);
 
     // 启动metrics http exporter
-    uint16_t metrics_http_export_port =
-        (uint16_t)appconfig_get_int("application.metrics_http_exporter.port", 8000);
-    __promhttp_daemon =
-        promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, metrics_http_export_port, NULL, NULL);
+    uint16_t metrics_http_export_port = (uint16_t)appconfig_get_int(
+        "application.metrics_http_exporter.port", 8000);
+    __promhttp_daemon = promhttp_start_daemon(
+        MHD_USE_SELECT_INTERNALLY, metrics_http_export_port, NULL, NULL);
     if (unlikely(!__promhttp_daemon)) {
         error("promhttp_start_daemon failed");
         return -1;
@@ -291,7 +306,8 @@ int32_t main(int32_t argc, char *argv[]) {
     routine = __xmonitor_static_routine_list.root;
     for (; routine; routine = routine->next) {
         if (routine->enabled && NULL != routine->start_routine) {
-            ret = pthread_create(routine->thread_id, NULL, routine->start_routine, NULL);
+            ret = pthread_create(routine->thread_id, NULL,
+                                 routine->start_routine, NULL);
             if (unlikely(0 != ret)) {
                 error("xmonitor-static-routine '%s' pthread_create() failed "
                       "with code %d",
