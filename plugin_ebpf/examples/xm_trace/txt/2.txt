@@ -1,0 +1,55 @@
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	 0: MovReg dst: r6 src: r1
+	  ; return bpf_get_current_pid_tgid() >> 32;
+	 1: Call FnGetCurrentPidTgid
+	 2: MovReg dst: r7 src: r0
+	  ; return bpf_get_current_pid_tgid() & 0xFFFFFFFF;
+	 3: Call FnGetCurrentPidTgid
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	 4: StXMemW dst: rfp src: r0 off: -4 imm: 0
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	 5: LoadMapValue dst: r1, fd: 0 off: 0 <.rodata>
+	 7: LdXMemW dst: r2 src: r1 off: 0 imm: 0
+	 8: JEqImm dst: r2 off: 36 imm: 0
+	 9: LdXMemW dst: r1 src: r1 off: 0 imm: 0
+	10: JEqImm dst: r1 off: 5 imm: 0
+	11: RShImm dst: r7 imm: 32
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	12: LoadMapValue dst: r1, fd: 0 off: 0 <.rodata>
+	14: LdXMemW dst: r1 src: r1 off: 0 imm: 0
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	15: JNEReg dst: r1 off: 29 src: r7
+	16: MovReg dst: r2 src: rfp
+	17: AddImm dst: r2 imm: -4
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	18: LoadMapPtr dst: r1 fd: 0 <xm_syscalls_record_map>
+	20: Call FnMapLookupElem
+	21: MovReg dst: r7 src: r0
+	22: JEqImm dst: r7 off: 22 imm: 0
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	23: MovReg dst: r1 src: r6
+	24: LoadMapPtr dst: r2 fd: 0 <xm_syscalls_stack_map>
+	26: MovImm dst: r3 imm: 512
+	27: Call FnGetStackid
+	28: MovReg dst: r8 src: r0
+	29: MovReg dst: r1 src: r6
+	30: LoadMapPtr dst: r2 fd: 0 <xm_syscalls_stack_map>
+	32: MovImm dst: r3 imm: 768
+	33: Call FnGetStackid
+	34: MovReg dst: r2 src: r8
+	35: LShImm dst: r2 imm: 32
+	36: ArShImm dst: r2 imm: 32
+	37: MovImm dst: r1 imm: 1
+	38: JSGTReg dst: r1 off: 1 src: r2
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	39: StXMemW dst: r7 src: r8 off: 40 imm: 0
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	40: MovReg dst: r2 src: r0
+	41: LShImm dst: r2 imm: 32
+	42: ArShImm dst: r2 imm: 32
+	43: JSGTReg dst: r1 off: 1 src: r2
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	44: StXMemW dst: r7 src: r0 off: 44 imm: 0
+	  ; XM_TRACE_KPROBE_PROG(sys_openat)
+	45: MovImm dst: r0 imm: 0
+	46: Exit

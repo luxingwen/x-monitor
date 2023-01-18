@@ -21,16 +21,19 @@ func init() {
 	goflag.StringVar(&__elfFile, "elf", "../plugin_ebpf/bpf/.output/xm_trace.bpf.o", "llvm clang generate elf file")
 }
 
-func __test_asm_insns() {
+func __generate_asm_insns() {
+	// 翻译llvm-objdump -d -s --no-show-raw-insn  --symbolize-operands xm_trace.bpf.o导出的指令，**但这不能被cilium ebpf加载
 	insns := asm.Instructions{
+		// 0:	*(u64 *)(r10 - 16) = r1, StXMemDW dst: rfp src: r1 off: -16 imm: 0     rfp = r10
 		asm.StoreMem(asm.RFP, -16, asm.R1, asm.DWord),
-		asm.LoadMapValue(asm.R1, 0, 64),
-		// *(u64 *)(r10 - 48) = r1,	StXMemDW dst: rfp src: r1 off: -48 imm: 0
-		asm.StoreMem(asm.R1, -48, asm.R1, asm.DWord),
-		// r1 = *(u64 *)(r1 + 0),	LdXMemDW dst: r1 src: r1 off: 0 imm: 0
+		// 1:	r1 = 64 ll, LoadMapValue dst: r1, fd: 0 off: 64 <.data>
+		asm.LoadMapValue(asm.R1, 0, 64).WithReference(".data"),
+		// 3:	*(u64 *)(r10 - 48) = r1, StXMemDW dst: rfp src: r1 off: -48 imm: 0
+		asm.StoreMem(asm.RFP, -48, asm.R1, asm.DWord),
+		// 4:	r1 = *(u64 *)(r1 + 0), LdXMemDW dst: r1 src: r1 off: 0 imm: 0
 		asm.LoadMem(asm.R1, asm.R1, 0, asm.DWord),
-		// callx r1, Call FnMapLookupElem
-		asm.FnMapLookupPercpuElem.Call(),
+		// 5:	callx r1, Call FnMapLookupElem
+		asm.FnMapLookupElem.Call(),
 		// 6:	r1 = *(u64 *)(r10 - 48), LdXMemDW dst: r1 src: rfp off: -48 imm: 0
 		asm.LoadMem(asm.R1, asm.RFP, -48, asm.DWord),
 		// 7:	r0 >>= 32, RShImm dst: r0 imm: 32
@@ -40,11 +43,11 @@ func __test_asm_insns() {
 		// r1 = *(u64 *)(r1 + 0), LdXMemDW dst: r1 src: r1 off: 0 imm: 0
 		asm.LoadMem(asm.R1, asm.R1, 0, asm.DWord),
 		// 10:	callx r1, Call FnMapLookupElem
-		asm.FnMapLookupPercpuElem.Call(),
+		asm.FnMapLookupElem.Call(),
 		// 11:	*(u32 *)(r10 - 24) = r0, StXMemW dst: rfp src: r0 off: -24 imm: 0
 		asm.StoreMem(asm.RFP, -24, asm.R0, asm.Word),
 		// 12:	r1 = 0 ll, LoadMapValue dst: r1, fd: 0 off: 0 <.rodata>
-		asm.LoadMapValue(asm.R1, 0, 0),
+		asm.LoadMapValue(asm.R1, 0, 0).WithReference(".rodata"),
 		// 14:	r1 = *(u32 *)(r1 + 0), LdXMemW dst: r1 src: r1 off: 0 imm: 0
 		asm.LoadMem(asm.R1, asm.R1, 0, asm.Word),
 		// 15:	if r1 == 0 goto +12 <LBB0_3>, JEqImm dst: r1 off: 12 imm: 0
@@ -52,7 +55,7 @@ func __test_asm_insns() {
 		// 16:	goto +0 <LBB0_1>, JaImm dst: r0 off: 0 imm: 0
 		asm.Ja.Label("LBB0_1"),
 		// 17:	r1 = 0 ll, LoadMapValue dst: r1, fd: 0 off: 0 <.rodata>
-		asm.LoadMapValue(asm.R1, 0, 0).WithSymbol("LBB0_1"),
+		asm.LoadMapValue(asm.R1, 0, 0).WithSymbol("LBB0_1").WithReference(".rodata"),
 		// 19:	r1 = *(u32 *)(r1 + 0), LdXMemW dst: r1 src: r1 off: 0 imm: 0
 		asm.LoadMem(asm.R1, asm.R1, 0, asm.Word),
 		// if r1 == 0 goto +10 <LBB0_4>, JEqImm dst: r1 off: 10 imm: 0
@@ -62,7 +65,7 @@ func __test_asm_insns() {
 		// 22:	r1 = *(u32 *)(r10 - 20), LdXMemW dst: r1 src: rfp off: -20 imm: 0
 		asm.LoadMem(asm.R1, asm.RFP, -20, asm.Word).WithSymbol("LBB0_2"),
 		// 23:  r2 = 0 ll, LoadMapValue dst: r2, fd: 0 off: 0 <.rodata>
-		asm.LoadMapValue(asm.R2, 0, 0),
+		asm.LoadMapValue(asm.R2, 0, 0).WithReference(".rodata"),
 		// 25:	r2 = *(u32 *)(r2 + 0), LdXMemW dst: r2 src: r2 off: 0 imm: 0
 		asm.LoadMem(asm.R2, asm.R2, 0, asm.Word),
 		// 26:	if r1 == r2 goto +4 <LBB0_4>, JEqReg dst: r1 off: 4 src: r2
@@ -76,7 +79,7 @@ func __test_asm_insns() {
 		// 30:	goto +54 <LBB0_11>, JaImm dst: r0 off: 54 imm: 0
 		asm.Ja.Label("LBB0_11"),
 		// 31:	r1 = 0 ll, LoadMapValue dst: r1, fd: 0 off: 0 <.data>
-		asm.LoadMapValue(asm.R1, 0, 0).WithSymbol("LBB0_4"),
+		asm.LoadMapValue(asm.R1, 0, 0).WithSymbol("LBB0_4").WithReference(".rodata"),
 		// 33:	r3 = *(u64 *)(r1 + 0), LdXMemDW dst: r3 src: r1 off: 0 imm: 0
 		asm.LoadMem(asm.R3, asm.R1, 0, asm.DWord),
 		// 34:	r1 = 0 ll, LoadMapPtr dst: r1 fd: 0 <xm_syscalls_record_map>
@@ -96,7 +99,7 @@ func __test_asm_insns() {
 		// 42:	goto +0 <LBB0_5>, JaImm dst: r0 off: 0 imm: 0
 		asm.Ja.Label("LBB0_5"),
 		// 43:	r1 = 8 ll, LoadMapValue dst: r1, fd: 0 off: 8 <.data>
-		asm.LoadMapValue(asm.R1, 0, 8).WithSymbol("LBB0_5"),
+		asm.LoadMapValue(asm.R1, 0, 8).WithSymbol("LBB0_5").WithReference(".rodata"),
 		// 45:	*(u64 *)(r10 - 56) = r1, StXMemDW dst: rfp src: r1 off: -56 imm: 0
 		asm.StoreMem(asm.RFP, -56, asm.R1, asm.DWord),
 		// 46:	r4 = *(u64 *)(r1 + 0), LdXMemDW dst: r4 src: r1 off: 0 imm: 0
@@ -168,15 +171,15 @@ func __test_asm_insns() {
 		// 80:	goto +0 <LBB0_9>, JaImm dst: r0 off: 0 imm: 0
 		asm.Ja.Label("LBB0_9"),
 		// 81:	goto +0 <LBB0_10>, JaImm dst: r0 off: 0 imm: 0
-		asm.Ja.Label("LBB0_10"),
+		asm.Ja.Label("LBB0_10").WithSymbol("LBB0_9"),
 		// 82:	r1 = 0, MovImm dst: r1 imm: 0
-		asm.Mov.Imm(asm.R1, 0).WithSymbol("LBB0_9"),
+		asm.Mov.Imm(asm.R1, 0).WithSymbol("LBB0_10"),
 		// 83:	*(u32 *)(r10 - 4) = r1, StXMemW dst: rfp src: r1 off: -4 imm: 0
 		asm.StoreMem(asm.RFP, -4, asm.R1, asm.Word),
 		// 84:	goto +0 <LBB0_11>, JaImm dst: r0 off: 0 imm: 0
 		asm.Ja.Label("LBB0_11"),
 		// 85:	r0 = *(u32 *)(r10 - 4), LdXMemW dst: r0 src: rfp off: -4 imm: 0
-		asm.LoadMem(asm.R0, asm.RFP, -4, asm.Word).WithSymbol("LBB0_10"),
+		asm.LoadMem(asm.R0, asm.RFP, -4, asm.Word).WithSymbol("LBB0_11"),
 		// 86:	exit, Exit
 		asm.Return(),
 	}
@@ -195,16 +198,14 @@ func main() {
 		glog.Fatalf("failed to load collection spec from file: %v", err)
 	}
 
-	var firstProgSpec *ebpf.ProgramSpec
-
 	for key, progSpec := range spec.Programs {
 		glog.Infof(`progSpec key:'%s', Name:'%s', ProgramType:%d, AttachType:%d, AttachTo:'%s', 
 		SectionName:'%s', AttachTarget:%p, Instructions len:%d`,
 			key, progSpec.Name, progSpec.Type, progSpec.AttachType,
 			progSpec.AttachTo, progSpec.SectionName, progSpec.AttachTarget, len(progSpec.Instructions))
 
-		if firstProgSpec == nil && progSpec.Type == ebpf.Kprobe {
-			firstProgSpec = progSpec
+		if progSpec.Type == ebpf.Kprobe {
+			glog.Info("---\n", progSpec.Instructions.String())
 		}
 	}
 
@@ -213,11 +214,10 @@ func main() {
 	// 	glog.Infof("%d:\t%#v", i, ins)
 	// }
 
-	glog.Info(firstProgSpec.Instructions.String())
-
-	__test_asm_insns()
+	//__generate_asm_insns()
 
 	glog.Infof("parse elf file:'%s' exit", __elfFile)
 }
 
 // llvm-objdump -d -S --no-show-raw-insn --symbolize-operands xm_trace.bpf.o
+//
