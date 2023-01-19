@@ -163,11 +163,11 @@ __s32 BPF_PROG(xm_trace_btf_tp__sys_exit, struct pt_regs *regs, __s64 ret) {
 // SEC("kprobe/" SYSCALL(sys_close))
 // XM_TRACE_KPROBE_PROG(sys_close)
 
-SEC("kprobe/" SYSCALL(sys_readlinkat))
-XM_TRACE_KPROBE_PROG(sys_readlinkat)
+// SEC("kprobe/" SYSCALL(sys_readlinkat))
+// XM_TRACE_KPROBE_PROG(sys_readlinkat)
 
-SEC("kprobe/" SYSCALL(sys_openat))
-XM_TRACE_KPROBE_PROG(sys_openat)
+// SEC("kprobe/" SYSCALL(sys_openat))
+// XM_TRACE_KPROBE_PROG(sys_openat)
 
 /*
 TRACE_EVENT_FN(sys_enter,

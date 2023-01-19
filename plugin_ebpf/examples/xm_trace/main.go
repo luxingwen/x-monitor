@@ -12,6 +12,7 @@ import (
 	"encoding/binary"
 	"errors"
 	goflag "flag"
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -31,13 +32,17 @@ const (
 	_perf_max_stack_depth = 20
 )
 
-var _pid int
+var (
+	__pid         int
+	__kprobeFuncs string
+)
 
 func init() {
-	goflag.IntVar(&_pid, "pid", 0, "trace process syscalls pid")
+	goflag.IntVar(&__pid, "pid", 0, "trace process syscalls pid")
+	goflag.StringVar(&__kprobeFuncs, "funcs", "", "trace kprobe funcs, example: --funcs=sys_close,sys_readlinkat,sys_openat")
 }
 
-func __fillKprobeStackInstructions(progSpec *ebpf.ProgramSpec) {
+func __fillGetCallStackInstructions(progSpec *ebpf.ProgramSpec) {
 	progSpec.Instructions = asm.Instructions{
 		// 0:	r6 = r1, MovReg dst: r6 src: r1
 		asm.Mov.Reg(asm.R6, asm.R1),
@@ -54,70 +59,156 @@ func __fillKprobeStackInstructions(progSpec *ebpf.ProgramSpec) {
 		// 7:	r2 = *(u32 *)(r1 + 0), LdXMemW dst: r2 src: r1 off: 0 imm: 0
 		asm.LoadMem(asm.R2, asm.R1, 0, asm.Word),
 		// 8:	if r2 == 0 goto +36 <LBB1_8>, JEqImm dst: r2 off: 36 imm: 0
+		func() asm.Instruction {
+			ins := asm.JEq.Imm(asm.R2, 0, "") // !! 实际中不需要加上Label，只需要填写Offset
+			ins.Offset = 36
+			return ins
+		}(),
+		// asm.JEq.Imm(asm.R2, 0, "LBB1_8"),
 		// 9:	r1 = *(u32 *)(r1 + 0), LdXMemW dst: r1 src: r1 off: 0 imm: 0
+		asm.LoadMem(asm.R1, asm.R1, 0, asm.Word),
 		// 10:	if r1 == 0 goto +5 <LBB1_3>, JEqImm dst: r1 off: 5 imm: 0
+		func() asm.Instruction {
+			ins := asm.JEq.Imm(asm.R1, 0, "")
+			ins.Offset = 5
+			return ins
+		}(),
 		// 11:	r7 >>= 32, RShImm dst: r7 imm: 32
+		asm.RSh.Imm(asm.R7, 32),
 		// 12:	r1 = 0 ll, LoadMapValue dst: r1, fd: 0 off: 0 <.rodata>
+		asm.LoadMapValue(asm.R1, 0, 0).WithReference(".rodata"),
 		// 14:	r1 = *(u32 *)(r1 + 0), LdXMemW dst: r1 src: r1 off: 0 imm: 0
+		asm.LoadMem(asm.R1, asm.R1, 0, asm.Word),
 		// 15:	if r1 != r7 goto +29 <LBB1_8>, JNEReg dst: r1 off: 29 src: r7
+		func() asm.Instruction {
+			ins := asm.JNE.Reg(asm.R1, asm.R7, "")
+			ins.Offset = 29
+			return ins
+		}(),
 		// 0000000000000080 <LBB1_3>:
 		// 16:	r2 = r10, MovReg dst: r2 src: rfp
+		asm.Mov.Reg(asm.R2, asm.RFP),
 		// 17:	r2 += -4, AddImm dst: r2 imm: -4
+		asm.Add.Imm(asm.R2, -4),
 		// 18:	r1 = 0 ll, LoadMapPtr dst: r1 fd: 0 <xm_syscalls_record_map>
+		asm.LoadMapPtr(asm.R1, 0).WithReference("xm_syscalls_record_map"),
 		// 20:	call 1, Call FnMapLookupElem
+		asm.FnMapLookupElem.Call(),
 		// 21:	r7 = r0, MovReg dst: r7 src: r0
+		asm.Mov.Reg(asm.R7, asm.R0),
 		// 22:	if r7 == 0 goto +22 <LBB1_8>, JEqImm dst: r7 off: 22 imm: 0
+		func() asm.Instruction {
+			ins := asm.JEq.Imm(asm.R7, 0, "")
+			ins.Offset = 22
+			return ins
+		}(),
 		// 23:	r1 = r6, MovReg dst: r1 src: r6
+		asm.Mov.Reg(asm.R1, asm.R6),
 		// 24:	r2 = 0 ll, LoadMapPtr dst: r2 fd: 0 <xm_syscalls_stack_map>
+		asm.LoadMapPtr(asm.R2, 0).WithReference("xm_syscalls_stack_map"),
 		// 26:	r3 = 512, MovImm dst: r3 imm: 512
+		asm.Mov.Imm(asm.R3, 512),
 		// 27:	call 27, Call FnGetStackid
+		asm.FnGetStackid.Call(),
 		// 28:	r8 = r0, MovReg dst: r8 src: r0
+		asm.Mov.Reg(asm.R8, asm.R0),
 		// 29:	r1 = r6, MovReg dst: r1 src: r6
+		asm.Mov.Reg(asm.R1, asm.R6),
 		// 30:	r2 = 0 ll, LoadMapPtr dst: r2 fd: 0 <xm_syscalls_stack_map>
+		asm.LoadMapPtr(asm.R2, 0).WithReference("xm_syscalls_stack_map"),
 		// 32:	r3 = 768, MovImm dst: r3 imm: 768
+		asm.Mov.Imm(asm.R3, 768),
 		// 33:	call 27, Call FnGetStackid
+		asm.FnGetStackid.Call(),
 		// 34:	r2 = r8, MovReg dst: r2 src: r8
+		asm.Mov.Reg(asm.R2, asm.R8),
 		// 35:	r2 <<= 32, LShImm dst: r2 imm: 32
+		asm.LSh.Imm(asm.R2, 32),
 		// 36:	r2 s>>= 32, ArShImm dst: r2 imm: 32
+		asm.ArSh.Imm(asm.R2, 32),
 		// 37:	r1 = 1, MovImm dst: r1 imm: 1
+		asm.Mov.Imm(asm.R1, 1),
 		// 38:	if r1 s> r2 goto +1 <LBB1_6>, JSGTReg dst: r1 off: 1 src: r2
+		func() asm.Instruction {
+			ins := asm.JSGT.Reg(asm.R1, asm.R2, "")
+			ins.Offset = 1
+			return ins
+		}(),
 		// 39:	*(u32 *)(r7 + 40) = r8, StXMemW dst: r7 src: r8 off: 40 imm: 0
+		asm.StoreMem(asm.R7, 40, asm.R8, asm.Word),
 		// 0000000000000140 <LBB1_6>:
 		// 40:	r2 = r0, MovReg dst: r2 src: r0
+		asm.Mov.Reg(asm.R2, asm.R0),
 		// 41:	r2 <<= 32, LShImm dst: r2 imm: 32
+		asm.LSh.Imm(asm.R2, 32),
 		// 42:	r2 s>>= 32, ArShImm dst: r2 imm: 32
+		asm.ArSh.Imm(asm.R2, 32),
 		// 43:	if r1 s> r2 goto +1 <LBB1_8>, JSGTReg dst: r1 off: 1 src: r2
+		func() asm.Instruction {
+			ins := asm.JSGT.Reg(asm.R1, asm.R2, "")
+			ins.Offset = 1
+			return ins
+		}(),
 		// 44:	*(u32 *)(r7 + 44) = r0, StXMemW dst: r7 src: r0 off: 44 imm: 0
+		asm.StoreMem(asm.R7, 44, asm.R0, asm.Word),
 		// 0000000000000168 <LBB1_8>:
 		// 45:	r0 = 0, MovImm dst: r0 imm: 0
+		asm.Mov.Imm(asm.R0, 0),
 		// 46:	exit, Exit
 		asm.Return(),
 	}
 }
 
-func __generateKprobeStackProgramSpec(name, sectionName string) *ebpf.ProgramSpec {
+func __generateKprobeProgramSpecsForGetCallStack(name, sectionName string) *ebpf.ProgramSpec {
 	progSpec := new(ebpf.ProgramSpec)
 	progSpec.Name = name
 	progSpec.Type = ebpf.Kprobe
 	progSpec.License = "GPL"
 	progSpec.SectionName = sectionName
-	__fillKprobeStackInstructions(progSpec)
+	__fillGetCallStackInstructions(progSpec)
 
 	// glog.Info("\n", progSpec.Instructions.String())
 
 	return progSpec
 }
 
+func __generateKprobeProgramsForGetCallStack(kprobeFuncLst []string, ebpfMaps map[string]*ebpf.Map) []*ebpf.Program {
+	var progLst []*ebpf.Program
+	for _, kprobeFunc := range kprobeFuncLst {
+		sectionName := fmt.Sprintf("kprobe/%s", kprobeFunc)
+		progSpec := __generateKprobeProgramSpecsForGetCallStack(kprobeFunc, sectionName)
+		// associate map
+		for name, ebpfMap := range ebpfMaps {
+			progSpec.Instructions.AssociateMap(name, ebpfMap)
+		}
+		prog, err := ebpf.NewProgram(progSpec)
+		if err != nil {
+			glog.Fatalf("failed to create ebpf program for '%s': %v", kprobeFunc, err)
+		} else {
+			glog.Infof("create ebpf program:'%s', sectionName:'%s' success", kprobeFunc, sectionName)
+		}
+
+		progLst = append(progLst, prog)
+	}
+
+	return progLst
+}
+
 func main() {
 	goflag.Parse()
 	defer glog.Flush()
 
-	glog.Infof("start trace process:'%d' syscalls", _pid)
+	glog.Infof("start trace process:'%d' syscalls", __pid)
 
+	// 解析__kprobeFuncs
+	kprobeFuncLst := strings.Split(__kprobeFuncs, ",")
+	if len(kprobeFuncLst) == 0 {
+		glog.Fatal("kprobe funcs is empty")
+	}
+
+	// 加载kernel、进程的符号
 	calmutils.LoadKallSyms()
-	procSyms, _ := calmutils.NewProcSyms(_pid)
-
-	ctx := calmutils.SetupSignalHandler()
+	procSyms, _ := calmutils.NewProcSyms(__pid)
 
 	if err := rlimit.RemoveMemlock(); err != nil {
 		glog.Fatalf("failed to remove memlock limit: %v", err)
@@ -132,10 +223,21 @@ func main() {
 	}
 
 	//-------------------------------------------------------------------------
-	// 输出spec中所有的map
-	for mapK := range spec.Maps {
-		glog.Infof("map name: %s", mapK)
+
+	// rewrite .rodata, bpftool btf dump file xm_trace_syscalls.bpf.o
+	// !! 如果不把提前修改.rodata数据，加载的指令就会被优化掉，直接return了，使用bpftool prog dump xlated id 2563只能看到部分指令
+	err = spec.RewriteConstants(map[string]interface{}{
+		"xm_trace_syscall_filter_pid": int32(__pid),
+	})
+	if err != nil {
+		glog.Fatalf("failed to rewrite constants xm_trace_syscall_filter_pid, err: %v", err)
 	}
+
+	//-------------------------------------------------------------------------
+	// 输出spec中所有的map
+	// for mapK := range spec.Maps {
+	// 	glog.Infof("map name: %s", mapK)
+	// }
 
 	// 构造.rodata ebpf.Map对象
 	rodataMap, err := ebpf.NewMap(spec.Maps[".rodata"])
@@ -145,16 +247,6 @@ func main() {
 	defer rodataMap.Close()
 
 	//-------------------------------------------------------------------------
-
-	// rewrite .rodata, bpftool btf dump file xm_trace_syscalls.bpf.o
-	err = spec.RewriteConstants(map[string]interface{}{
-		"xm_trace_syscall_filter_pid": int32(_pid),
-	})
-	if err != nil {
-		glog.Fatalf("failed to rewrite constants xm_trace_syscall_filter_pid, err: %v", err)
-	}
-
-	//-------------------------------------------------------------------------
 	// 通过spec构造program和map
 	objs := bpfmodule.XMTraceObjects{}
 	err = spec.LoadAndAssign(&objs, nil)
@@ -162,39 +254,13 @@ func main() {
 		glog.Fatalf("failed to load XMTraceObjects, err: %v", err)
 	}
 
-	glog.Infof("XmBtfRtpSysEnter name:%s type:%d", objs.XmTraceRawTpSysEnter.String(), objs.XmTraceRawTpSysEnter.Type())
+	// glog.Infof("XmBtfRtpSysEnter name:%s type:%d", objs.XmTraceRawTpSysEnter.String(), objs.XmTraceRawTpSysEnter.Type())
 
 	defer objs.Close()
 
 	//-------------------------------------------------------------------------
 
-	// 创建自定义的ebpf.Program
-	kprobeStackProgSpec := __generateKprobeStackProgramSpec("sys_close", "kprobe/sys_close")
-	// 借用现有program的指令
-	// kprobeStackProgSpec.Instructions = make([]asm.Instruction, len(spec.Programs["xm_trace_kp__sys_readlinkat"].Instructions))
-	// copy(kprobeStackProgSpec.Instructions, spec.Programs["xm_trace_kp__sys_readlinkat"].Instructions)
-	// glog.Info("\n", kprobeStackProgSpec.Instructions.String())
-
-	kprobeStackProgSpec.Instructions.AssociateMap("xm_syscalls_stack_map", objs.XmSyscallsStackMap)
-	kprobeStackProgSpec.Instructions.AssociateMap("xm_syscalls_record_map", objs.XmSyscallsRecordMap)
-	kprobeStackProgSpec.Instructions.AssociateMap(".rodata", rodataMap)
-
-	kprobeStackProg, err := ebpf.NewProgram(kprobeStackProgSpec)
-	if err != nil {
-		glog.Fatalf("failed to create kprobeStackProg, err: %v", err)
-	}
-	defer kprobeStackProg.Close()
-
-	// link attach custom kprobe program
-	link_kp_sys_close, err := link.Kprobe("sys_close", kprobeStackProg, nil)
-	if err != nil {
-		glog.Fatalf("failed to attach kprobe %s program for link, error: %v", kprobeStackProg.String(), err)
-	}
-	defer link_kp_sys_close.Close()
-
-	//-------------------------------------------------------------------------
-
-	// 通过reflect来获取Programs的所有成员，统一ebpf Program的attach
+	// 通过reflect来获取objs.Programs的所有成员，统一ebpf Program的attach
 	var ebpfLinks []link.Link
 
 	bpfProgs := reflect.Indirect(reflect.ValueOf(objs.XMTracePrograms))
@@ -252,6 +318,58 @@ func main() {
 			}
 		}
 	}
+	//-------------------------------------------------------------------------
+
+	// 创建自定义的ebpf.Program
+	// kprobeStackProgSpec := __generateKprobeProgramSpecsForGetCallStack("sys_close", "kprobe/sys_close")
+	// // 借用现有program的指令
+	// // kprobeStackProgSpec.Instructions = make([]asm.Instruction, len(spec.Programs["xm_trace_kp__sys_readlinkat"].Instructions))
+	// // copy(kprobeStackProgSpec.Instructions, spec.Programs["xm_trace_kp__sys_readlinkat"].Instructions)
+	// // glog.Info("\n", kprobeStackProgSpec.Instructions.String())
+
+	// kprobeStackProgSpec.Instructions.AssociateMap("xm_syscalls_stack_map", objs.XmSyscallsStackMap)
+	// kprobeStackProgSpec.Instructions.AssociateMap("xm_syscalls_record_map", objs.XmSyscallsRecordMap)
+	// kprobeStackProgSpec.Instructions.AssociateMap(".rodata", rodataMap)
+
+	// kprobeStackProg, err := ebpf.NewProgram(kprobeStackProgSpec)
+	// if err != nil {
+	// 	glog.Fatalf("failed to create kprobeStackProg, err: %v", err)
+	// }
+
+	// defer kprobeStackProg.Close()
+
+	ebpfMaps := map[string]*ebpf.Map{
+		"xm_syscalls_stack_map":  objs.XmSyscallsStackMap,
+		"xm_syscalls_record_map": objs.XmSyscallsRecordMap,
+		".rodata":                rodataMap,
+	}
+
+	kprobeGetCallStackProgs := __generateKprobeProgramsForGetCallStack(kprobeFuncLst, ebpfMaps)
+	defer func() {
+		for _, prog := range kprobeGetCallStackProgs {
+			prog.Close()
+		}
+	}()
+
+	// link attach kprobe GetCallStack Progs
+	for i, kprobeFunc := range kprobeFuncLst {
+		prog := kprobeGetCallStackProgs[i]
+		l, err := link.Kprobe(kprobeFunc, prog, nil)
+		if err != nil {
+			glog.Fatalf("failed to attach kprobe %s program for link, error: %v", prog.String(), err)
+		} else {
+			glog.Infof("attach KProbe %s program for link success.", prog.String())
+			ebpfLinks = append(ebpfLinks, l)
+		}
+
+	}
+	// link_kp_sys_close, err := link.Kprobe("sys_close", kprobeStackProg, nil)
+	// if err != nil {
+	// 	glog.Fatalf("failed to attach kprobe %s program for link, error: %v", kprobeStackProg.String(), err)
+	// }
+	// defer link_kp_sys_close.Close()
+
+	//-------------------------------------------------------------------------
 
 	defer func() {
 		for i, link := range ebpfLinks {
@@ -259,6 +377,11 @@ func main() {
 			link.Close()
 		}
 	}()
+
+	//-------------------------------------------------------------------------
+
+	// 注册信号
+	ctx := calmutils.SetupSignalHandler()
 
 	// attach btf raw tracepoint program for link
 	// link_sys_enter, err := link.AttachTracing(link.TracingOptions{Program: objs.XmTraceRtpSysEnter})
@@ -391,12 +514,12 @@ func main() {
 /*
 trace '__x64_sys_bpf' -K -U -T -a
 dlv exec ./xm_trace -- --pid=3638918 --alsologtostderr -v=4
-./xm_trace --pid=3638918 --alsologtostderr -v=4
+./xm_trace --pid=3638918 --funcs=sys_close,sys_readlinkat,sys_openat --alsologtostderr -v=4
 trace '__x64_sys_openat' -K -T -a -p 342284
 llvm-objdump -d -S --no-show-raw-insn  --symbolize-operands xm_trace.bpf.o
 
 llvm-objdump -d -S --no-show-raw-insn  --symbolize-operands ../plugin_ebpf/examples/xm_trace/bpfmodule/xmtrace_bpfel.o
 
-llvm-objdump -d -S --no-show-raw-insn  --symbolize-operands ./bpfmodule/xmtrace_bpfeb.o
+llvm-objdump -d -S --no-show-raw-insn  --symbolize-operands ./xmtrace_bpfeb.o
 ./xm_progspec --elf=../plugin_ebpf/examples/xm_trace/bpfmodule/xmtrace_bpfel.o --alsologtostderr -v=4
 */
