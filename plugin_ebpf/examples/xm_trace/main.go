@@ -172,6 +172,8 @@ func __generateKprobeProgramSpecsForGetCallStack(name, sectionName string) *ebpf
 	return progSpec
 }
 
+// This function generates a list of ebpf programs to trace the call stack of the function specified by the kprobeFuncLst parameter.
+// The parameters ebpfMaps and progLst are used to associate ebpf maps and output ebpf programs.
 func __generateKprobeProgramsForGetCallStack(kprobeFuncLst []string, ebpfMaps map[string]*ebpf.Map) []*ebpf.Program {
 	var progLst []*ebpf.Program
 	for _, kprobeFunc := range kprobeFuncLst {

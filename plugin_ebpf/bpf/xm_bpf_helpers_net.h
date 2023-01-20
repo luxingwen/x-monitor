@@ -31,6 +31,13 @@
 #define ETH_P_MPLS_UC 0x8847 /* MPLS Unicast traffic		*/
 #define ETH_P_MPLS_MC 0x8848 /* MPLS Multicast traffic	*/
 
+#define cursor_advance(_cursor, _len) \
+    ({                                \
+        void *_tmp = _cursor;         \
+        _cursor += _len;              \
+        _tmp;                         \
+    })
+
 struct hdr_cursor {
     void *pos;
 };
