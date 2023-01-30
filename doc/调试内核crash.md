@@ -251,7 +251,9 @@ COMMAND：进程名。
 
 bt <pid>：列出相应进程的堆栈。
 
-bt -f：列出当前堆栈每一帧中的数据。
+bt -f：列出当前堆栈每一帧中的数据，所有堆栈数据，检测每个函数的参数传递。
+
+bt -l：显示文件和行号。
 
 bt -p：只打印panic的线程的内核栈。
 
@@ -594,13 +596,51 @@ struct sk_buff {
 struct sk_buff {
 ```
 
-也可以用该命令查看task_struct结构对象的数据。
+**查看task_struct结构成员的值**。
 
 ```
 struct task_struct 0xffff8d03f6c717c0
 ```
 
-查看结构体成员的偏移，使用命令**struct -o timer_list**。
+**查看结构体成员的偏移**，-o后面没有地址，只显示结构体偏移，-ox是用16进制显示偏移。
+
+```
+crash> struct thread_info -o
+struct thread_info {
+    [0] struct task_struct *task;
+    [8] struct exec_domain *exec_domain;
+   [16] __u32 flags;
+   [20] __u32 status;
+   [24] __u32 cpu;
+   [28] int preempt_count;
+   [32] mm_segment_t addr_limit;
+   [40] struct restart_block restart_block;
+   [88] void *sysenter_return;
+   [96] unsigned int sig_on_uaccess_error : 1;
+   [96] unsigned int uaccess_err : 1;
+}
+SIZE: 104
+```
+
+**显示结构成员的虚拟地址**，-o后面加上结构的虚拟地址。
+
+```
+crash> struct thread_info -o 0xffff8ab42c718000
+struct thread_info {
+  [ffff8ab42c718000] struct task_struct *task;
+  [ffff8ab42c718008] struct exec_domain *exec_domain;
+  [ffff8ab42c718010] __u32 flags;
+  [ffff8ab42c718014] __u32 status;
+  [ffff8ab42c718018] __u32 cpu;
+  [ffff8ab42c71801c] int preempt_count;
+  [ffff8ab42c718020] mm_segment_t addr_limit;
+  [ffff8ab42c718028] struct restart_block restart_block;
+  [ffff8ab42c718058] void *sysenter_return;
+  [ffff8ab42c718060] unsigned int sig_on_uaccess_error : 1;
+  [ffff8ab42c718060] unsigned int uaccess_err : 1;
+}
+SIZE: 104
+```
 
 其它命令方式
 
@@ -613,7 +653,7 @@ struct struct_name <addr> -r 获得结构体原始数据
 struct struct_name <addr> -x/-d 以十六进制/十进制方式输出结构体内容
 struct struct_name <addr> -p 打印结构体中指针的类型
 struct struct_name symobl 查看全局 symbol 的结构体内容
-struct struct_name symbol:cpuspec 打印指定 PERCPU 在指定 CPU 上结构体内容
+struct struct_name symbol:cpuspec 打印指定 PERCPU 在指定 CPU 上结构体内容, cpuspec=all意味着全部cpu变量
 
 union union_name 获得指定联合体体在内核中的定义
 union union_name <addr> 获得指定联合体的内容
@@ -662,6 +702,70 @@ list [-o] offset -h <start> 通过双链表成员起始地址打印双链表所�
 list -s/-S struct 打印链表成员的内容
 list -r 逆序输出链表
 ```
+
+用struct task_struct来结构为例来说明：
+
+先找到init_task变量地址，这是系统第一个task_struct对象，所有的task都在task_struct.tasks链表中
+
+```
+crash> sym  init_task
+ffffffff94618480 (D) init_task
+```
+
+找到tasks的地址
+
+```
+crash> task_struct.tasks -o ffffffff94618480
+struct task_struct {
+  [ffffffff946188b0] struct list_head tasks;
+}
+```
+
+以task_struct.tasks为起点，遍历系统中所有的task_struct，**这里-H表示地址ffffffff946188b0是一个list_head的地址**
+
+```
+crash> list -o task_struct.tasks -s task_struct.comm,pid -H ffffffff946188b0
+ffff8ab4fd760000
+  comm = "systemd\000\060\000\000\000\000\000\000"
+  pid = 1
+ffff8ab4fd761080
+  comm = "kthreadd\000\000\000\000\000\000\000"
+  pid = 2
+ffff8ab4fd763180
+  comm = "kworker/0:0H\000\000\000"
+  pid = 4
+ffff8ab4fd765280
+  comm = "ksoftirqd/0\000\000\000\000"
+  pid = 6
+ffff8ab4fd766300
+  comm = "migration/0\000\000\000\000
+```
+
+**给定list_head所嵌入的结构的地址，使用-h选项**
+
+```
+crash> list -o task_struct.tasks -s task_struct.comm,pid -h ffffffff94618480
+ffffffff94618480
+  comm = "swapper/0\000\000\000\000\000\000"
+  pid = 0
+ffff8ab4fd760000
+  comm = "systemd\000\060\000\000\000\000\000\000"
+  pid = 1
+ffff8ab4fd761080
+  comm = "kthreadd\000\000\000\000\000\000\000"
+  pid = 2
+ffff8ab4fd763180
+  comm = "kworker/0:0H\000\000\000"
+  pid = 4
+```
+
+给定list_head所嵌入的结构的地址，但链表头list_head所在结构与链表节点的结构不一致，链表头结构为A，链表上的节点结构为B
+
+```
+list B.list -s B.data -O A.list -h A_addr  
+```
+
+其中A_addr是链表头所在结构A的地址。这里使用-h用来指明A_addr 是结构A的首地址，-O A.list 用来指明A结构中list的成员的偏移。-o B.list表示，链表上的节点结构是B，list在B结构中的偏移是B.list。
 
 ## 举例
 
@@ -956,4 +1060,5 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 - [crash命令 —— list - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16046328.html)
 - https://crash-utility.github.io/help_pages/kmem.html
 - [crash命令 —— kmem - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16064197.html)
+- [crash点滴之三（list与strcut命令） - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/584589747)
 
