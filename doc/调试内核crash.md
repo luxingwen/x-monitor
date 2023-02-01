@@ -49,6 +49,16 @@ Install  2 Packages
 
 通过file命令可以看到：with debug_info, not stripped。
 
+### CentOS7安装kernel debug版本
+
+下载路径：[Index of /7/x86_64 (centos.org)](http://debuginfo.centos.org/7/x86_64/)
+
+例如内核版本[3.10.0-693.1.1.el7.x86_64，需要下载如下两个包
+
+kernel-debuginfo-3.10.0-693.17.1.el7.x86_64.rpm
+
+kernel-debuginfo-common-x86_64-3.10.0-693.17.1.el7.x86_64.rpm
+
 ## Kdump
 
 kdump是内核崩溃的时候，用来转存运行内存的一个工具。系统一旦崩溃，内核就没法工作了，这个时候将由kdump提供一个用于捕获当前运行信息的内核，该内核会将此时内存中的所有运行状态和数据信息收集到一个dump core文件中以便之后分析崩溃原因。一旦内存信息收集完成，可以让系统自动重启。
@@ -353,6 +363,8 @@ ps -A 打印内核崩溃时各个 CPU 上正在运行的进程状态
 
 反汇编，参数可以使用地址、符号（函数名、变量名），对齐反汇编得到改地址对应的源码。
 
+dis -s显示源代码
+
 ```
 crash> dis -s ffffffffba3affd2
 FILE: drivers/tty/sysrq.c
@@ -394,6 +406,12 @@ crash> dis -l skb_release_data
 **一般使用<u>dis -rl</u>从函数开始到指定的地址**。
 
 #### rd - 读取相应的内存
+
+```
+rd -x ffff882f7dc94318
+```
+
+rd默认单位是unsigned long，64位机器上就是8字节。可以指定位宽rd -8/-16/-32/-64。
 
 #### mod - 查看显示、加载模块符号
 
@@ -668,7 +686,7 @@ union_union symbol:cpuspec 打印指定 PERCPU 在指定 CPU 上联合体内容
 
 #### whatis - 查看数据或者类型信息
 
-如果要查看timer_list结构体定义，可以使用该命令，**whatis timer_list**。
+如果要查看timer_list结构体定义，可以使用该命令，**whatis -o timer_list**。
 
 #### irq - 查看中断信息
 
