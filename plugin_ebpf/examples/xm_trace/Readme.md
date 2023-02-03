@@ -262,7 +262,42 @@
     ....
   ```
 
-  
+- 运行，指定trace的进程和系统调用
+
+  ```
+   ⚡ root@localhost  /home/calmwu/program/cpp_space/x-monitor/bin  ./xm_trace --pid=1261638 --funcs=sys_close,sys_readlinkat,sys_openat --alsologtostderr -v=4 
+  I0203 14:49:07.480313 1262243 main.go:203] start trace process:'1261638' syscalls
+  I0203 14:49:09.087523 1262243 main.go:287] prog:'XmTraceBtfTpSysEnter' ebpf info:'Tracing(xm_trace_btf_tp__sys_enter)#13'
+  I0203 14:49:09.088790 1262243 main.go:315] attach BTFRawTracepoint Tracing(xm_trace_btf_tp__sys_enter)#13 program for link success.
+  I0203 14:49:09.088848 1262243 main.go:287] prog:'XmTraceBtfTpSysExit' ebpf info:'Tracing(xm_trace_btf_tp__sys_exit)#15'
+  I0203 14:49:09.089212 1262243 main.go:315] attach BTFRawTracepoint Tracing(xm_trace_btf_tp__sys_exit)#15 program for link success.
+  I0203 14:49:09.091302 1262243 main.go:190] create ebpf program:'sys_close', sectionName:'kprobe/sys_close' success
+  I0203 14:49:09.091723 1262243 main.go:190] create ebpf program:'sys_readlinkat', sectionName:'kprobe/sys_readlinkat' success
+  I0203 14:49:09.092309 1262243 main.go:190] create ebpf program:'sys_openat', sectionName:'kprobe/sys_openat' success
+  I0203 14:49:09.138477 1262243 main.go:363] attach KProbe Kprobe(sys_close)#18 program for link success.
+  I0203 14:49:09.159429 1262243 main.go:363] attach KProbe Kprobe(sys_readlinkat)#19 program for link success.
+  I0203 14:49:09.180624 1262243 main.go:363] attach KProbe Kprobe(sys_openat)#20 program for link success.
+  I0203 14:49:09.181693 1262243 main.go:439] Start receiving events...
+  I0203 14:49:09.458984 1262243 main.go:461] pid:1261638, tid:1261645, (535177001.398899 ms) syscall_nr:202 = 0
+  I0203 14:49:09.459078 1262243 main.go:461] pid:1261638, tid:1261641, (535177001.399302 ms) syscall_nr:202 = -11
+  I0203 14:49:09.459107 1262243 main.go:461] pid:1261638, tid:1261641, (535177001.420854 ms) syscall_nr:202 = 0
+  I0203 14:49:09.459134 1262243 main.go:461] pid:1261638, tid:1261645, (535177001.425641 ms) syscall_nr:39 = 1261638
+  I0203 14:49:09.459159 1262243 main.go:461] pid:1261638, tid:1261641, (535177001.428705 ms) syscall_nr:39 = 1261638
+  I0203 14:49:09.459185 1262243 main.go:461] pid:1261638, tid:1261642, (535177002.308151 ms) syscall_nr:202 = -11
+  I0203 14:49:09.459208 1262243 main.go:461] pid:1261638, tid:1261643, (535177002.308837 ms) syscall_nr:202 = 0
+  I0203 14:49:09.459248 1262243 main.go:461] pid:1261638, tid:1261642, (535177002.311132 ms) syscall_nr:202 = 0
+  I0203 14:49:09.459277 1262243 main.go:461] pid:1261638, tid:1261643, (535177002.313404 ms) syscall_nr:39 = 1261638
+  I0203 14:49:09.459299 1262243 main.go:461] pid:1261638, tid:1261642, (535177002.316450 ms) syscall_nr:39 = 1261638
+  I0203 14:49:09.554852 1262243 main.go:461] pid:1261638, tid:1261642, (535177101.039174 ms) syscall_nr:257 = 73
+  I0203 14:49:09.554976 1262243 main.go:484] 	ip[0]: 0xffffffffbab2deb1	__x64_sys_openat+0x1
+  I0203 14:49:09.555002 1262243 main.go:484] 	ip[1]: 0xffffffffba8042bb	do_syscall_64+0x5b
+  I0203 14:49:09.555027 1262243 main.go:484] 	ip[2]: 0xffffffffbb2000ad	entry_SYSCALL_64_after_hwframe+0x65
+  I0203 14:49:09.555062 1262243 main.go:505] 	ip[0]: 0x00007f5ebaf552a6	open+0xd6 [/usr/lib64/libpthread-2.28.so]
+  I0203 14:49:09.555092 1262243 main.go:461] pid:1261638, tid:1261641, (535177101.039253 ms) syscall_nr:257 = 72
+  I0203 14:49:09.555126 1262243 main.go:484] 	ip[0]: 0xffffffffbab2deb1	__x64_sys_openat+0x1
+  I0203 14:49:09.555142 1262243 main.go:484] 	ip[1]: 0xffffffffba8042bb	do_syscall_64+0x5b
+  I0203 14:49:09.555157 1262243 main.go:484] 	ip[2]: 0xffffffffbb2000ad	entry_SYSCALL_64_after_hwframe+0x65
+  ```
 
   
 

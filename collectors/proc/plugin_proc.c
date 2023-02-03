@@ -35,7 +35,7 @@ struct proc_metric_collector {
 };
 
 struct proc_metrics_module {
-    sig_atomic_t exit_flag;
+    volatile int32_t exit_flag;
     pthread_t thread_id; // routine执行的线程id
     struct proc_metric_collector collectors[];
 };
@@ -161,6 +161,8 @@ void *proc_routine_start(void *UNUSED(arg)) {
 
 void proc_routine_stop() {
     __proc_metrics_module.exit_flag = 1;
+    __sync_synchronize();
+
     pthread_join(__proc_metrics_module.thread_id, NULL);
 
     for (int32_t index = 0; __proc_metrics_module.collectors[index].name;

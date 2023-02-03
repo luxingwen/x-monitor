@@ -23,7 +23,7 @@ static const char *__name = "PLUGIN_APPSTATUS";
 static const char *__config_name = "collector_plugin_appstatus";
 
 struct collector_appstat {
-    sig_atomic_t exit_flag;
+    volatile int32_t exit_flag;
     pthread_t thread_id; // routine执行的线程ids
     int32_t update_every; // 指标采集时间间隔
     int32_t update_every_for_app; // 应用更新时间间隔
@@ -168,6 +168,9 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
 
 void appstat_collector_routine_stop() {
     __collector_appstat.exit_flag = 1;
+    // 保证__collector_appstat.exit_flag = 1;内存写执行完毕
+    __sync_synchronize();
+
     pthread_join(__collector_appstat.thread_id, NULL);
 
     free_apps_collector();

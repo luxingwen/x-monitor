@@ -594,6 +594,12 @@ move %gs:0x6a28c12a(%rip), %eax
 
 kmem address，如果不加任何flag，address可以是内核的虚拟地址或者物理地址
 
+查看per-cpu基地址，实际中每个percpu变量的地址都是基于基地址的偏移量
+
+```
+crash> kmem -o
+```
+
 #### struct - 解析结构体
 
 [struct] <结构体名称> <结构体虚拟地址>
@@ -686,7 +692,7 @@ union_union symbol:cpuspec 打印指定 PERCPU 在指定 CPU 上联合体内容
 
 #### whatis - 查看数据或者类型信息
 
-如果要查看timer_list结构体定义，可以使用该命令，**whatis -o timer_list**。
+如果要查看timer_list结构体定义，可以使用该命令，**whatis -o timer_list**，或者查看变量的类型。
 
 #### irq - 查看中断信息
 
@@ -700,6 +706,31 @@ irq -c 20 -s -b
 
 - sys：display essential system information。
 - sys -i
+
+#### sym - translate a symbol to its virtual address, or vice-versa 
+
+用来查看局部变量挺有用，例如查看局部变量的地址，会返回local variables名字
+
+```
+crash> sym ffffffff81a5e100
+ffffffff81a5e100 (D) rcu_sched_state
+```
+
+使用whatis查看变量类型
+
+```
+crash> whatis rcu_sched_state
+struct rcu_state rcu_sched_state
+```
+
+使用struct命令来查看变量内容了
+
+```
+crash> struct rcu_state ffffffff81a5e100
+struct rcu_state {
+  node = {{}}
+}
+```
 
 #### p - 计算数值表达式
 

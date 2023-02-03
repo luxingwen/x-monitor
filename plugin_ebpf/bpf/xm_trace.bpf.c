@@ -53,7 +53,7 @@ const struct syscall_event *unused __attribute__((unused));
 
 // vmlinux.h typedef void (*btf_trace_sys_enter)(void *, struct pt_regs *, long
 // int);
-#if 0
+
 SEC("tp_btf/sys_enter")
 __s32 BPF_PROG(xm_trace_btf_tp__sys_enter, struct pt_regs *regs,
                __s64 syscall_nr) {
@@ -130,7 +130,7 @@ __s32 BPF_PROG(xm_trace_btf_tp__sys_exit, struct pt_regs *regs, __s64 ret) {
 
     return 0;
 }
-#endif
+
 // !!获取的堆栈栈帧地址不对，是不是不能使用btf_raw_tracepoint，试试raw_tracepoint
 
 #define XM_TRACE_KPROBE_PROG(name)                                             \
@@ -168,7 +168,7 @@ __s32 BPF_PROG(xm_trace_btf_tp__sys_exit, struct pt_regs *regs, __s64 ret) {
 
 // SEC("kprobe/" SYSCALL(sys_openat))
 // XM_TRACE_KPROBE_PROG(sys_openat)
-
+#if 0
 /*
 TRACE_EVENT_FN(sys_enter,
     TP_PROTO(struct pt_regs *regs, long id),
@@ -254,7 +254,7 @@ __s32 xm_trace_raw_tp__sys_exit(struct bpf_raw_tracepoint_args *ctx) {
 
     return 0;
 }
-
+#endif
 char _license[] SEC("license") = "GPL";
 
 /*

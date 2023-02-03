@@ -32,7 +32,7 @@ static const char *__name = "PLUGIN_DISKSPACE";
 static const char *__config_name = "collector_plugin_diskspace";
 
 struct collector_diskspace {
-    sig_atomic_t exit_flag;
+    volatile int32_t exit_flag;
     pthread_t thread_id; // routine执行的线程ids
     int32_t update_every;
     int32_t check_for_new_mountinfos_every;
@@ -326,6 +326,8 @@ void *diskspace_routine_start(void *UNUSED(arg)) {
 
 void diskspace_routine_stop() {
     __collector_diskspace.exit_flag = 1;
+    __sync_synchronize();
+
     pthread_join(__collector_diskspace.thread_id, NULL);
 
     if (likely(__collector_diskspace.disk_mountinfo_root)) {
