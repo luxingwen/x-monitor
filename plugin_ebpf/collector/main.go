@@ -8,17 +8,15 @@
 package main
 
 import (
-	_ "go.uber.org/automaxprocs"
+	"go.uber.org/automaxprocs/maxprocs"
+	"xmonitor.calmwu/plugin_ebpf/collector/cmd"
 )
 
-var (
-	// Release thor-med release version
-	Release string
-	// Commit git commit id
-	Commit string
-	// BuildTime thor-med Binary compilation time
-	BuildTime string
-)
-
+// Main is the entry point for the command
 func main() {
+	undo, _ := maxprocs.Set()
+	defer undo()
+	cmd.Main()
 }
+
+// ./xm-monitor.eBPF --log_dir="/var/log/x-monitor/" --v=3
