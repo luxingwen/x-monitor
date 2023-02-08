@@ -1,4 +1,4 @@
-APP := xm-monitor.eBPF
+APP := x-monitor.eBPF
 
 GIT_COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 GIT_BRANCH_NAME ?= $(shell git symbolic-ref --short -q HEAD)

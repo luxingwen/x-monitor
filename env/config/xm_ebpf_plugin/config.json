@@ -4,10 +4,23 @@
     },
     
     "Prometheus" : {
+        "Port" : 31080,
+        "Iface" : "ens160"
+    },
 
+    "Control" : {
+        "Bind" : "0.0.0.0:31081"
     },
 
     "eBPF" : {
-
+        "CacheStat" : {
+            "enable" : true
+        },
+        "OOMKill" : {
+            "enable" : true
+        },
+        "RunQLat" : {
+            "enable" : true
+        }
     }
 }

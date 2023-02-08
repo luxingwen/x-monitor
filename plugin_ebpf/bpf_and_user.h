@@ -65,3 +65,19 @@ struct syscall_event {
     __u32 kernel_stack_id; // 调用堆栈
     __u32 user_stack_id;
 };
+
+//------------------------ cachestat
+struct cachestat_value {
+    __u64 add_to_page_cache_lru;
+    __u64 ip_add_to_page_cache; // IP寄存器的值í
+    __u64 mark_page_accessed;
+    __u64 ip_mark_page_accessed; // IP寄存器的值
+    __u64 account_page_dirtied;
+    __u64 ip_account_page_dirtied; // IP寄存器的值
+    __u64 mark_buffer_dirty;
+    __u64 ip_mark_buffer_dirty; // IP寄存器的值
+    __u32 uid; // 用户ID
+    char comm[TASK_COMM_LEN]; // 进程名
+};
+
+#define CACHE_STATE_MAX_SIZE 1024

@@ -237,6 +237,12 @@ int32_t main(int32_t argc, char *argv[]) {
     get_system_hz();
     srand(now_realtime_sec());
 
+    ret = bump_memlock_rlimit();
+    if (unlikely(0 != ret)) {
+        fatal("failed to increase memlock rlimit: %s\n", strerror(errno));
+        return -1;
+    }
+
     if (unlikely(0 != exporter_register())) {
         return 0;
     }

@@ -130,7 +130,7 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     if (slot > XM_RUNQLAT_MAX_SLOTS) {
         slot = XM_RUNQLAT_MAX_SLOTS - 1;
     }
-    __xm_update_u64(&hist->slots[slot], 1);
+    __xm_update_u64((__u64 *)&hist->slots[slot], 1);
 
 cleanup:
     // 获得cpu的ts，从map中删除

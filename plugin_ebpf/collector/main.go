@@ -1,8 +1,8 @@
 /*
  * @Author: calmwu
  * @Date: 2022-07-14 22:38:50
- * @Last Modified by:   calmwu
- * @Last Modified time: 2022-07-14 22:38:50
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2023-02-08 14:50:47
  */
 
 package main
@@ -19,4 +19,4 @@ func main() {
 	cmd.Main()
 }
 
-// ./xm-monitor.eBPF --log_dir="/var/log/x-monitor/" --v=3
+// ./x-monitor.eBPF --config=../config/xm_ebpf_plugin/config.json --log_dir=/var/log/x-monitor/ --v=3

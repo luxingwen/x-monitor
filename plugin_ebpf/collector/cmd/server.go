@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-06 11:39:12
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-06 16:53:30
+ * @Last Modified time: 2023-02-08 14:59:45
  */
 
 package cmd
@@ -12,8 +12,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cilium/ebpf/rlimit"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"xmonitor.calmwu/plugin_ebpf/collector/config"
+
+	calmutils "github.com/wubo0067/calmwu-go/utils"
 )
 
 var (
@@ -57,6 +61,31 @@ func Main() {
 func __rootCmdRun(cmd *cobra.Command, args []string) {
 	defer glog.Flush()
 
-	glog.Info("Hi~~~, xm-monitor eBPF metrics collector.")
-	// 解析配置文件
+	glog.Info("Hi~~~, xm-monitor.eBPF metrics collector.")
+
+	// Config
+	if err := config.InitConfig(__configFile); err != nil {
+		glog.Fatal(err.Error())
+	}
+
+	if err := rlimit.RemoveMemlock(); err != nil {
+		glog.Fatalf("failed to remove memlock limit: %v", err)
+	}
+
+	// Load kernel symbols
+	if err := calmutils.LoadKallSyms(); err != nil {
+		glog.Fatal(err.Error())
+	} else {
+		glog.Info("Load kernel symbols success!")
+	}
+
+	// Signal
+	ctx := calmutils.SetupSignalHandler()
+
+	// Install pprof
+	calmutils.InstallPProf(config.GetPProfBindAddr())
+
+	<-ctx.Done()
+
+	glog.Info("xm-monitor.eBPF collector exit!")
 }
