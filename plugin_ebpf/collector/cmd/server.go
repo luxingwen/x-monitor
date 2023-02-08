@@ -52,12 +52,16 @@ func init() {
 	__rootCmd.Flags().Parse(os.Args[1:])
 }
 
+// Main is the entry point for the application.
 func Main() {
 	if err := __rootCmd.Execute(); err != nil {
 		glog.Fatal(err.Error())
 	}
 }
 
+// __rootCmdRun is the main entry of xm-monitor.eBPF collector.
+// It is responsible for initializing the configuration file, loading the kernel symbols, and setting up the signal handler.
+// It also installs the pprof module for debugging.
 func __rootCmdRun(cmd *cobra.Command, args []string) {
 	defer glog.Flush()
 

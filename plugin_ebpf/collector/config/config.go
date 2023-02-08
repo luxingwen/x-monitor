@@ -22,7 +22,9 @@ func (v *viperDebugAdapterLog) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-// InitConfig 初始化配置
+// InitConfig 初始化配置文件
+// cfgFile 配置文件路径
+// 返回值：错误对象
 func InitConfig(cfgFile string) error {
 	viper.SetConfigFile(cfgFile)
 	if err := viper.ReadInConfig(); err != nil {
@@ -42,7 +44,8 @@ func InitConfig(cfgFile string) error {
 	return nil
 }
 
-// GetPProfBindAddr 获取pprof绑定地址
+// GetPProfBindAddr returns the address to bind the PProf server to.
+// If no address is specified, the default bind address is returned.
 func GetPProfBindAddr() string {
 	return viper.GetString("PProf.Bind")
 }
