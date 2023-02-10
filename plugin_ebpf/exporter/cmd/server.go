@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-06 11:39:12
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-09 16:59:25
+ * @Last Modified time: 2023-02-10 17:27:31
  */
 
 package cmd
@@ -10,19 +10,22 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/cilium/ebpf/rlimit"
+	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"github.com/spf13/cobra"
-
+	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-
-	calmutils "github.com/wubo0067/calmwu-go/utils"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/netutil"
 )
 
 var (
@@ -41,14 +44,17 @@ var (
 
 	// Defining the root command for the CLI.
 	__rootCmd = &cobra.Command{
-		Use:  "xm-monitor.eBPF application",
-		Long: "xm-monitor plugin application for eBPF metrics collector",
+		Use:  "x-monitor.eBPF application",
+		Long: "x-monitor plugin application for eBPF metrics collector",
 		Version: func() string {
 			return fmt.Sprintf("\n\tVersion: %s.%s\n\tGit: %s:%s\n\tBuild Time: %s\n",
 				VersionMajor, VersionMinor, BranchName, CommitHash, BuildTime)
 		}(),
 		Run: __rootCmdRun,
 	}
+
+	__apiSrv     *netutil.WebSrv
+	_gracePeriod = 3 * time.Second
 )
 
 func init() {
@@ -73,14 +79,24 @@ func __registerPromCollectors() {
 	version.Branch = BranchName
 	version.BuildDate = BuildTime
 
-	prometheus.MustRegister(version.NewCollector("xm-monitor.eBPF"),
-		promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}),
-		promcollectors.NewGoCollector(),
-	)
+	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"),
+		promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{
+			PidFn:     func() (int, error) { return os.Getpid(), nil },
+			Namespace: "xmonitor_eBPF",
+		}),
+		promcollectors.NewGoCollector())
 
 	epbfCollector, _ := collector.NewEbpfCollector()
 	if err := prometheus.Register(epbfCollector); err != nil {
 		glog.Fatalf("Couldn't register eBPF collector: %s", err.Error())
+	}
+}
+
+func __prometheusHandler() gin.HandlerFunc {
+	h := promhttp.Handler()
+
+	return func(c *gin.Context) {
+		h.ServeHTTP(c.Writer, c.Request)
 	}
 }
 
@@ -112,12 +128,37 @@ func __rootCmdRun(cmd *cobra.Command, args []string) {
 	ctx := calmutils.SetupSignalHandler()
 
 	// Install pprof
-	calmutils.InstallPProf(config.GetPProfBindAddr())
+	bind, _ := config.GetPProfBindAddr()
+	calmutils.InstallPProf(bind)
 
-	//
+	// 注册prometheus collectors
 	__registerPromCollectors()
 
+	// 启动web服务
+	bind, _ = config.GetAPISrvBindAddr()
+	__apiSrv = netutil.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
+
+	// 注册router
+	metricsPath := config.GetPromMetricsPath()
+	__apiSrv.Handle(http.MethodGet, metricsPath, __prometheusHandler())
+	__apiSrv.Handle(http.MethodGet, "/", func(c *gin.Context) {
+		_, err := c.Writer.Write([]byte(`<html>
+		<head><title>x-monitor.eBPF</title></head>
+		<body>
+		<h1>eBPF Exporter</h1>
+		<p><a href="` + metricsPath + `">Metrics</a></p>
+		</body>
+		</html>`))
+		if err != nil {
+			glog.Fatalf("write response failed, err: %s", err.Error())
+		}
+	})
+
+	__apiSrv.Start()
+
 	<-ctx.Done()
+
+	__apiSrv.Stop()
 
 	glog.Info("xm-monitor.eBPF collector exit!")
 }

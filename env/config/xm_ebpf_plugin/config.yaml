@@ -1,0 +1,19 @@
+net:
+  port:
+    pprof: 30001
+    api: 31080
+  ip:
+    # 地址赋值类型：default_route, ip, itf_name
+    assignType: default_route
+    value: 0.0.0.0
+api:
+  path:
+    metric: "/metric"
+eBPF:
+  - module: cachestat
+    enable: true
+  - module: oomkill
+    enable: true
+  - module: runqlat
+    enable: true
+
