@@ -18,7 +18,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
-	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"github.com/spf13/cobra"
@@ -79,12 +78,7 @@ func __registerPromCollectors() {
 	version.Branch = BranchName
 	version.BuildDate = BuildTime
 
-	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"),
-		promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{
-			PidFn:     func() (int, error) { return os.Getpid(), nil },
-			Namespace: "xmonitor_eBPF",
-		}),
-		promcollectors.NewGoCollector())
+	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"))
 
 	epbfCollector, _ := collector.NewEbpfCollector()
 	if err := prometheus.Register(epbfCollector); err != nil {
