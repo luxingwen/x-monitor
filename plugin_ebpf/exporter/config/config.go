@@ -107,3 +107,8 @@ func GetAPISrvBindAddr() (string, error) {
 func GetPromMetricsPath() string {
 	return viper.GetString("api.path.metric")
 }
+
+// Returns true if the eBPF collector is enabled.
+func CollectorEnabled() bool {
+	return viper.GetBool("ebpf.enabled")
+}

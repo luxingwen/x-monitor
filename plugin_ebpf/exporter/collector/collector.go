@@ -7,20 +7,43 @@
 
 package collector
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+	"xmonitor.calmwu/plugin_ebpf/exporter/config"
+)
 
-// EbpfCollector implements the prometheus.Collector interface.
-type EbpfCollector struct{}
+// eBPFModule is the interface a collector has to implement.
+type eBPFModule interface {
+	// Get new metrics and expose them via prometheus registry.
+	Update(ch chan<- prometheus.Metric) error
+}
 
-// NewEbpfCollector creates a new instance of the EbpfCollector.
-func NewEbpfCollector() (*EbpfCollector, error) {
-	return &EbpfCollector{}, nil
+// Collector implements the prometheus.Collector interface.
+type Collector struct {
+	enableCollectorDesc *prometheus.Desc
+}
+
+// NewCollector creates a new instance of the Collector.
+func NewCollector() (*Collector, error) {
+	return &Collector{
+		enableCollectorDesc: prometheus.NewDesc(
+			prometheus.BuildFQName("xmonitor_eBPF", "", "enabled"),
+			"Whether the x-monitor.eBPF exporter is enabled or not.",
+			[]string{"enable"}, nil),
+	}, nil
 }
 
 // Describe implements the prometheus.Collector interface.
-func (ec *EbpfCollector) Describe(ch chan<- *prometheus.Desc) {
+func (ec *Collector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- ec.enableCollectorDesc
 }
 
 // Collect implements the prometheus.Collector interface.
-func (ec *EbpfCollector) Collect(ch chan<- prometheus.Metric) {
+func (ec *Collector) Collect(ch chan<- prometheus.Metric) {
+	enabled := config.CollectorEnabled()
+	if enabled {
+		ch <- prometheus.MustNewConstMetric(ec.enableCollectorDesc, prometheus.GaugeValue, 1, "true")
+	} else {
+		ch <- prometheus.MustNewConstMetric(ec.enableCollectorDesc, prometheus.GaugeValue, 1, "false")
+	}
 }

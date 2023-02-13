@@ -86,7 +86,7 @@ func (ws *WebSrv) Start() {
 func (ws *WebSrv) Stop() {
 	if ws.httpSrv != nil {
 		_ = ws.httpSrv.Shutdown(ws.ctx)
-		glog.Infof("%s shutdown now", ws.srvName)
+		glog.Infof("%s web server shutdown now", ws.srvName)
 	}
 }
 

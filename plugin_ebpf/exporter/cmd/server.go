@@ -8,6 +8,7 @@
 package cmd
 
 import (
+	"bytes"
 	goflag "flag"
 	"fmt"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/spf13/cobra"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
+	"golang.org/x/sync/singleflight"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/netutil"
@@ -54,6 +56,8 @@ var (
 
 	__apiSrv     *netutil.WebSrv
 	_gracePeriod = 3 * time.Second
+
+	__gf = singleflight.Group{}
 )
 
 func init() {
@@ -80,7 +84,7 @@ func __registerPromCollectors() {
 
 	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"))
 
-	epbfCollector, _ := collector.NewEbpfCollector()
+	epbfCollector, _ := collector.NewCollector()
 	if err := prometheus.Register(epbfCollector); err != nil {
 		glog.Fatalf("Couldn't register eBPF collector: %s", err.Error())
 	}
@@ -136,13 +140,19 @@ func __rootCmdRun(cmd *cobra.Command, args []string) {
 	metricsPath := config.GetPromMetricsPath()
 	__apiSrv.Handle(http.MethodGet, metricsPath, __prometheusHandler())
 	__apiSrv.Handle(http.MethodGet, "/", func(c *gin.Context) {
-		_, err := c.Writer.Write([]byte(`<html>
-		<head><title>x-monitor.eBPF</title></head>
-		<body>
-		<h1>eBPF Exporter</h1>
-		<p><a href="` + metricsPath + `">Metrics</a></p>
-		</body>
-		</html>`))
+		name := c.Request.URL.Query().Get("name")
+		response, _, _ := __gf.Do(name, func() (interface{}, error) {
+			b := bytes.NewBuffer([]byte(`<html>
+			<head><title>x-monitor.eBPF</title></head>
+			<body>
+			<h1>x-monitor.eBPF Exporter</h1>
+			<p><a href="` + metricsPath + `">Metrics</a></p>
+			</body>
+			</html>`))
+			return b, nil
+		})
+
+		_, err := response.(*bytes.Buffer).WriteTo(c.Writer)
 		if err != nil {
 			glog.Fatalf("write response failed, err: %s", err.Error())
 		}
@@ -154,5 +164,5 @@ func __rootCmdRun(cmd *cobra.Command, args []string) {
 
 	__apiSrv.Stop()
 
-	glog.Info("xm-monitor.eBPF collector exit!")
+	glog.Info("xm-monitor.eBPF exporter exit!")
 }

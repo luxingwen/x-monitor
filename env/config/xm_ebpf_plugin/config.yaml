@@ -10,10 +10,12 @@ api:
   path:
     metric: "/metric"
 eBPF:
+  enabled: true
+  modules:
   - module: cachestat
-    enable: true
+    enabled: true
   - module: oomkill
-    enable: true
+    enabled: true
   - module: runqlat
-    enable: true
+    enabled: true
 
