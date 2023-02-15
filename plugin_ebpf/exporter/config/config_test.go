@@ -34,11 +34,15 @@ func TestInitConfig(t *testing.T) {
 				t.Errorf("InitConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			pprofBindAddr, err := GetPProfBindAddr()
+			pprofBindAddr, err := PProfBindAddr()
 			if err != nil {
-				t.Errorf("GetPProfBindAddr() error = %v", err)
+				t.Errorf("PProfBindAddr() error = %v", err)
 			} else {
 				t.Logf("pprofBindAddr: %s", pprofBindAddr)
+			}
+
+			for i, cfg := range __ebpfModuleConfigs {
+				t.Logf("%d, %+v", i, cfg)
 			}
 		})
 	}

@@ -44,6 +44,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
+	github.com/sanity-io/litter v1.5.5 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/snwfdhmp/errlog v0.0.0-20201130182740-aef7af651c46 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect

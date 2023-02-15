@@ -1,0 +1,31 @@
+#!/usr/bin/env bpftrace
+
+#ifndef BPFTRACE_HAVE_BTF
+#include <linux/sched.h>
+#include <linux/time.h>
+#include <linux/types.h>
+#endif
+
+tracepoint:syscalls:sys_enter_execve 
+{
+	//$arg = (uint8**)(args->argv);
+	//printf("prog: %s\n", str(*$arg));
+	//printf("%s called %s\n", comm, str(args->filename));
+	//printf("arg_0: %x, arg_1: %x, arg_2: %x\n", *$arg, *($arg + 1), *($arg + 2));
+	$i = 1; unroll(5) { printf("i: %d\n", $i); $i = $i + 1; } 
+}
+
+tracepoint:sched:sched_process_exec
+{
+    $task = (struct task_struct *)curtask;
+	$arg_start = $task->mm->arg_start;
+	$arg_end = $task->mm->arg_end;
+	$arg_count = $arg_end - $arg_start;
+
+    time("%H:%M:%S ");
+	//printf("%-6d %-16s %-6d %-16s %-6d\n", $task->real_parent->pid,
+	//    $task->real_parent->comm, pid, comm, $arg_count);
+	printf("%s:%d, parent_pid:%d ===> ", comm, pid, $task->real_parent->pid);
+	cat("/proc/%d/cmdline", pid);
+	printf("\n");
+}

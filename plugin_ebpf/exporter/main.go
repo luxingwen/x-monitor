@@ -19,4 +19,4 @@ func main() {
 	cmd.Main()
 }
 
-// ./x-monitor.eBPF --config=../config/xm_ebpf_plugin/config.yaml --log_dir=/var/log/x-monitor/ --v=3
+// ./x-monitor.eBPF --config=../config/xm_ebpf_plugin/config.yaml --log_dir=/var/log/x-monitor/ --v=5

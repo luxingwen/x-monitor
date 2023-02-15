@@ -12,10 +12,11 @@ api:
 eBPF:
   enabled: true
   modules:
-  - module: cachestat
+  - name: cachestat
     enabled: true
-  - module: oomkill
+    condition:
+  - name: oomkill
     enabled: true
-  - module: runqlat
+  - name: runqlat
     enabled: true
 

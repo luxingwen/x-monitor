@@ -84,8 +84,8 @@ func __registerPromCollectors() {
 
 	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"))
 
-	epbfCollector, _ := collector.NewCollector()
-	if err := prometheus.Register(epbfCollector); err != nil {
+	eBPFCollector, _ := collector.NewEBPFCollector()
+	if err := prometheus.Register(eBPFCollector); err != nil {
 		glog.Fatalf("Couldn't register eBPF collector: %s", err.Error())
 	}
 }
@@ -126,18 +126,18 @@ func __rootCmdRun(cmd *cobra.Command, args []string) {
 	ctx := calmutils.SetupSignalHandler()
 
 	// Install pprof
-	bind, _ := config.GetPProfBindAddr()
+	bind, _ := config.PProfBindAddr()
 	calmutils.InstallPProf(bind)
 
 	// 注册prometheus collectors
 	__registerPromCollectors()
 
 	// 启动web服务
-	bind, _ = config.GetAPISrvBindAddr()
+	bind, _ = config.APISrvBindAddr()
 	__apiSrv = netutil.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
 
 	// 注册router
-	metricsPath := config.GetPromMetricsPath()
+	metricsPath := config.PromMetricsPath()
 	__apiSrv.Handle(http.MethodGet, metricsPath, __prometheusHandler())
 	__apiSrv.Handle(http.MethodGet, "/", func(c *gin.Context) {
 		name := c.Request.URL.Query().Get("name")
