@@ -50,11 +50,6 @@ tracepoint:syscalls:sys_enter_execve
 
 tracepoint:sched:sched_process_exec
 {
-    $task = (struct task_struct *)curtask;
-	$arg_start = $task->mm->arg_start;
-	$arg_end = $task->mm->arg_end;
-	$arg_count = $arg_end - $arg_start;
-
     time("%H:%M:%S ");
 	$prog = @process_args[pid, 0];
 
