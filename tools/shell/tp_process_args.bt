@@ -6,13 +6,46 @@
 #include <linux/types.h>
 #endif
 
+BEGIN {
+}
+
+END {
+    clear(@process_args);
+}
+
 tracepoint:syscalls:sys_enter_execve 
 {
-	//$arg = (uint8**)(args->argv);
-	//printf("prog: %s\n", str(*$arg));
-	//printf("%s called %s\n", comm, str(args->filename));
+	$arg = (uint8**)(args->argv);
+	//printf("%s called %s, pid: %d\n", comm, str(args->filename), pid);
 	//printf("arg_0: %x, arg_1: %x, arg_2: %x\n", *$arg, *($arg + 1), *($arg + 2));
-	$i = 1; unroll(5) { printf("i: %d\n", $i); $i = $i + 1; } 
+
+	@process_args[pid, 0] = str(*$arg);
+	@process_args[pid, 1] = "nil";
+	@process_args[pid, 2] = "nil";
+	@process_args[pid, 3] = "nil";
+	@process_args[pid, 4] = "nil";
+	@process_args[pid, 5] = "nil";
+
+
+	if(*($arg + 1) != 0) {
+		@process_args[pid, 1] = str(*($arg + 1));
+
+		if(*($arg + 2) != 0) {
+			@process_args[pid, 2] = str(*($arg + 2));
+
+			if(*($arg + 3) != 0) {
+				@process_args[pid, 3] = str(*($arg + 3));
+
+				if(*($arg + 4) != 0) {
+					@process_args[pid, 4] = str(*($arg + 4));
+
+					if(*($arg + 5) != 0) {
+						@process_args[pid, 5] = str(*($arg + 5));
+					}
+				}
+			}
+		}
+	}
 }
 
 tracepoint:sched:sched_process_exec
@@ -23,9 +56,39 @@ tracepoint:sched:sched_process_exec
 	$arg_count = $arg_end - $arg_start;
 
     time("%H:%M:%S ");
-	//printf("%-6d %-16s %-6d %-16s %-6d\n", $task->real_parent->pid,
-	//    $task->real_parent->comm, pid, comm, $arg_count);
-	printf("%s:%d, parent_pid:%d ===> ", comm, pid, $task->real_parent->pid);
-	cat("/proc/%d/cmdline", pid);
+	$prog = @process_args[pid, 0];
+
+	print($prog);
+	if(strncmp($prog, "nil", 3) != 0) {
+		printf("cmdline: %s ", $prog);
+
+		if(strncmp(@process_args[pid, 1], "nil", 3) != 0) {
+			printf("%s ", @process_args[pid, 1]);
+
+			if(strncmp(@process_args[pid, 2], "nil", 3) != 0) {
+				printf("%s ", @process_args[pid, 2]);
+
+				if(strncmp(@process_args[pid, 3], "nil", 3) != 0) {
+					printf("%s ", @process_args[pid, 3]);
+
+					if(strncmp(@process_args[pid, 4], "nil", 3) != 0) {
+						printf("%s ", @process_args[pid, 4]);
+
+						if(strncmp(@process_args[pid, 5], "nil", 3) != 0) {
+							printf("%s ", @process_args[pid, 5]);
+						}
+					}
+				}
+			}
+		}
+	}	
 	printf("\n");
+}
+
+t:sched:sched_process_exit
+{
+	delete(@process_args[pid, 0]);
+	delete(@process_args[pid, 1]);
+	delete(@process_args[pid, 2]);
+	delete(@process_args[pid, 3]);
 }
