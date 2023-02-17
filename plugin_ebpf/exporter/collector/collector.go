@@ -2,12 +2,14 @@
  * @Author: CALM.WU
  * @Date: 2023-02-09 14:41:31
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-09 16:57:12
+ * @Last Modified time: 2023-02-17 14:23:15
  */
 
 package collector
 
 import (
+	"fmt"
+
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,27 +17,29 @@ import (
 )
 
 // eBPFSubModule is the interface a collector has to implement.
-type EBPFModule interface {
+type eBPFModule interface {
 	// Get new metrics and expose them via prometheus registry.
 	Update(ch chan<- prometheus.Metric) error
+	Stop()
 }
 
-type eBPFModuleFactory func() (EBPFModule, error)
+type eBPFModuleFactory func() (eBPFModule, error)
 
 var __eBPFModuleRegisters = make(map[string]eBPFModuleFactory)
 
 type EBPFCollector struct {
 	enableCollectorDesc *prometheus.Desc
-	eBPFModules         map[string]EBPFModule
+	eBPFModules         map[string]eBPFModule
 }
 
-// RegisterEBPFModule registers a new eBPF sub module in the registry.
+// registerEBPFModule registers a new eBPF sub module in the registry.
 // It allows the sub module to be loaded and unloaded dynamically at runtime.
-func RegisterEBPFModule(name string, factory eBPFModuleFactory) {
+func registerEBPFModule(name string, factory eBPFModuleFactory) {
 	if _, ok := __eBPFModuleRegisters[name]; ok {
-		glog.Warningf("eBPF sub module %s is already registered", name)
+		fmt.Printf("eBPFModule:'%s' is already registered", name)
 	} else {
 		__eBPFModuleRegisters[name] = factory
+		fmt.Printf("eBPFModule:'%s' is registered", name)
 	}
 }
 
@@ -48,18 +52,18 @@ func NewEBPFCollector() (*EBPFCollector, error) {
 			prometheus.BuildFQName("xmonitor_eBPF", "", "enabled"),
 			"Whether the x-monitor.eBPF exporter is enabled or not.",
 			[]string{"enable"}, nil),
-		eBPFModules: make(map[string]EBPFModule),
+		eBPFModules: make(map[string]eBPFModule),
 	}
 
 	for moduleName, moduleFactory := range __eBPFModuleRegisters {
 		if config.EBPFModuleEnabled(moduleName) {
 			if ebpfModule, err := moduleFactory(); err != nil {
-				err = errors.Wrapf(err, "create eBPF module %s", moduleName)
+				err = errors.Wrapf(err, "create eBPFModule:'%s'", moduleName)
 				glog.Error(err)
 				return nil, err
 			} else {
 				ebpfCollector.eBPFModules[moduleName] = ebpfModule
-				glog.Infof("create eBPF module %s success", moduleName)
+				glog.Infof("create eBPFModule:'%s' success", moduleName)
 			}
 		}
 	}
@@ -79,5 +83,13 @@ func (ec *EBPFCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(ec.enableCollectorDesc, prometheus.GaugeValue, 1, "true")
 	} else {
 		ch <- prometheus.MustNewConstMetric(ec.enableCollectorDesc, prometheus.GaugeValue, 1, "false")
+	}
+}
+
+// Stop stops all the eBPF modules.
+// It also unloads the eBPF programs from the kernel.
+func (ec *EBPFCollector) Stop() {
+	for _, ebpfModule := range ec.eBPFModules {
+		ebpfModule.Stop()
 	}
 }

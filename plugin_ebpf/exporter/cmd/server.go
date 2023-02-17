@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-06 11:39:12
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-10 17:27:31
+ * @Last Modified time: 2023-02-17 14:22:20
  */
 
 package cmd
@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/gin-gonic/gin"
@@ -54,10 +53,9 @@ var (
 		Run: __rootCmdRun,
 	}
 
-	__apiSrv     *netutil.WebSrv
-	_gracePeriod = 3 * time.Second
-
-	__gf = singleflight.Group{}
+	__apiSrv        *netutil.WebSrv
+	__eBPFCollector *collector.EBPFCollector
+	__gf            = singleflight.Group{}
 )
 
 func init() {
@@ -84,8 +82,8 @@ func __registerPromCollectors() {
 
 	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"))
 
-	eBPFCollector, _ := collector.NewEBPFCollector()
-	if err := prometheus.Register(eBPFCollector); err != nil {
+	__eBPFCollector, _ = collector.NewEBPFCollector()
+	if err := prometheus.Register(__eBPFCollector); err != nil {
 		glog.Fatalf("Couldn't register eBPF collector: %s", err.Error())
 	}
 }
@@ -163,6 +161,8 @@ func __rootCmdRun(cmd *cobra.Command, args []string) {
 	<-ctx.Done()
 
 	__apiSrv.Stop()
+
+	__eBPFCollector.Stop()
 
 	glog.Info("xm-monitor.eBPF exporter exit!")
 }

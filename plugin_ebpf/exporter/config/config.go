@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-08 11:41:55
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-10 16:25:05
+ * @Last Modified time: 2023-02-17 14:09:44
  */
 
 package config
@@ -149,7 +149,7 @@ func ExporterEnabled() bool {
 // it returns an empty slice.
 func EBPFModuleEnabled(name string) bool {
 	__mu.RLock()
-	defer __mu.Unlock()
+	defer __mu.RUnlock()
 
 	for _, moduleCfg := range __ebpfModuleConfigs {
 		if moduleCfg.Name == name {
