@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-09 14:43:48
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-17 14:19:57
+ * @Last Modified time: 2023-02-17 14:55:16
  */
 
 package collector
@@ -12,36 +12,52 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
-)
-
-const (
-	__moduleName = "cachestat"
+	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 )
 
 func init() {
-	registerEBPFModule(__moduleName, newCacheStatCollector)
+	registerEBPFModule(cacheStateModuleName, newCacheStatModule)
 }
 
-type cacheStatCollector struct {
+type cacheStatModule struct {
 	name     string
 	stopChan chan struct{}
 	wg       sync.WaitGroup
 	// prometheus对象
 	// eBPF对象
+	objs *bpfmodule.XMCacheStatObjects
 }
 
-func newCacheStatCollector() (eBPFModule, error) {
-	module := new(cacheStatCollector)
-	module.name = "cachestat"
+func newCacheStatModule(name string) (eBPFModule, error) {
+	module := new(cacheStatModule)
+	module.name = name
 	module.stopChan = make(chan struct{})
 
-	eBPFKernelDataGather := func() {
-		glog.Infof("eBPFModule:'%s' start gathering eBPF data...", __moduleName)
+	spec, err := bpfmodule.LoadXMCacheStat()
+	if err != nil {
+		err = errors.Wrapf(err, "eBPFModule:'%s' LoadXMCacheStat failed.", name)
+		glog.Error(err.Error())
+		return nil, err
+	}
+
+	// set spec
+
+	// use spec init cacheStat object
+	module.objs = new(bpfmodule.XMCacheStatObjects)
+	if err := spec.LoadAndAssign(module.objs, nil); err != nil {
+		err = errors.Wrapf(err, "eBPFModule:'%s' LoadAndAssign failed.", name)
+		glog.Error(err.Error())
+		return nil, err
+	}
+
+	cacheStatProducer := func() {
+		glog.Infof("eBPFModule:'%s' start gathering eBPF data...", module.name)
 
 		defer func() {
-			glog.Warningf("eBPFModule:'%s' will exit", __moduleName)
+			glog.Warningf("eBPFModule:'%s' will exit", module.name)
 			module.wg.Done()
 
 			if err := recover(); err != nil {
@@ -54,7 +70,7 @@ func newCacheStatCollector() (eBPFModule, error) {
 		for {
 			select {
 			case <-module.stopChan:
-				glog.Infof("eBPFModule:'%s' receive stop notify", __moduleName)
+				glog.Infof("eBPFModule:'%s' receive stop notify", module.name)
 				break loop
 			default:
 				time.Sleep(time.Millisecond * 50)
@@ -63,21 +79,24 @@ func newCacheStatCollector() (eBPFModule, error) {
 	}
 
 	module.wg.Add(1)
-	go eBPFKernelDataGather()
+	go cacheStatProducer()
 
 	return module, nil
 }
 
-func (cs *cacheStatCollector) Update(ch chan<- prometheus.Metric) error {
+func (cs *cacheStatModule) Update(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
-func (cs *cacheStatCollector) Stop() {
+// Stop stops the eBPF module. This function is called when the eBPF module is removed from the system.
+func (cs *cacheStatModule) Stop() {
 	glog.Infof("Stop eBPFModule:'%s'", cs.name)
 
 	close(cs.stopChan)
 	cs.wg.Wait()
 
-	// 释放eBPF对象
-	// 释放prometheus对象
+	if cs.objs != nil {
+		cs.objs.Close()
+		cs.objs = nil
+	}
 }

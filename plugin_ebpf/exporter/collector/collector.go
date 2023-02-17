@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-09 14:41:31
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-17 14:23:15
+ * @Last Modified time: 2023-02-17 14:35:39
  */
 
 package collector
@@ -23,7 +23,7 @@ type eBPFModule interface {
 	Stop()
 }
 
-type eBPFModuleFactory func() (eBPFModule, error)
+type eBPFModuleFactory func(string) (eBPFModule, error)
 
 var __eBPFModuleRegisters = make(map[string]eBPFModuleFactory)
 
@@ -57,7 +57,7 @@ func NewEBPFCollector() (*EBPFCollector, error) {
 
 	for moduleName, moduleFactory := range __eBPFModuleRegisters {
 		if config.EBPFModuleEnabled(moduleName) {
-			if ebpfModule, err := moduleFactory(); err != nil {
+			if ebpfModule, err := moduleFactory(moduleName); err != nil {
 				err = errors.Wrapf(err, "create eBPFModule:'%s'", moduleName)
 				glog.Error(err)
 				return nil, err

@@ -86,4 +86,6 @@ t:sched:sched_process_exit
 	delete(@process_args[pid, 1]);
 	delete(@process_args[pid, 2]);
 	delete(@process_args[pid, 3]);
+	delete(@process_args[pid, 4]);
+	delete(@process_args[pid, 5]);
 }
