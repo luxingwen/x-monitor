@@ -59,9 +59,8 @@ typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
  * @returns The value in the map, or the value initialized by init_val if the
  *          map didn't exist.
  */
-static __always_inline void *
-__xm_bpf_map_lookup_or_try_init(void *map, const void *key,
-                                const void *init_val) {
+static void *__xm_bpf_map_lookup_or_try_init(void *map, const void *key,
+                                             const void *init_val) {
     void *val = bpf_map_lookup_elem(map, key);
     if (val) {
         return val;
@@ -72,4 +71,23 @@ __xm_bpf_map_lookup_or_try_init(void *map, const void *key,
         return 0;
     }
     return bpf_map_lookup_elem(map, key);
+}
+
+// This code increments a counter in a BPF map.  The map is indexed by key and
+// the counter is incremented by inc. If the map does not contain a counter for
+// the given key, a new counter is created and initialized to zero. The return
+// value is the new counter value. The map is assumed to be of type
+// BPF_MAP_TYPE_ARRAY.
+static __s64 __xm_bpf_map_increment(void *map, const void *key, __u64 inc) {
+    __u64 zero = 0;
+    __u64 *count = (__u64 *)bpf_map_lookup_elem(map, key);
+    if (!count) {
+        bpf_map_update_elem(map, key, &zero, BPF_NOEXIST);
+        count = (__u64 *)bpf_map_lookup_elem(map, key);
+        if (!count) {
+            return 0;
+        }
+    }
+    __sync_fetch_and_add(count, inc);
+    return *((__s64 *)count);
 }

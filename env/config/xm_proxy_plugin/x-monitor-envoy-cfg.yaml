@@ -9,6 +9,6 @@ node:
 
 dynamic_resources:
   cds_config:
-    path: /home/calmwu/Program/cpp/x-monitor/env/config/xm_proxy_plugin/x-monitor-envoy-cds.yaml
+    path: /home/calmwu/Program/x-monitor/env/config/xm_proxy_plugin/x-monitor-envoy-cds.yaml
   lds_config:
-    path: /home/calmwu/Program/cpp/x-monitor/env/config/xm_proxy_plugin/x-monitor-envoy-lds.yaml
+    path: /home/calmwu/Program/x-monitor/env/config/xm_proxy_plugin/x-monitor-envoy-lds.yaml

@@ -167,6 +167,10 @@ __s32 xmonitor_bpf_mark_page_accessed(struct pt_regs *ctx) {
     return 0;
 }
 
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 15, 0))
+SEC("kprobe/folio_account_dirtied")(struct pt_regs *ctx) {
+}
+#else
 SEC("kprobe/account_page_dirtied")
 __s32 xmonitor_bpf_account_page_dirtied(struct pt_regs *ctx) {
     __s32 ret = 0;
@@ -203,6 +207,7 @@ __s32 xmonitor_bpf_account_page_dirtied(struct pt_regs *ctx) {
     }
     return 0;
 }
+#endif
 
 SEC("kprobe/mark_buffer_dirty")
 __s32 xmonitor_bpf_mark_buffer_dirty(struct pt_regs *ctx) {
