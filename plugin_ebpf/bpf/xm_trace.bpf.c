@@ -15,7 +15,6 @@
 
 #include <vmlinux.h>
 #include "xm_bpf_helpers_common.h"
-#include "xm_bpf_helpers_maps.h"
 #include "../bpf_and_user.h"
 
 // 过滤系统调用的进程id

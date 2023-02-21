@@ -10,11 +10,6 @@
 #include <bpf/bpf_helpers.h>
 #include <asm-generic/errno.h>
 
-// max depth of each stack trace to track
-#ifndef PERF_MAX_STACK_DEPTH
-#define PERF_MAX_STACK_DEPTH 20
-#endif
-
 #define BPF_MAP(_name, _type, _key_type, _value_type, _max_entries) \
     struct {                                                        \
         __uint(type, _type);                                        \
@@ -40,14 +35,6 @@
 
 #define BPF_PERF_OUTPUT(_name, _max_entries) \
     BPF_MAP(_name, BPF_MAP_TYPE_PERF_EVENT_ARRAY, int, __u32, _max_entries)
-
-// stack traces: the value is 1 big byte array of the stack addresses
-typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
-#define BPF_STACK_TRACE(_name, _max_entries) \
-    BPF_MAP(_name, BPF_MAP_TYPE_STACK_TRACE, u32, stack_trace_t, _max_entries)
-
-#define KERN_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP)
-#define USER_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK)
 
 /**
  * Looks up a value in a map and initializes it if it doesn't exist.

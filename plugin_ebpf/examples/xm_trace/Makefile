@@ -36,7 +36,7 @@ build:
 	gofmt -s -w $(GOFILES)
 	goimports -v -w $(GOFILES)
 	GOOS=linux GOARCH=amd64 go build -mod=vendor \
-		-ldflags '-X main.Release=$(VERSION) -X main.Commit=$(GIT_COMMIT_HASH) -X main.BuildTime=$(BUILD_TIME) -linkmode external -extldflags -static' \
+		-ldflags '-X main.Release=$(VERSION) -X main.Commit=$(GIT_COMMIT_HASH) -X main.BuildTime=$(BUILD_TIME) -linkmode external' \
 		-gcflags 'all=-N -l' -race  \
 		-o ../../../bin/$(TARGET) main.go
 

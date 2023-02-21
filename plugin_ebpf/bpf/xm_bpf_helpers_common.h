@@ -27,6 +27,19 @@
 #define SYSCALL(SYS) __stringify(SYS)
 #endif
 
+// max depth of each stack trace to track
+#ifndef PERF_MAX_STACK_DEPTH
+#define PERF_MAX_STACK_DEPTH 20
+#endif
+
+// stack traces: the value is 1 big byte array of the stack addresses
+typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
+#define BPF_STACK_TRACE(_name, _max_entries) \
+    BPF_MAP(_name, BPF_MAP_TYPE_STACK_TRACE, u32, stack_trace_t, _max_entries)
+
+#define KERN_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP)
+#define USER_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK)
+
 // bpf_probe_read_kernel(&exit_code, sizeof(exit_code), &task->exit_code);
 
 #define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                \
@@ -48,7 +61,7 @@
         return 0;                                                            \
     }
 
-static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
+static void __xm_update_u64(__u64 *res, __u64 value) {
     __sync_fetch_and_add(res, value);
     if ((0xFFFFFFFFFFFFFFFF - *res) <= value) {
         *res = value;
@@ -56,12 +69,12 @@ static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
 }
 
 // 进程id
-static __always_inline __u32 __xm_get_pid() {
+static __u32 __xm_get_pid() {
     return bpf_get_current_pid_tgid() >> 32;
 }
 
 // 线程id
-static __always_inline __u32 __xm_get_tid() {
+static __u32 __xm_get_tid() {
     return bpf_get_current_pid_tgid() & 0xFFFFFFFF;
 }
 
@@ -72,7 +85,7 @@ static __always_inline __u32 __xm_get_tid() {
  *
  * @returns The parent process ID of the given task.
  */
-static __always_inline __s32 __xm_get_ppid(struct task_struct *task) {
+static __s32 __xm_get_ppid(struct task_struct *task) {
     __u32 ppid;
     struct task_struct *parent = NULL;
     BPF_CORE_READ_INTO(&parent, task, real_parent);
@@ -87,8 +100,7 @@ static __always_inline __s32 __xm_get_ppid(struct task_struct *task) {
  *
  * @returns The start time of the process.
  */
-static __always_inline __u64
-__xm_get_process_start_time(struct task_struct *task) {
+static __u64 __xm_get_process_start_time(struct task_struct *task) {
     __u64 start_time = 0;
     BPF_CORE_READ_INTO(&start_time, task, start_time);
     return start_time;
@@ -99,7 +111,7 @@ __xm_get_process_start_time(struct task_struct *task) {
  * https://www.dubaojiang.com/category/linux/linux_kernel/process/  局部 ID
  * 与命名空间
  */
-static __always_inline __u32 __xm_get_pid_namespace(struct task_struct *task) {
+static __u32 __xm_get_pid_namespace(struct task_struct *task) {
     struct pid *thread_pid = NULL;
     __u32 level;
     struct upid upid;
@@ -134,7 +146,7 @@ struct task_struct___old {
  *
  * @returns The state of the task.
  */
-static __always_inline __s64 __xm_get_task_state(struct task_struct *task) {
+static __s64 __xm_get_task_state(struct task_struct *task) {
     struct task_struct___new *t_new = (void *)task;
 
     if (bpf_core_field_exists(t_new->__state)) {

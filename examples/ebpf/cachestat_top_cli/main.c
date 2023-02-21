@@ -13,26 +13,14 @@
 #include "utils/x_ebpf.h"
 
 #include <bpf/libbpf.h>
-#include "xm_cachestat.skel.h"
+#include "bpf_and_user.h"
+#include "xm_cachestat_top.skel.h"
 
 #define CLEAR() printf("\e[1;1H\e[2J")
 
-struct cachestat_value {
-    uint64_t add_to_page_cache_lru;
-    uint64_t ip_add_to_page_cache;   // IP寄存器的值
-    uint64_t mark_page_accessed;
-    uint64_t ip_mark_page_accessed;   // IP寄存器的值
-    uint64_t account_page_dirtied;
-    uint64_t ip_account_page_dirtied;   // IP寄存器的值
-    uint64_t mark_buffer_dirty;
-    uint64_t ip_mark_buffer_dirty;   // IP寄存器的值
-    uint32_t uid;                    // 用户ID
-    char     comm[16];               // 进程名
-};
-
 static sig_atomic_t __sig_exit = 0;
-static const float  __epsilon = 1e-6;
-static const char  *__optstr = "v";
+static const float __epsilon = 1e-6;
+static const char *__optstr = "v";
 
 static struct args {
     bool verbose;
@@ -63,9 +51,9 @@ int32_t main(int32_t argc, char **argv) {
     int32_t opt;
     // const char *section;
     //  char        symbol[256];
-    time_t     t;
+    time_t t;
     struct tm *tm;
-    char       ts[32];
+    char ts[32];
 
     while ((opt = getopt_long(argc, argv, __optstr, __opts, NULL)) != -1) {
         switch (opt) {
@@ -95,75 +83,81 @@ int32_t main(int32_t argc, char **argv) {
 
     ret = bump_memlock_rlimit();
     if (ret) {
-        fprintf(stderr, "failed to increase memlock rlimit: %s\n", strerror(errno));
+        fprintf(stderr, "failed to increase memlock rlimit: %s\n",
+                strerror(errno));
         return -1;
     }
 
     // 打开
-    struct xm_cachestat_bpf *obj = xm_cachestat_bpf__open();
+    struct xm_cachestat_top_bpf *obj = xm_cachestat_top_bpf__open();
     if (unlikely(!obj)) {
-        fprintf(stderr, "failed to open xm_cachestat_bpf\n");
+        fprintf(stderr, "failed to open xm_cachestat_top_bpf\n");
         return -1;
     } else {
-        debug("xm_cachestat_bpf open success\n");
+        debug("xm_cachestat_top_bpf open success\n");
     }
 
     // 加载
-    ret = xm_cachestat_bpf__load(obj);
+    ret = xm_cachestat_top_bpf__load(obj);
     if (unlikely(0 != ret)) {
-        fprintf(stderr, "failed to load xm_cachestat_bpf: %s\n", strerror(errno));
+        fprintf(stderr, "failed to load xm_cachestat_top_bpf: %s\n",
+                strerror(errno));
         return -1;
     } else {
-        debug("xm_cachestat_bpf load success\n");
+        debug("xm_cachestat_top_bpf load success\n");
     }
 
     // find map
-    // map_fd = bpf_object__find_map_fd_by_name(obj, "cachestat_map");
-    map_fd = bpf_map__fd(obj->maps.cachestat_map);
+    // map_fd = bpf_object__find_map_fd_by_name(obj, "xm_cachestat_map");
+    map_fd = bpf_map__fd(obj->maps.xm_cachestat_top_map);
     if (map_fd < 0) {
-        fprintf(stderr, "ERROR: finding a map 'cachestat_map' in obj file failed\n");
+        fprintf(stderr, "ERROR: finding a map 'xm_cachestat_map' in obj file "
+                        "failed\n");
         goto cleanup;
     }
 
     // 负载
     // ret = cachestat_bpf__attach(obj);
     // if (unlikely(0 != ret)) {
-    //     fprintf(stderr, "failed to attach cachestat_bpf: %s\n", strerror(errno));
-    //     goto cleanup;
+    //     fprintf(stderr, "failed to attach cachestat_bpf: %s\n",
+    //     strerror(errno)); goto cleanup;
     // } else {
     //     debug("cachestat_bpf attach success\n");
     // }
 
-    obj->links.xmonitor_bpf_add_to_page_cache_lru =
-        bpf_program__attach(obj->progs.xmonitor_bpf_add_to_page_cache_lru);
-    if (unlikely(!obj->links.xmonitor_bpf_add_to_page_cache_lru)) {
+    obj->links.xm_cst_add_to_page_cache_lru =
+        bpf_program__attach(obj->progs.xm_cst_add_to_page_cache_lru);
+    if (unlikely(!obj->links.xm_cst_add_to_page_cache_lru)) {
         ret = -errno;
-        fprintf(stderr, "failed to attach xmonitor_bpf_add_to_page_cache_lru: %s\n",
+        fprintf(stderr, "failed to attach xm_cst_add_to_page_cache_lru: %s\n",
                 strerror(-ret));
         goto cleanup;
     }
 
-    obj->links.xmonitor_bpf_mark_page_accessed =
-        bpf_program__attach(obj->progs.xmonitor_bpf_mark_page_accessed);
-    if (unlikely(!obj->links.xmonitor_bpf_mark_page_accessed)) {
+    obj->links.xm_cst_mark_page_accessed =
+        bpf_program__attach(obj->progs.xm_cst_mark_page_accessed);
+    if (unlikely(!obj->links.xm_cst_mark_page_accessed)) {
         ret = -errno;
-        fprintf(stderr, "failed to attach xmonitor_bpf_mark_page_accessed: %s\n", strerror(-ret));
+        fprintf(stderr, "failed to attach xm_cst_mark_page_accessed: %s\n",
+                strerror(-ret));
         goto cleanup;
     }
 
-    obj->links.xmonitor_bpf_account_page_dirtied =
-        bpf_program__attach(obj->progs.xmonitor_bpf_account_page_dirtied);
-    if (unlikely(!obj->links.xmonitor_bpf_account_page_dirtied)) {
+    obj->links.xm_cst_account_page_dirtied =
+        bpf_program__attach(obj->progs.xm_cst_account_page_dirtied);
+    if (unlikely(!obj->links.xm_cst_account_page_dirtied)) {
         ret = -errno;
-        fprintf(stderr, "failed to attach xmonitor_bpf_account_page_dirtied: %s\n", strerror(-ret));
+        fprintf(stderr, "failed to attach xm_cst_account_page_dirtied: %s\n",
+                strerror(-ret));
         goto cleanup;
     }
 
-    obj->links.xmonitor_bpf_mark_buffer_dirty =
-        bpf_program__attach(obj->progs.xmonitor_bpf_mark_buffer_dirty);
-    if (unlikely(!obj->links.xmonitor_bpf_mark_buffer_dirty)) {
+    obj->links.xm_cst_mark_buffer_dirty =
+        bpf_program__attach(obj->progs.xm_cst_mark_buffer_dirty);
+    if (unlikely(!obj->links.xm_cst_mark_buffer_dirty)) {
         ret = -errno;
-        fprintf(stderr, "failed to attach xmonitor_bpf_mark_buffer_dirty: %s\n", strerror(-ret));
+        fprintf(stderr, "failed to attach xm_cst_mark_buffer_dirty: %s\n",
+                strerror(-ret));
         goto cleanup;
     }
 
@@ -184,12 +178,11 @@ int32_t main(int32_t argc, char **argv) {
     //     }
 
     //     if (libbpf_get_error(links[j])) {
-    //         fprintf(stderr, "[%d] section: %s bpf_program__attach failed\n", j, section);
-    //         links[j] = NULL;
-    //         goto cleanup;
+    //         fprintf(stderr, "[%d] section: %s bpf_program__attach failed\n",
+    //         j, section); links[j] = NULL; goto cleanup;
     //     }
-    //     fprintf(stderr, "[%d] section: %s bpf program attach successed\n", j, section);
-    //     j++;
+    //     fprintf(stderr, "[%d] section: %s bpf program attach successed\n", j,
+    //     section); j++;
     // }
 
     signal(SIGINT, sig_handler);
@@ -197,15 +190,17 @@ int32_t main(int32_t argc, char **argv) {
 
     while (!__sig_exit) {
         // key初始为无效的键值，这迫使bpf_map_get_next_key从头开始查找
-        int32_t                pid = -1, next_pid;
+        int32_t pid = -1, next_pid;
         struct cachestat_value value;
 
         CLEAR();
 
-        fprintf(stdout, "\n%-9s %-16s %-6s %-8s %-20s %-20s %-20s %-20s %-15s %-15s %-15s %-15s\n",
-                "TIME", "PCOMM", "PID", "UID", "add_to_page_cache_lru", "mark_page_accessed",
-                "account_page_dirtied", "mark_buffer_dirty", "hits", "misses", "read_hit",
-                "write_hit");
+        fprintf(stdout,
+                "\n%-9s %-16s %-6s %-8s %-20s %-20s %-20s %-20s %-15s %-15s "
+                "%-15s %-15s\n",
+                "TIME", "PCOMM", "PID", "UID", "add_to_page_cache_lru",
+                "mark_page_accessed", "account_page_dirtied",
+                "mark_buffer_dirty", "hits", "misses", "read_hit", "write_hit");
 
         while (bpf_map_get_next_key(map_fd, &pid, &next_pid) == 0) {
             if (__sig_exit) {
@@ -249,14 +244,17 @@ int32_t main(int32_t argc, char **argv) {
                 }
 
                 fprintf(stdout,
-                        "%-9s %-16s %-6d %-8s %-20lu %-20lu %-20lu %-20lu %-15lu %-15lu %15f%% "
+                        "%-9s %-16s %-6d %-8s %-20lu %-20lu %-20lu %-20lu "
+                        "%-15lu %-15lu %15f%% "
                         "%15f%% \n",
                         ts, value.comm, next_pid, get_username(value.uid),
                         value.add_to_page_cache_lru, value.mark_page_accessed,
-                        value.account_page_dirtied, value.mark_buffer_dirty, access, misses, rhits,
-                        whits);
+                        value.account_page_dirtied, value.mark_buffer_dirty,
+                        access, misses, rhits, whits);
             } else {
-                fprintf(stderr, "ERROR: bpf_map_lookup_elem fail to get entry value of Key: '%d'\n",
+                fprintf(stderr,
+                        "ERROR: bpf_map_lookup_elem fail to get entry value of "
+                        "Key: '%d'\n",
                         next_pid);
             }
 
@@ -268,7 +266,7 @@ int32_t main(int32_t argc, char **argv) {
     fprintf(stdout, "kprobing funcs exit\n");
 
 cleanup:
-    xm_cachestat_bpf__destroy(obj);
+    xm_cachestat_top_bpf__destroy(obj);
 
     debug("cachestat_cli exit\n");
 

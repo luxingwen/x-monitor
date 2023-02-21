@@ -66,7 +66,7 @@ struct syscall_event {
     __u32 user_stack_id;
 };
 
-//------------------------ cachestat
+//------------------------ cachestat_top
 struct cachestat_value {
     __u64 add_to_page_cache_lru;
     __u64 ip_add_to_page_cache; // IP寄存器的值í

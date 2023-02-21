@@ -42,15 +42,14 @@ struct hdr_cursor {
     void *pos;
 };
 
-static __always_inline __s32 __xm_proto_is_vlan(__u16 h_proto) {
+static __s32 __xm_proto_is_vlan(__u16 h_proto) {
     return !!(h_proto == bpf_htons(ETH_P_8021Q)
               || h_proto == bpf_htons(ETH_P_8021AD));
 }
 
 // 返回IP包承载的具体协议类型，tcp、udp、icmp等
-static __always_inline __u8 __xm_parse_ip4hdr(struct hdr_cursor *nh,
-                                              void *data_end,
-                                              struct iphdr **iphdr) {
+static __u8 __xm_parse_ip4hdr(struct hdr_cursor *nh, void *data_end,
+                              struct iphdr **iphdr) {
     struct iphdr *iph = nh->pos;
     int hdrsize;
 
@@ -72,9 +71,8 @@ static __always_inline __u8 __xm_parse_ip4hdr(struct hdr_cursor *nh,
     return iph->protocol;
 }
 
-static __always_inline __u8 __xm_parse_ip6hdr(struct hdr_cursor *nh,
-                                              void *data_end,
-                                              struct ipv6hdr **ip6hdr) {
+static __u8 __xm_parse_ip6hdr(struct hdr_cursor *nh, void *data_end,
+                              struct ipv6hdr **ip6hdr) {
     struct ipv6hdr *ip6h = nh->pos;
 
     /* Pointer-arithmetic bounds check; pointer +1 points to after end of
@@ -90,8 +88,7 @@ static __always_inline __u8 __xm_parse_ip6hdr(struct hdr_cursor *nh,
     return ip6h->nexthdr;
 }
 
-static __always_inline int __get_dport(void *trans_data, void *data_end,
-                                       __u8 protocol) {
+static __s32 __get_dport(void *trans_data, void *data_end, __u8 protocol) {
     struct tcphdr *th;
     struct udphdr *uh;
 
@@ -112,8 +109,8 @@ static __always_inline int __get_dport(void *trans_data, void *data_end,
 }
 
 // 解析包头得到ethertype
-static __always_inline bool __xm_parse_eth(struct ethhdr *eth, void *data_end,
-                                           __u16 *eth_type) {
+static bool __xm_parse_eth(struct ethhdr *eth, void *data_end,
+                           __u16 *eth_type) {
     __u64 offset;
 
     offset = sizeof(*eth);
