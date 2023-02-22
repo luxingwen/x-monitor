@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-09 14:43:48
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-17 14:55:16
+ * @Last Modified time: 2023-02-22 16:49:58
  */
 
 package collector
@@ -44,6 +44,9 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 	}
 
 	// set spec
+	for name, mapSpec := range spec.Maps {
+		glog.Infof("cachestat.bpf.o map name:'%s', spec:'%s'", name, mapSpec.String())
+	}
 
 	// use spec init cacheStat object
 	module.objs = new(bpfmodule.XMCacheStatObjects)

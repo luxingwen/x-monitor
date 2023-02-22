@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-04 14:29:03
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-22 14:59:05
+ * @Last Modified time: 2023-02-22 18:27:52
  */
 
 //#include <linux/bpf.h> // uapi这个头文件和vmlinux.h不兼容啊，类型重复定义
@@ -25,6 +25,12 @@
 #define SYSCALL(SYS) "__s390x_" __stringify(SYS)
 #else
 #define SYSCALL(SYS) __stringify(SYS)
+#endif
+
+#ifdef __TARGET_ARCH_x86
+#define KPROBE_REGS_IP_FIX(ip) (ip - sizeof(kprobe_opcode_t))
+#else
+#define KPROBE_REGS_IP_FIX(ip) ip
 #endif
 
 // max depth of each stack trace to track
