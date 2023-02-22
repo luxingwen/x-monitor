@@ -13,20 +13,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type XMCacheStatCachestatValue struct {
-	AddToPageCacheLru    uint64
-	IpAddToPageCache     uint64
-	MarkPageAccessed     uint64
-	IpMarkPageAccessed   uint64
-	AccountPageDirtied   uint64
-	IpAccountPageDirtied uint64
-	MarkBufferDirty      uint64
-	IpMarkBufferDirty    uint64
-	Uid                  uint32
-	Comm                 [16]int8
-	_                    [4]byte
-}
-
 // LoadXMCacheStat returns the embedded CollectionSpec for XMCacheStat.
 func LoadXMCacheStat() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_XMCacheStatBytes)
@@ -68,17 +54,16 @@ type XMCacheStatSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMCacheStatProgramSpecs struct {
-	XmCstAccountPageDirtied *ebpf.ProgramSpec `ebpf:"xm_cst_account_page_dirtied"`
-	XmCstAddToPageCacheLru  *ebpf.ProgramSpec `ebpf:"xm_cst_add_to_page_cache_lru"`
-	XmCstMarkBufferDirty    *ebpf.ProgramSpec `ebpf:"xm_cst_mark_buffer_dirty"`
-	XmCstMarkPageAccessed   *ebpf.ProgramSpec `ebpf:"xm_cst_mark_page_accessed"`
+	XmKpCsApd   *ebpf.ProgramSpec `ebpf:"xm_kp_cs_apd"`
+	XmKpCsAtpcl *ebpf.ProgramSpec `ebpf:"xm_kp_cs_atpcl"`
+	XmKpCsMbd   *ebpf.ProgramSpec `ebpf:"xm_kp_cs_mbd"`
+	XmKpCsMpa   *ebpf.ProgramSpec `ebpf:"xm_kp_cs_mpa"`
 }
 
 // XMCacheStatMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMCacheStatMapSpecs struct {
-	XmCachestatTopMap *ebpf.MapSpec `ebpf:"xm_cachestat_top_map"`
 }
 
 // XMCacheStatObjects contains all objects after they have been loaded into the kernel.
@@ -100,31 +85,28 @@ func (o *XMCacheStatObjects) Close() error {
 //
 // It can be passed to LoadXMCacheStatObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMCacheStatMaps struct {
-	XmCachestatTopMap *ebpf.Map `ebpf:"xm_cachestat_top_map"`
 }
 
 func (m *XMCacheStatMaps) Close() error {
-	return _XMCacheStatClose(
-		m.XmCachestatTopMap,
-	)
+	return _XMCacheStatClose()
 }
 
 // XMCacheStatPrograms contains all programs after they have been loaded into the kernel.
 //
 // It can be passed to LoadXMCacheStatObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMCacheStatPrograms struct {
-	XmCstAccountPageDirtied *ebpf.Program `ebpf:"xm_cst_account_page_dirtied"`
-	XmCstAddToPageCacheLru  *ebpf.Program `ebpf:"xm_cst_add_to_page_cache_lru"`
-	XmCstMarkBufferDirty    *ebpf.Program `ebpf:"xm_cst_mark_buffer_dirty"`
-	XmCstMarkPageAccessed   *ebpf.Program `ebpf:"xm_cst_mark_page_accessed"`
+	XmKpCsApd   *ebpf.Program `ebpf:"xm_kp_cs_apd"`
+	XmKpCsAtpcl *ebpf.Program `ebpf:"xm_kp_cs_atpcl"`
+	XmKpCsMbd   *ebpf.Program `ebpf:"xm_kp_cs_mbd"`
+	XmKpCsMpa   *ebpf.Program `ebpf:"xm_kp_cs_mpa"`
 }
 
 func (p *XMCacheStatPrograms) Close() error {
 	return _XMCacheStatClose(
-		p.XmCstAccountPageDirtied,
-		p.XmCstAddToPageCacheLru,
-		p.XmCstMarkBufferDirty,
-		p.XmCstMarkPageAccessed,
+		p.XmKpCsApd,
+		p.XmKpCsAtpcl,
+		p.XmKpCsMbd,
+		p.XmKpCsMpa,
 	)
 }
 
