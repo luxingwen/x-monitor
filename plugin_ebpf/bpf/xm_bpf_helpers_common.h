@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-04 14:29:03
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-10-20 11:23:28
+ * @Last Modified time: 2023-02-22 14:59:05
  */
 
 //#include <linux/bpf.h> // uapi这个头文件和vmlinux.h不兼容啊，类型重复定义
@@ -61,7 +61,7 @@ typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
         return 0;                                                            \
     }
 
-static void __xm_update_u64(__u64 *res, __u64 value) {
+static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
     __sync_fetch_and_add(res, value);
     if ((0xFFFFFFFFFFFFFFFF - *res) <= value) {
         *res = value;
@@ -69,12 +69,12 @@ static void __xm_update_u64(__u64 *res, __u64 value) {
 }
 
 // 进程id
-static __u32 __xm_get_pid() {
+static __always_inline __u32 __xm_get_pid() {
     return bpf_get_current_pid_tgid() >> 32;
 }
 
 // 线程id
-static __u32 __xm_get_tid() {
+static __always_inline __u32 __xm_get_tid() {
     return bpf_get_current_pid_tgid() & 0xFFFFFFFF;
 }
 
@@ -85,7 +85,7 @@ static __u32 __xm_get_tid() {
  *
  * @returns The parent process ID of the given task.
  */
-static __s32 __xm_get_ppid(struct task_struct *task) {
+static __always_inline __s32 __xm_get_ppid(struct task_struct *task) {
     __u32 ppid;
     struct task_struct *parent = NULL;
     BPF_CORE_READ_INTO(&parent, task, real_parent);
@@ -100,7 +100,8 @@ static __s32 __xm_get_ppid(struct task_struct *task) {
  *
  * @returns The start time of the process.
  */
-static __u64 __xm_get_process_start_time(struct task_struct *task) {
+static __always_inline __u64
+__xm_get_process_start_time(struct task_struct *task) {
     __u64 start_time = 0;
     BPF_CORE_READ_INTO(&start_time, task, start_time);
     return start_time;

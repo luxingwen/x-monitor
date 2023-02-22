@@ -68,19 +68,17 @@ type XMCacheStatSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMCacheStatProgramSpecs struct {
-	XmonitorBpfCsSchedProcessExit *ebpf.ProgramSpec `ebpf:"__xmonitor_bpf_cs_sched_process_exit"`
-	XmonitorBpfCsSchedProcessFree *ebpf.ProgramSpec `ebpf:"__xmonitor_bpf_cs_sched_process_free"`
-	XmonitorBpfAccountPageDirtied *ebpf.ProgramSpec `ebpf:"xmonitor_bpf_account_page_dirtied"`
-	XmonitorBpfAddToPageCacheLru  *ebpf.ProgramSpec `ebpf:"xmonitor_bpf_add_to_page_cache_lru"`
-	XmonitorBpfMarkBufferDirty    *ebpf.ProgramSpec `ebpf:"xmonitor_bpf_mark_buffer_dirty"`
-	XmonitorBpfMarkPageAccessed   *ebpf.ProgramSpec `ebpf:"xmonitor_bpf_mark_page_accessed"`
+	XmCstAccountPageDirtied *ebpf.ProgramSpec `ebpf:"xm_cst_account_page_dirtied"`
+	XmCstAddToPageCacheLru  *ebpf.ProgramSpec `ebpf:"xm_cst_add_to_page_cache_lru"`
+	XmCstMarkBufferDirty    *ebpf.ProgramSpec `ebpf:"xm_cst_mark_buffer_dirty"`
+	XmCstMarkPageAccessed   *ebpf.ProgramSpec `ebpf:"xm_cst_mark_page_accessed"`
 }
 
 // XMCacheStatMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMCacheStatMapSpecs struct {
-	XmCachestatMap *ebpf.MapSpec `ebpf:"xm_cachestat_map"`
+	XmCachestatTopMap *ebpf.MapSpec `ebpf:"xm_cachestat_top_map"`
 }
 
 // XMCacheStatObjects contains all objects after they have been loaded into the kernel.
@@ -102,12 +100,12 @@ func (o *XMCacheStatObjects) Close() error {
 //
 // It can be passed to LoadXMCacheStatObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMCacheStatMaps struct {
-	XmCachestatMap *ebpf.Map `ebpf:"xm_cachestat_map"`
+	XmCachestatTopMap *ebpf.Map `ebpf:"xm_cachestat_top_map"`
 }
 
 func (m *XMCacheStatMaps) Close() error {
 	return _XMCacheStatClose(
-		m.XmCachestatMap,
+		m.XmCachestatTopMap,
 	)
 }
 
@@ -115,22 +113,18 @@ func (m *XMCacheStatMaps) Close() error {
 //
 // It can be passed to LoadXMCacheStatObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMCacheStatPrograms struct {
-	XmonitorBpfCsSchedProcessExit *ebpf.Program `ebpf:"__xmonitor_bpf_cs_sched_process_exit"`
-	XmonitorBpfCsSchedProcessFree *ebpf.Program `ebpf:"__xmonitor_bpf_cs_sched_process_free"`
-	XmonitorBpfAccountPageDirtied *ebpf.Program `ebpf:"xmonitor_bpf_account_page_dirtied"`
-	XmonitorBpfAddToPageCacheLru  *ebpf.Program `ebpf:"xmonitor_bpf_add_to_page_cache_lru"`
-	XmonitorBpfMarkBufferDirty    *ebpf.Program `ebpf:"xmonitor_bpf_mark_buffer_dirty"`
-	XmonitorBpfMarkPageAccessed   *ebpf.Program `ebpf:"xmonitor_bpf_mark_page_accessed"`
+	XmCstAccountPageDirtied *ebpf.Program `ebpf:"xm_cst_account_page_dirtied"`
+	XmCstAddToPageCacheLru  *ebpf.Program `ebpf:"xm_cst_add_to_page_cache_lru"`
+	XmCstMarkBufferDirty    *ebpf.Program `ebpf:"xm_cst_mark_buffer_dirty"`
+	XmCstMarkPageAccessed   *ebpf.Program `ebpf:"xm_cst_mark_page_accessed"`
 }
 
 func (p *XMCacheStatPrograms) Close() error {
 	return _XMCacheStatClose(
-		p.XmonitorBpfCsSchedProcessExit,
-		p.XmonitorBpfCsSchedProcessFree,
-		p.XmonitorBpfAccountPageDirtied,
-		p.XmonitorBpfAddToPageCacheLru,
-		p.XmonitorBpfMarkBufferDirty,
-		p.XmonitorBpfMarkPageAccessed,
+		p.XmCstAccountPageDirtied,
+		p.XmCstAddToPageCacheLru,
+		p.XmCstMarkBufferDirty,
+		p.XmCstMarkPageAccessed,
 	)
 }
 

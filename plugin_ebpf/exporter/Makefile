@@ -26,7 +26,7 @@ build:
 	goimports -v -w $(GOFILES)	
 	go generate -v -x ./...
 	GOOS=linux GOARCH=amd64 go build -mod=vendor  -v -x \
-		-ldflags '-X xmonitor.calmwu/plugin_ebpf/collector/cmd.VersionMajor=$(VersionMajor) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.VersionMinor=$(VersionMinor) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.CommitHash=$(GIT_COMMIT_HASH) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.BranchName=$(GIT_BRANCH_NAME) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.BuildTime=$(BUILD_TIME) -linkmode external -extldflags -static' \
+		-ldflags '-X xmonitor.calmwu/plugin_ebpf/collector/cmd.VersionMajor=$(VersionMajor) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.VersionMinor=$(VersionMinor) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.CommitHash=$(GIT_COMMIT_HASH) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.BranchName=$(GIT_BRANCH_NAME) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.BuildTime=$(BUILD_TIME) -linkmode external' \
 		-gcflags 'all=-N -l' -race  \
 		-o ../../env/plugins.d/$(APP) main.go
 

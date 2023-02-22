@@ -1,8 +1,8 @@
 /*
  * @Author: calmwu
  * @Date: 2022-02-19 21:48:44
- * @Last Modified by: calmwu
- * @Last Modified time: 2022-02-19 22:06:09
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2023-02-22 15:01:13
  */
 
 #include <vmlinux.h>
@@ -210,5 +210,12 @@ int BPF_KPROBE(xm_cst_mark_buffer_dirty) {
 // SEC("tracepoint/sched/sched_process_free")
 // PROCESS_EXIT_BPF_PROG(xm_cst_sched_process_free, xm_cachestat_top_map)
 #endif
+
+static void wno_unused_headerfuncs() {
+    /* don't need to actually call the functions to avoid the warnings */
+    (void)&__xm_get_pid_namespace;
+    (void)&__xm_get_task_state;
+    return;
+}
 
 char _license[] SEC("license") = "GPL";
