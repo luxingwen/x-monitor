@@ -227,6 +227,7 @@ func main() {
 	//-------------------------------------------------------------------------
 
 	// rewrite .rodata, bpftool btf dump file xm_trace_syscalls.bpf.o
+	// const变量会放到.rodata section中
 	// !! 如果不把提前修改.rodata数据，加载的指令就会被优化掉，直接return了，使用bpftool prog dump xlated id 2563只能看到部分指令
 	err = spec.RewriteConstants(map[string]interface{}{
 		"xm_trace_syscall_filter_pid": int32(__pid),
@@ -237,9 +238,9 @@ func main() {
 
 	//-------------------------------------------------------------------------
 	// 输出spec中所有的map
-	// for mapK := range spec.Maps {
-	// 	glog.Infof("map name: %s", mapK)
-	// }
+	for mapK := range spec.Maps {
+		glog.Infof("map name: %s", mapK)
+	}
 
 	// 构造.rodata ebpf.Map对象
 	rodataMap, err := ebpf.NewMap(spec.Maps[".rodata"])

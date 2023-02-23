@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-22 14:01:14
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-22 18:24:09
+ * @Last Modified time: 2023-02-23 18:07:02
  */
 
 // https://github.com/wubo0067/x-monitor/blob/feature-xm-ebpf-collector/doc/cachestat.md
@@ -12,11 +12,11 @@
 #include "xm_bpf_helpers_maps.h"
 #include "../bpf_and_user.h"
 
-volatile __s64 xm_cs_total = 0; /* mark_page_accessed() - number of
-                                    mark_buffer_dirty() */
-volatile __s64 xm_cs_misses = 0; /* add_to_page_cache_lru() - number of
-                                  * account_page_dirtied() */
-volatile __s64 xm_cs_mbd = 0; /* total of mark_buffer_dirty events */
+// __s64 xm_cs_total = 0; /* mark_page_accessed() - number of
+// mark_buffer_dirty() */
+// __s64 xm_cs_misses = 0; /* add_to_page_cache_lru() - number of
+//                                   * account_page_dirtied() */
+// __s64 xm_cs_mbd = 0; /* total of mark_buffer_dirty events */
 
 BPF_HASH(xm_page_cache_ops_count, __u64, __u64, 4);
 

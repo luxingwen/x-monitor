@@ -28,6 +28,9 @@
 #endif
 
 #ifdef __TARGET_ARCH_x86
+// KPROBE_REGS_IP_FIX这个宏是用来修正kprobe的上下文结构（struct
+// pt_regs）中的指令指针（ip）的值的。因为在x86架构下，当kprobe被触发时，ip会指向被替换的原始指令，
+// 而不是被探测的函数的地址。所以需要用KPROBE_REGS_IP_FIX宏来获取正确的函数地址，并存储在一个u64变量中。
 #define KPROBE_REGS_IP_FIX(ip) (ip - sizeof(kprobe_opcode_t))
 #else
 #define KPROBE_REGS_IP_FIX(ip) ip

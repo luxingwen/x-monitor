@@ -64,6 +64,7 @@ type XMCacheStatProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMCacheStatMapSpecs struct {
+	XmPageCacheOpsCount *ebpf.MapSpec `ebpf:"xm_page_cache_ops_count"`
 }
 
 // XMCacheStatObjects contains all objects after they have been loaded into the kernel.
@@ -85,10 +86,13 @@ func (o *XMCacheStatObjects) Close() error {
 //
 // It can be passed to LoadXMCacheStatObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMCacheStatMaps struct {
+	XmPageCacheOpsCount *ebpf.Map `ebpf:"xm_page_cache_ops_count"`
 }
 
 func (m *XMCacheStatMaps) Close() error {
-	return _XMCacheStatClose()
+	return _XMCacheStatClose(
+		m.XmPageCacheOpsCount,
+	)
 }
 
 // XMCacheStatPrograms contains all programs after they have been loaded into the kernel.

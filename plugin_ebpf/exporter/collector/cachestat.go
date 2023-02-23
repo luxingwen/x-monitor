@@ -44,8 +44,10 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 	}
 
 	// set spec
+	// output: cachestat.bpf.o map name:'xm_page_cache_ops_count', spec:'Hash(keySize=8, valueSize=8, maxEntries=4, flags=0)'
 	for name, mapSpec := range spec.Maps {
-		glog.Infof("cachestat.bpf.o map name:'%s', spec:'%s'", name, mapSpec.String())
+		glog.Infof("cachestat.bpf.o sec name:'%s','%s', key.TypeName:'%s', value.TypeName:'%s'",
+			name, mapSpec.String(), mapSpec.Key.TypeName(), mapSpec.Value.TypeName())
 	}
 
 	// use spec init cacheStat object

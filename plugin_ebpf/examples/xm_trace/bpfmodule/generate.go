@@ -7,4 +7,4 @@
 
 package bpfmodule
 
-//go:generate env GOPACKAGE=bpfmodule bpf2go -no-strip -cc clang -type syscall_event XMTrace ../../../bpf/xm_trace.bpf.c -- -I../../../ -I../../../bpf/.output -I../../../../extra/include/bpf -g -Wall -Werror -D__TARGET_ARCH_x86 -DOUTPUT_SKB
+//go:generate env GOPACKAGE=bpfmodule bpf2go -no-strip -cc clang -type syscall_event XMTrace ../../../bpf/xm_trace.bpf.c -- -I../../../ -I../../../bpf/.output -I../../../../extra/include/bpf -g -Wall -Werror -Wno-unused-function -D__TARGET_ARCH_x86 -DOUTPUT_SKB
