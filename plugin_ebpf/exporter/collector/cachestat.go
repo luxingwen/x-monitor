@@ -8,13 +8,13 @@
 package collector
 
 import (
-	"sync"
 	"time"
 
+	"github.com/cilium/ebpf/link"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	calmutils "github.com/wubo0067/calmwu-go/utils"
+	"github.com/sourcegraph/conc"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 )
 
@@ -25,16 +25,17 @@ func init() {
 type cacheStatModule struct {
 	name     string
 	stopChan chan struct{}
-	wg       sync.WaitGroup
+	wg       conc.WaitGroup
 	// prometheus对象
 	// eBPF对象
-	objs *bpfmodule.XMCacheStatObjects
+	objs  *bpfmodule.XMCacheStatObjects
+	links []link.Link
 }
 
 func newCacheStatModule(name string) (eBPFModule, error) {
-	module := new(cacheStatModule)
-	module.name = name
-	module.stopChan = make(chan struct{})
+	csm := new(cacheStatModule)
+	csm.name = name
+	csm.stopChan = make(chan struct{})
 
 	spec, err := bpfmodule.LoadXMCacheStat()
 	if err != nil {
@@ -46,36 +47,40 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 	// set spec
 	// output: cachestat.bpf.o map name:'xm_page_cache_ops_count', spec:'Hash(keySize=8, valueSize=8, maxEntries=4, flags=0)'
 	for name, mapSpec := range spec.Maps {
-		glog.Infof("cachestat.bpf.o sec name:'%s','%s', key.TypeName:'%s', value.TypeName:'%s'",
+		glog.Infof("cachestat.bpf.o map name:'%s', info:'%s', key.TypeName:'%s', value.TypeName:'%s'",
 			name, mapSpec.String(), mapSpec.Key.TypeName(), mapSpec.Value.TypeName())
 	}
 
+	// cachestat.bpf.o prog name:'xm_kp_cs_atpcl', type:'Kprobe', attachType:'None', attachTo:'add_to_page_cache_lru', sectionName:'kprobe/add_to_page_cache_lru'
+	for name, progSpec := range spec.Programs {
+		glog.Infof("cachestat.bpf.o prog name:'%s', type:'%s', attachType:'%s', attachTo:'%s', sectionName:'%s'",
+			name, progSpec.Type.String(), progSpec.AttachType.String(), progSpec.AttachTo, progSpec.SectionName)
+	}
+
 	// use spec init cacheStat object
-	module.objs = new(bpfmodule.XMCacheStatObjects)
-	if err := spec.LoadAndAssign(module.objs, nil); err != nil {
+	csm.objs = new(bpfmodule.XMCacheStatObjects)
+	if err := spec.LoadAndAssign(csm.objs, nil); err != nil {
 		err = errors.Wrapf(err, "eBPFModule:'%s' LoadAndAssign failed.", name)
 		glog.Error(err.Error())
 		return nil, err
 	}
 
-	cacheStatProducer := func() {
-		glog.Infof("eBPFModule:'%s' start gathering eBPF data...", module.name)
+	if links, err := AttachObjPrograms(csm.objs.XMCacheStatPrograms, spec.Programs); err != nil {
+		err = errors.Wrapf(err, "eBPFModule:'%s' AttachObjPrograms failed.", name)
+		glog.Error(err.Error())
+		return nil, err
+	} else {
+		csm.links = links
+	}
 
-		defer func() {
-			glog.Warningf("eBPFModule:'%s' will exit", module.name)
-			module.wg.Done()
-
-			if err := recover(); err != nil {
-				panicStack := calmutils.CallStack(3)
-				glog.Errorf("Panic. err:%v, stack:%s", err, panicStack)
-			}
-		}()
+	cacheStatEventProcessor := func() {
+		glog.Infof("eBPFModule:'%s' start gathering eBPF data...", csm.name)
 
 	loop:
 		for {
 			select {
-			case <-module.stopChan:
-				glog.Infof("eBPFModule:'%s' receive stop notify", module.name)
+			case <-csm.stopChan:
+				glog.Infof("eBPFModule:'%s' receive stop notify", csm.name)
 				break loop
 			default:
 				time.Sleep(time.Millisecond * 50)
@@ -83,25 +88,33 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 		}
 	}
 
-	module.wg.Add(1)
-	go cacheStatProducer()
+	csm.wg.Go(cacheStatEventProcessor)
 
-	return module, nil
+	return csm, nil
 }
 
-func (cs *cacheStatModule) Update(ch chan<- prometheus.Metric) error {
+func (csm *cacheStatModule) Update(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
 // Stop stops the eBPF module. This function is called when the eBPF module is removed from the system.
-func (cs *cacheStatModule) Stop() {
-	glog.Infof("Stop eBPFModule:'%s'", cs.name)
+func (csm *cacheStatModule) Stop() {
+	glog.Infof("Stop eBPFModule:'%s'", csm.name)
 
-	close(cs.stopChan)
-	cs.wg.Wait()
+	close(csm.stopChan)
+	if panic := csm.wg.WaitAndRecover(); panic != nil {
+		glog.Errorf("eBPFModule:'%s' panic: %v", csm.name, panic.Error())
+	}
 
-	if cs.objs != nil {
-		cs.objs.Close()
-		cs.objs = nil
+	if csm.links != nil {
+		for _, link := range csm.links {
+			link.Close()
+		}
+		csm.links = nil
+	}
+
+	if csm.objs != nil {
+		csm.objs.Close()
+		csm.objs = nil
 	}
 }

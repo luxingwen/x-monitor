@@ -142,6 +142,10 @@ github.com/sirupsen/logrus
 # github.com/snwfdhmp/errlog v0.0.0-20201130182740-aef7af651c46
 ## explicit
 github.com/snwfdhmp/errlog
+# github.com/sourcegraph/conc v0.2.0
+## explicit; go 1.19
+github.com/sourcegraph/conc
+github.com/sourcegraph/conc/panics
 # github.com/spaolacci/murmur3 v1.1.0
 ## explicit
 github.com/spaolacci/murmur3

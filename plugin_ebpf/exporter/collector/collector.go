@@ -58,12 +58,12 @@ func NewEBPFCollector() (*EBPFCollector, error) {
 	for moduleName, moduleFactory := range __eBPFModuleRegisters {
 		if config.EBPFModuleEnabled(moduleName) {
 			if ebpfModule, err := moduleFactory(moduleName); err != nil {
-				err = errors.Wrapf(err, "create eBPFModule:'%s'", moduleName)
+				err = errors.Wrapf(err, "eBPFModule:'%s' create failed.", moduleName)
 				glog.Error(err)
 				return nil, err
 			} else {
 				ebpfCollector.eBPFModules[moduleName] = ebpfModule
-				glog.Infof("create eBPFModule:'%s' success", moduleName)
+				glog.Infof("eBPFModule:'%s' create success.", moduleName)
 			}
 		}
 	}
