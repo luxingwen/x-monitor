@@ -69,10 +69,10 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 				linkKP, err := link.Kprobe(progSpec.AttachTo, bpfProg, nil)
 				if err == nil {
 					links = append(links, linkKP)
-					glog.Infof("ObjProgs:'%s' field name:'%s', attach kprobe program:'%s' ===> tag:'%s' successed.",
+					glog.Infof("ObjProgs:'%s' field name:'%s', attach kprobe program:'%s' ===> target:'%s' successed.",
 						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
 				} else {
-					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach kprobe program:'%s' ===> tag:'%s' failed.",
+					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach kprobe program:'%s' ===> target:'%s' failed.",
 						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
 					glog.Error(err.Error())
 					return nil, err
@@ -84,10 +84,10 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 				})
 				if err == nil {
 					links = append(links, linkRawTP)
-					glog.Infof("ObjProgs:'%s' field name:'%s', attach raw_tracepoint program:'%s' ===> tag:'%s' successed.",
+					glog.Infof("ObjProgs:'%s' field name:'%s', attach raw_tracepoint program:'%s' ===> target:'%s' successed.",
 						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
 				} else {
-					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach raw_tracepoint program:'%s' ===> tag:'%s' failed.",
+					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach raw_tracepoint program:'%s' ===> target:'%s' failed.",
 						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
 					glog.Error(err.Error())
 					return nil, err
@@ -98,10 +98,10 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 				linkTP, err := link.Tracepoint(group, progSpec.AttachTo, bpfProg, nil)
 				if err == nil {
 					links = append(links, linkTP)
-					glog.Infof("ObjProgs:'%s' field name:'%s', attach tracepoint program:'%s' ===> tag:'%s' successed.",
+					glog.Infof("ObjProgs:'%s' field name:'%s', attach tracepoint program:'%s' ===> target:'%s' successed.",
 						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
 				} else {
-					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach tracepoint program:'%s' ===> tag:'%s' failed.",
+					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach tracepoint program:'%s' ===> target:'%s' failed.",
 						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
 					glog.Error(err.Error())
 					return nil, err
@@ -110,10 +110,10 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 				linkTracing, err := link.AttachTracing(link.TracingOptions{Program: bpfProg})
 				if err == nil {
 					links = append(links, linkTracing)
-					glog.Infof("ObjProgs:'%s' field name:'%s', attach tracing program:'%s' ===> tag:'%s' successed.",
+					glog.Infof("ObjProgs:'%s' field name:'%s', attach tracing program:'%s' ===> target:'%s' successed.",
 						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
 				} else {
-					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach tracepoint program:'%s' ===> tag:'%s' failed.",
+					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach tracepoint program:'%s' ===> target:'%s' failed.",
 						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
 					glog.Error(err.Error())
 					return nil, err
