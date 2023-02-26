@@ -191,7 +191,7 @@ int32_t main(int32_t argc, char **argv) {
     while (!__sig_exit) {
         // key初始为无效的键值，这迫使bpf_map_get_next_key从头开始查找
         int32_t pid = -1, next_pid;
-        struct cachestat_value value;
+        struct cachestat_top_statistics value;
 
         CLEAR();
 

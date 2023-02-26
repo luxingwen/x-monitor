@@ -14,7 +14,7 @@ eBPF:
   modules:
   - name: cachestat
     enabled: true
-    condition:
+    interval: 3 # 统计的时间间隔，单位秒
   - name: oomkill
     enabled: true
   - name: runqlat

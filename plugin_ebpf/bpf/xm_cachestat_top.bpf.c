@@ -15,7 +15,7 @@ struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, CACHE_STATE_MAX_SIZE);
     __type(key, __u32);
-    __type(value, struct cachestat_value);
+    __type(value, struct cachestat_top_statistics);
 } xm_cachestat_top_map SEC(".maps");
 
 #if 0
@@ -35,7 +35,7 @@ SEC("kprobe/add_to_page_cache_lru")
 int BPF_KPROBE(xm_cst_add_to_page_cache_lru) {
     __s32 ret = 0;
     __u32 pid;
-    struct cachestat_value *fill;
+    struct cachestat_top_statistics *fill;
 
     // 得到进程ID
     pid = __xm_get_pid();
@@ -50,7 +50,7 @@ int BPF_KPROBE(xm_cst_add_to_page_cache_lru) {
                    fill->comm, pid, fill->add_to_page_cache_lru);
 
     } else {
-        struct cachestat_value init_value = {
+        struct cachestat_top_statistics init_value = {
             .add_to_page_cache_lru = 1,
         };
         init_value.ip_add_to_page_cache = PT_REGS_IP(ctx);
@@ -73,7 +73,7 @@ SEC("kprobe/mark_page_accessed")
 int BPF_KPROBE(xm_cst_mark_page_accessed) {
     __s32 ret = 0;
     __u32 pid;
-    struct cachestat_value *fill;
+    struct cachestat_top_statistics *fill;
 
     // 得到进程ID
     pid = __xm_get_pid();
@@ -88,7 +88,7 @@ int BPF_KPROBE(xm_cst_mark_page_accessed) {
                    fill->comm, pid, fill->mark_page_accessed);
 
     } else {
-        struct cachestat_value init_value = {
+        struct cachestat_top_statistics init_value = {
             .mark_page_accessed = 1,
         };
         init_value.ip_mark_page_accessed = PT_REGS_IP(ctx);
@@ -111,7 +111,7 @@ SEC("kprobe/account_page_dirtied")
 int BPF_KPROBE(xm_cst_account_page_dirtied) {
     __s32 ret = 0;
     __u32 pid;
-    struct cachestat_value *fill;
+    struct cachestat_top_statistics *fill;
 
     // 得到进程ID
     pid = __xm_get_pid();
@@ -125,7 +125,7 @@ int BPF_KPROBE(xm_cst_account_page_dirtied) {
                    fill->comm, pid, fill->account_page_dirtied);
 
     } else {
-        struct cachestat_value init_value = {
+        struct cachestat_top_statistics init_value = {
             .account_page_dirtied = 1,
         };
         init_value.ip_account_page_dirtied = PT_REGS_IP(ctx);
@@ -148,7 +148,7 @@ SEC("kprobe/mark_buffer_dirty")
 int BPF_KPROBE(xm_cst_mark_buffer_dirty) {
     __s32 ret = 0;
     __u32 pid;
-    struct cachestat_value *fill;
+    struct cachestat_top_statistics *fill;
 
     // 得到进程ID
     pid = __xm_get_pid();
@@ -163,7 +163,7 @@ int BPF_KPROBE(xm_cst_mark_buffer_dirty) {
                    fill->comm, pid, fill->mark_buffer_dirty);
         // bpf_map_update_elem(&xm_cachestat_top_map, &pid, fill, BPF_ANY);
     } else {
-        struct cachestat_value init_value = {
+        struct cachestat_top_statistics init_value = {
             .mark_buffer_dirty = 1,
         };
         init_value.ip_mark_buffer_dirty = PT_REGS_IP(ctx);

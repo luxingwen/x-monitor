@@ -10,6 +10,7 @@ package config
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/golang/glog"
@@ -22,19 +23,24 @@ import (
 
 type viperDebugAdapterLog struct{}
 
+const (
+	defaultInterval = 10 * time.Second
+)
+
 func (v *viperDebugAdapterLog) Write(p []byte) (n int, err error) {
 	glog.Info(calmutils.Bytes2String(p))
 	return len(p), nil
 }
 
 type EBPFModuleConfig struct {
-	Name    string `mapstructure:"name"`
-	Enabled bool   `mapstructure:"enabled"`
+	Name     string        `mapstructure:"name"`
+	Enabled  bool          `mapstructure:"enabled"`
+	Interval time.Duration `mapstructure:"interval"`
 }
 
 var (
-	__ebpfModuleConfigs []*EBPFModuleConfig
-	__mu                sync.RWMutex
+	ebpfModuleConfigs []*EBPFModuleConfig
+	mu                sync.RWMutex
 )
 
 func InitConfig(cfgFile string) error {
@@ -47,7 +53,7 @@ func InitConfig(cfgFile string) error {
 
 	viper.DebugTo(&viperDebugAdapterLog{})
 
-	if err := viper.UnmarshalKey("ebpf.modules", &__ebpfModuleConfigs); err != nil {
+	if err := viper.UnmarshalKey("ebpf.modules", &ebpfModuleConfigs); err != nil {
 		err = errors.Wrapf(err, "unmarshal key ebpf.modules")
 		glog.Error(err)
 		return err
@@ -59,23 +65,23 @@ func InitConfig(cfgFile string) error {
 		glog.Infof("Config file changed: %s", e.Name)
 
 		// update
-		__mu.Lock()
-		defer __mu.Unlock()
+		mu.Lock()
+		defer mu.Unlock()
 		var tmpCfgs []*EBPFModuleConfig
 		if err := viper.UnmarshalKey("ebpf.modules", &tmpCfgs); err != nil {
 			err = errors.Wrapf(err, "unmarshal key ebpf.modules")
 			glog.Error(err)
 		} else {
-			__ebpfModuleConfigs = nil
-			__ebpfModuleConfigs = tmpCfgs
-			glog.Infof("ebpf.modules %s", litter.Sdump(__ebpfModuleConfigs))
+			ebpfModuleConfigs = nil
+			ebpfModuleConfigs = tmpCfgs
+			glog.Infof("ebpf.modules %s", litter.Sdump(ebpfModuleConfigs))
 		}
 	})
 
 	return nil
 }
 
-func __getIP(assignType string) (string, error) {
+func getIP(assignType string) (string, error) {
 	switch assignType {
 	case "ip":
 		return viper.GetString("net.ip.value"), nil
@@ -113,7 +119,7 @@ func __getIP(assignType string) (string, error) {
 // The IP address is determined by the net.ip.assignType configuration value.
 func PProfBindAddr() (string, error) {
 	assignType := viper.GetString("net.ip.assignType")
-	ip, err := __getIP(assignType)
+	ip, err := getIP(assignType)
 	if err != nil {
 		return "", err
 	}
@@ -126,7 +132,7 @@ func PProfBindAddr() (string, error) {
 // assigned by the user-specified IP assignment method.
 func APISrvBindAddr() (string, error) {
 	assignType := viper.GetString("net.ip.assignType")
-	ip, err := __getIP(assignType)
+	ip, err := getIP(assignType)
 	if err != nil {
 		return "", err
 	}
@@ -148,13 +154,27 @@ func ExporterEnabled() bool {
 // into a slice of EBPFModuleConfig. If the section is not present in the config,
 // it returns an empty slice.
 func EBPFModuleEnabled(name string) bool {
-	__mu.RLock()
-	defer __mu.RUnlock()
+	mu.RLock()
+	defer mu.RUnlock()
 
-	for _, moduleCfg := range __ebpfModuleConfigs {
+	for _, moduleCfg := range ebpfModuleConfigs {
 		if moduleCfg.Name == name {
 			return moduleCfg.Enabled
 		}
 	}
 	return false
+}
+
+// EBPFModuleInterval returns the interval at which the ebpf module should
+// be run, which is 10 seconds.
+func EBPFModuleInterval(name string) time.Duration {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	for _, moduleCfg := range ebpfModuleConfigs {
+		if moduleCfg.Name == name {
+			return moduleCfg.Interval * time.Second
+		}
+	}
+	return defaultInterval
 }

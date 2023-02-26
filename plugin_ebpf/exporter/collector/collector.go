@@ -25,7 +25,7 @@ type eBPFModule interface {
 
 type eBPFModuleFactory func(string) (eBPFModule, error)
 
-var __eBPFModuleRegisters = make(map[string]eBPFModuleFactory)
+var eBPFModuleRegisters = make(map[string]eBPFModuleFactory)
 
 type EBPFCollector struct {
 	enableCollectorDesc *prometheus.Desc
@@ -35,10 +35,10 @@ type EBPFCollector struct {
 // registerEBPFModule registers a new eBPF sub module in the registry.
 // It allows the sub module to be loaded and unloaded dynamically at runtime.
 func registerEBPFModule(name string, factory eBPFModuleFactory) {
-	if _, ok := __eBPFModuleRegisters[name]; ok {
+	if _, ok := eBPFModuleRegisters[name]; ok {
 		fmt.Printf("eBPFModule:'%s' is already registered", name)
 	} else {
-		__eBPFModuleRegisters[name] = factory
+		eBPFModuleRegisters[name] = factory
 		fmt.Printf("eBPFModule:'%s' is registered", name)
 	}
 }
@@ -55,7 +55,7 @@ func NewEBPFCollector() (*EBPFCollector, error) {
 		eBPFModules: make(map[string]eBPFModule),
 	}
 
-	for moduleName, moduleFactory := range __eBPFModuleRegisters {
+	for moduleName, moduleFactory := range eBPFModuleRegisters {
 		if config.EBPFModuleEnabled(moduleName) {
 			if ebpfModule, err := moduleFactory(moduleName); err != nil {
 				err = errors.Wrapf(err, "eBPFModule:'%s' create failed.", moduleName)

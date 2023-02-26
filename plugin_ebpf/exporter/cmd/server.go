@@ -40,41 +40,41 @@ var (
 	// BuildTime string.
 	BuildTime string
 
-	__configFile string
+	configFile string
 
 	// Defining the root command for the CLI.
-	__rootCmd = &cobra.Command{
+	rootCmd = &cobra.Command{
 		Use:  "x-monitor.eBPF application",
 		Long: "x-monitor plugin application for eBPF metrics collector",
 		Version: func() string {
 			return fmt.Sprintf("\n\tVersion: %s.%s\n\tGit: %s:%s\n\tBuild Time: %s\n",
 				VersionMajor, VersionMinor, BranchName, CommitHash, BuildTime)
 		}(),
-		Run: __rootCmdRun,
+		Run: rootCmdRun,
 	}
 
-	__apiSrv        *netutil.WebSrv
-	__eBPFCollector *collector.EBPFCollector
-	__gf            = singleflight.Group{}
+	apiSrv        *netutil.WebSrv
+	eBPFCollector *collector.EBPFCollector
+	gf            = singleflight.Group{}
 )
 
 func init() {
-	__rootCmd.Flags().StringVar(&__configFile, "config", "", "env/config/xm_ebpf_plugin/config.json")
-	__rootCmd.Flags().AddGoFlagSet(goflag.CommandLine)
-	__rootCmd.Flags().Parse(os.Args[1:])
+	rootCmd.Flags().StringVar(&configFile, "config", "", "env/config/xm_ebpf_plugin/config.json")
+	rootCmd.Flags().AddGoFlagSet(goflag.CommandLine)
+	rootCmd.Flags().Parse(os.Args[1:])
 }
 
 // Main is the entry point for the application.
 func Main() {
-	if err := __rootCmd.Execute(); err != nil {
+	if err := rootCmd.Execute(); err != nil {
 		glog.Fatal(err.Error())
 	}
 }
 
-// __registerPromCollectors registers the collectors used by the Prometheus
+// registerPromCollectors registers the collectors used by the Prometheus
 // metrics endpoint. It sets the metrics version to the application version,
 // and also registers the standard Go and Process collectors.
-func __registerPromCollectors() {
+func registerPromCollectors() {
 	version.Version = fmt.Sprintf("%s.%s", VersionMajor, VersionMinor)
 	version.Revision = CommitHash
 	version.Branch = BranchName
@@ -82,13 +82,13 @@ func __registerPromCollectors() {
 
 	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"))
 
-	__eBPFCollector, _ = collector.NewEBPFCollector()
-	if err := prometheus.Register(__eBPFCollector); err != nil {
+	eBPFCollector, _ = collector.NewEBPFCollector()
+	if err := prometheus.Register(eBPFCollector); err != nil {
 		glog.Fatalf("Couldn't register eBPF collector: %s", err.Error())
 	}
 }
 
-func __prometheusHandler() gin.HandlerFunc {
+func prometheusHandler() gin.HandlerFunc {
 	h := promhttp.Handler()
 
 	return func(c *gin.Context) {
@@ -96,16 +96,16 @@ func __prometheusHandler() gin.HandlerFunc {
 	}
 }
 
-// __rootCmdRun is the main entry of xm-monitor.eBPF collector.
+// rootCmdRun is the main entry of xm-monitor.eBPF collector.
 // It is responsible for initializing the configuration file, loading the kernel symbols, and setting up the signal handler.
 // It also installs the pprof module for debugging.
-func __rootCmdRun(cmd *cobra.Command, args []string) {
+func rootCmdRun(cmd *cobra.Command, args []string) {
 	defer glog.Flush()
 
 	glog.Info("Hi~~~, xm-monitor.eBPF metrics collector.")
 
 	// Config
-	if err := config.InitConfig(__configFile); err != nil {
+	if err := config.InitConfig(configFile); err != nil {
 		glog.Fatal(err.Error())
 	}
 
@@ -128,18 +128,18 @@ func __rootCmdRun(cmd *cobra.Command, args []string) {
 	calmutils.InstallPProf(bind)
 
 	// 注册prometheus collectors
-	__registerPromCollectors()
+	registerPromCollectors()
 
 	// 启动web服务
 	bind, _ = config.APISrvBindAddr()
-	__apiSrv = netutil.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
+	apiSrv = netutil.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
 
 	// 注册router
 	metricsPath := config.PromMetricsPath()
-	__apiSrv.Handle(http.MethodGet, metricsPath, __prometheusHandler())
-	__apiSrv.Handle(http.MethodGet, "/", func(c *gin.Context) {
+	apiSrv.Handle(http.MethodGet, metricsPath, prometheusHandler())
+	apiSrv.Handle(http.MethodGet, "/", func(c *gin.Context) {
 		name := c.Request.URL.Query().Get("name")
-		response, _, _ := __gf.Do(name, func() (interface{}, error) {
+		response, _, _ := gf.Do(name, func() (interface{}, error) {
 			b := bytes.NewBuffer([]byte(`<html>
 			<head><title>x-monitor.eBPF</title></head>
 			<body>
@@ -156,13 +156,13 @@ func __rootCmdRun(cmd *cobra.Command, args []string) {
 		}
 	})
 
-	__apiSrv.Start()
+	apiSrv.Start()
 
 	<-ctx.Done()
 
-	__apiSrv.Stop()
+	apiSrv.Stop()
 
-	__eBPFCollector.Stop()
+	eBPFCollector.Stop()
 
 	glog.Info("xm-monitor.eBPF exporter exit!")
 }

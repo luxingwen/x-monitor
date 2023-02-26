@@ -67,7 +67,7 @@ struct syscall_event {
 };
 
 //------------------------ cachestat_top
-struct cachestat_value {
+struct cachestat_top_statistics {
     __u64 add_to_page_cache_lru;
     __u64 ip_add_to_page_cache; // IP寄存器的值í
     __u64 mark_page_accessed;

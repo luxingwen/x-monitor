@@ -8,14 +8,15 @@
 package collector
 
 import (
-	"time"
-
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sourcegraph/conc"
+	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
+	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 )
 
 func init() {
@@ -23,9 +24,10 @@ func init() {
 }
 
 type cacheStatModule struct {
-	name     string
-	stopChan chan struct{}
-	wg       conc.WaitGroup
+	name        string
+	stopChan    chan struct{}
+	wg          conc.WaitGroup
+	gatherTimer *calmutils.Timer
 	// prometheus对象
 	// eBPF对象
 	objs  *bpfmodule.XMCacheStatObjects
@@ -36,6 +38,7 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 	csm := new(cacheStatModule)
 	csm.name = name
 	csm.stopChan = make(chan struct{})
+	csm.gatherTimer = calmutils.NewTimer()
 
 	spec, err := bpfmodule.LoadXMCacheStat()
 	if err != nil {
@@ -73,17 +76,59 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 		csm.links = links
 	}
 
+	gatherInterval := config.EBPFModuleInterval(csm.name)
+
 	cacheStatEventProcessor := func() {
 		glog.Infof("eBPFModule:'%s' start gathering eBPF data...", csm.name)
+		// 启动定时器
+		csm.gatherTimer.Reset(gatherInterval)
 
+		var ip, count uint64
 	loop:
 		for {
 			select {
 			case <-csm.stopChan:
 				glog.Infof("eBPFModule:'%s' receive stop notify", csm.name)
 				break loop
-			default:
-				time.Sleep(time.Millisecond * 50)
+			case <-csm.gatherTimer.Chan():
+				glog.Infof("eBPFModule:'%s' gather data", csm.name)
+
+				var atpcl, mpa, fad, apd, mbd uint64
+
+				// 迭代xm_page_cache_ops_count hash map
+				entries := csm.objs.XMCacheStatMaps.XmPageCacheOpsCount.Iterate()
+				for entries.Next(&ip, &count) {
+					// 解析ip，判断对应的内核函数
+					glog.Infof("ip:%d, count:%d", ip, count)
+
+					if funcName, _, err := calmutils.FindKsym(ip); err == nil {
+						switch {
+						case funcName == "add_to_page_cache_lru":
+							atpcl = count
+						case funcName == "mark_page_accessed":
+							mpa = count
+						case funcName == "folio_account_dirtied":
+							fad = count
+						case funcName == "account_page_dirtied":
+							apd = count
+						case funcName == "mark_buffer_dirty":
+							mbd = count
+						}
+					}
+					// 清零
+					err := csm.objs.XMCacheStatMaps.XmPageCacheOpsCount.Update(ip, uint64(0), ebpf.UpdateExist)
+					if err != nil {
+						glog.Errorf("eBPFModule:'%s' update map failed, err:%s", csm.name, err.Error())
+					}
+				}
+
+				if err := entries.Err(); err != nil {
+					glog.Errorf("eBPFModule:'%s' iterate map failed, err:%s", csm.name, err.Error())
+				} else {
+					glog.Infof("eBPFModule:'%s' atpcl:%d, mpa:%d, fad:%d, apd:%d, mbd:%d", csm.name, atpcl, mpa, fad, apd, mbd)
+				}
+
+				// 开始统计计算
 			}
 		}
 	}
@@ -115,5 +160,11 @@ func (csm *cacheStatModule) Stop() {
 		csm.objs.Close()
 		csm.objs = nil
 	}
+
+	if csm.gatherTimer != nil {
+		csm.gatherTimer.Stop()
+		csm.gatherTimer = nil
+	}
+
 	glog.Infof("eBPFModule:'%s' stopped.", csm.name)
 }
