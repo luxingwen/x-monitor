@@ -43,7 +43,7 @@ func ginRecover(c *gin.Context) {
 		if err := recover(); err != nil {
 			stack := calmutils.CallStack(2)
 			httprequest, _ := httputil.DumpRequest(c.Request, false)
-			glog.Errorf("[Recovery] panic recovered:\n%s\n%s\n%s", calmutils.Bytes2String(httprequest), err, stack)
+			glog.Errorf("[recovery] panic recovered:\n%s\n%s\n%s", calmutils.Bytes2String(httprequest), err, stack)
 			c.AbortWithStatus(500)
 		}
 	}()
@@ -75,7 +75,7 @@ func (ws *WebSrv) Start() {
 	go func() {
 		glog.Infof("Starting up %s %s", ws.srvName, ws.httpSrv.Addr)
 		if err := ws.httpSrv.ListenAndServe(); err != nil && errors.Is(err, http.ErrServerClosed) {
-			glog.Errorf("Shutdown [%s] ==> %s\n", ws.srvName, err)
+			glog.Warningf("shutdown [%s] ==> %s\n", ws.srvName, err)
 		} else {
 			glog.Fatalf("%s ListenAndServe failed. error: %s", ws.srvName, err.Error())
 		}

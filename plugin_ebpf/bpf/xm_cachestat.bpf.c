@@ -24,6 +24,12 @@ SEC("kprobe/add_to_page_cache_lru")
 __s32 BPF_KPROBE(xm_kp_cs_atpcl) {
     __u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
     __xm_bpf_map_increment(&xm_page_cache_ops_count, &ip, 1);
+    //__u64 val = (__u64)__xm_bpf_map_increment(&xm_page_cache_ops_count, &ip,
+    // 1);
+    // bpf_printk("xm_ebpf_exporter, cachestat add_to_page_cache_lru ip: 0x%lx,
+    // "
+    //            "val: %lu",
+    //            ip, val);
     //__sync_fetch_and_add(&xm_cs_misses, 1);
     return 0;
 }
@@ -57,6 +63,12 @@ SEC("kprobe/mark_buffer_dirty")
 __s32 BPF_KPROBE(xm_kp_cs_mbd) {
     __u64 ip = PT_REGS_IP(ctx);
     __xm_bpf_map_increment(&xm_page_cache_ops_count, &ip, 1);
+    //__u64 val = (__u64)__xm_bpf_map_increment(&xm_page_cache_ops_count, &ip,
+    // 1);
+    // bpf_printk("xm_ebpf_exporter, cachestat mark_buffer_dirty ip: 0x%lx, val:
+    // "
+    //            "%lu",
+    //            ip, val);
     // __sync_fetch_and_add(&xm_cs_total, -1);
     // __sync_fetch_and_add(&xm_cs_mbd, 1);
     return 0;

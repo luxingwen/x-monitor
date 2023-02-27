@@ -82,7 +82,7 @@ func registerPromCollectors() {
 
 	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"))
 
-	eBPFCollector, _ = collector.NewEBPFCollector()
+	eBPFCollector, _ = collector.New()
 	if err := prometheus.Register(eBPFCollector); err != nil {
 		glog.Fatalf("Couldn't register eBPF collector: %s", err.Error())
 	}

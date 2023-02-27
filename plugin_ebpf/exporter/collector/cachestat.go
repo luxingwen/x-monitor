@@ -83,7 +83,9 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 		// 启动定时器
 		csm.gatherTimer.Reset(gatherInterval)
 
-		var ip, count uint64
+		var ip, count, atpcl, mpa, fad, apd, mbd uint64
+		ipSlice := make([]uint64, 0, csm.objs.XMCacheStatMaps.XmPageCacheOpsCount.MaxEntries())
+
 	loop:
 		for {
 			select {
@@ -91,44 +93,81 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 				glog.Infof("eBPFModule:'%s' receive stop notify", csm.name)
 				break loop
 			case <-csm.gatherTimer.Chan():
-				glog.Infof("eBPFModule:'%s' gather data", csm.name)
-
-				var atpcl, mpa, fad, apd, mbd uint64
+				// glog.Infof("eBPFModule:'%s' gather data", csm.name)
 
 				// 迭代xm_page_cache_ops_count hash map
 				entries := csm.objs.XMCacheStatMaps.XmPageCacheOpsCount.Iterate()
 				for entries.Next(&ip, &count) {
 					// 解析ip，判断对应的内核函数
-					glog.Infof("ip:%d, count:%d", ip, count)
-
+					// glog.Infof("ip:0x%08x, count:%d", ip, count)
 					if funcName, _, err := calmutils.FindKsym(ip); err == nil {
 						switch {
 						case funcName == "add_to_page_cache_lru":
 							atpcl = count
+							ipSlice = append(ipSlice, ip)
 						case funcName == "mark_page_accessed":
 							mpa = count
+							ipSlice = append(ipSlice, ip)
 						case funcName == "folio_account_dirtied":
 							fad = count
+							ipSlice = append(ipSlice, ip)
 						case funcName == "account_page_dirtied":
 							apd = count
+							ipSlice = append(ipSlice, ip)
 						case funcName == "mark_buffer_dirty":
 							mbd = count
+							ipSlice = append(ipSlice, ip)
 						}
-					}
-					// 清零
-					err := csm.objs.XMCacheStatMaps.XmPageCacheOpsCount.Update(ip, uint64(0), ebpf.UpdateExist)
-					if err != nil {
-						glog.Errorf("eBPFModule:'%s' update map failed, err:%s", csm.name, err.Error())
 					}
 				}
 
 				if err := entries.Err(); err != nil {
 					glog.Errorf("eBPFModule:'%s' iterate map failed, err:%s", csm.name, err.Error())
 				} else {
-					glog.Infof("eBPFModule:'%s' atpcl:%d, mpa:%d, fad:%d, apd:%d, mbd:%d", csm.name, atpcl, mpa, fad, apd, mbd)
+					// 开始统计计算
+					total := int(mpa - mbd)
+					misses := int(atpcl - apd - fad)
+
+					if total < 0 {
+						total = 0
+					}
+					if misses < 0 {
+						misses = 0
+					}
+					hits := total - misses
+
+					if hits < 0 {
+						misses = total
+						hits = 0
+					}
+					ratio := 0.0
+					if total > 0 {
+						ratio = float64(hits) / float64(total) * 100.0
+					}
+
+					glog.Infof("eBPFModule:'%s' add_to_page_cache_lru:%d, mark_page_accessed:%d, "+
+						"folio_account_dirtied:%d, account_page_dirtied:%d, mark_buffer_dirty:%d, "+
+						"total:%d, misses:%d, >>>hits:%d, misses:%d ratio:%7.2f%%<<<",
+						csm.name, atpcl, mpa, fad, apd, mbd, total, misses, hits, misses, ratio)
+
+					// cleanup
+					for _, ip := range ipSlice {
+						// 清零
+						err := csm.objs.XMCacheStatMaps.XmPageCacheOpsCount.Update(ip, uint64(0), ebpf.UpdateExist)
+						if err != nil {
+							glog.Errorf("eBPFModule:'%s' update map failed, err:%s", csm.name, err.Error())
+						}
+					}
+					ipSlice = ipSlice[:0]
+					atpcl = 0
+					mpa = 0
+					fad = 0
+					apd = 0
+					mbd = 0
 				}
 
-				// 开始统计计算
+				// 重置定时器
+				csm.gatherTimer.Reset(gatherInterval)
 			}
 		}
 	}

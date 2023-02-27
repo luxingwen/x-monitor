@@ -25,7 +25,8 @@ type eBPFModule interface {
 
 type eBPFModuleFactory func(string) (eBPFModule, error)
 
-var eBPFModuleRegisters = make(map[string]eBPFModuleFactory)
+// For a slice, users is a better name than userSlice.
+var eBPFModuleRegisterMap = make(map[string]eBPFModuleFactory)
 
 type EBPFCollector struct {
 	enableCollectorDesc *prometheus.Desc
@@ -35,18 +36,18 @@ type EBPFCollector struct {
 // registerEBPFModule registers a new eBPF sub module in the registry.
 // It allows the sub module to be loaded and unloaded dynamically at runtime.
 func registerEBPFModule(name string, factory eBPFModuleFactory) {
-	if _, ok := eBPFModuleRegisters[name]; ok {
+	if _, ok := eBPFModuleRegisterMap[name]; ok {
 		fmt.Printf("eBPFModule:'%s' is already registered", name)
 	} else {
-		eBPFModuleRegisters[name] = factory
+		eBPFModuleRegisterMap[name] = factory
 		fmt.Printf("eBPFModule:'%s' is registered", name)
 	}
 }
 
-// NewEBPFCollector creates a new eBPF collector.
+// New creates a new eBPF collector.
 // 1. It creates a new instance of the eBPF collector.
 // 2. It loops through all registered eBPF modules and creates an instance of each module that is enabled.
-func NewEBPFCollector() (*EBPFCollector, error) {
+func New() (*EBPFCollector, error) {
 	ebpfCollector := &EBPFCollector{
 		enableCollectorDesc: prometheus.NewDesc(
 			prometheus.BuildFQName("xmonitor_eBPF", "", "enabled"),
@@ -55,7 +56,7 @@ func NewEBPFCollector() (*EBPFCollector, error) {
 		eBPFModules: make(map[string]eBPFModule),
 	}
 
-	for moduleName, moduleFactory := range eBPFModuleRegisters {
+	for moduleName, moduleFactory := range eBPFModuleRegisterMap {
 		if config.EBPFModuleEnabled(moduleName) {
 			if ebpfModule, err := moduleFactory(moduleName); err != nil {
 				err = errors.Wrapf(err, "eBPFModule:'%s' create failed.", moduleName)

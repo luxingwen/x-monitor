@@ -51,23 +51,23 @@ typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
 
 // bpf_probe_read_kernel(&exit_code, sizeof(exit_code), &task->exit_code);
 
-#define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                \
-    __s32 __##tpfn(void *ctx) {                                              \
-        __u32 pid = __xm_get_pid();                                          \
-        char comm[TASK_COMM_LEN];                                            \
-        bpf_get_current_comm(&comm, sizeof(comm));                           \
-                                                                             \
-        __s32 ret = bpf_map_delete_elem(&hash_map, &pid);                    \
-        if (0 == ret) {                                                      \
-            struct task_struct *task =                                       \
-                (struct task_struct *)bpf_get_current_task();                \
-            __s32 exit_code = BPF_CORE_READ(task, exit_code);                \
-                                                                             \
-            bpf_printk("xmonitor pcomm: '%s' pid: %d exit_code: %d. remove " \
-                       "element from hash_map.",                             \
-                       comm, pid, exit_code);                                \
-        }                                                                    \
-        return 0;                                                            \
+#define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                 \
+    __s32 __##tpfn(void *ctx) {                                               \
+        __u32 pid = __xm_get_pid();                                           \
+        char comm[TASK_COMM_LEN];                                             \
+        bpf_get_current_comm(&comm, sizeof(comm));                            \
+                                                                              \
+        __s32 ret = bpf_map_delete_elem(&hash_map, &pid);                     \
+        if (0 == ret) {                                                       \
+            struct task_struct *task =                                        \
+                (struct task_struct *)bpf_get_current_task();                 \
+            __s32 exit_code = BPF_CORE_READ(task, exit_code);                 \
+                                                                              \
+            bpf_printk("xm_ebpf_exporter pcomm: '%s' pid: %d exit_code: %d. " \
+                       "remove element from hash_map.",                       \
+                       comm, pid, exit_code);                                 \
+        }                                                                     \
+        return 0;                                                             \
     }
 
 static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
