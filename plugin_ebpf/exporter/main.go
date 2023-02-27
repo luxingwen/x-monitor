@@ -20,3 +20,4 @@ func main() {
 }
 
 // ./x-monitor.eBPF --config=../config/xm_ebpf_plugin/config.yaml --log_dir=/var/log/x-monitor/ --v=5
+// dlv exec ./x-monitor.eBPF -- --config=../config/xm_ebpf_plugin/config.yaml --log_dir=/var/log/x-monitor/ --v=5
