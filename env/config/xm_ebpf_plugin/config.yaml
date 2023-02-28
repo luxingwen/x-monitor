@@ -8,14 +8,14 @@ net:
     value: 0.0.0.0
 api:
   path:
-    metric: "/metric"
+    metric: "/metrics"
 eBPF:
   enabled: true
   modules:
-  - name: cachestat
-    enabled: true
-    interval: 3 # 统计的时间间隔，单位秒
-  - name: oomkill
-    enabled: true
-  - name: runqlat
-    enabled: true
+    - name: cachestat
+      enabled: true
+      interval: 1 # 统计的时间间隔，单位秒
+    - name: oomkill
+      enabled: true
+    - name: runqlat
+      enabled: true

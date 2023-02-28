@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sourcegraph/conc"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
+	"go.uber.org/atomic"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 )
@@ -29,6 +30,15 @@ type cacheStatModule struct {
 	wg          conc.WaitGroup
 	gatherTimer *calmutils.Timer
 	// prometheus对象
+	hitsDesc   *prometheus.Desc
+	missesDesc *prometheus.Desc
+	ratioDesc  *prometheus.Desc
+
+	// Statistical value
+	hits   atomic.Uint64
+	misses atomic.Uint64
+	ratio  atomic.Float64
+
 	// eBPF对象
 	objs  *bpfmodule.XMCacheStatObjects
 	links []link.Link
@@ -77,6 +87,23 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 	}
 
 	gatherInterval := config.EBPFModuleInterval(csm.name)
+
+	// Prometheus initialization area
+	csm.hitsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName("filesystem", "pagecache", "hits"),
+		"show hits to the file system page cache",
+		nil, nil,
+	)
+	csm.missesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName("filesystem", "pagecache", "misses"),
+		"show misses to the file system page cache",
+		nil, nil,
+	)
+	csm.ratioDesc = prometheus.NewDesc(
+		prometheus.BuildFQName("filesystem", "pagecache", "ratio"),
+		"show ratio of hits to the file system page cache",
+		nil, nil,
+	)
 
 	cacheStatEventProcessor := func() {
 		glog.Infof("eBPFModule:'%s' start gathering eBPF data...", csm.name)
@@ -150,6 +177,10 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 						"total:%d, misses:%d, >>>hits:%d, misses:%d ratio:%7.2f%%<<<",
 						csm.name, atpcl, mpa, fad, apd, mbd, total, misses, hits, misses, ratio)
 
+					csm.hits.Store(uint64(hits))
+					csm.misses.Store(uint64(misses))
+					csm.ratio.Store(ratio)
+
 					// cleanup
 					for _, ip := range ipSlice {
 						// 清零
@@ -177,7 +208,16 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 	return csm, nil
 }
 
+// Update sends the Metric values for each Metric
+// associated with the cacheStatModule to the provided channel.
+// It implements prometheus.Collector.
 func (csm *cacheStatModule) Update(ch chan<- prometheus.Metric) error {
+	ch <- prometheus.MustNewConstMetric(
+		csm.hitsDesc, prometheus.CounterValue, float64(csm.hits.Load()))
+	ch <- prometheus.MustNewConstMetric(
+		csm.missesDesc, prometheus.CounterValue, float64(csm.misses.Load()))
+	ch <- prometheus.MustNewConstMetric(
+		csm.ratioDesc, prometheus.CounterValue, csm.ratio.Load())
 	return nil
 }
 

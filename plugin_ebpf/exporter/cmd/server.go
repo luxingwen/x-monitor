@@ -80,6 +80,7 @@ func registerPromCollectors() {
 	version.Branch = BranchName
 	version.BuildDate = BuildTime
 
+	// 注册collectors
 	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"))
 
 	eBPFCollector, _ = collector.New()

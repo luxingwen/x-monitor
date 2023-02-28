@@ -193,8 +193,8 @@ github.com/vishvananda/netns
 # github.com/wubo0067/calmwu-go v0.0.0-20230112091944-9f98808d8cb4
 ## explicit
 github.com/wubo0067/calmwu-go/utils
-# go.uber.org/atomic v1.9.0
-## explicit; go 1.13
+# go.uber.org/atomic v1.10.0
+## explicit; go 1.18
 go.uber.org/atomic
 # go.uber.org/automaxprocs v1.5.1
 ## explicit; go 1.18

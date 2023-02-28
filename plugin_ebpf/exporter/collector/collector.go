@@ -82,6 +82,9 @@ func (ec *EBPFCollector) Collect(ch chan<- prometheus.Metric) {
 	enabled := config.ExporterEnabled()
 	if enabled {
 		ch <- prometheus.MustNewConstMetric(ec.enableCollectorDesc, prometheus.GaugeValue, 1, "true")
+		for _, ebpfModule := range ec.eBPFModules {
+			ebpfModule.Update(ch)
+		}
 	} else {
 		ch <- prometheus.MustNewConstMetric(ec.enableCollectorDesc, prometheus.GaugeValue, 1, "false")
 	}
