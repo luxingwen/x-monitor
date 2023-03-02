@@ -13,7 +13,7 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type XMCacheStatTopCachestatValue struct {
+type XMCacheStatTopCachestatTopStatistics struct {
 	AddToPageCacheLru    uint64
 	IpAddToPageCache     uint64
 	MarkPageAccessed     uint64

@@ -19,12 +19,12 @@ struct xm_trace_bpf {
 		struct bpf_map *bss;
 	} maps;
 	struct {
-		struct bpf_program *xm_trace_btf_tp__sys_enter;
-		struct bpf_program *xm_trace_btf_tp__sys_exit;
+		struct bpf_program *xm_trace_tp_btf__sys_enter;
+		struct bpf_program *xm_trace_tp_btf__sys_exit;
 	} progs;
 	struct {
-		struct bpf_link *xm_trace_btf_tp__sys_enter;
-		struct bpf_link *xm_trace_btf_tp__sys_exit;
+		struct bpf_link *xm_trace_tp_btf__sys_enter;
+		struct bpf_link *xm_trace_tp_btf__sys_exit;
 	} links;
 	struct xm_trace_bpf__bss {
 		const struct syscall_event *unused;
@@ -154,13 +154,13 @@ xm_trace_bpf__create_skeleton(struct xm_trace_bpf *obj)
 	if (!s->progs)
 		goto err;
 
-	s->progs[0].name = "xm_trace_btf_tp__sys_enter";
-	s->progs[0].prog = &obj->progs.xm_trace_btf_tp__sys_enter;
-	s->progs[0].link = &obj->links.xm_trace_btf_tp__sys_enter;
+	s->progs[0].name = "xm_trace_tp_btf__sys_enter";
+	s->progs[0].prog = &obj->progs.xm_trace_tp_btf__sys_enter;
+	s->progs[0].link = &obj->links.xm_trace_tp_btf__sys_enter;
 
-	s->progs[1].name = "xm_trace_btf_tp__sys_exit";
-	s->progs[1].prog = &obj->progs.xm_trace_btf_tp__sys_exit;
-	s->progs[1].link = &obj->links.xm_trace_btf_tp__sys_exit;
+	s->progs[1].name = "xm_trace_tp_btf__sys_exit";
+	s->progs[1].prog = &obj->progs.xm_trace_tp_btf__sys_exit;
+	s->progs[1].link = &obj->links.xm_trace_tp_btf__sys_exit;
 
 	s->data_sz = 8712;
 	s->data = (void *)"\

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-12-26 15:12:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-12-26 17:22:50
+ * @Last Modified time: 2023-03-02 14:20:00
  */
 
 // 使用BPF_PROG_TYPE_BTF_RAW_TRACEPOINT来追踪进程的系统调用，对于btf_raw_tracepoint，使用BPF_PROG封装
@@ -54,7 +54,7 @@ const struct syscall_event *unused __attribute__((unused));
 // int);
 
 SEC("tp_btf/sys_enter")
-__s32 BPF_PROG(xm_trace_btf_tp__sys_enter, struct pt_regs *regs,
+__s32 BPF_PROG(xm_trace_tp_btf__sys_enter, struct pt_regs *regs,
                __s64 syscall_nr) {
     pid_t pid = __xm_get_pid();
     __u32 tid = __xm_get_tid();
@@ -88,7 +88,7 @@ __s32 BPF_PROG(xm_trace_btf_tp__sys_enter, struct pt_regs *regs,
 // typedef void (*btf_trace_sys_exit)(void *, struct pt_regs *, long int);
 
 SEC("tp_btf/sys_exit")
-__s32 BPF_PROG(xm_trace_btf_tp__sys_exit, struct pt_regs *regs, __s64 ret) {
+__s32 BPF_PROG(xm_trace_tp_btf__sys_exit, struct pt_regs *regs, __s64 ret) {
     pid_t pid = __xm_get_pid();
     __u32 tid = __xm_get_tid();
 
@@ -257,8 +257,8 @@ __s32 xm_trace_raw_tp__sys_exit(struct bpf_raw_tracepoint_args *ctx) {
 char _license[] SEC("license") = "GPL";
 
 /*
-root@localhost  /lib/modules/4.18.0/build  nm -A vmlinux|grep __x64_sys_openat
-vmlinux:ffffffff82e2b9b0 t _eil_addr___x64_sys_openat
+root@localhost  /lib/modules/4.18.0/build  nm -A vmlinux|grep
+__x64_sys_openat vmlinux:ffffffff82e2b9b0 t _eil_addr___x64_sys_openat
 vmlinux:ffffffff8132deb0 T __x64_sys_openat
  ⚡ root@localhost  /lib/modules/4.18.0/build  addr2line -e vmlinux
 ffffffff82e2b9b0 /usr/src/kernels/linux-4.18.0-348.7.1.el8_5/fs/open.c:1130

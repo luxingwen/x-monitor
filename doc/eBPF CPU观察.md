@@ -2,7 +2,7 @@
 
 ## CPU调度器
 
-系统内核中的调度单元主要是thread，这些thread也叫task。其它类型的调度单元还包括中断处理程序：这些可能是软件运行过程中产生的软中断，例如网络收包，也可能是引荐发出的硬中断。
+系统内核中的调度单元主要是Thread，这些thread也叫Task。其它类型的调度单元还包括中断处理程序：这些可能是软件运行过程中产生的软中断，例如网络收包，也可能是引荐发出的硬中断。
 
 Thread运行的三种状态
 
@@ -38,9 +38,9 @@ TLB（加快虚拟地址到物理地址转换速度），全局类型TLB：内�
 
 进程调度依赖调度策略，内核把相同的调度策略抽象成**调度类**。不同类型的进程采用不同的调度策略，Linux内核中默认实现了5个调度类
 
-1. stop
+1. Stop Scheduler，这是最高优先级调度类，用于处理紧急情况，如系统崩溃或关机是需要停止其它进程。
 
-2. deadline，用于调度有严格时间要求的实时进程，比如视频编解码
+2. Deadline，用于调度有严格时间要求的实时进程，比如视频编解码
 
    ```
    const struct sched_class dl_sched_class = {
@@ -51,7 +51,7 @@ TLB（加快虚拟地址到物理地址转换速度），全局类型TLB：内�
    	.check_preempt_curr	= check_preempt_curr_dl,
    ```
 
-3. realtime
+3. Real-time Scheduler
 
    ```
    const struct sched_class rt_sched_class = {
@@ -73,7 +73,7 @@ TLB（加快虚拟地址到物理地址转换速度），全局类型TLB：内�
    	.yield_to_task		= yield_to_task_fair,
    ```
 
-5. idle
+5. Idle Scheduler，只有CPU空闲时才会运行的调度算法，它用于在系统空闲时执行后台任务。
 
 调度类的结构体中关键元素
 
@@ -86,7 +86,15 @@ TLB（加快虚拟地址到物理地址转换速度），全局类型TLB：内�
 
 ### 时间片
 
-time slice是os用来表示进程被调度进来与被调度出去之间所能维持运行的时间长度。通常系统都有默认的时间片，但是很难确定多长的时间片是合适的。
+time slice是os用来表示进程被调度进来与被调度出去之间所能维持运行的时间长度。通常系统都有默认的时间片，但是很难确定多长的时间片是合适的，典型时长是10 milliseconds。
+
+```
+/*
+ * default timeslice is 100 msecs (used only for SCHED_RR tasks).
+ * Timeslices get refilled after they expire.
+ */
+#define RR_TIMESLICE		(100 * HZ / 1000)
+```
 
 ### 调度入口
 
@@ -371,14 +379,43 @@ void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 
 使用的是btf raw tracepoint
 
-- tp_btf/sched_wakeup，trace_sched_wakeup，入口函数是try_to_wake_up/ttwu_do_wakeup。
-- tp_btf/sched_wakeup_new，实际函数是trace_sched_wakeup_new。入口函数是wake_up_new_task。
+- tp_btf/sched_wakeup，调用函数trace_sched_wakeup()，入口函数是try_to_wake_up/ttwu_do_wakeup。
+- tp_btf/sched_wakeup_new，调用函数trace_sched_wakeup_new。入口函数是wake_up_new_task。
+
+```
+/*
+ * Tracepoint called when the task is actually woken; p->state == TASK_RUNNNG.
+ * It it not always called from the waking context.
+ */
+DEFINE_EVENT(sched_wakeup_template, sched_wakeup,
+	     TP_PROTO(struct task_struct *p),
+	     TP_ARGS(p));
+
+/*
+ * Tracepoint for waking up a new task:
+ */
+DEFINE_EVENT(sched_wakeup_template, sched_wakeup_new,
+	     TP_PROTO(struct task_struct *p),
+	     TP_ARGS(p));
+```
 
 #### 运行的tracepoint
 
 当一个任务被schedule选中，放入CPU运行，这时的tracepoint函数就是要来观察的。
 
-- tp_btf/sched_switch，trace_sched_switch，入口函数__schedule，这因该是调度器入口。负责在运行队列中找到一个该运行的进程。到了这里进程就被cpu执行了。
+- tp_btf/sched_switch，调用函数trace_sched_switch，入口函数__schedule，这因该是调度器入口。负责在运行队列中找到一个该运行的进程。到了这里进程就被cpu执行了。
+
+tracepoint定义
+
+```
+TRACE_EVENT(sched_switch,
+
+	TP_PROTO(bool preempt,
+		 struct task_struct *prev,
+		 struct task_struct *next),
+
+	TP_ARGS(preempt, prev, next),
+```
 
 使用trace命令观察sched_switch这个tracepoint，**trace 't:sched:sched_switch "prev=%s next=%s", args->prev_comm, args->next_comm' -K -T -a**
 

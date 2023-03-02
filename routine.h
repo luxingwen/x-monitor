@@ -16,7 +16,7 @@ struct xmonitor_static_routine {
     const char *config_name;
 
     volatile sig_atomic_t enabled; // the current status of the thread
-    pthread_t            *thread_id;
+    pthread_t *thread_id;
 
     int32_t (*init_routine)();
     void *(*start_routine)(void *);

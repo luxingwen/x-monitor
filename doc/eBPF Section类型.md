@@ -184,7 +184,7 @@ static const struct bpf_sec_def section_defs[] = {
 
 ### raw_tracepoint函数
 
-可以通过查看`/sys/kernel/debug/tracing/available_events` 文件的内容找到 **raw_tracepoint 可监控**的事件。raw_tracepoint相对于tracepoint不会讲函数参数展开，而是读取的原始参数
+可以通过查看`/sys/kernel/debug/tracing/available_events` 文件的内容找到 **raw_tracepoint 可监控**的事件。raw_tracepoint相对于tracepoint不会将函数参数展开，而是读取的原始参数
 
 - 函数定义，SEC格式：SEC("raw_tracepoint/<name>")或SEC("raw_tp/<name>")，参数类型struct bpf_raw_tracepoint_args *ctx，
 

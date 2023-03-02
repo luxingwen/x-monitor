@@ -1,11 +1,11 @@
-# 使用asm编写eBPF Program
+# 使用 asm 编写 eBPF Program
 
-- clang编译的program section name是不带 __x64_前缀的。
+- clang 编译的 program section name 是不带 \_*x64*前缀的。
 
   ```
-   calmwu@localhost  ~/program/cpp_space/x-monitor/plugin_ebpf/bpf/.output  readelf -S ./xm_trace.bpf.o 
+   calmwu@localhost  ~/program/cpp_space/x-monitor/plugin_ebpf/bpf/.output  readelf -S ./xm_trace.bpf.o
   There are 30 section headers, starting at offset 0x4fc0:
-  
+
   Section Headers:
     [ 3] kprobe/sys_readli PROGBITS         0000000000000000  00000040
          00000000000002b8  0000000000000000  AX       0     0     8
@@ -19,11 +19,11 @@
 
   ```
    calmwu@localhost  ~/program/cpp_space/x-monitor/plugin_ebpf/examples/xm_trace/bpfmodule  llvm-objdump -d -S --no-show-raw-insn  --symbolize-operands ./xmtrace_bpfeb.o
-  
+
   ./xmtrace_bpfeb.o:	file format elf64-bpf
-  
+
   Disassembly of section kprobe/sys_readlinkat:
-  
+
   0000000000000000 <xm_trace_kp__sys_readlinkat>:
   ; // XM_TRACE_KPROBE_PROG(sys_readlinkat)
          0:	r6 = r1
@@ -44,7 +44,7 @@
         12:	r1 = 0 ll
         14:	r1 = *(u32 *)(r1 + 0)
         15:	if r1 != r7 goto +29 <LBB0_8>
-  
+
   0000000000000080 <LBB0_3>:
         16:	r2 = r10
         17:	r2 += -4
@@ -68,20 +68,20 @@
         37:	r1 = 1
         38:	if r1 s> r2 goto +1 <LBB0_6>
         39:	*(u32 *)(r7 + 40) = r8
-  
+
   0000000000000140 <LBB0_6>:
         40:	r2 = r0
         41:	r2 <<= 32
         42:	r2 s>>= 32
         43:	if r1 s> r2 goto +1 <LBB0_8>
         44:	*(u32 *)(r7 + 44) = r0
-  
+
   0000000000000168 <LBB0_8>:
         45:	r0 = 0
         46:	exit
   ```
 
-- 使用asm.Instruction去翻译上面的输出，
+- 使用 asm.Instruction 去翻译上面的输出，
 
   ```
   func __fillGetCallStackInstructions(progSpec *ebpf.ProgramSpec) {
@@ -202,7 +202,7 @@
   }
   ```
 
-- 打印asm.Instructions
+- 打印 asm.Instructions
 
   ```
   glog.Info("---\n", progSpec.Instructions.String())
@@ -211,7 +211,7 @@
 - bpftool dump prog instructions
 
   ```
-   ⚡ root@localhost  ~  bpftool prog list                                                                                    
+   ⚡ root@localhost  ~  bpftool prog list
   2586: raw_tracepoint  name xm_trace_raw_tp  tag d7be4ae90a2d7c31  gpl
   	loaded_at 2023-01-19T16:35:04+0800  uid 0
   	xlated 320B  jited 185B  memlock 4096B  map_ids 1753,1754
@@ -239,7 +239,7 @@
   dump
 
   ```
-   ✘ ⚡ root@localhost  ~  bpftool prog dump xlated id 2590     
+   ✘ ⚡ root@localhost  ~  bpftool prog dump xlated id 2590
      0: (bf) r6 = r1
      1: (85) call bpf_get_current_pid_tgid#124560
      2: (bf) r7 = r0
@@ -262,15 +262,15 @@
     ....
   ```
 
-- 运行，指定trace的进程和系统调用
+- 运行，指定 trace 的进程和系统调用
 
   ```
-   ⚡ root@localhost  /home/calmwu/program/cpp_space/x-monitor/bin  ./xm_trace --pid=1261638 --funcs=sys_close,sys_readlinkat,sys_openat --alsologtostderr -v=4 
+   ⚡ root@localhost  /home/calmwu/program/cpp_space/x-monitor/bin  ./xm_trace --pid=1261638 --funcs=sys_close,sys_readlinkat,sys_openat --alsologtostderr -v=4
   I0203 14:49:07.480313 1262243 main.go:203] start trace process:'1261638' syscalls
-  I0203 14:49:09.087523 1262243 main.go:287] prog:'XmTraceBtfTpSysEnter' ebpf info:'Tracing(xm_trace_btf_tp__sys_enter)#13'
-  I0203 14:49:09.088790 1262243 main.go:315] attach BTFRawTracepoint Tracing(xm_trace_btf_tp__sys_enter)#13 program for link success.
-  I0203 14:49:09.088848 1262243 main.go:287] prog:'XmTraceBtfTpSysExit' ebpf info:'Tracing(xm_trace_btf_tp__sys_exit)#15'
-  I0203 14:49:09.089212 1262243 main.go:315] attach BTFRawTracepoint Tracing(xm_trace_btf_tp__sys_exit)#15 program for link success.
+  I0203 14:49:09.087523 1262243 main.go:287] prog:'XmTraceBtfTpSysEnter' ebpf info:'Tracing(xm_trace_tp_btf__sys_enter)#13'
+  I0203 14:49:09.088790 1262243 main.go:315] attach BTFRawTracepoint Tracing(xm_trace_tp_btf__sys_enter)#13 program for link success.
+  I0203 14:49:09.088848 1262243 main.go:287] prog:'XmTraceBtfTpSysExit' ebpf info:'Tracing(xm_trace_tp_btf__sys_exit)#15'
+  I0203 14:49:09.089212 1262243 main.go:315] attach BTFRawTracepoint Tracing(xm_trace_tp_btf__sys_exit)#15 program for link success.
   I0203 14:49:09.091302 1262243 main.go:190] create ebpf program:'sys_close', sectionName:'kprobe/sys_close' success
   I0203 14:49:09.091723 1262243 main.go:190] create ebpf program:'sys_readlinkat', sectionName:'kprobe/sys_readlinkat' success
   I0203 14:49:09.092309 1262243 main.go:190] create ebpf program:'sys_openat', sectionName:'kprobe/sys_openat' success
@@ -298,6 +298,3 @@
   I0203 14:49:09.555142 1262243 main.go:484] 	ip[1]: 0xffffffffba8042bb	do_syscall_64+0x5b
   I0203 14:49:09.555157 1262243 main.go:484] 	ip[2]: 0xffffffffbb2000ad	entry_SYSCALL_64_after_hwframe+0x65
   ```
-
-  
-

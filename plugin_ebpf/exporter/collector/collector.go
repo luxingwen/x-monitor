@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-09 14:41:31
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-17 14:35:39
+ * @Last Modified time: 2023-03-02 15:16:10
  */
 
 package collector
@@ -37,10 +37,10 @@ type EBPFCollector struct {
 // It allows the sub module to be loaded and unloaded dynamically at runtime.
 func registerEBPFModule(name string, factory eBPFModuleFactory) {
 	if _, ok := eBPFModuleRegisterMap[name]; ok {
-		fmt.Printf("eBPFModule:'%s' is already registered", name)
+		fmt.Printf("eBPFModule:'%s' is already registered\n", name)
 	} else {
 		eBPFModuleRegisterMap[name] = factory
-		fmt.Printf("eBPFModule:'%s' is registered", name)
+		fmt.Printf("eBPFModule:'%s' is registered\n", name)
 	}
 }
 
