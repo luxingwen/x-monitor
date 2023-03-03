@@ -26,12 +26,12 @@ const volatile struct xm_runqlat_args runqlat_args = { .filter_type =
                                                        .id = 0 };
 
 // 只支持一个cgroup
-struct {
-    __uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);
-    __type(key, __u32);
-    __type(value, __u32);
-    __uint(max_entries, 1);
-} xm_runqlat_cgroup_map SEC(".maps");
+// struct {
+//     __uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);
+//     __type(key, __u32);
+//     __type(value, __u32);
+//     __uint(max_entries, 1);
+// } xm_runqlat_cgroup_map SEC(".maps");
 
 // 记录每个thread wakeup的时间
 // struct {
@@ -48,21 +48,21 @@ BPF_HASH(xm_runqlat_start_map, __u32, __u64, MAX_THREAD_COUNT);
 //     __type(key, __s32);
 //     __type(value, struct xm_runqlat_hist);
 // } xm_runqlat_hists_map SEC(".maps");
-BPF_HASH(xm_runqlat_hist, __s32, struct xm_runqlat_hist, MAX_THREAD_COUNT);
+BPF_HASH(xm_runqlat_hists_map, __s32, struct xm_runqlat_hist, MAX_THREAD_COUNT);
 
 static struct xm_runqlat_hist __zero_hist;
 
 static __always_inline __s32 __trace_enqueue(__u32 tgid, __u32 pid) {
-    if (runqlat_args.filter_type == FILTER_SPEC_CGROUP) {
-        // 如果是指定cgroup，判断该ts是否在cgroup中
-        if (!bpf_current_task_under_cgroup(&xm_runqlat_cgroup_map, 0)) {
-            return 0;
-        }
-    } else if (runqlat_args.filter_type == FILTER_SPEC_PROCESS) {
-        if ((pid_t)runqlat_args.id != tgid) {
-            return 0;
-        }
-    }
+    // if (runqlat_args.filter_type == FILTER_SPEC_CGROUP) {
+    //     // 如果是指定cgroup，判断该ts是否在cgroup中
+    //     if (!bpf_current_task_under_cgroup(&xm_runqlat_cgroup_map, 0)) {
+    //         return 0;
+    //     }
+    // } else if (runqlat_args.filter_type == FILTER_SPEC_PROCESS) {
+    //     if ((pid_t)runqlat_args.id != tgid) {
+    //         return 0;
+    //     }
+    // }
 
     // 得到wakeup时间，单位纳秒
     __u64 wakeup_ns = bpf_ktime_get_ns();
@@ -93,7 +93,7 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     if (__xm_get_task_state(prev) == TASK_RUNNING) {
         __trace_enqueue(prev->tgid, prev->pid);
     }
-
+#if 0
     // 因为是raw BTF tracepoint，所以可以直接使用内核结构
     // next是被选中，即将上cpu的ts
     pid_t pid = next->pid;
@@ -104,8 +104,8 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     }
 
     // 进程从被唤醒到on cpu的时间
-    __u64 wakeup_to_run_duration = bpf_ktime_get_ns() - *wakeup_ns;
-    if ((__s64)wakeup_to_run_duration < 0)
+    __s64 wakeup_to_run_duration = bpf_ktime_get_ns() - *wakeup_ns;
+    if (wakeup_to_run_duration < 0)
         goto cleanup;
 
     __s32 hkey = -1;
@@ -128,15 +128,17 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     // 计算2的对数，求出在哪个slot, 总共26个槽位，1---2的25次方
     __u32 slot = __xm_log2l(wakeup_to_run_duration);
     // 超过最大槽位，放到最后一个槽位
-    if (slot > XM_RUNQLAT_MAX_SLOTS) {
+    if (slot >= XM_RUNQLAT_MAX_SLOTS) {
         slot = XM_RUNQLAT_MAX_SLOTS - 1;
     }
     // slot对应的槽位+1
-    __xm_update_u64((__u64 *)&hist->slots[slot], 1);
+    __sync_fetch_and_add(&hist->slots[slot], 1);
+    //__xm_update_u64((__u64 *)&hist->slots[slot], 1);
 
 cleanup:
     // 获得cpu的ts，从map中删除
     bpf_map_delete_elem(&xm_runqlat_start_map, &pid);
+#endif
     return 0;
 }
 

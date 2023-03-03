@@ -9,8 +9,9 @@
 
 #include <bpf/bpf_helpers.h>
 
-static __u64 __xm_log2(__u32 v) {
-    __u32 shift, r;
+static inline __attribute__((always_inline)) __u32 __xm_log2(unsigned int v) {
+    __u32 r;
+    __u32 shift;
 
     r = (v > 0xFFFF) << 4;
     v >>= r;
@@ -24,24 +25,13 @@ static __u64 __xm_log2(__u32 v) {
     v >>= shift;
     r |= shift;
     r |= (v >> 1);
-
     return r;
 }
 
-/**
- * Computes the log2 of a 64-bit integer.
- *
- * @param v The 64-bit integer to compute the log2 of.
- *
- * @returns The log2 of the input.
- *
- * log2(9) = 3
- */
-static __u64 __xm_log2l(__u64 v) {
+static inline __attribute__((always_inline)) __u32 __xm_log2l(unsigned long v) {
     __u32 hi = v >> 32;
-
     if (hi)
-        return __xm_log2(hi) + 32;
+        return __xm_log2(hi) + 32 + 1;
     else
-        return __xm_log2(v);
+        return __xm_log2(v) + 1;
 }
