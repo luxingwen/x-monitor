@@ -9,9 +9,8 @@
 
 #include <bpf/bpf_helpers.h>
 
-static inline __attribute__((always_inline)) __u32 __xm_log2(unsigned int v) {
-    __u32 r;
-    __u32 shift;
+static inline __attribute__((always_inline)) __u64 __xm_log2(__u32 v) {
+    __u32 r, shift;
 
     r = (v > 0xFFFF) << 4;
     v >>= r;
@@ -27,11 +26,16 @@ static inline __attribute__((always_inline)) __u32 __xm_log2(unsigned int v) {
     r |= (v >> 1);
     return r;
 }
-
-static inline __attribute__((always_inline)) __u32 __xm_log2l(unsigned long v) {
+/*
+log2l(1)=0
+log2l(2)=1
+log2l(7)=2
+log2l(8)=3
+*/
+static inline __attribute__((always_inline)) __u64 __xm_log2l(__u64 v) {
     __u32 hi = v >> 32;
     if (hi)
-        return __xm_log2(hi) + 32 + 1;
+        return __xm_log2(hi) + 32;
     else
-        return __xm_log2(v) + 1;
+        return __xm_log2(v);
 }

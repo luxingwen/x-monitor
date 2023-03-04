@@ -38,7 +38,7 @@ enum task_filter_scope_type {
 };
 
 //------------------------ runqlat
-#define XM_RUNQLAT_MAX_SLOTS 26
+#define XM_RUNQLAT_MAX_SLOTS 24
 
 struct xm_runqlat_args {
     enum task_filter_scope_type filter_type;

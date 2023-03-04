@@ -48,9 +48,11 @@ BPF_HASH(xm_runqlat_start_map, __u32, __u64, MAX_THREAD_COUNT);
 //     __type(key, __s32);
 //     __type(value, struct xm_runqlat_hist);
 // } xm_runqlat_hists_map SEC(".maps");
-BPF_HASH(xm_runqlat_hists_map, __s32, struct xm_runqlat_hist, MAX_THREAD_COUNT);
+BPF_HASH(xm_runqlat_hists_map, __u32, struct xm_runqlat_hist, MAX_THREAD_COUNT);
 
-static struct xm_runqlat_hist __zero_hist;
+static struct xm_runqlat_hist __zero_hist = {
+    .slots = { 0 },
+};
 
 static __always_inline __s32 __trace_enqueue(__u32 tgid, __u32 pid) {
     // if (runqlat_args.filter_type == FILTER_SPEC_CGROUP) {
@@ -93,7 +95,7 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     if (__xm_get_task_state(prev) == TASK_RUNNING) {
         __trace_enqueue(prev->tgid, prev->pid);
     }
-#if 0
+
     // 因为是raw BTF tracepoint，所以可以直接使用内核结构
     // next是被选中，即将上cpu的ts
     pid_t pid = next->pid;
@@ -109,16 +111,16 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
         goto cleanup;
 
     __s32 hkey = -1;
-    if (runqlat_args.filter_type == FILTER_PER_THREAD) {
-        hkey = next->pid;
-    } else if (runqlat_args.filter_type == FILTER_PER_PROCESS) {
-        hkey = next->tgid;
-    } else if (runqlat_args.filter_type == FILTER_PER_PIDNS) {
-        hkey = (__s32)__xm_get_pid_namespace(next);
-    }
+    // if (runqlat_args.filter_type == FILTER_PER_THREAD) {
+    //     hkey = next->pid;
+    // } else if (runqlat_args.filter_type == FILTER_PER_PROCESS) {
+    //     hkey = next->tgid;
+    // } else if (runqlat_args.filter_type == FILTER_PER_PIDNS) {
+    //     hkey = (__s32)__xm_get_pid_namespace(next);
+    // }
 
-    hist = __xm_bpf_map_lookup_or_try_init(&xm_runqlat_hists_map, &hkey,
-                                           &__zero_hist);
+    hist = (struct xm_runqlat_hist *)__xm_bpf_map_lookup_or_try_init(
+        &xm_runqlat_hists_map, &hkey, &__zero_hist);
     if (!hist) {
         goto cleanup;
     }
@@ -126,19 +128,19 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     // 单位是微秒
     wakeup_to_run_duration = wakeup_to_run_duration / 1000U;
     // 计算2的对数，求出在哪个slot, 总共26个槽位，1---2的25次方
-    __u32 slot = __xm_log2l(wakeup_to_run_duration);
+    // !! I found out the reason, is because of slot definition. "u32 slot"
+    // !! doesn't work, u64 works, this is very strange.
+    __u64 slot = __xm_log2l(wakeup_to_run_duration);
     // 超过最大槽位，放到最后一个槽位
     if (slot >= XM_RUNQLAT_MAX_SLOTS) {
         slot = XM_RUNQLAT_MAX_SLOTS - 1;
     }
-    // slot对应的槽位+1
     __sync_fetch_and_add(&hist->slots[slot], 1);
-    //__xm_update_u64((__u64 *)&hist->slots[slot], 1);
 
 cleanup:
     // 获得cpu的ts，从map中删除
     bpf_map_delete_elem(&xm_runqlat_start_map, &pid);
-#endif
+
     return 0;
 }
 
