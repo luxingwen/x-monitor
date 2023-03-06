@@ -128,6 +128,10 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     // 因为是raw BTF tracepoint，所以可以直接使用内核结构
     // next是被选中，即将上cpu的ts
     pid_t pid = next->pid;
+    // pid = 0的情况：ext
+    // pid是0，那么意味着切换后将运行swapper或sched这个特殊的内核任务，它负责管理内存分页。
+    // 通常情况下，next
+    // pid是0发生在系统空闲时，没有其他用户态进程或线程需要运行。
     __u64 *wakeup_ns = bpf_map_lookup_elem(&xm_runqlat_start_map, &pid);
     if (!wakeup_ns) {
         // wakeup 时间不存在

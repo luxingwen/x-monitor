@@ -5,7 +5,7 @@
  * @Last Modified time: 2023-02-22 18:27:52
  */
 
-//#include <linux/bpf.h> // uapi这个头文件和vmlinux.h不兼容啊，类型重复定义
+// #include <linux/bpf.h> // uapi这个头文件和vmlinux.h不兼容啊，类型重复定义
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
@@ -48,6 +48,34 @@ typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
 
 #define KERN_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP)
 #define USER_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK)
+
+#define GET_FIELD_ADDR(field) __builtin_preserve_access_index(&field)
+
+#define READ_KERN(ptr)                                    \
+    ({                                                    \
+        typeof(ptr) _val;                                 \
+        __builtin_memset((void *)&_val, 0, sizeof(_val)); \
+        bpf_core_read((void *)&_val, sizeof(_val), &ptr); \
+        _val;                                             \
+    })
+
+#define READ_KERN_STR_INTO(dst, src) \
+    bpf_core_read_str((void *)&dst, sizeof(dst), src)
+
+#define READ_USER(ptr)                                         \
+    ({                                                         \
+        typeof(ptr) _val;                                      \
+        __builtin_memset((void *)&_val, 0, sizeof(_val));      \
+        bpf_core_read_user((void *)&_val, sizeof(_val), &ptr); \
+        _val;                                                  \
+    })
+
+#define BPF_READ(src, a, ...)                              \
+    ({                                                     \
+        ___type((src), a, ##__VA_ARGS__) __r;              \
+        BPF_CORE_READ_INTO(&__r, (src), a, ##__VA_ARGS__); \
+        __r;                                               \
+    })
 
 // bpf_probe_read_kernel(&exit_code, sizeof(exit_code), &task->exit_code);
 
