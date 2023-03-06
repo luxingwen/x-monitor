@@ -401,7 +401,7 @@ DEFINE_EVENT(sched_wakeup_template, sched_wakeup_new,
 
 #### 运行的tracepoint
 
-当一个任务被schedule选中，放入CPU运行，这时的tracepoint函数就是要来观察的。
+当一个任务被schedule选中放入CPU运行，这是会触发该Tracepoint。
 
 - tp_btf/sched_switch，调用函数trace_sched_switch，入口函数__schedule，这因该是调度器入口。负责在运行队列中找到一个该运行的进程。到了这里进程就被cpu执行了。
 

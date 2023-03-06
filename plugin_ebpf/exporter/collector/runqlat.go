@@ -12,10 +12,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
+	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 )
 
 type runqLatModule struct {
-	eBPFBaseModule
+	*eBPFBaseModule
 	// prometheus对象
 	// eBPF对象
 	objs *bpfmodule.XMRunQLatObjects
@@ -26,8 +27,8 @@ func init() {
 }
 
 func newRunQLatencyModule(name string) (eBPFModule, error) {
-	rqlModule := &runqLatModule{
-		eBPFBaseModule: eBPFBaseModule{
+	rqlM := &runqLatModule{
+		eBPFBaseModule: &eBPFBaseModule{
 			name:        name,
 			stopChan:    make(chan struct{}),
 			gatherTimer: calmutils.NewTimer(),
@@ -35,29 +36,52 @@ func newRunQLatencyModule(name string) (eBPFModule, error) {
 	}
 
 	var err error
-	rqlModule.objs = new(bpfmodule.XMRunQLatObjects)
-	rqlModule.links, err = runEBPFModule(name, rqlModule.objs, bpfmodule.LoadXMRunQLat)
+	rqlM.objs = new(bpfmodule.XMRunQLatObjects)
+	rqlM.links, err = runEBPF(name, rqlM.objs, bpfmodule.LoadXMRunQLat)
 	if err != nil {
-		rqlModule.objs.Close()
-		rqlModule.objs = nil
+		rqlM.objs.Close()
+		rqlM.objs = nil
 		return nil, err
 	}
 
-	return rqlModule, nil
+	interval := config.EBPFModuleInterval(name)
+
+	eBPFTracing := func() {
+		glog.Infof("eBPFModule:'%s' start gathering eBPF data...", rqlM.name)
+		rqlM.gatherTimer.Reset(interval)
+
+	loop:
+		for {
+			select {
+			case <-rqlM.stopChan:
+				glog.Infof("eBPFModule:'%s' receive stop notify", rqlM.name)
+				break loop
+			case <-rqlM.gatherTimer.Chan():
+				// gather eBPF data
+
+				//
+				rqlM.gatherTimer.Reset(interval)
+			}
+		}
+	}
+
+	rqlM.wg.Go(eBPFTracing)
+
+	return rqlM, nil
 }
 
-func (rql *runqLatModule) Update(ch chan<- prometheus.Metric) error {
+func (rqlM *runqLatModule) Update(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
 // Stop closes the runqLatModule and stops the eBPF module.
-func (rql *runqLatModule) Stop() {
-	rql.stop()
+func (rqlM *runqLatModule) Stop() {
+	rqlM.stop()
 
-	if rql.objs != nil {
-		rql.objs.Close()
-		rql.objs = nil
+	if rqlM.objs != nil {
+		rqlM.objs.Close()
+		rqlM.objs = nil
 	}
 
-	glog.Infof("eBPFModule:'%s' stopped.", rql.name)
+	glog.Infof("eBPFModule:'%s' stopped.", rqlM.name)
 }

@@ -37,7 +37,7 @@ type eBPFBaseModule struct {
 type __load func() (*ebpf.CollectionSpec, error)
 type __assign func(interface{}, *ebpf.CollectionOptions) error
 
-func runEBPFModule(name string, objs interface{}, loadF __load) ([]link.Link, error) {
+func runEBPF(name string, objs interface{}, loadF __load) ([]link.Link, error) {
 	spec, err := loadF()
 	if err != nil {
 		err = errors.Wrapf(err, "eBPFModule:'%s' load spec failed.", name)
@@ -70,7 +70,7 @@ func runEBPFModule(name string, objs interface{}, loadF __load) ([]link.Link, er
 			}
 		}
 	}
-	glog.Infof("eBPFModule:'%s' successfully started.", name)
+	glog.Infof("eBPFModule:'%s' start run successfully.", name)
 	return links, nil
 }
 

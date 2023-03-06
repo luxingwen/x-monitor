@@ -86,6 +86,8 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 		csm.links = links
 	}
 
+	glog.Infof("eBPFModule:'%s' start run successfully.", name)
+
 	gatherInterval := config.EBPFModuleInterval(csm.name)
 
 	// Prometheus initialization area

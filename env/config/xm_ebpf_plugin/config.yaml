@@ -16,7 +16,7 @@ eBPF:
       enabled: true
       interval: 1 # 统计的时间间隔，单位秒
     - name: oomkill
-      enabled: true
+      enabled: false
     - name: runqlat
       enabled: true
       interval: 1 # 统计的时间间隔，单位秒

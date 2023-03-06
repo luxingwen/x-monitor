@@ -30,43 +30,43 @@ import (
 
 var (
 	// Version Major string
-	VersionMajor string
-	// VersionMinor string version
-	VersionMinor string
+	_VersionMajor string
+	// _VersionMinor string version
+	_VersionMinor string
 	// Branch name.
-	BranchName string
-	// CommitHash hash string
-	CommitHash string
-	// BuildTime string.
-	BuildTime string
-
-	configFile string
-
+	_BranchName string
+	// _CommitHash hash string
+	_CommitHash string
+	// _BuildTime string.
+	_BuildTime string
+	//
+	_configFile string
 	// Defining the root command for the CLI.
-	rootCmd = &cobra.Command{
+	_rootCmd = &cobra.Command{
 		Use:  "x-monitor.eBPF application",
 		Long: "x-monitor plugin application for eBPF metrics collector",
 		Version: func() string {
 			return fmt.Sprintf("\n\tVersion: %s.%s\n\tGit: %s:%s\n\tBuild Time: %s\n",
-				VersionMajor, VersionMinor, BranchName, CommitHash, BuildTime)
+				_VersionMajor, _VersionMinor, _BranchName, _CommitHash, _BuildTime)
 		}(),
 		Run: rootCmdRun,
 	}
 
-	apiSrv        *netutil.WebSrv
-	eBPFCollector *collector.EBPFCollector
-	gf            = singleflight.Group{}
+	_apiSrv        *netutil.WebSrv
+	_eBPFCollector *collector.EBPFCollector
+
+	_gf = singleflight.Group{}
 )
 
 func init() {
-	rootCmd.Flags().StringVar(&configFile, "config", "", "env/config/xm_ebpf_plugin/config.json")
-	rootCmd.Flags().AddGoFlagSet(goflag.CommandLine)
-	rootCmd.Flags().Parse(os.Args[1:])
+	_rootCmd.Flags().StringVar(&_configFile, "config", "", "env/config/xm_ebpf_plugin/config.json")
+	_rootCmd.Flags().AddGoFlagSet(goflag.CommandLine)
+	_rootCmd.Flags().Parse(os.Args[1:])
 }
 
 // Main is the entry point for the application.
 func Main() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := _rootCmd.Execute(); err != nil {
 		glog.Fatal(err.Error())
 	}
 }
@@ -75,20 +75,22 @@ func Main() {
 // metrics endpoint. It sets the metrics version to the application version,
 // and also registers the standard Go and Process collectors.
 func registerPromCollectors() {
-	version.Version = fmt.Sprintf("%s.%s", VersionMajor, VersionMinor)
-	version.Revision = CommitHash
-	version.Branch = BranchName
-	version.BuildDate = BuildTime
+	version.Version = fmt.Sprintf("%s.%s", _VersionMajor, _VersionMinor)
+	version.Revision = _CommitHash
+	version.Branch = _BranchName
+	version.BuildDate = _BuildTime
 
 	// 注册collectors
 	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"))
 
-	eBPFCollector, err := collector.New()
+	var err error
+
+	_eBPFCollector, err = collector.New()
 	if err != nil {
 		glog.Fatalf("Couldn't create eBPF collector: %s", err.Error())
 	}
 
-	if err := prometheus.Register(eBPFCollector); err != nil {
+	if err = prometheus.Register(_eBPFCollector); err != nil {
 		glog.Fatalf("Couldn't register eBPF collector: %s", err.Error())
 	}
 }
@@ -110,7 +112,7 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	glog.Info("Hi~~~, xm-monitor.eBPF metrics collector.")
 
 	// Config
-	if err := config.InitConfig(configFile); err != nil {
+	if err := config.InitConfig(_configFile); err != nil {
 		glog.Fatal(err.Error())
 	}
 
@@ -137,14 +139,14 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 
 	// 启动web服务
 	bind, _ = config.APISrvBindAddr()
-	apiSrv = netutil.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
+	_apiSrv = netutil.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
 
 	// 注册router
 	metricsPath := config.PromMetricsPath()
-	apiSrv.Handle(http.MethodGet, metricsPath, prometheusHandler())
-	apiSrv.Handle(http.MethodGet, "/", func(c *gin.Context) {
+	_apiSrv.Handle(http.MethodGet, metricsPath, prometheusHandler())
+	_apiSrv.Handle(http.MethodGet, "/", func(c *gin.Context) {
 		name := c.Request.URL.Query().Get("name")
-		response, _, _ := gf.Do(name, func() (interface{}, error) {
+		response, _, _ := _gf.Do(name, func() (interface{}, error) {
 			b := bytes.NewBuffer([]byte(`<html>
 			<head><title>x-monitor.eBPF</title></head>
 			<body>
@@ -161,13 +163,13 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 		}
 	})
 
-	apiSrv.Start()
+	_apiSrv.Start()
 
 	<-ctx.Done()
 
-	apiSrv.Stop()
+	_apiSrv.Stop()
 
-	eBPFCollector.Stop()
+	_eBPFCollector.Stop()
 
 	glog.Info("xm-monitor.eBPF exporter exit!")
 }
