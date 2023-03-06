@@ -186,7 +186,7 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 					// cleanup
 					for _, ip := range ipSlice {
 						// 清零
-						err := csm.objs.XMCacheStatMaps.XmPageCacheOpsCount.Update(ip, uint64(0), ebpf.UpdateExist)
+						err := csm.objs.XmPageCacheOpsCount.Update(ip, uint64(0), ebpf.UpdateExist)
 						if err != nil {
 							glog.Errorf("eBPFModule:'%s' update map failed, err:%s", csm.name, err.Error())
 						}

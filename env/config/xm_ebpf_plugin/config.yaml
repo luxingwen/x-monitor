@@ -13,10 +13,10 @@ eBPF:
   enabled: true
   modules:
     - name: cachestat
-      enabled: true
-      interval: 1 # 统计的时间间隔，单位秒
+      enabled: false
+      interval: 5 # 统计的时间间隔，单位秒
     - name: oomkill
       enabled: false
     - name: runqlat
       enabled: true
-      interval: 1 # 统计的时间间隔，单位秒
+      interval: 5 # 统计的时间间隔，单位秒

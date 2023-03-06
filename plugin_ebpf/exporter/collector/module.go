@@ -54,15 +54,14 @@ func runEBPF(name string, objs interface{}, loadF __load) ([]link.Link, error) {
 	// 得到objs的xxxPrograms对象
 	objsV := reflect.Indirect(reflect.ValueOf(objs))
 	objsT := objsV.Type()
-	objsNumFields := objsT.NumField()
+	objsNumFields := objsV.NumField() //objsT.NumField()
 
 	var links []link.Link
 
 	for i := 0; i < objsNumFields; i++ {
-		objsVField := objsT.Field(i)
-		if objsVField.Type.Kind() == reflect.Struct &&
-			strings.Contains(objsVField.Name, "Programs") {
-			links, err = AttachObjPrograms(objsVField, spec.Programs)
+		field := objsT.Field(i)
+		if field.Type.Kind() == reflect.Struct && strings.Contains(field.Name, "Programs") {
+			links, err = AttachObjPrograms(objsV.Field(i).Interface(), spec.Programs)
 			if err != nil {
 				err = errors.Wrapf(err, "eBPFModule:'%s' AttachObjPrograms failed.", name)
 				glog.Error(err.Error())
