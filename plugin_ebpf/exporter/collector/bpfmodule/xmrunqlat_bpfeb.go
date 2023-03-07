@@ -13,7 +13,7 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type XMRunQLatXmRunqlatHist struct{ Slots [26]uint32 }
+type XMRunQLatXmRunqlatHist struct{ Slots [20]uint32 }
 
 // LoadXMRunQLat returns the embedded CollectionSpec for XMRunQLat.
 func LoadXMRunQLat() (*ebpf.CollectionSpec, error) {
@@ -65,9 +65,8 @@ type XMRunQLatProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMRunQLatMapSpecs struct {
-	XmRunqlatCgroupMap       *ebpf.MapSpec `ebpf:"xm_runqlat_cgroup_map"`
-	XmRunqlatHistsMap        *ebpf.MapSpec `ebpf:"xm_runqlat_hists_map"`
-	XmRunqlatThreadWakeupMap *ebpf.MapSpec `ebpf:"xm_runqlat_thread_wakeup_map"`
+	XmRunqlatHistsMap *ebpf.MapSpec `ebpf:"xm_runqlat_hists_map"`
+	XmRunqlatStartMap *ebpf.MapSpec `ebpf:"xm_runqlat_start_map"`
 }
 
 // XMRunQLatObjects contains all objects after they have been loaded into the kernel.
@@ -89,16 +88,14 @@ func (o *XMRunQLatObjects) Close() error {
 //
 // It can be passed to LoadXMRunQLatObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMRunQLatMaps struct {
-	XmRunqlatCgroupMap       *ebpf.Map `ebpf:"xm_runqlat_cgroup_map"`
-	XmRunqlatHistsMap        *ebpf.Map `ebpf:"xm_runqlat_hists_map"`
-	XmRunqlatThreadWakeupMap *ebpf.Map `ebpf:"xm_runqlat_thread_wakeup_map"`
+	XmRunqlatHistsMap *ebpf.Map `ebpf:"xm_runqlat_hists_map"`
+	XmRunqlatStartMap *ebpf.Map `ebpf:"xm_runqlat_start_map"`
 }
 
 func (m *XMRunQLatMaps) Close() error {
 	return _XMRunQLatClose(
-		m.XmRunqlatCgroupMap,
 		m.XmRunqlatHistsMap,
-		m.XmRunqlatThreadWakeupMap,
+		m.XmRunqlatStartMap,
 	)
 }
 

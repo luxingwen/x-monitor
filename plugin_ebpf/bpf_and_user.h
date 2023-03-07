@@ -38,7 +38,7 @@ enum task_filter_scope_type {
 };
 
 //------------------------ runqlat
-#define XM_RUNQLAT_MAX_SLOTS 24
+#define XM_RUNQLAT_MAX_SLOTS 20 // 2 ^ 20 = 1秒
 
 struct xm_runqlat_args {
     enum task_filter_scope_type filter_type;

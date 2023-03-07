@@ -27,10 +27,23 @@ static inline __attribute__((always_inline)) __u64 __xm_log2(__u32 v) {
     return r;
 }
 /*
+log2l(0)=0
 log2l(1)=0
 log2l(2)=1
+log2l(3)=1
+log2l(4)=2
+log2l(5)=2
+log2l(6)=2
 log2l(7)=2
 log2l(8)=3
+log2l(9)=3
+log2l(10)=3
+log2l(11)=3
+log2l(12)=3
+log2l(13)=3
+log2l(14)=3
+log2l(15)=3
+log2l(16)=4
 */
 static inline __attribute__((always_inline)) __u64 __xm_log2l(__u64 v) {
     __u32 hi = v >> 32;
