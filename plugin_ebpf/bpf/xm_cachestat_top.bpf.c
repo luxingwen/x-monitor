@@ -213,7 +213,7 @@ int BPF_KPROBE(xm_cst_mark_buffer_dirty) {
 
 static void wno_unused_headerfuncs() {
     /* don't need to actually call the functions to avoid the warnings */
-    (void)&__xm_get_pid_namespace;
+    (void)&__xm_get_task_pidns;
     (void)&__xm_get_task_state;
     return;
 }

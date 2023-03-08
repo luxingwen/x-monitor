@@ -58,7 +58,7 @@ func newRunQLatencyModule(name string) (eBPFModule, error) {
 	}
 	// init prometheus section
 	rqlM.runqLatHistogramDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("process", "schedule", "runQueueLatency"),
+		prometheus.BuildFQName("process", "schedule", "runq_latency_usecs"),
 		"A histogram of the a task spends waiting on a run queue for a turn on-CPU durations.",
 		nil, nil,
 	)
@@ -112,8 +112,8 @@ func newRunQLatencyModule(name string) (eBPFModule, error) {
 							}
 						}(), int(bucket), slot)
 					}
-					glog.Infof("eBPFModule:'%s' <===", rqlM.name)
 					rqlM.mu.Unlock()
+					glog.Infof("eBPFModule:'%s' <===", rqlM.name)
 				}
 
 				rqlM.gatherTimer.Reset(interval)

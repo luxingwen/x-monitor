@@ -14,9 +14,12 @@ eBPF:
   modules:
     - name: cachestat
       enabled: false
-      interval: 5 # 统计的时间间隔，单位秒
+      gather_interval: 5 # 收集kernel prog数据时间间隔，单位秒
     - name: oomkill
       enabled: false
-    - name: runqlat
+    - name: runqlatency
       enabled: true
-      interval: 5 # 统计的时间间隔，单位秒
+      gather_interval: 5
+      conditions:
+        histogram_scope: os # pidns
+

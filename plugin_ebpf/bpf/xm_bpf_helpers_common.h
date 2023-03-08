@@ -149,7 +149,7 @@ __xm_get_process_start_time(struct task_struct *task) {
  * https://www.dubaojiang.com/category/linux/linux_kernel/process/  局部 ID
  * 与命名空间
  */
-static __u32 __xm_get_pid_namespace(struct task_struct *task) {
+static __u32 __xm_get_task_pidns(struct task_struct *task) {
     struct pid *thread_pid = NULL;
     __u32 level;
     struct upid upid;
@@ -165,6 +165,43 @@ static __u32 __xm_get_pid_namespace(struct task_struct *task) {
     // 如果是对象，必须写在一起，用.分割，如果是指针，必须用->分割
     BPF_CORE_READ_INTO(&ns_num, upid.ns, ns.inum);
     return ns_num;
+}
+
+/* This function reads the cgroup id of a process. It's used by the
+   kernel to get the cgroup id of a process. It's used in the
+   get_task_cgroup_id() function to get the cgroup id of a process. */
+static struct kernfs_node *
+__xm_get_task_dflcgrp_assoc_kernfs(struct task_struct *task) {
+    struct css_set *css;
+    struct cgroup *dfl_cgrp;
+    struct kernfs_node *kn;
+
+    css = READ_KERN(task->cgroups);
+    dfl_cgrp = READ_KERN(css->dfl_cgrp);
+    kn = READ_KERN(dfl_cgrp->kn);
+    return kn;
+}
+
+/* This function is used to get the cgroup id of the cgroup that a task is in.
+ * The cgroup id is a unique identifier for a cgroup. The cgroup id is
+ * assigned by the kernel when the cgroup is created. The cgroup id is
+ * the same for all tasks that are in the same cgroup.
+ *
+ * task: The task whose cgroup id we want to get.
+ * subsys_id: The id of the cgroup subsystem whose cgroup id we want to get.
+ */
+static __u64 __xm_get_task_cgid_by_subsys_id(struct task_struct *task,
+                                             enum cgroup_subsys_id subsys_id) {
+    struct css_set *css;
+    struct cgroup_subsys_state *cg_ss;
+    struct cgroup *cg;
+    struct kernfs_node *kn;
+
+    css = READ_KERN(task->cgroups);
+    cg_ss = READ_KERN(css->subsys[subsys_id]);
+    cg = READ_KERN(cg_ss->cgroup);
+    kn = READ_KERN(cg->kn);
+    return READ_KERN(kn->id);
 }
 
 /* new kernel task_struct definition */

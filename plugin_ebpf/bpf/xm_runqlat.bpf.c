@@ -157,7 +157,34 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
         return 0;
     }
 
-    // bpf_printk("xm_ebpf_exporter runqlat sched_switch pid:%d", pid);
+    // 得到task对应的default cgroup绑定的kernfs_node
+    // struct kernfs_node *kn = __xm_get_task_dflcgrp_assoc_kernfs(next);
+    // 通过kernfs_node得到id
+    //__u64 cgroup_id = __xm_get_task_memcg_id(next); // READ_KERN(kn->id);
+    __u64 cgroup_id = __xm_get_task_cgid_by_subsys_id(next, memory_cgrp_id);
+
+    // ** 如何去读取char*成员
+    // const char *kernfs_name = READ_KERN(kn->name);
+    // char cgroup_name[32] = { 0 };
+    // __s64 ret = READ_KERN_STR_INTO(cgroup_name, kernfs_name);
+    // // bpf_probe_read_kernel_str(&cgroup_name, sizeof(cgroup_name),
+    // // kernfs_name);
+    // if (ret == 1) {
+    //     /*
+    //     int task_cgroup_path(struct task_struct *task, char *buf, size_t
+    //     buflen)
+    //     */
+    //     cgroup_name[0] = '/';
+    //     cgroup_name[1] = 0;
+    // }
+
+    __u32 pidns_id = __xm_get_task_pidns(next);
+    bpf_printk("xm_ebpf_exporter runqlat sched_switch pid:%d, pidns_id:%u, "
+               "cgroup_id:0x%lx",
+               pid, pidns_id, cgroup_id);
+    // bpf_printk("xm_ebpf_exporter runqlat sched_switch cgroup_name:'%s', "
+    //            "ret:%ld",
+    //            cgroup_name, ret);
 
     // 进程从被唤醒到on cpu的时间
     __s64 wakeup_to_run_duration = bpf_ktime_get_ns() - *wakeup_ns;
@@ -170,7 +197,7 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     // } else if (runqlat_args.filter_type == FILTER_PER_PROCESS) {
     //     hkey = next->tgid;
     // } else if (runqlat_args.filter_type == FILTER_PER_PIDNS) {
-    //     hkey = (__s32)__xm_get_pid_namespace(next);
+    //     hkey = (__s32)__xm_get_task_pidns(next);
     // }
 
     hist = (struct xm_runqlat_hist *)__xm_bpf_map_lookup_or_try_init(

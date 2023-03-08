@@ -37,7 +37,7 @@ enum task_filter_scope_type {
     FILTER_SPEC_PROCESS, // 只统计指定进程下的thread
 };
 
-//------------------------ runqlat
+//------------------------ runqlatency
 #define XM_RUNQLAT_MAX_SLOTS 20 // 2 ^ 20 = 1秒
 
 struct xm_runqlat_args {

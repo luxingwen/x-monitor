@@ -21,7 +21,7 @@ import (
 
 const (
 	cacheStateModuleName  = "cachestat"
-	runqLatencyModuleName = "runqlat"
+	runqLatencyModuleName = "runqlatency"
 )
 
 type eBPFBaseModule struct {
