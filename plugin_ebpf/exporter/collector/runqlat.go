@@ -19,8 +19,8 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 )
 
-type runqLatModule struct {
-	*eBPFBaseModule
+type runQLatProgram struct {
+	*eBPFBaseProgram
 	// prometheus对象，单位微秒
 	runqLatHistogramDesc *prometheus.Desc
 	sampleCount          uint64
@@ -39,9 +39,9 @@ func init() {
 	registerEBPFModule(runqLatencyModuleName, newRunQLatencyModule)
 }
 
-func newRunQLatencyModule(name string) (eBPFModule, error) {
-	rqlM := &runqLatModule{
-		eBPFBaseModule: &eBPFBaseModule{
+func newRunQLatencyModule(name string) (eBPFProgram, error) {
+	rqlp := &runQLatProgram{
+		eBPFBaseProgram: &eBPFBaseProgram{
 			name:        name,
 			stopChan:    make(chan struct{}),
 			gatherTimer: calmutils.NewTimer(),
@@ -49,61 +49,61 @@ func newRunQLatencyModule(name string) (eBPFModule, error) {
 	}
 
 	var err error
-	rqlM.objs = new(bpfmodule.XMRunQLatObjects)
-	rqlM.links, err = runEBPF(name, rqlM.objs, bpfmodule.LoadXMRunQLat)
+	rqlp.objs = new(bpfmodule.XMRunQLatObjects)
+	rqlp.links, err = attatchToRun(name, rqlp.objs, bpfmodule.LoadXMRunQLat)
 	if err != nil {
-		rqlM.objs.Close()
-		rqlM.objs = nil
+		rqlp.objs.Close()
+		rqlp.objs = nil
 		return nil, err
 	}
 	// init prometheus section
-	rqlM.runqLatHistogramDesc = prometheus.NewDesc(
+	rqlp.runqLatHistogramDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("process", "schedule", "runq_latency_usecs"),
-		"A histogram of the a task spends waiting on a run queue for a turn on-CPU durations.",
+		"A histogram of the a task spends waiting on a attatchToRun queue for a turn on-CPU durations.",
 		nil, nil,
 	)
-	rqlM.buckets = make(map[float64]uint64, len(_buckets))
+	rqlp.buckets = make(map[float64]uint64, len(_buckets))
 
-	interval := config.EBPFModuleInterval(name)
+	interval := config.GatherInterval(name)
 
 	eBPFTracing := func() {
-		glog.Infof("eBPFModule:'%s' start gathering eBPF data...", rqlM.name)
-		rqlM.gatherTimer.Reset(interval)
+		glog.Infof("eBPFProgram:'%s' start gathering eBPF data...", rqlp.name)
+		rqlp.gatherTimer.Reset(interval)
 
 		var histogram bpfmodule.XMRunQLatXmRunqlatHist
 
 	loop:
 		for {
 			select {
-			case <-rqlM.stopChan:
-				glog.Infof("eBPFModule:'%s' receive stop notify", rqlM.name)
+			case <-rqlp.stopChan:
+				glog.Infof("eBPFProgram:'%s' receive stop notify", rqlp.name)
 				break loop
-			case <-rqlM.gatherTimer.Chan():
+			case <-rqlp.gatherTimer.Chan():
 				// gather eBPF data
-				if err := rqlM.objs.XmRunqlatHistsMap.Lookup(_runqLatMapKey, &histogram); err != nil {
+				if err := rqlp.objs.XmRunqlatHistsMap.Lookup(_runqLatMapKey, &histogram); err != nil {
 					if !errors.Is(err, ebpf.ErrKeyNotExist) {
-						glog.Errorf("eBPFModule:'%s' Lookup error. err:%s", rqlM.name, err.Error())
+						glog.Errorf("eBPFProgram:'%s' Lookup error. err:%s", rqlp.name, err.Error())
 					}
 				} else {
-					// glog.Infof("eBPFModule:'%s' runqLat histogram:%#+v", rqlM.name, histogram)
+					// glog.Infof("eBPFProgram:'%s' runqLat histogram:%#+v", rqlp.name, histogram)
 
-					if err := rqlM.objs.XmRunqlatHistsMap.Delete(_runqLatMapKey); err != nil {
-						glog.Errorf("eBPFModule:'%s' Delete error. err:%s", rqlM.name, err.Error())
+					if err := rqlp.objs.XmRunqlatHistsMap.Delete(_runqLatMapKey); err != nil {
+						glog.Errorf("eBPFProgram:'%s' Delete error. err:%s", rqlp.name, err.Error())
 					}
 
 					// 统计
-					rqlM.mu.Lock()
-					rqlM.sampleCount = 0
-					rqlM.sampleSum = 0.0
-					glog.Infof("eBPFModule:'%s' ===>", rqlM.name)
+					rqlp.mu.Lock()
+					rqlp.sampleCount = 0
+					rqlp.sampleSum = 0.0
+					glog.Infof("eBPFProgram:'%s' ===>", rqlp.name)
 					for i, slot := range histogram.Slots {
 						bucket := _buckets[i]
 						// 统计本周期的样本总数
-						rqlM.sampleCount += uint64(slot)
+						rqlp.sampleCount += uint64(slot)
 						// 估算样本的总和
-						rqlM.sampleSum += float64(slot) * bucket * 0.6
+						rqlp.sampleSum += float64(slot) * bucket * 0.6
 						// 每个桶的样本数
-						rqlM.buckets[bucket] = rqlM.sampleCount
+						rqlp.buckets[bucket] = rqlp.sampleCount
 						glog.Infof("\tusecs(%d -> %d) count: %d", func() int {
 							if i == 0 {
 								return 0
@@ -112,36 +112,36 @@ func newRunQLatencyModule(name string) (eBPFModule, error) {
 							}
 						}(), int(bucket), slot)
 					}
-					rqlM.mu.Unlock()
-					glog.Infof("eBPFModule:'%s' <===", rqlM.name)
+					rqlp.mu.Unlock()
+					glog.Infof("eBPFProgram:'%s' <===", rqlp.name)
 				}
 
-				rqlM.gatherTimer.Reset(interval)
+				rqlp.gatherTimer.Reset(interval)
 			}
 		}
 	}
 
-	rqlM.wg.Go(eBPFTracing)
+	rqlp.wg.Go(eBPFTracing)
 
-	return rqlM, nil
+	return rqlp, nil
 }
 
-func (rqlM *runqLatModule) Update(ch chan<- prometheus.Metric) error {
-	rqlM.mu.Lock()
-	defer rqlM.mu.Unlock()
-	ch <- prometheus.MustNewConstHistogram(rqlM.runqLatHistogramDesc,
-		rqlM.sampleCount, rqlM.sampleSum, rqlM.buckets)
+func (rqlp *runQLatProgram) Update(ch chan<- prometheus.Metric) error {
+	rqlp.mu.Lock()
+	defer rqlp.mu.Unlock()
+	ch <- prometheus.MustNewConstHistogram(rqlp.runqLatHistogramDesc,
+		rqlp.sampleCount, rqlp.sampleSum, rqlp.buckets)
 	return nil
 }
 
-// Stop closes the runqLatModule and stops the eBPF module.
-func (rqlM *runqLatModule) Stop() {
-	rqlM.stop()
+// Stop closes the runQLatProgram and stops the eBPF module.
+func (rqlp *runQLatProgram) Stop() {
+	rqlp.stop()
 
-	if rqlM.objs != nil {
-		rqlM.objs.Close()
-		rqlM.objs = nil
+	if rqlp.objs != nil {
+		rqlp.objs.Close()
+		rqlp.objs = nil
 	}
 
-	glog.Infof("eBPFModule:'%s' stopped.", rqlM.name)
+	glog.Infof("eBPFProgram:'%s' stopped.", rqlp.name)
 }

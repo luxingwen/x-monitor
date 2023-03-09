@@ -27,20 +27,39 @@ const (
 	defaultInterval = 10 * time.Second
 )
 
+type GatherObjectType int32
+
+//go:generate stringer -type=GatherObjectType -output=gatherobjecttype_string.go
+const (
+	GatherNone GatherObjectType = iota
+	GatherOS
+	GatherNamespace
+	GatherCgroup
+	GatherPID
+	GatherPGID
+)
+
 func (v *viperDebugAdapterLog) Write(p []byte) (n int, err error) {
 	glog.Info(calmutils.Bytes2String(p))
 	return len(p), nil
 }
 
-type EBPFModuleConfig struct {
-	Name     string        `mapstructure:"name"`
-	Enabled  bool          `mapstructure:"enabled"`
-	Interval time.Duration `mapstructure:"interval"`
+type ProgramConditions struct {
+	KernelVersion   string           `mapstructure:"kernel_version"`    // 内核版本
+	GatherObject    GatherObjectType `mapstructure:"gather_object"`     // 收集对象
+	GatherObjectVal string           `mapstructure:"gather_object_val"` // 收集对象指定值
+}
+
+type programConfig struct {
+	Name           string            `mapstructure:"name"`
+	Enabled        bool              `mapstructure:"enabled"`
+	GatherInterval time.Duration     `mapstructure:"gather_interval"`
+	Conditions     ProgramConditions `mapstructure:"conditions"`
 }
 
 var (
-	ebpfModuleConfigs []*EBPFModuleConfig
-	mu                sync.RWMutex
+	programConfigs []*programConfig
+	mu             sync.RWMutex
 )
 
 func InitConfig(cfgFile string) error {
@@ -53,10 +72,12 @@ func InitConfig(cfgFile string) error {
 
 	viper.DebugTo(&viperDebugAdapterLog{})
 
-	if err := viper.UnmarshalKey("ebpf.modules", &ebpfModuleConfigs); err != nil {
-		err = errors.Wrapf(err, "unmarshal key ebpf.modules")
+	if err := viper.UnmarshalKey("ebpf.programs", &programConfigs); err != nil {
+		err = errors.Wrapf(err, "unmarshal key ebpf.programs")
 		glog.Error(err)
 		return err
+	} else {
+		glog.Infof("ebpf.programs %s", litter.Sdump(programConfigs))
 	}
 
 	// 监控配置文件变化
@@ -67,14 +88,14 @@ func InitConfig(cfgFile string) error {
 		// update
 		mu.Lock()
 		defer mu.Unlock()
-		var tmpCfgs []*EBPFModuleConfig
-		if err := viper.UnmarshalKey("ebpf.modules", &tmpCfgs); err != nil {
-			err = errors.Wrapf(err, "unmarshal key ebpf.modules")
+		var tmpCfgs []*programConfig
+		if err := viper.UnmarshalKey("ebpf.programs", &tmpCfgs); err != nil {
+			err = errors.Wrapf(err, "unmarshal key ebpf.programs")
 			glog.Error(err)
 		} else {
-			ebpfModuleConfigs = nil
-			ebpfModuleConfigs = tmpCfgs
-			glog.Infof("ebpf.modules %s", litter.Sdump(ebpfModuleConfigs))
+			programConfigs = nil
+			programConfigs = tmpCfgs
+			glog.Infof("ebpf.programs %s", litter.Sdump(programConfigs))
 		}
 	})
 
@@ -150,31 +171,41 @@ func ExporterEnabled() bool {
 	return viper.GetBool("ebpf.enabled")
 }
 
-// EBPFModuleConfigs unmarshals the ebpf.modules section of the configuration file
-// into a slice of EBPFModuleConfig. If the section is not present in the config,
-// it returns an empty slice.
-func EBPFModuleEnabled(name string) bool {
+// Enabled checks if the program with the provided name is enabled.
+func Enabled(name string) bool {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	for _, moduleCfg := range ebpfModuleConfigs {
-		if moduleCfg.Name == name {
-			return moduleCfg.Enabled
+	for _, progCfg := range programConfigs {
+		if progCfg.Name == name {
+			return progCfg.Enabled
 		}
 	}
 	return false
 }
 
-// EBPFModuleInterval returns the interval at which the ebpf module should
-// be run, which is 10 seconds.
-func EBPFModuleInterval(name string) time.Duration {
+// GatherInterval returns the gather interval for the program with the given name.
+// If no program with that name is found, the default interval is returned.
+func GatherInterval(name string) time.Duration {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	for _, moduleCfg := range ebpfModuleConfigs {
-		if moduleCfg.Name == name {
-			return moduleCfg.Interval * time.Second
+	for _, progCfg := range programConfigs {
+		if progCfg.Name == name {
+			return progCfg.GatherInterval * time.Second
 		}
 	}
 	return defaultInterval
+}
+
+func Conditions(name string) *ProgramConditions {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	for _, progCfg := range programConfigs {
+		if progCfg.Name == name {
+			return &progCfg.Conditions
+		}
+	}
+	return nil
 }

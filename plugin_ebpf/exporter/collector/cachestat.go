@@ -24,7 +24,7 @@ func init() {
 	registerEBPFModule(cacheStateModuleName, newCacheStatModule)
 }
 
-type cacheStatModule struct {
+type cacheStateProgram struct {
 	name        string
 	stopChan    chan struct{}
 	wg          conc.WaitGroup
@@ -44,15 +44,15 @@ type cacheStatModule struct {
 	links []link.Link
 }
 
-func newCacheStatModule(name string) (eBPFModule, error) {
-	csm := new(cacheStatModule)
-	csm.name = name
-	csm.stopChan = make(chan struct{})
-	csm.gatherTimer = calmutils.NewTimer()
+func newCacheStatModule(name string) (eBPFProgram, error) {
+	csp := new(cacheStateProgram)
+	csp.name = name
+	csp.stopChan = make(chan struct{})
+	csp.gatherTimer = calmutils.NewTimer()
 
 	spec, err := bpfmodule.LoadXMCacheStat()
 	if err != nil {
-		err = errors.Wrapf(err, "eBPFModule:'%s' LoadXMCacheStat failed.", name)
+		err = errors.Wrapf(err, "eBPFProgram:'%s' LoadXMCacheStat failed.", name)
 		glog.Error(err.Error())
 		return nil, err
 	}
@@ -71,61 +71,61 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 	}
 
 	// use spec init cacheStat object
-	csm.objs = new(bpfmodule.XMCacheStatObjects)
-	if err := spec.LoadAndAssign(csm.objs, nil); err != nil {
-		err = errors.Wrapf(err, "eBPFModule:'%s' LoadAndAssign failed.", name)
+	csp.objs = new(bpfmodule.XMCacheStatObjects)
+	if err := spec.LoadAndAssign(csp.objs, nil); err != nil {
+		err = errors.Wrapf(err, "eBPFProgram:'%s' LoadAndAssign failed.", name)
 		glog.Error(err.Error())
 		return nil, err
 	}
 
-	if links, err := AttachObjPrograms(csm.objs.XMCacheStatPrograms, spec.Programs); err != nil {
-		err = errors.Wrapf(err, "eBPFModule:'%s' AttachObjPrograms failed.", name)
+	if links, err := AttachObjPrograms(csp.objs.XMCacheStatPrograms, spec.Programs); err != nil {
+		err = errors.Wrapf(err, "eBPFProgram:'%s' AttachObjPrograms failed.", name)
 		glog.Error(err.Error())
 		return nil, err
 	} else {
-		csm.links = links
+		csp.links = links
 	}
 
-	glog.Infof("eBPFModule:'%s' start run successfully.", name)
+	glog.Infof("eBPFProgram:'%s' start attatchToRun successfully.", name)
 
-	gatherInterval := config.EBPFModuleInterval(csm.name)
+	gatherInterval := config.GatherInterval(csp.name)
 
 	// Prometheus initialization area
-	csm.hitsDesc = prometheus.NewDesc(
+	csp.hitsDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("filesystem", "pagecache", "hits"),
 		"show hits to the file system page cache",
 		nil, nil,
 	)
-	csm.missesDesc = prometheus.NewDesc(
+	csp.missesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("filesystem", "pagecache", "misses"),
 		"show misses to the file system page cache",
 		nil, nil,
 	)
-	csm.ratioDesc = prometheus.NewDesc(
+	csp.ratioDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("filesystem", "pagecache", "ratio"),
 		"show ratio of hits to the file system page cache",
 		nil, nil,
 	)
 
 	cacheStatEventProcessor := func() {
-		glog.Infof("eBPFModule:'%s' start gathering eBPF data...", csm.name)
+		glog.Infof("eBPFProgram:'%s' start gathering eBPF data...", csp.name)
 		// 启动定时器
-		csm.gatherTimer.Reset(gatherInterval)
+		csp.gatherTimer.Reset(gatherInterval)
 
 		var ip, count, atpcl, mpa, fad, apd, mbd uint64
-		ipSlice := make([]uint64, 0, csm.objs.XMCacheStatMaps.XmPageCacheOpsCount.MaxEntries())
+		ipSlice := make([]uint64, 0, csp.objs.XMCacheStatMaps.XmPageCacheOpsCount.MaxEntries())
 
 	loop:
 		for {
 			select {
-			case <-csm.stopChan:
-				glog.Infof("eBPFModule:'%s' receive stop notify", csm.name)
+			case <-csp.stopChan:
+				glog.Infof("eBPFProgram:'%s' receive stop notify", csp.name)
 				break loop
-			case <-csm.gatherTimer.Chan():
-				// glog.Infof("eBPFModule:'%s' gather data", csm.name)
+			case <-csp.gatherTimer.Chan():
+				// glog.Infof("eBPFProgram:'%s' gather data", csp.name)
 
 				// 迭代xm_page_cache_ops_count hash map
-				entries := csm.objs.XMCacheStatMaps.XmPageCacheOpsCount.Iterate()
+				entries := csp.objs.XMCacheStatMaps.XmPageCacheOpsCount.Iterate()
 				for entries.Next(&ip, &count) {
 					// 解析ip，判断对应的内核函数
 					// glog.Infof("ip:0x%08x, count:%d", ip, count)
@@ -151,7 +151,7 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 				}
 
 				if err := entries.Err(); err != nil {
-					glog.Errorf("eBPFModule:'%s' iterate map failed, err:%s", csm.name, err.Error())
+					glog.Errorf("eBPFProgram:'%s' iterate map failed, err:%s", csp.name, err.Error())
 				} else {
 					// 开始统计计算
 					total := int(mpa - mbd)
@@ -174,21 +174,21 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 						ratio = float64(hits) / float64(total) * 100.0
 					}
 
-					glog.Infof("eBPFModule:'%s' add_to_page_cache_lru:%d, mark_page_accessed:%d, "+
+					glog.Infof("eBPFProgram:'%s' add_to_page_cache_lru:%d, mark_page_accessed:%d, "+
 						"folio_account_dirtied:%d, account_page_dirtied:%d, mark_buffer_dirty:%d, "+
 						"total:%d, misses:%d, >>>hits:%d, misses:%d ratio:%7.2f%%<<<",
-						csm.name, atpcl, mpa, fad, apd, mbd, total, misses, hits, misses, ratio)
+						csp.name, atpcl, mpa, fad, apd, mbd, total, misses, hits, misses, ratio)
 
-					csm.hits.Store(uint64(hits))
-					csm.misses.Store(uint64(misses))
-					csm.ratio.Store(ratio)
+					csp.hits.Store(uint64(hits))
+					csp.misses.Store(uint64(misses))
+					csp.ratio.Store(ratio)
 
 					// cleanup
 					for _, ip := range ipSlice {
 						// 清零
-						err := csm.objs.XmPageCacheOpsCount.Update(ip, uint64(0), ebpf.UpdateExist)
+						err := csp.objs.XmPageCacheOpsCount.Update(ip, uint64(0), ebpf.UpdateExist)
 						if err != nil {
-							glog.Errorf("eBPFModule:'%s' update map failed, err:%s", csm.name, err.Error())
+							glog.Errorf("eBPFProgram:'%s' update map failed, err:%s", csp.name, err.Error())
 						}
 					}
 					ipSlice = ipSlice[:0]
@@ -200,52 +200,52 @@ func newCacheStatModule(name string) (eBPFModule, error) {
 				}
 
 				// 重置定时器
-				csm.gatherTimer.Reset(gatherInterval)
+				csp.gatherTimer.Reset(gatherInterval)
 			}
 		}
 	}
 
-	csm.wg.Go(cacheStatEventProcessor)
+	csp.wg.Go(cacheStatEventProcessor)
 
-	return csm, nil
+	return csp, nil
 }
 
 // Update sends the Metric values for each Metric
-// associated with the cacheStatModule to the provided channel.
+// associated with the cacheStateProgram to the provided channel.
 // It implements prometheus.Collector.
-func (csm *cacheStatModule) Update(ch chan<- prometheus.Metric) error {
+func (csp *cacheStateProgram) Update(ch chan<- prometheus.Metric) error {
 	ch <- prometheus.MustNewConstMetric(
-		csm.hitsDesc, prometheus.CounterValue, float64(csm.hits.Load()))
+		csp.hitsDesc, prometheus.CounterValue, float64(csp.hits.Load()))
 	ch <- prometheus.MustNewConstMetric(
-		csm.missesDesc, prometheus.CounterValue, float64(csm.misses.Load()))
+		csp.missesDesc, prometheus.CounterValue, float64(csp.misses.Load()))
 	ch <- prometheus.MustNewConstMetric(
-		csm.ratioDesc, prometheus.CounterValue, csm.ratio.Load())
+		csp.ratioDesc, prometheus.CounterValue, csp.ratio.Load())
 	return nil
 }
 
 // Stop stops the eBPF module. This function is called when the eBPF module is removed from the system.
-func (csm *cacheStatModule) Stop() {
-	close(csm.stopChan)
-	if panic := csm.wg.WaitAndRecover(); panic != nil {
-		glog.Errorf("eBPFModule:'%s' panic: %v", csm.name, panic.Error())
+func (csp *cacheStateProgram) Stop() {
+	close(csp.stopChan)
+	if panic := csp.wg.WaitAndRecover(); panic != nil {
+		glog.Errorf("eBPFProgram:'%s' panic: %v", csp.name, panic.Error())
 	}
 
-	if csm.links != nil {
-		for _, link := range csm.links {
+	if csp.links != nil {
+		for _, link := range csp.links {
 			link.Close()
 		}
-		csm.links = nil
+		csp.links = nil
 	}
 
-	if csm.objs != nil {
-		csm.objs.Close()
-		csm.objs = nil
+	if csp.objs != nil {
+		csp.objs.Close()
+		csp.objs = nil
 	}
 
-	if csm.gatherTimer != nil {
-		csm.gatherTimer.Stop()
-		csm.gatherTimer = nil
+	if csp.gatherTimer != nil {
+		csp.gatherTimer.Stop()
+		csp.gatherTimer = nil
 	}
 
-	glog.Infof("eBPFModule:'%s' stopped.", csm.name)
+	glog.Infof("eBPFProgram:'%s' stopped.", csp.name)
 }

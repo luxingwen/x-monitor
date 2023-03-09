@@ -11,15 +11,16 @@ api:
     metric: "/metrics"
 eBPF:
   enabled: true
-  modules:
+  programs:
     - name: cachestat
       enabled: false
-      gather_interval: 5 # 收集kernel prog数据时间间隔，单位秒
+      gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
     - name: oomkill
       enabled: false
     - name: runqlatency
       enabled: true
-      gather_interval: 5
+      gather_interval: 3
       conditions:
-        histogram_scope: os # pidns
+        gather_object: 1 # 1: os，2：namespace，3：CGroup，4：PID，5：PGID
+        gather_object_val: ""
 

@@ -25,6 +25,10 @@
 //                                                            FILTER_DEF_OS,
 //                                                        .id = 0 };
 
+// 1: os，2：namespace，3：CGroup，4：PID，5：PGID
+const volatile __s32 gather_obj_type = 1;
+const volatile __s64 gather_obj_val = 0;
+
 // 只支持一个cgroup
 // struct {
 //     __uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);
@@ -100,10 +104,11 @@ static __always_inline __s32 __trace_enqueue(pid_t tgid, pid_t pid) {
 //     return 0;
 // }
 
+// ts被唤醒
 SEC("tp_btf/sched_wakeup")
 __s32 BPF_PROG(xm_btp_sched_wakeup, struct task_struct *ts) {
-    // ts被唤醒
     // bpf_printk("xm_ebpf_exporter runqlat sched_wakeup pid:%d", ts->pid);
+    // tgid：进程号，pid：线程号
     return __trace_enqueue(ts->tgid, ts->pid);
 }
 
@@ -157,13 +162,21 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
         return 0;
     }
 
-    // 得到task对应的default cgroup绑定的kernfs_node
-    // struct kernfs_node *kn = __xm_get_task_dflcgrp_assoc_kernfs(next);
     // 通过kernfs_node得到id
     //__u64 cgroup_id = __xm_get_task_memcg_id(next); // READ_KERN(kn->id);
-    __u64 cgroup_id = __xm_get_task_cgid_by_subsys_id(next, memory_cgrp_id);
+    // __u64 cgroup_id = __xm_get_task_cgid_by_subsys(next, memory_cgrp_id);
+    // pid_t pgid = __xm_get_task_pgid(next);
+    // pid_t session_id = __xm_get_task_sessionid(next);
+    // __u32 pidns_id = __xm_get_task_pidns(next);
+    // bpf_printk("xm_ebpf_exporter runqlat sched_switch pid:%d, pidns_id:%u",
+    // pid,
+    //            pidns_id);
+    // bpf_printk("\tmemcg_id:%d, pgid:%d, sessionid:%d", cgroup_id, pgid,
+    //            session_id);
 
     // ** 如何去读取char*成员
+    // 得到task对应的default cgroup绑定的kernfs_node
+    // struct kernfs_node *kn = __xm_get_task_dflcgrp_assoc_kernfs(next);
     // const char *kernfs_name = READ_KERN(kn->name);
     // char cgroup_name[32] = { 0 };
     // __s64 ret = READ_KERN_STR_INTO(cgroup_name, kernfs_name);
@@ -177,11 +190,6 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     //     cgroup_name[0] = '/';
     //     cgroup_name[1] = 0;
     // }
-
-    __u32 pidns_id = __xm_get_task_pidns(next);
-    bpf_printk("xm_ebpf_exporter runqlat sched_switch pid:%d, pidns_id:%u, "
-               "cgroup_id:0x%lx",
-               pid, pidns_id, cgroup_id);
     // bpf_printk("xm_ebpf_exporter runqlat sched_switch cgroup_name:'%s', "
     //            "ret:%ld",
     //            cgroup_name, ret);

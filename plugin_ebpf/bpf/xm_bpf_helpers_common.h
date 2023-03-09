@@ -190,8 +190,8 @@ __xm_get_task_dflcgrp_assoc_kernfs(struct task_struct *task) {
  * task: The task whose cgroup id we want to get.
  * subsys_id: The id of the cgroup subsystem whose cgroup id we want to get.
  */
-static __u64 __xm_get_task_cgid_by_subsys_id(struct task_struct *task,
-                                             enum cgroup_subsys_id subsys_id) {
+static __u64 __xm_get_task_cgid_by_subsys(struct task_struct *task,
+                                          enum cgroup_subsys_id subsys_id) {
     struct css_set *css;
     struct cgroup_subsys_state *cg_ss;
     struct cgroup *cg;
@@ -202,6 +202,30 @@ static __u64 __xm_get_task_cgid_by_subsys_id(struct task_struct *task,
     cg = READ_KERN(cg_ss->cgroup);
     kn = READ_KERN(cg->kn);
     return READ_KERN(kn->id);
+}
+
+// 获取进程的进程组ID，PIDTYPE_PGID
+static pid_t __xm_get_task_pgid(struct task_struct *task) {
+    struct signal_struct *signal;
+    struct pid *pgid;
+    struct upid session_upid;
+
+    signal = READ_KERN(task->signal);
+    pgid = READ_KERN(signal->pids[PIDTYPE_PGID]);
+    session_upid = READ_KERN(pgid->numbers[0]);
+    return session_upid.nr;
+}
+
+// 获取进程的session id，PIDTYPE_SID
+static pid_t __xm_get_task_sessionid(struct task_struct *task) {
+    struct signal_struct *signal;
+    struct pid *session_pid;
+    struct upid session_upid;
+
+    signal = READ_KERN(task->signal);
+    session_pid = READ_KERN(signal->pids[PIDTYPE_SID]);
+    session_upid = READ_KERN(session_pid->numbers[0]);
+    return session_upid.nr;
 }
 
 /* new kernel task_struct definition */
