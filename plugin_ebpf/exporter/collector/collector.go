@@ -33,9 +33,9 @@ type EBPFCollector struct {
 	eBPFProgramMap      map[string]eBPFProgram
 }
 
-// registerEBPFModule registers a new eBPF sub module in the registry.
+// registerEBPFProgram registers a new eBPF sub module in the registry.
 // It allows the sub module to be loaded and unloaded dynamically at runtime.
-func registerEBPFModule(name string, factory eBPFProgramFactory) {
+func registerEBPFProgram(name string, factory eBPFProgramFactory) {
 	if _, ok := eBPFProgramRegisterMap[name]; ok {
 		fmt.Printf("eBPFProgram:'%s' is already registered\n", name)
 	} else {

@@ -27,16 +27,16 @@ const (
 	defaultInterval = 10 * time.Second
 )
 
-type GatherObjectType int32
+type SchedObjAttrType int
 
-//go:generate stringer -type=GatherObjectType -output=gatherobjecttype_string.go
+//go:generate stringer -type=SchedObjAttrType -output=schedobjattrtype_string.go
 const (
-	GatherNone GatherObjectType = iota
-	GatherOS
-	GatherNamespace
-	GatherCgroup
-	GatherPID
-	GatherPGID
+	ResAttrNone SchedObjAttrType = iota
+	ResAttrOS
+	ResAttrNamespace
+	ResAttrCgroup
+	ResAttrPID
+	ResAttrPGID //进程组
 )
 
 func (v *viperDebugAdapterLog) Write(p []byte) (n int, err error) {
@@ -44,17 +44,11 @@ func (v *viperDebugAdapterLog) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-type ProgramConditions struct {
-	KernelVersion   string           `mapstructure:"kernel_version"`    // 内核版本
-	GatherObject    GatherObjectType `mapstructure:"gather_object"`     // 收集对象
-	GatherObjectVal string           `mapstructure:"gather_object_val"` // 收集对象指定值
-}
-
 type programConfig struct {
-	Name           string            `mapstructure:"name"`
-	Enabled        bool              `mapstructure:"enabled"`
-	GatherInterval time.Duration     `mapstructure:"gather_interval"`
-	Conditions     ProgramConditions `mapstructure:"conditions"`
+	Name           string        `mapstructure:"name"`
+	Enabled        bool          `mapstructure:"enabled"`
+	GatherInterval time.Duration `mapstructure:"gather_interval"`
+	Conditions     interface{}   `mapstructure:"conditions"`
 }
 
 var (
@@ -198,13 +192,13 @@ func GatherInterval(name string) time.Duration {
 	return defaultInterval
 }
 
-func Conditions(name string) *ProgramConditions {
+func Conditions(name string) interface{} {
 	mu.RLock()
 	defer mu.RUnlock()
 
 	for _, progCfg := range programConfigs {
 		if progCfg.Name == name {
-			return &progCfg.Conditions
+			return progCfg.Conditions
 		}
 	}
 	return nil

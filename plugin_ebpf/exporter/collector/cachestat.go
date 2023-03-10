@@ -21,7 +21,7 @@ import (
 )
 
 func init() {
-	registerEBPFModule(cacheStateModuleName, newCacheStatModule)
+	registerEBPFProgram(cacheStateProgName, newCacheStatProgram)
 }
 
 type cacheStateProgram struct {
@@ -44,7 +44,7 @@ type cacheStateProgram struct {
 	links []link.Link
 }
 
-func newCacheStatModule(name string) (eBPFProgram, error) {
+func newCacheStatProgram(name string) (eBPFProgram, error) {
 	csp := new(cacheStateProgram)
 	csp.name = name
 	csp.stopChan = make(chan struct{})

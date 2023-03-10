@@ -26,8 +26,8 @@
 //                                                        .id = 0 };
 
 // 1: os，2：namespace，3：CGroup，4：PID，5：PGID
-const volatile __s32 gather_obj_type = 1;
-const volatile __s64 gather_obj_val = 0;
+const volatile __s32 __filter_type = 1;
+const volatile __s64 __filter_value = 0;
 
 // 只支持一个cgroup
 // struct {
@@ -58,17 +58,30 @@ static struct xm_runqlat_hist __zero_hist = {
     .slots = { 0 },
 };
 
-static __always_inline __s32 __trace_enqueue(pid_t tgid, pid_t pid) {
-    // if (runqlat_args.filter_type == FILTER_SPEC_CGROUP) {
-    //     // 如果是指定cgroup，判断该ts是否在cgroup中
-    //     if (!bpf_current_task_under_cgroup(&xm_runqlat_cgroup_map, 0)) {
-    //         return 0;
-    //     }
-    // } else if (runqlat_args.filter_type == FILTER_SPEC_PROCESS) {
-    //     if ((pid_t)runqlat_args.id != tgid) {
-    //         return 0;
-    //     }
-    // }
+static __always_inline __s32 __trace_enqueue(struct task_struct *ts) {
+    pid_t tgid = ts->tgid;
+    pid_t pid = ts->pid;
+
+    if (__filter_type == 2) {
+        // 判断pid_namespace是否相同
+        __u32 pidns_id = __xm_get_task_pidns(ts);
+        if (pidns_id != (pid_t)__filter_value) {
+            return 0;
+        }
+    } else if (__filter_type == 4) {
+        // 判断是否指定的进程
+        if (tgid != (pid_t)__filter_value) {
+            return 0;
+        }
+    } else if (__filter_type == 5) {
+        // 判断是否指定的进程组
+        pid_t pgid = __xm_get_task_pgid(ts);
+        if (pgid != (pid_t)__filter_value) {
+            return 0;
+        }
+    } else if (__filter_type > 5) {
+        return 0;
+    }
 
     // 得到wakeup时间，单位纳秒
     __u64 wakeup_ns = bpf_ktime_get_ns();
@@ -108,15 +121,13 @@ static __always_inline __s32 __trace_enqueue(pid_t tgid, pid_t pid) {
 SEC("tp_btf/sched_wakeup")
 __s32 BPF_PROG(xm_btp_sched_wakeup, struct task_struct *ts) {
     // bpf_printk("xm_ebpf_exporter runqlat sched_wakeup pid:%d", ts->pid);
-    // tgid：进程号，pid：线程号
-    return __trace_enqueue(ts->tgid, ts->pid);
+    return __trace_enqueue(ts);
 }
 
 SEC("tp_btf/sched_wakeup_new")
 __s32 BPF_PROG(xm_btp_sched_wakeup_new, struct task_struct *ts) {
     // ts被唤醒
-    // bpf_printk("xm_ebpf_exporter runqlat sched_wakeup_new pid:%d", ts->pid);
-    return __trace_enqueue(ts->tgid, ts->pid);
+    return __trace_enqueue(ts);
 }
 
 SEC("tp_btf/sched_switch")
@@ -127,7 +138,7 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     // 调度出cpu的task，如果状态还是RUNNING，继续插入wakeup
     // map，算成一种重新唤醒
     if (__xm_get_task_state(prev) == TASK_RUNNING) {
-        __trace_enqueue(prev->tgid, prev->pid);
+        __trace_enqueue(prev);
     }
 
     // 因为是raw BTF tracepoint，所以可以直接使用内核结构
@@ -156,9 +167,11 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     __u64 *wakeup_ns = bpf_map_lookup_elem(&xm_runqlat_start_map, &pid);
     if (!wakeup_ns) {
         // wakeup 时间不存在
-        bpf_printk("xm_ebpf_exporter runqlat pid:%d is not in "
-                   "xm_runqlat_start_map.",
-                   pid);
+        if (__filter_type == 1) {
+            bpf_printk("xm_ebpf_exporter runqlat pid:%d is not in "
+                       "xm_runqlat_start_map.",
+                       pid);
+        }
         return 0;
     }
 

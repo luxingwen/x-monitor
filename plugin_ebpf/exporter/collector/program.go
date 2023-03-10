@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	cacheStateModuleName  = "cachestat"
-	runqLatencyModuleName = "runqlatency"
+	cacheStateProgName  = "cachestat"
+	runQLatencyProgName = "runqlatency"
 )
 
 type eBPFBaseProgram struct {
@@ -35,14 +35,22 @@ type eBPFBaseProgram struct {
 }
 
 type __load func() (*ebpf.CollectionSpec, error)
-type __assign func(interface{}, *ebpf.CollectionOptions) error
+type __rewriteConstVars func(*ebpf.CollectionSpec) error
 
-func attatchToRun(name string, objs interface{}, loadF __load) ([]link.Link, error) {
+func attatchToRun(name string, objs interface{}, loadF __load, rewriteConstVarsF __rewriteConstVars) ([]link.Link, error) {
 	spec, err := loadF()
 	if err != nil {
 		err = errors.Wrapf(err, "eBPFProgram:'%s' load spec failed.", name)
 		glog.Error(err.Error())
 		return nil, err
+	}
+
+	if rewriteConstVarsF != nil {
+		if err := rewriteConstVarsF(spec); err != nil {
+			err = errors.Wrapf(err, "eBPFProgram:'%s' rewrite const variables failed.", name)
+			glog.Error(err.Error())
+			return nil, err
+		}
 	}
 
 	if err := spec.LoadAndAssign(objs, nil); err != nil {

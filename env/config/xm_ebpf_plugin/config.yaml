@@ -21,6 +21,6 @@ eBPF:
       enabled: true
       gather_interval: 3
       conditions:
-        gather_object: 1 # 1: os，2：namespace，3：CGroup，4：PID，5：PGID
-        gather_object_val: ""
+        sched_obj_filter_attr: 1 # 1: os，2：namespace，4：PID，5：PGID
+        sched_obj_filter_value: 0
 
