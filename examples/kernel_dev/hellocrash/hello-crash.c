@@ -2,12 +2,12 @@
  * @Author: calmwu
  * @Date: 2022-06-30 17:17:01
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-09-25 11:45:02
+ * @Last Modified time: 2023-03-14 16:40:49
  */
 
 #include <linux/module.h> /* Needed by all modules */
 #include <linux/kernel.h> /* Needed for KERN_INFO */
-#include <linux/init.h>   /* Needed for the macros */
+#include <linux/init.h> /* Needed for the macros */
 
 #define AUTHOR "calm.wu <wubo0067@hotmail.com>"
 #define DESC "Cause kernel crash"
@@ -35,5 +35,5 @@ MODULE_LICENSE("GPL");
 /*
  * Or with defines, like this:
  */
-MODULE_AUTHOR(AUTHOR);    /* Who wrote this module? */
+MODULE_AUTHOR(AUTHOR); /* Who wrote this module? */
 MODULE_DESCRIPTION(DESC); /* What does this module do */

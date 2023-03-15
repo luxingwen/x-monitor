@@ -201,12 +201,13 @@ add_subdirectory(examples/pdpids_test)
 add_subdirectory(examples/proc_sock_test)
 
 add_subdirectory(examples/ebpf/cachestat_top_cli)
-
 # add_subdirectory(examples/ebpf/perf_event_stack_cli)
 add_subdirectory(examples/ebpf/xdp_libbpf_test)
 add_subdirectory(examples/ebpf/bootstrap_cli)
 add_subdirectory(examples/ebpf/readbtf_cli)
 add_subdirectory(examples/ebpf/deny_ptrace_cli)
+
+add_subdirectory(examples/kernel_dev/mmap_dev_module/user)
 
 # x-monitor的所有源代码
 file(GLOB_RECURSE X-MONITOR_SRCS

@@ -15,20 +15,22 @@
 #define PERSON_MAX_COUNT 8
 
 struct person {
-    char    name[NAME_MAX_LEN];
+    char name[NAME_MAX_LEN];
     int32_t age;
 };
 
 struct person_ary {
-    uint32_t      size;
+    uint32_t size;
     struct person persons[];
-    // unsigned char persons[] __attribute__((aligned(__alignof__(struct person))));
+    // unsigned char persons[] __attribute__((aligned(__alignof__(struct
+    // person))));
 };
 
 static void __test_person_ary() {
     struct person_ary *ary = NULL;
 
-    ary = calloc(1, sizeof(struct person_ary) + sizeof(struct person) * PERSON_MAX_COUNT);
+    ary = calloc(1, sizeof(struct person_ary)
+                        + sizeof(struct person) * PERSON_MAX_COUNT);
     ary->size = PERSON_MAX_COUNT;
 
     for (uint32_t i = 0; i < PERSON_MAX_COUNT; i++) {
@@ -44,7 +46,6 @@ static void __test_person_ary() {
 }
 
 int32_t main(int32_t argc, char **argv) {
-
     if (log_init("../examples/log.cfg", "descendant_pids_test") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
@@ -52,7 +53,6 @@ int32_t main(int32_t argc, char **argv) {
 
     if (unlikely(argc != 2)) {
         fatal("./descendant_pids_test <parent-pid>\n");
-        return -1;
     }
 
     pid_t parent_pid = str2int32_t(argv[1]);
