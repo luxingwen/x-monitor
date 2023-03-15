@@ -70,7 +70,9 @@ static int my_dev_mmap(struct file *filp, struct vm_area_struct *vma) {
         pr_err("vma size: %lu larger than ALLOC_SIZE: %lu", size, ALLOC_SIZE);
         return -EINVAL;
     }
-
+    // vmalloc_to_pfn：将虚拟内存地址转换为物理页面帧号
+    // vmalloc_user：所分配的内存并不是连续的物理页
+    // datap转换为物理地址，将物理地址映射到vma->vm_start的地址上，这个地址是用户空间的虚拟地址。
     if (remap_pfn_range(vma, vma->vm_start, vmalloc_to_pfn(datap), size,
                         vma->vm_page_prot)) {
         return -EAGAIN;
