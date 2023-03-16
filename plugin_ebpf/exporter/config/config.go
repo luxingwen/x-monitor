@@ -27,16 +27,16 @@ const (
 	defaultInterval = 10 * time.Second
 )
 
-type SchedObjAttrType int
+type XMInternalResourceType int
 
-//go:generate stringer -type=SchedObjAttrType -output=schedobjattrtype_string.go
+//go:generate stringer -type=XMInternalResourceType -output=xm_internalresourcetype_string.go
 const (
-	ResAttrNone SchedObjAttrType = iota
-	ResAttrOS
-	ResAttrNamespace
-	ResAttrCgroup
-	ResAttrPID
-	ResAttrPGID //进程组
+	XM_Resource_None XMInternalResourceType = iota
+	XM_Resource_OS
+	XM_Resource_Namespace
+	XM_Resource_Cgroup
+	XM_Resource_PID
+	XM_Resource_PGID //进程组
 )
 
 func (v *viperDebugAdapterLog) Write(p []byte) (n int, err error) {

@@ -9,6 +9,7 @@ package collector
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 
 	"github.com/cilium/ebpf"
@@ -22,15 +23,15 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 )
 
-type SchedObjFilter struct {
-	Attribute config.SchedObjAttrType `mapstructure:"sched_obj_filter_attr"`  // 调度对象的过滤属性
-	Value     int                     `mapstructure:"sched_obj_filter_value"` // 调度对象过滤属性值
+type RunQLatFilterCond struct {
+	ResType  config.XMInternalResourceType `mapstructure:"filter_resource_type"`  // 过滤的资源类型
+	ResValue int                           `mapstructure:"filter_resource_value"` // 过滤资源的值
 }
 
 type runQLatProgram struct {
 	*eBPFBaseProgram
 	// 被调度运行对象的过滤条件
-	schedObjFilter SchedObjFilter
+	filterCond RunQLatFilterCond
 	// prometheus对象，单位微秒
 	runqLatHistogramDesc *prometheus.Desc
 	sampleCount          uint64
@@ -60,15 +61,15 @@ func newRunQLatencyProgram(name string) (eBPFProgram, error) {
 
 	interval := config.GatherInterval(name)
 	filter := config.Conditions(name)
-	mapstructure.Decode(filter, &rqlp.schedObjFilter)
-	glog.Infof("eBPFProgram:'%s' gatherInterval:%s, schedObjFilter:%s", name, interval.String(), litter.Sdump(rqlp.schedObjFilter))
+	mapstructure.Decode(filter, &rqlp.filterCond)
+	glog.Infof("eBPFProgram:'%s' gatherInterval:%s, filterCond:%s", name, interval.String(), litter.Sdump(rqlp.filterCond))
 
 	var err error
 	rqlp.objs = new(bpfmodule.XMRunQLatObjects)
 	rqlp.links, err = attatchToRun(name, rqlp.objs, bpfmodule.LoadXMRunQLat, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_type":  int32(rqlp.schedObjFilter.Attribute),
-			"__filter_value": int64(rqlp.schedObjFilter.Value),
+			"__filter_type":  int32(rqlp.filterCond.ResType),
+			"__filter_value": int64(rqlp.filterCond.ResValue),
 		})
 
 		if err != nil {
@@ -86,7 +87,7 @@ func newRunQLatencyProgram(name string) (eBPFProgram, error) {
 	rqlp.runqLatHistogramDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("process", "schedule", "runq_latency_usecs"),
 		"A histogram of the a task spends waiting on a attatchToRun queue for a turn on-CPU durations.",
-		nil, nil,
+		[]string{"res_type", "res_value"}, nil,
 	)
 	rqlp.buckets = make(map[float64]uint64, len(_buckets))
 
@@ -150,8 +151,21 @@ func newRunQLatencyProgram(name string) (eBPFProgram, error) {
 func (rqlp *runQLatProgram) Update(ch chan<- prometheus.Metric) error {
 	rqlp.mu.Lock()
 	defer rqlp.mu.Unlock()
+	// avoid data race
+	buckets := make(map[float64]uint64)
+	for k, v := range rqlp.buckets {
+		buckets[k] = v
+	}
+
 	ch <- prometheus.MustNewConstHistogram(rqlp.runqLatHistogramDesc,
-		rqlp.sampleCount, rqlp.sampleSum, rqlp.buckets)
+		rqlp.sampleCount, rqlp.sampleSum, buckets,
+		func() string {
+			return rqlp.filterCond.ResType.String()
+		}(),
+		func() string {
+			return strconv.Itoa(rqlp.filterCond.ResValue)
+		}(),
+	)
 	return nil
 }
 

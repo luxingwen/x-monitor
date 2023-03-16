@@ -6,7 +6,7 @@ require (
 	github.com/cilium/ebpf v0.10.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/gin-gonic/gin v1.7.7
-	github.com/golang/glog v1.0.0
+	github.com/golang/glog v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.37.0
