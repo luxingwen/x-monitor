@@ -60,23 +60,28 @@ static int my_dev_release(struct inode *inode, struct file *filp) {
 
 static int my_dev_mmap(struct file *filp, struct vm_area_struct *vma) {
     char *datap = filp->private_data;
-    // pgoff_t pgoff = 1;
+    pgoff_t pgoff = 0;
 
-    // if (remap_vmalloc_range(vma, datap, vma->vm_pgoff + pgoff)) {
-    //     return -EAGAIN;
-    // }
-    unsigned long size = vma->vm_end - vma->vm_start;
-    if (size > ALLOC_SIZE) {
-        pr_err("vma size: %lu larger than ALLOC_SIZE: %lu", size, ALLOC_SIZE);
-        return -EINVAL;
+    // remap_vmalloc_range函数的第三个参数pgoff是指要映射的虚拟内存区域在文件中的页偏移量1。也就是说,
+    // 如果你想把文件中的某一部分映射到用户空间
+    // 你需要计算出这一部分在文件中的起始页号，并传递给pgoff参数。
+    // 例如，如果你想映射文件中从第100个字节开始的4KB数据，你可以把pgoff设为0（因为第100个字节在第0页），
+    // 并把vma->vm_end - vma->vm_start设为4096（4KB）2。
+    if (remap_vmalloc_range(vma, datap, vma->vm_pgoff + pgoff)) {
+        return -EAGAIN;
     }
+    // unsigned long size = vma->vm_end - vma->vm_start;
+    // if (size > ALLOC_SIZE) {
+    //     pr_err("vma size: %lu larger than ALLOC_SIZE: %lu", size,
+    //     ALLOC_SIZE); return -EINVAL;
+    // }
     // vmalloc_to_pfn：将虚拟内存地址转换为物理页面帧号
     // vmalloc_user：所分配的内存并不是连续的物理页
     // datap转换为物理地址，将物理地址映射到vma->vm_start的地址上，这个地址是用户空间的虚拟地址。
-    if (remap_pfn_range(vma, vma->vm_start, vmalloc_to_pfn(datap), size,
-                        vma->vm_page_prot)) {
-        return -EAGAIN;
-    }
+    // if (remap_pfn_range(vma, vma->vm_start, vmalloc_to_pfn(datap), size,
+    //                     vma->vm_page_prot)) {
+    //     return -EAGAIN;
+    // }
 
     pr_info("%s module: mmap\n", DEVICE_NAME);
     return 0;
