@@ -41,6 +41,10 @@
 #define PERF_MAX_STACK_DEPTH 20
 #endif
 
+#ifndef PF_KTHREAD
+#define PF_KTHREAD 0x00200000 /* I am a kernel thread */
+#endif
+
 // stack traces: the value is 1 big byte array of the stack addresses
 typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
 #define BPF_STACK_TRACE(_name, _max_entries) \
@@ -226,6 +230,14 @@ static pid_t __xm_get_task_sessionid(struct task_struct *task) {
     session_pid = READ_KERN(signal->pids[PIDTYPE_SID]);
     session_upid = READ_KERN(session_pid->numbers[0]);
     return session_upid.nr;
+}
+
+// This code checks if the task is a kernel thread or not. If it is a kernel
+// thread, it will return true, otherwise it will return false
+static __always_inline bool __xm_task_is_kthread(struct task_struct *task) {
+    __u32 flags;
+    flags = READ_KERN(task->flags);
+    return flags & PF_KTHREAD;
 }
 
 /* new kernel task_struct definition */

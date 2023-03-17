@@ -162,6 +162,8 @@ func PromMetricsPath() string {
 
 // Returns true if the eBPF exporter is enabled.
 func ExporterEnabled() bool {
+	mu.RLock()
+	defer mu.RUnlock()
 	return viper.GetBool("ebpf.enabled")
 }
 
