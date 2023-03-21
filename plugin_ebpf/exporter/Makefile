@@ -23,12 +23,12 @@ all: build
 build:
 	#swag i
 	gofmt -s -w $(GOFILES)
-	goimports -v -w $(GOFILES)	
+	goimports -v -w $(GOFILES)
 	go generate -v -x ./...
 	GOOS=linux GOARCH=amd64 go build -mod=vendor  -v -x \
 		-ldflags '-X xmonitor.calmwu/plugin_ebpf/collector/cmd.VersionMajor=$(VersionMajor) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.VersionMinor=$(VersionMinor) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.CommitHash=$(GIT_COMMIT_HASH) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.BranchName=$(GIT_BRANCH_NAME) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.BuildTime=$(BUILD_TIME) -linkmode external' \
 		-gcflags 'all=-N -l' -race  \
-		-o ../../env/plugins.d/$(APP) main.go
+		-o ../../bin/plugins.d/$(APP) main.go
 
 test:
 	go test --race -v ./...
@@ -50,10 +50,10 @@ build-version:
 	@echo GoVersion: ${GO_VERSION}
 	@echo CommitID: ${GIT_COMMIT_HASH}
 	@echo BranchName : ${GIT_BRANCH_NAME}
-	@echo ------------ End   Build Version Details ------------		
+	@echo ------------ End   Build Version Details ------------
 
 swagger:
 	swag i
 
 clean:
-	-rm ../../env/plugins.d/$(APP)
+	-rm ../../bin/plugins.d/$(APP)

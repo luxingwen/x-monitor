@@ -13,7 +13,7 @@ eBPF:
   enabled: true
   programs:
     - name: cachestat
-      enabled: false
+      enabled: true
       gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
     - name: oomkill
       enabled: false

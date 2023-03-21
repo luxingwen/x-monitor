@@ -98,16 +98,14 @@ static const char *__metric_help_net_dev_tx_bytes = "Number of good "
                                                     "tx_packets.";
 static const char *__metric_help_net_dev_tx_packets =
     "Number of packets successfully transmitted. For hardware interfaces "
-    "counts packets which host "
-    "was able to successfully hand over to the device, which does not "
-    "necessarily mean that "
-    "packets had been successfully transmitted out of the device, only that "
-    "device acknowledged it "
-    "copied them out of host memory.";
+    "counts packets which host was able to successfully hand over to the "
+    "device, which does not "
+    "necessarily mean that packets had been successfully transmitted out of "
+    "the device, only that "
+    "device acknowledged it copied them out of host memory.";
 static const char *__metric_help_net_dev_tx_errors =
     "Total number of transmit problems. This counter must include events "
-    "counter by "
-    "tx_aborted_errors, tx_carrier_errors, tx_fifo_errors, "
+    "counter by tx_aborted_errors, tx_carrier_errors, tx_fifo_errors, "
     "tx_heartbeat_errors, tx_window_errors "
     "and other errors not otherwise counted.";
 static const char *__metric_help_net_dev_tx_dropped = "Number of packets "
