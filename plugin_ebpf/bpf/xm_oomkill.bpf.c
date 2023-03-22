@@ -23,6 +23,8 @@ https://lore.kernel.org/linux-mm/20170531163928.GZ27783@dhcp22.suse.cz/
 struct oomkill_info {
     pid_t pid;
     char comm[TASK_COMM_LEN];
+    __u64 cgroup_id;
+    __u8 global_oom;
 };
 
 struct {

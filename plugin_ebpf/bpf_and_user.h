@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-15 14:06:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-09-13 15:08:45
+ * @Last Modified time: 2023-03-22 16:00:15
  */
 
 #pragma once
@@ -47,6 +47,14 @@ struct xm_runqlat_args {
 
 struct xm_runqlat_hist {
     __u32 slots[XM_RUNQLAT_MAX_SLOTS]; // 每个slot代表2的次方
+};
+
+//------------------------ offcpu
+struct xm_offcpu_blocktask {
+    pid_t pid; // 线程id
+    pid_t tgid; // 进程id
+    __u64 offcpu_us; // 离开CPU的时间，微秒
+    char comm[TASK_COMM_LEN];
 };
 
 //------------------------ runqlen

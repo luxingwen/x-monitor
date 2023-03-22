@@ -2,7 +2,7 @@
  * @Author: calmwu
  * @Date: 2022-02-28 14:24:40
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-03-02 16:02:28
+ * @Last Modified time: 2023-03-22 16:05:18
  */
 
 #include <vmlinux.h>
@@ -25,7 +25,7 @@
 //                                                            FILTER_DEF_OS,
 //                                                        .id = 0 };
 
-// 1: os，2：namespace，3：CGroup，4：PID，5：PGID
+// 1: os，2：namespace，3：CGroup，4：PID，5：PGID，暂时不支持cg
 const volatile __s32 __filter_type = 1;
 const volatile __s64 __filter_value = 0;
 

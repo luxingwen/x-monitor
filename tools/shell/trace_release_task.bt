@@ -1,0 +1,44 @@
+#!/usr/bin/env bpftrace
+
+#ifndef BPFTRACE_HAVE_BTF
+#include <linux/sched.h>
+#include <linux/time.h>
+#include <linux/types.h>
+#endif
+
+BEGIN
+{
+	printf("Tracing... Hit Ctrl-C to end.\n");
+}
+
+kprobe:release_task {
+    $ts = (struct task_struct*)arg0;
+    printf("release task.pid:%d, name:'%s'\n", $ts->pid, $ts->comm);
+}
+
+// task_struct结构的释放，该kprobe可以被触发
+kprobe:exit_thread {
+    $ts = (struct task_struct*)arg0;
+    printf("exit thread.id:%d, name:'%s'\n", $ts->pid, $ts->comm);
+}
+
+kprobe:finish_task_switch {
+    $prev = (struct task_struct*)arg0;
+    // TASK_DEAD 0x0080
+    if($prev->state == 0x0080) {
+        printf("finish task switch, task_dead pid:%d, name:'%s'\n", $prev->pid, $prev->comm);
+    }
+}
+
+tracepoint:sched:sched_process_exit {
+    printf("sched process exit pid:%d, name:'%s'\n", args->pid, args->comm);
+}
+
+/*
+sched process exit pid:133934, name:'x-monitor'
+exit thread.id:133934, name:'x-monitor'
+finish task switch, task_dead pid:133934, name:'x-monitor'
+
+schedule_timeout
+sched:sched_process_hang
+*/

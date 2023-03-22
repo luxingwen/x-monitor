@@ -94,17 +94,17 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 	csp.hitsDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("filesystem", "pagecache", "hits"),
 		"show hits to the file system page cache",
-		nil, nil,
+		nil, prometheus.Labels{"from": "xm_ebpf"},
 	)
 	csp.missesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("filesystem", "pagecache", "misses"),
 		"show misses to the file system page cache",
-		nil, nil,
+		nil, prometheus.Labels{"from": "xm_ebpf"},
 	)
 	csp.ratioDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("filesystem", "pagecache", "ratio"),
 		"show ratio of hits to the file system page cache",
-		nil, nil,
+		nil, prometheus.Labels{"from": "xm_ebpf"},
 	)
 
 	cacheStatEventProcessor := func() {

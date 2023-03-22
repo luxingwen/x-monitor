@@ -96,11 +96,46 @@ static const struct bpf_sec_def section_defs[] = {
     bpf_probe_read_user(&check_filename, filename_len, (char*)ctx->args[1]);
     ```
 
-- example:
+- example-1:
 
   ```
   SEC("tp/syscalls/sys_enter_openat")
   int handle_openat_enter(struct trace_event_raw_sys_enter *ctx)
+  ```
+
+- example-2：
+
+  函数定义，获取参数，args[1]是char **argv，
+
+  ```
+  SEC("tracepoint/syscalls/sys_enter_execve")
+  int tracepoint__syscalls__sys_enter_execve(struct trace_event_raw_sys_enter* ctx)
+  {
+  	u64 id;
+  	pid_t pid, tgid;
+  	unsigned int ret;
+  	struct event *event;
+  	struct task_struct *task;
+  	const char **args = (const char **)(ctx->args[1]);
+  	const char *argp;
+  ```
+
+  execve的tracepoint参数定义
+
+  ```
+  ➜  ~ bpftrace -lv tracepoint:syscalls:sys_enter_execve
+  tracepoint:syscalls:sys_enter_execve
+      int __syscall_nr
+      const char * filename
+      const char *const * argv
+      const char *const * envp
+  ```
+
+  execve函数定义
+
+  ```
+         int execve(const char *filename, char *const argv[],
+                    char *const envp[])
   ```
 
 

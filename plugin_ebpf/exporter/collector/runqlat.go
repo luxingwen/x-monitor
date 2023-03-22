@@ -87,7 +87,7 @@ func newRunQLatencyProgram(name string) (eBPFProgram, error) {
 	rqlp.runqLatHistogramDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("process", "schedule", "runq_latency_usecs"),
 		"A histogram of the a task spends waiting on a attatchToRun queue for a turn on-CPU durations.",
-		[]string{"res_type", "res_value"}, nil,
+		[]string{"res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
 	)
 	rqlp.buckets = make(map[float64]uint64, len(_buckets))
 
