@@ -13,17 +13,10 @@
 
 #include "../bpf_and_user.h"
 
-#define MAX_THREAD_COUNT 10240
-#define TASK_RUNNING 0
-
 // 从task状态设置为TASK_RUNNING插入运行队列，到被调度上CPU，统计等待时间
 // 检查系统中CPU调度器延迟（运行队列的延迟，rbtree）。在需求超过供给，CPU资源处于饱和状态时，runqlat统计的信息是每个线程等待CPU的耗时
 // 这里使用btf raw tracepoint，其和常规的raw tracepoint有一定的差别
 // https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec
-
-// const volatile struct xm_runqlat_args runqlat_args = { .filter_type =
-//                                                            FILTER_DEF_OS,
-//                                                        .id = 0 };
 
 // 1: os，2：namespace，3：CGroup，4：PID，5：PGID，暂时不支持cg
 const volatile __s32 __filter_type = 1;

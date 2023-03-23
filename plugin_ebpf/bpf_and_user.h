@@ -28,32 +28,28 @@ struct xm_ebpf_event {
     __s32 err_code; // 0 means success, otherwise means failed
 };
 
-enum task_filter_scope_type {
-    FILTER_DEF_OS = 0, // 整个系统按线程统计，整个系统是一个直方图
-    FILTER_PER_THREAD, // 按线程过滤 task_struct.pid，每个线程是一个直方图
-    FILTER_PER_PROCESS, // 按进程过滤 task_struct.tgid，每个进程使一个直方图
-    FILTER_PER_PIDNS, // 按pidns过滤，每个pidns是个直方图
-    FILTER_SPEC_CGROUP, // 只统计指定的cgroup下的thread
-    FILTER_SPEC_PROCESS, // 只统计指定进程下的thread
-};
-
 //------------------------ runqlatency
 #define XM_RUNQLAT_MAX_SLOTS 20 // 2 ^ 20 = 1秒
-
-struct xm_runqlat_args {
-    enum task_filter_scope_type filter_type;
-    __u64 id;
-};
 
 struct xm_runqlat_hist {
     __u32 slots[XM_RUNQLAT_MAX_SLOTS]; // 每个slot代表2的次方
 };
 
-//------------------------ offcpu
-struct xm_offcpu_blocktask {
+//------------------------ cpu schedule event
+enum xm_cpu_sched_event_type {
+    XM_CPU_SCHED_EVENT_TYPE_NONE = 0,
+    XM_CPU_SCHED_EVENT_TYPE_RUNQLAT,
+    XM_CPU_SCHED_EVENT_TYPE_OFFCPU,
+    XM_CPU_SCHED_EVENT_TYPE_HANG,
+};
+
+struct xm_cpu_sched_event {
+    enum xm_cpu_sched_event_type type;
     pid_t pid; // 线程id
     pid_t tgid; // 进程id
-    __u64 offcpu_us; // 离开CPU的时间，微秒
+    __u64 offcpu_duration_us; // 离开CPU的时间，微秒
+    __u32 kernel_stack_id; // 调用堆栈
+    __u32 user_stack_id;
     char comm[TASK_COMM_LEN];
 };
 
@@ -77,7 +73,7 @@ struct syscall_event {
 //------------------------ cachestat_top
 struct cachestat_top_statistics {
     __u64 add_to_page_cache_lru;
-    __u64 ip_add_to_page_cache; // IP寄存器的值í
+    __u64 ip_add_to_page_cache; // IP寄存器的值
     __u64 mark_page_accessed;
     __u64 ip_mark_page_accessed; // IP寄存器的值
     __u64 account_page_dirtied;

@@ -36,9 +36,6 @@
 #define BPF_PERF_OUTPUT(_name, _max_entries) \
     BPF_MAP(_name, BPF_MAP_TYPE_PERF_EVENT_ARRAY, int, __u32, _max_entries)
 
-#define BPF_RINGBUF(_name, _max_entries) \
-    BPF_MAP(_name, BPF_MAP_TYPE_RINGBUF, int, __u32, _max_entries)
-
 /**
  * Looks up a value in a map and initializes it if it doesn't exist.
  *

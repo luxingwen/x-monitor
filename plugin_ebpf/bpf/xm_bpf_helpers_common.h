@@ -11,6 +11,8 @@
 #include <bpf/bpf_core_read.h>
 
 #define TASK_COMM_LEN 16
+#define MAX_THREAD_COUNT 10240
+#define TASK_RUNNING 0
 
 #ifndef memcpy
 #define memcpy(dest, src, n) __builtin_memcpy((dest), (src), (n))
