@@ -52,12 +52,11 @@ struct {
 static struct xm_runqlat_hist __zero_hist = {
     .slots = { 0 },
 };
-static enum xm_cpu_sched_event_type __evt = XM_CPU_SCHED_EVENT_TYPE_NONE;
-static const struct xm_cpu_sched_event *__unused_cs_evt __attribute__((unused));
+// !! Force emitting struct event into the ELF. 切记不能使用static做修饰符
+const struct xm_cpu_sched_event *__unused_cs_evt __attribute__((unused));
 
 // ** 辅助函数
-static __s32 __insert_cs_start_map(struct task_struct *ts,
-                                   enum xm_cpu_sched_event_type evt) {
+static __s32 __insert_cs_start_map(struct task_struct *ts, __u8 evt_type) {
     pid_t tgid = ts->tgid;
     pid_t pid = ts->pid;
 
@@ -84,10 +83,10 @@ static __s32 __insert_cs_start_map(struct task_struct *ts,
 
     // 得到wakeup时间，单位纳秒
     __u64 now_ns = bpf_ktime_get_ns();
-    if (evt == XM_CPU_SCHED_EVENT_TYPE_RUNQLAT) {
+    if (evt_type == XM_CPU_SCHED_EVENT_TYPE_RUNQLAT) {
         // 更新map，记录thread wakeup time
         bpf_map_update_elem(&xm_cs_runqlat_start_map, &pid, &now_ns, BPF_ANY);
-    } else if (evt == XM_CPU_SCHED_EVENT_TYPE_OFFCPU) {
+    } else if (evt_type == XM_CPU_SCHED_EVENT_TYPE_OFFCPU) {
         // 更新map，记录thread offcpu time
         bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns, BPF_ANY);
     }
@@ -160,7 +159,7 @@ static __s32 __process_returning_task(struct task_struct *ts, __u64 now_ns) {
             &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_event), 0);
         //__builtin_memset(evt, 0, sizeof(*evt));
         if (evt) {
-            evt->type = XM_CPU_SCHED_EVENT_TYPE_OFFCPU;
+            evt->evt_type = XM_CPU_SCHED_EVENT_TYPE_OFFCPU;
             evt->pid = pid;
             evt->tgid = tgid;
             evt->offcpu_duration_us = offcpu_duration / 1000U;
@@ -226,6 +225,7 @@ __s32 BPF_PROG(xm_btp_sched_process_hang, struct task_struct *ts) {
                    "failed",
                    pid, tgid);
     } else {
+        evt->evt_type = XM_CPU_SCHED_EVENT_TYPE_HANG;
         evt->pid = pid;
         evt->tgid = tgid;
         READ_KERN_STR_INTO(evt->comm, ts->comm);

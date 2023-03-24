@@ -36,7 +36,7 @@ struct xm_runqlat_hist {
 };
 
 //------------------------ cpu schedule event
-enum xm_cpu_sched_event_type {
+enum {
     XM_CPU_SCHED_EVENT_TYPE_NONE = 0,
     XM_CPU_SCHED_EVENT_TYPE_RUNQLAT,
     XM_CPU_SCHED_EVENT_TYPE_OFFCPU,
@@ -44,7 +44,7 @@ enum xm_cpu_sched_event_type {
 };
 
 struct xm_cpu_sched_event {
-    enum xm_cpu_sched_event_type type;
+    __u8 evt_type;
     pid_t pid; // 线程id
     pid_t tgid; // 进程id
     __u64 offcpu_duration_us; // 离开CPU的时间，微秒
