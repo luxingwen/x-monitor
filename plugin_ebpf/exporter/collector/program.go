@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-17 14:33:02
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-17 14:37:55
+ * @Last Modified time: 2023-03-25 14:14:42
  */
 
 package collector
@@ -22,6 +22,7 @@ import (
 const (
 	cacheStateProgName  = "cachestat"
 	runQLatencyProgName = "runqlatency"
+	cpuSchedProgName    = "cpusched"
 )
 
 type eBPFBaseProgram struct {

@@ -52,11 +52,14 @@ struct {
 static struct xm_runqlat_hist __zero_hist = {
     .slots = { 0 },
 };
+const enum xm_cpu_sched_evt_type __unused_cs_evt_type __attribute__((unused)) =
+    XM_CS_EVT_TYPE_NONE;
 // !! Force emitting struct event into the ELF. 切记不能使用static做修饰符
-const struct xm_cpu_sched_event *__unused_cs_evt __attribute__((unused));
+const struct xm_cpu_sched_evt_data *__unused_cs_evt __attribute__((unused));
 
 // ** 辅助函数
-static __s32 __insert_cs_start_map(struct task_struct *ts, __u8 evt_type) {
+static __s32 __insert_cs_start_map(struct task_struct *ts,
+                                   enum xm_cpu_sched_evt_type evt_type) {
     pid_t tgid = ts->tgid;
     pid_t pid = ts->pid;
 
@@ -83,10 +86,10 @@ static __s32 __insert_cs_start_map(struct task_struct *ts, __u8 evt_type) {
 
     // 得到wakeup时间，单位纳秒
     __u64 now_ns = bpf_ktime_get_ns();
-    if (evt_type == XM_CPU_SCHED_EVENT_TYPE_RUNQLAT) {
+    if (evt_type == XM_CS_EVT_TYPE_RUNQLAT) {
         // 更新map，记录thread wakeup time
         bpf_map_update_elem(&xm_cs_runqlat_start_map, &pid, &now_ns, BPF_ANY);
-    } else if (evt_type == XM_CPU_SCHED_EVENT_TYPE_OFFCPU) {
+    } else if (evt_type == XM_CS_EVT_TYPE_OFFCPU) {
         // 更新map，记录thread offcpu time
         bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns, BPF_ANY);
     }
@@ -155,11 +158,11 @@ static __s32 __process_returning_task(struct task_struct *ts, __u64 now_ns) {
 
     if (offcpu_duration > __filter_block_delay_threshold_ns) {
         // 如果回归超时，生成事件，通过ringbuf发送
-        struct xm_cpu_sched_event *evt = bpf_ringbuf_reserve(
-            &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_event), 0);
+        struct xm_cpu_sched_evt_data *evt = bpf_ringbuf_reserve(
+            &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_evt_data), 0);
         //__builtin_memset(evt, 0, sizeof(*evt));
         if (evt) {
-            evt->evt_type = XM_CPU_SCHED_EVENT_TYPE_OFFCPU;
+            evt->evt_type = XM_CS_EVT_TYPE_OFFCPU;
             evt->pid = pid;
             evt->tgid = tgid;
             evt->offcpu_duration_us = offcpu_duration / 1000U;
@@ -178,13 +181,13 @@ cleanup:
 SEC("tp_btf/sched_wakeup")
 __s32 BPF_PROG(xm_btp_sched_wakeup, struct task_struct *ts) {
     // bpf_printk("xm_ebpf_exporter runqlat sched_wakeup pid:%d", ts->pid);
-    return __insert_cs_start_map(ts, XM_CPU_SCHED_EVENT_TYPE_RUNQLAT);
+    return __insert_cs_start_map(ts, XM_CS_EVT_TYPE_RUNQLAT);
 }
 
 SEC("tp_btf/sched_wakeup_new")
 __s32 BPF_PROG(xm_btp_sched_wakeup_new, struct task_struct *ts) {
     // ts被唤醒
-    return __insert_cs_start_map(ts, XM_CPU_SCHED_EVENT_TYPE_RUNQLAT);
+    return __insert_cs_start_map(ts, XM_CS_EVT_TYPE_RUNQLAT);
 }
 
 SEC("tp_btf/sched_switch")
@@ -193,7 +196,7 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     // 调度出cpu的task，如果状态还是RUNNING，继续插入wakeup
     // map，算成一种重新唤醒
     if (__xm_get_task_state(prev) == TASK_RUNNING) {
-        __insert_cs_start_map(prev, XM_CPU_SCHED_EVENT_TYPE_RUNQLAT);
+        __insert_cs_start_map(prev, XM_CS_EVT_TYPE_RUNQLAT);
     }
 
     // 因为是raw BTF tracepoint，所以可以直接使用内核结构
@@ -203,7 +206,7 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     pid_t next_pid = next->pid;
 
     // 记录离开cpu的task的时间
-    __insert_cs_start_map(prev, XM_CPU_SCHED_EVENT_TYPE_OFFCPU);
+    __insert_cs_start_map(prev, XM_CS_EVT_TYPE_OFFCPU);
 
     if (next_pid != 0) {
         __statistics_runqlat(next_pid, now_ns);
@@ -218,14 +221,14 @@ __s32 BPF_PROG(xm_btp_sched_process_hang, struct task_struct *ts) {
     pid_t pid = ts->pid;
     pid_t tgid = ts->tgid;
 
-    struct xm_cpu_sched_event *evt = bpf_ringbuf_reserve(
-        &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_event), 0);
+    struct xm_cpu_sched_evt_data *evt = bpf_ringbuf_reserve(
+        &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_evt_data), 0);
     if (!evt) {
         bpf_printk("xm_ebpf_exporter reserving ringbuf for pid:%d, tgid:%d "
                    "failed",
                    pid, tgid);
     } else {
-        evt->evt_type = XM_CPU_SCHED_EVENT_TYPE_HANG;
+        evt->evt_type = XM_CS_EVT_TYPE_HANG;
         evt->pid = pid;
         evt->tgid = tgid;
         READ_KERN_STR_INTO(evt->comm, ts->comm);

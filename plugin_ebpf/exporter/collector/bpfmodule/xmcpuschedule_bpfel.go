@@ -13,17 +13,25 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type XMCpuScheduleXmCpuSchedEvent struct {
-	EvtType          uint8
-	_                [3]byte
-	Pid              int32
-	Tgid             int32
-	_                [4]byte
+type XMCpuScheduleXmCpuSchedEvtData struct {
 	OffcpuDurationUs uint64
 	KernelStackId    uint32
 	UserStackId      uint32
+	EvtType          XMCpuScheduleXmCpuSchedEvtType
+	Pid              int32
+	Tgid             int32
 	Comm             [16]int8
+	_                [4]byte
 }
+
+type XMCpuScheduleXmCpuSchedEvtType uint32
+
+const (
+	XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_NONE    XMCpuScheduleXmCpuSchedEvtType = 0
+	XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_RUNQLAT XMCpuScheduleXmCpuSchedEvtType = 1
+	XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_OFFCPU  XMCpuScheduleXmCpuSchedEvtType = 2
+	XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HANG    XMCpuScheduleXmCpuSchedEvtType = 3
+)
 
 type XMCpuScheduleXmRunqlatHist struct{ Slots [20]uint32 }
 
