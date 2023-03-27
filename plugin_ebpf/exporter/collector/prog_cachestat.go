@@ -8,6 +8,8 @@
 package collector
 
 import (
+	"time"
+
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/golang/glog"
@@ -88,7 +90,7 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 
 	glog.Infof("eBPFProgram:'%s' start attatchToRun successfully.", name)
 
-	gatherInterval := config.GatherInterval(csp.name)
+	gatherInterval := config.ProgramConfig(csp.name).GatherInterval * time.Second
 
 	// Prometheus initialization area
 	csp.hitsDesc = prometheus.NewDesc(

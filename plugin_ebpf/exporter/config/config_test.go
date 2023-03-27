@@ -41,7 +41,7 @@ func TestInitConfig(t *testing.T) {
 				t.Logf("pprofBindAddr: %s", pprofBindAddr)
 			}
 
-			for i, cfg := range __ebpfModuleConfigs {
+			for i, cfg := range programConfigs {
 				t.Logf("%d, %+v", i, cfg)
 			}
 		})

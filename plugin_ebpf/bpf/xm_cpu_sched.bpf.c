@@ -25,7 +25,7 @@ const volatile __s32 __filter_scope_type =
 const volatile __s64 __filter_scope_value =
     0; // 范围具体值，例如pidnsID, pid,
        // pgid，如果scope_type为1，表示范围为整个os
-const volatile __s64 __filter_block_delay_threshold_ns =
+const volatile __s64 __offcpu_over_time_threshold_ns =
     500000000; // 从离开cpu到从新进入cpu的时间间隔，单位纳秒
 
 // **bpf map定义
@@ -156,7 +156,7 @@ static __s32 __process_returning_task(struct task_struct *ts, __u64 now_ns) {
         goto cleanup;
     }
 
-    if (offcpu_duration > __filter_block_delay_threshold_ns) {
+    if (offcpu_duration > __offcpu_over_time_threshold_ns) {
         // 如果回归超时，生成事件，通过ringbuf发送
         struct xm_cpu_sched_evt_data *evt = bpf_ringbuf_reserve(
             &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_evt_data), 0);

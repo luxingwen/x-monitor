@@ -19,8 +19,8 @@
 // https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec
 
 // 1: os，2：namespace，3：CGroup，4：PID，5：PGID，暂时不支持cg
-const volatile __s32 __filter_type = 1;
-const volatile __s64 __filter_value = 0;
+const volatile __s32 __filter_scope_type = 1;
+const volatile __s64 __filter_scope_value = 0;
 
 // 只支持一个cgroup
 // struct {
@@ -55,24 +55,24 @@ static __always_inline __s32 __trace_enqueue(struct task_struct *ts) {
     pid_t tgid = ts->tgid;
     pid_t pid = ts->pid;
 
-    if (__filter_type == 2) {
+    if (__filter_scope_type == 2) {
         // 判断pid_namespace是否相同
         __u32 pidns_id = __xm_get_task_pidns(ts);
-        if (pidns_id != (pid_t)__filter_value) {
+        if (pidns_id != (pid_t)__filter_scope_value) {
             return 0;
         }
-    } else if (__filter_type == 4) {
+    } else if (__filter_scope_type == 4) {
         // 判断是否指定的进程
-        if (tgid != (pid_t)__filter_value) {
+        if (tgid != (pid_t)__filter_scope_value) {
             return 0;
         }
-    } else if (__filter_type == 5) {
+    } else if (__filter_scope_type == 5) {
         // 判断是否指定的进程组
         pid_t pgid = __xm_get_task_pgid(ts);
-        if (pgid != (pid_t)__filter_value) {
+        if (pgid != (pid_t)__filter_scope_value) {
             return 0;
         }
-    } else if (__filter_type > 5) {
+    } else if (__filter_scope_type > 5) {
         return 0;
     }
 
@@ -160,7 +160,7 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
     __u64 *wakeup_ns = bpf_map_lookup_elem(&xm_runqlat_start_map, &pid);
     if (!wakeup_ns) {
         // wakeup 时间不存在
-        if (__filter_type == 1) {
+        if (__filter_scope_type == 1) {
             bpf_printk("xm_ebpf_exporter runqlat pid:%d is not in "
                        "xm_runqlat_start_map.",
                        pid);

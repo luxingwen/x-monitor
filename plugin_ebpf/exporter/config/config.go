@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-08 11:41:55
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-17 14:09:44
+ * @Last Modified time: 2023-03-27 11:28:13
  */
 
 package config
@@ -48,7 +48,8 @@ type programConfig struct {
 	Name           string        `mapstructure:"name"`
 	Enabled        bool          `mapstructure:"enabled"`
 	GatherInterval time.Duration `mapstructure:"gather_interval"`
-	Conditions     interface{}   `mapstructure:"conditions"`
+	ProgRodata     interface{}   `mapstructure:"prog_rodata"`
+	Metrics        []string      `mapstructure:"metrcs"`
 }
 
 var (
@@ -180,27 +181,13 @@ func Enabled(name string) bool {
 	return false
 }
 
-// GatherInterval returns the gather interval for the program with the given name.
-// If no program with that name is found, the default interval is returned.
-func GatherInterval(name string) time.Duration {
+func ProgramConfig(name string) *programConfig {
 	mu.RLock()
 	defer mu.RUnlock()
 
 	for _, progCfg := range programConfigs {
 		if progCfg.Name == name {
-			return progCfg.GatherInterval * time.Second
-		}
-	}
-	return defaultInterval
-}
-
-func Conditions(name string) interface{} {
-	mu.RLock()
-	defer mu.RUnlock()
-
-	for _, progCfg := range programConfigs {
-		if progCfg.Name == name {
-			return progCfg.Conditions
+			return progCfg
 		}
 	}
 	return nil

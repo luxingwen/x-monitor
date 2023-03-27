@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-17 14:33:02
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-03-25 14:14:42
+ * @Last Modified time: 2023-03-27 11:21:10
  */
 
 package collector
@@ -15,25 +15,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
-	"github.com/sourcegraph/conc"
-	calmutils "github.com/wubo0067/calmwu-go/utils"
 )
-
-const (
-	cacheStateProgName  = "cachestat"
-	runQLatencyProgName = "runqlatency"
-	cpuSchedProgName    = "cpusched"
-)
-
-type eBPFBaseProgram struct {
-	// module
-	name        string
-	stopChan    chan struct{}
-	wg          conc.WaitGroup
-	gatherTimer *calmutils.Timer
-	// ebpf
-	links []link.Link
-}
 
 type __load func() (*ebpf.CollectionSpec, error)
 type __rewriteConstVars func(*ebpf.CollectionSpec) error

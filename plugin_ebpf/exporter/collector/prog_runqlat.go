@@ -11,6 +11,7 @@ import (
 	"errors"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/golang/glog"
@@ -23,15 +24,15 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 )
 
-type RunQLatFilterCond struct {
-	ResType  config.XMInternalResourceType `mapstructure:"filter_resource_type"`  // 过滤的资源类型
-	ResValue int                           `mapstructure:"filter_resource_value"` // 过滤资源的值
+type runQLatProgRodata struct {
+	FilterScopeType  config.XMInternalResourceType `mapstructure:"filter_scope_type"`  // 过滤的资源类型
+	FilterScopeValue int                           `mapstructure:"filter_scope_value"` // 过滤资源的值
 }
 
 type runQLatProgram struct {
 	*eBPFBaseProgram
-	// 被调度运行对象的过滤条件
-	filterCond RunQLatFilterCond
+	// rodata
+	roData runQLatProgRodata
 	// prometheus对象，单位微秒
 	runqLatHistogramDesc *prometheus.Desc
 	sampleCount          uint64
@@ -59,17 +60,16 @@ func newRunQLatencyProgram(name string) (eBPFProgram, error) {
 		},
 	}
 
-	interval := config.GatherInterval(name)
-	filter := config.Conditions(name)
-	mapstructure.Decode(filter, &rqlp.filterCond)
-	glog.Infof("eBPFProgram:'%s' gatherInterval:%s, filterCond:%s", name, interval.String(), litter.Sdump(rqlp.filterCond))
+	interval := config.ProgramConfig(name).GatherInterval * time.Second
+	mapstructure.Decode(config.ProgramConfig(name).ProgRodata, &rqlp.roData)
+	glog.Infof("eBPFProgram:'%s' gatherInterval:%s, progRodata:%s", name, interval.String(), litter.Sdump(rqlp.roData))
 
 	var err error
 	rqlp.objs = new(bpfmodule.XMRunQLatObjects)
 	rqlp.links, err = attatchToRun(name, rqlp.objs, bpfmodule.LoadXMRunQLat, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_type":  int32(rqlp.filterCond.ResType),
-			"__filter_value": int64(rqlp.filterCond.ResValue),
+			"__filter_scope_type":  int32(rqlp.roData.FilterScopeType),
+			"__filter_scope_value": int64(rqlp.roData.FilterScopeValue),
 		})
 
 		if err != nil {
@@ -160,10 +160,10 @@ func (rqlp *runQLatProgram) Update(ch chan<- prometheus.Metric) error {
 	ch <- prometheus.MustNewConstHistogram(rqlp.runqLatHistogramDesc,
 		rqlp.sampleCount, rqlp.sampleSum, buckets,
 		func() string {
-			return rqlp.filterCond.ResType.String()
+			return rqlp.roData.FilterScopeType.String()
 		}(),
 		func() string {
-			return strconv.Itoa(rqlp.filterCond.ResValue)
+			return strconv.Itoa(rqlp.roData.FilterScopeValue)
 		}(),
 	)
 	return nil

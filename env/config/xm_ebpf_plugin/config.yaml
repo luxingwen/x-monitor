@@ -15,11 +15,24 @@ eBPF:
     - name: cachestat
       enabled: true
       gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
-    - name: oomkill
-      enabled: false
-    - name: runqlatency
+    #- name: oomkill
+    #  enabled: false
+    #- name: runqlatency
+    #  enabled: false
+    #  gather_interval: 3
+    #  prog_rodata:
+    #    filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
+    #    filter_scope_value: 0
+    - name: cpusched
       enabled: true
-      gather_interval: 3
-      conditions:
-        filter_resource_type: 1 # 1: os，2：namespace，4：PID，5：PGID
-        filter_resource_value: 0
+      gather_interval: 3 # 单位：秒
+      prog_rodata:
+        filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
+        filter_scope_value: 0
+        offcpu_over_time_threshold_ns: 500000000 # 单位：纳秒
+      metrcs:
+        - runq_latency_usecs
+        - offcpu_over_time
+        - hang_process
+
+
