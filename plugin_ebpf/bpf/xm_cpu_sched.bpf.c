@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-23 10:30:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-03-23 10:41:51
+ * @Last Modified time: 2023-03-28 18:29:03
  */
 
 // Observation of CPU scheduling status
@@ -247,7 +247,7 @@ __s32 BPF_PROG(xm_btp_sched_process_hang, struct task_struct *ts) {
         evt->evt_type = XM_CS_EVT_TYPE_HANG;
         evt->pid = pid;
         evt->tgid = tgid;
-        READ_KERN_STR_INTO(evt->comm, ts->comm);
+        bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
         evt->kernel_stack_id =
             bpf_get_stackid(ctx, &xm_sched_stack_map, KERN_STACKID_FLAGS);
         evt->user_stack_id =

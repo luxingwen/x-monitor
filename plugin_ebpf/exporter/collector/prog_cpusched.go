@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-25 12:43:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-03-27 11:34:16
+ * @Last Modified time: 2023-03-28 18:27:11
  */
 
 package collector
@@ -24,6 +24,7 @@ import (
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal"
 )
 
 type cpuSchedProgRodata struct {
@@ -278,7 +279,7 @@ loop:
 			continue
 		}
 
-		glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, offcpu_duration_millsecs:%d",
-			csp.name, scEvtData.Tgid, scEvtData.Pid, scEvtData.OffcpuDurationMillsecs)
+		glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', offcpu_duration_millsecs:%d",
+			csp.name, scEvtData.Tgid, scEvtData.Pid, internal.CommToString(scEvtData.Comm[:]), scEvtData.OffcpuDurationMillsecs)
 	}
 }
