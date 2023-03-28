@@ -25,8 +25,9 @@ const volatile __s32 __filter_scope_type =
 const volatile __s64 __filter_scope_value =
     0; // 范围具体值，例如pidnsID, pid,
        // pgid，如果scope_type为1，表示范围为整个os
-const volatile __s64 __offcpu_over_time_threshold_ns =
+const volatile __s64 __offcpu_threshold_nanosecs =
     500000000; // 从离开cpu到从新进入cpu的时间间隔，单位纳秒
+const volatile __s8 __offcpu_task_type = 0; // 0: all，1：user，2：kernel
 
 // **bpf map定义
 // 记录task_struct插入running queue的时间
@@ -91,7 +92,18 @@ static __s32 __insert_cs_start_map(struct task_struct *ts,
         bpf_map_update_elem(&xm_cs_runqlat_start_map, &pid, &now_ns, BPF_ANY);
     } else if (evt_type == XM_CS_EVT_TYPE_OFFCPU) {
         // 更新map，记录thread offcpu time
-        bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns, BPF_ANY);
+        if (__offcpu_task_type == 0) {
+            bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns,
+                                BPF_ANY);
+        } else if (__offcpu_task_type == 1 && !__xm_task_is_kthread(ts)) {
+            // 只关注用户的task
+            bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns,
+                                BPF_ANY);
+        } else if (__offcpu_task_type == 2 && __xm_task_is_kthread(ts)) {
+            // 只关注内核的task
+            bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns,
+                                BPF_ANY);
+        }
     }
     return 0;
 }
@@ -142,7 +154,8 @@ cleanup:
     return 0;
 }
 
-static __s32 __process_returning_task(struct task_struct *ts, __u64 now_ns) {
+static __s32 __process_return_to_cpu_task(struct task_struct *ts,
+                                          __u64 now_ns) {
     pid_t pid = ts->pid;
     pid_t tgid = ts->tgid;
 
@@ -156,7 +169,7 @@ static __s32 __process_returning_task(struct task_struct *ts, __u64 now_ns) {
         goto cleanup;
     }
 
-    if (offcpu_duration > __offcpu_over_time_threshold_ns) {
+    if (offcpu_duration > __offcpu_threshold_nanosecs) {
         // 如果回归超时，生成事件，通过ringbuf发送
         struct xm_cpu_sched_evt_data *evt = bpf_ringbuf_reserve(
             &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_evt_data), 0);
@@ -165,8 +178,11 @@ static __s32 __process_returning_task(struct task_struct *ts, __u64 now_ns) {
             evt->evt_type = XM_CS_EVT_TYPE_OFFCPU;
             evt->pid = pid;
             evt->tgid = tgid;
-            evt->offcpu_duration_us = offcpu_duration / 1000U;
-            READ_KERN_STR_INTO(evt->comm, ts->comm);
+            evt->offcpu_duration_millsecs = offcpu_duration / 1000000U;
+            bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
+            bpf_printk("xm_ebpf_exporter pid:%d, comm:'%s', offcpu duration "
+                       "nanosecs:%lld",
+                       evt->pid, evt->comm, offcpu_duration);
             bpf_ringbuf_submit(evt, 0);
         }
     }
@@ -210,7 +226,7 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
 
     if (next_pid != 0) {
         __statistics_runqlat(next_pid, now_ns);
-        __process_returning_task(next, now_ns);
+        __process_return_to_cpu_task(next, now_ns);
     }
 
     return 0;

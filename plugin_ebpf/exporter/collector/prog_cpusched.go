@@ -8,11 +8,14 @@
 package collector
 
 import (
+	"bytes"
+	"encoding/binary"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/ringbuf"
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -24,9 +27,10 @@ import (
 )
 
 type cpuSchedProgRodata struct {
-	FilterScopeType           config.XMInternalResourceType `mapstructure:"filter_scope_type"`              // 过滤的资源类型
-	FilterScopeValue          int                           `mapstructure:"filter_scope_value"`             // 过滤资源的值
-	OffCpuOverTimeThresholdNS uint64                        `mapstructure:"off_cpu_over_time_threshold_ns"` // 过滤资源的值
+	FilterScopeType         config.XMInternalResourceType `mapstructure:"filter_scope_type"`         // 过滤的资源类型
+	FilterScopeValue        int                           `mapstructure:"filter_scope_value"`        // 过滤资源的值
+	OffCPUThresholdMillsecs int                           `mapstructure:"offcpu_threshold_millsecs"` // offcpu状态的持续时间阈值，毫秒
+	OffCPUTaskType          int                           `mapstructure:"offcpu_task_type"`          // offcpu状态的任务类型
 }
 
 type cpuSchedProgram struct {
@@ -43,6 +47,8 @@ type cpuSchedProgram struct {
 	sampleSum          float64
 	runQLatencyBuckets map[float64]uint64
 	guard              sync.Mutex
+	// ebpf ringbuf map fd
+	scEvtRD *ringbuf.Reader
 
 	// eBPF对象
 	objs *bpfmodule.XMCpuScheduleObjects
@@ -62,21 +68,22 @@ func init() {
 	registerEBPFProgram(cpuSchedProgName, newCpuSchedProgram)
 }
 
-func runCpuSchedProgram(name string, prog *cpuSchedProgram) error {
+func loadToRunCPUSchedEBPFProg(name string, prog *cpuSchedProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMCpuScheduleObjects)
 	prog.links, err = attatchToRun(name, prog.objs, bpfmodule.LoadXMCpuSchedule, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_scope_type":             int32(prog.roData.FilterScopeType),
-			"__filter_scope_value":            int64(prog.roData.FilterScopeValue),
-			"__offcpu_over_time_threshold_ns": prog.roData.OffCpuOverTimeThresholdNS,
+			"__filter_scope_type":         int32(prog.roData.FilterScopeType),
+			"__filter_scope_value":        int64(prog.roData.FilterScopeValue),
+			"__offcpu_threshold_nanosecs": int64(time.Duration(prog.roData.OffCPUThresholdMillsecs) * time.Millisecond),
+			"__offcpu_task_type":          int8(prog.roData.OffCPUTaskType),
 		})
 
 		if err != nil {
 			return errors.Wrap(err, "RewriteConstants failed.")
 		}
-		return nil
+		return err
 	})
 
 	if err != nil {
@@ -84,7 +91,17 @@ func runCpuSchedProgram(name string, prog *cpuSchedProgram) error {
 		prog.objs = nil
 		return err
 	}
-	return nil
+
+	prog.scEvtRD, err = ringbuf.NewReader(prog.objs.XmCsEventRingbufMap)
+	if err != nil {
+		for _, link := range prog.links {
+			link.Close()
+		}
+		prog.links = nil
+		prog.objs.Close()
+		prog.objs = nil
+	}
+	return err
 }
 
 func newCpuSchedProgram(name string) (eBPFProgram, error) {
@@ -100,6 +117,7 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 	}
 
 	mapstructure.Decode(config.ProgramConfig(name).ProgRodata, &csProg.roData)
+	glog.Infof("eBPFProgram:'%s' roData:%s", name, litter.Sdump(csProg.roData))
 
 	for _, metricDesc := range config.ProgramConfig(name).Metrics {
 		switch metricDesc {
@@ -112,7 +130,7 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 		case "offcpu_over_time":
 			csProg.offCPUOverTimeDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("cpu", "schedule", metricDesc),
-				"Processes that exhibit a delay between leaving the CPU due to scheduling and being re-executed that exceeds a certain threshold.",
+				"The off-CPU delay time of tasks that exceed the threshold.",
 				[]string{"pid", "tgid", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
 			)
 		case "hang_process":
@@ -124,9 +142,7 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 		}
 	}
 
-	glog.Infof("eBPFProgram:'%s' roData:%s", name, litter.Sdump(csProg.roData))
-
-	if err := runCpuSchedProgram(name, csProg); err != nil {
+	if err := loadToRunCPUSchedEBPFProg(name, csProg); err != nil {
 		err = errors.Wrapf(err, "eBPFProgram:'%s' runCpuSchedProgram failed.", name)
 		glog.Error(err)
 		return nil, err
@@ -173,6 +189,11 @@ L:
 }
 
 func (csp *cpuSchedProgram) Stop() {
+	if csp.scEvtRD != nil {
+		// 关闭ringbuf
+		csp.scEvtRD.Close()
+	}
+
 	csp.stop()
 
 	if csp.objs != nil {
@@ -193,7 +214,7 @@ loop:
 	for {
 		select {
 		case <-csp.stopChan:
-			glog.Infof("eBPFProgram:'%s' tracing runQueueLatency receive stop notify", csp.name)
+			glog.Warningf("eBPFProgram:'%s' tracing runQueueLatency receive stop notify", csp.name)
 			break loop
 		case <-csp.gatherTimer.Chan():
 			// gather eBPF data
@@ -238,12 +259,26 @@ loop:
 func (csp *cpuSchedProgram) tracingCSEvent() {
 	glog.Infof("eBPFProgram:'%s' start tracing cpu sched event data...", csp.name)
 
+	var scEvtData bpfmodule.XMCpuScheduleXmCpuSchedEvtData
 loop:
 	for {
-		select {
-		case <-csp.stopChan:
-			glog.Infof("eBPFProgram:'%s' tracing runQueueLatency receive stop notify", csp.name)
-			break loop
+		record, err := csp.scEvtRD.Read()
+		if err != nil {
+			if errors.Is(err, ringbuf.ErrClosed) {
+				glog.Warningf("eBPFProgram:'%s' tracing cpu sched event receive stop notify", csp.name)
+				break loop
+			}
+			glog.Errorf("eBPFProgram:'%s' Read error. err:%s", csp.name, err.Error())
+			continue
 		}
+
+		// 解析数据
+		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &scEvtData); err != nil {
+			glog.Errorf("failed to parse XMCpuScheduleXmCpuSchedEvtData, err: %v", err)
+			continue
+		}
+
+		glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, offcpu_duration_millsecs:%d",
+			csp.name, scEvtData.Tgid, scEvtData.Pid, scEvtData.OffcpuDurationMillsecs)
 	}
 }

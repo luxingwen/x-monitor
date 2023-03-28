@@ -14,14 +14,14 @@ import (
 )
 
 type XMCpuScheduleXmCpuSchedEvtData struct {
-	OffcpuDurationUs uint64
-	KernelStackId    uint32
-	UserStackId      uint32
-	EvtType          XMCpuScheduleXmCpuSchedEvtType
-	Pid              int32
-	Tgid             int32
-	Comm             [16]int8
-	_                [4]byte
+	OffcpuDurationMillsecs uint64
+	KernelStackId          uint32
+	UserStackId            uint32
+	EvtType                XMCpuScheduleXmCpuSchedEvtType
+	Pid                    int32
+	Tgid                   int32
+	Comm                   [16]int8
+	_                      [4]byte
 }
 
 type XMCpuScheduleXmCpuSchedEvtType uint32

@@ -45,7 +45,7 @@ enum xm_cpu_sched_evt_type {
 
 // 结构体成员按字节大小从大到小排列
 struct xm_cpu_sched_evt_data {
-    __u64 offcpu_duration_us; // 离开CPU的时间，微秒
+    __u64 offcpu_duration_millsecs; // offcpu时间，毫秒
     __u32 kernel_stack_id; // 调用堆栈
     __u32 user_stack_id;
     enum xm_cpu_sched_evt_type evt_type;

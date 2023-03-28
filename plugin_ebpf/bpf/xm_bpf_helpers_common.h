@@ -65,9 +65,6 @@ typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
         _val;                                             \
     })
 
-#define READ_KERN_STR_INTO(dst, src) \
-    bpf_core_read_str((void *)&dst, sizeof(dst), src)
-
 #define READ_USER(ptr)                                         \
     ({                                                         \
         typeof(ptr) _val;                                      \

@@ -112,7 +112,7 @@ __s32 BPF_PROG(xm_trace_tp_btf__sys_exit, struct pt_regs *regs, __s64 ret) {
 
         if (!evt) {
             bpf_printk("xm_trace_syscalls pid: %d, tid: %d, syscall_nr: %ld "
-                       "reserve ringbuf  failed",
+                       "reserve ringbuf failed",
                        pid, tid, syscall_nr);
         } else {
             __builtin_memcpy(evt, se, sizeof(struct syscall_event));
