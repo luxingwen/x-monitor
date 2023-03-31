@@ -19,7 +19,7 @@ PWD := $(shell pwd)
 obj-m += calmwu_mmap_dev.o
 MY_CFLAGS += -g -DDEBUG -Werror -Wno-sign-compare
 ccflags-y += ${MY_CFLAGS}
-CC += ${MY_CFLAGS}
+	 += ${MY_CFLAGS}
 
 all:
 	@echo

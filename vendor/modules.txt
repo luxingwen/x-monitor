@@ -22,6 +22,12 @@ github.com/cilium/ebpf/internal/unix
 github.com/cilium/ebpf/link
 github.com/cilium/ebpf/ringbuf
 github.com/cilium/ebpf/rlimit
+# github.com/emirpasic/gods v1.18.1
+## explicit; go 1.2
+github.com/emirpasic/gods/containers
+github.com/emirpasic/gods/sets
+github.com/emirpasic/gods/sets/hashset
+github.com/emirpasic/gods/utils
 # github.com/fatih/color v1.13.0
 ## explicit; go 1.13
 github.com/fatih/color

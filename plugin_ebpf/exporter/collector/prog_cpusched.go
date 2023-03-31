@@ -16,6 +16,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"
+	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -41,8 +42,11 @@ type cpuSchedProgram struct {
 
 	// prometheus metric desc
 	runQueueLatencyDesc *prometheus.Desc
-	offCPUOverTimeDesc  *prometheus.Desc
+	offCPUDurationDesc  *prometheus.Desc
 	hangProcessDesc     *prometheus.Desc
+
+	// 指标输出过滤
+	metricsUpdateFilter *hashset.Set
 
 	sampleCount        uint64
 	sampleSum          float64
@@ -114,6 +118,7 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 		},
 		gatherInterval:      config.ProgramConfig(name).GatherInterval * time.Second,
 		runQLatencyBuckets:  make(map[float64]uint64, len(runQueueLayBucketLimits)),
+		metricsUpdateFilter: hashset.New(),
 		cpuSchedEvtDataChan: bpfmodule.NewCpuSchedEvtDataChannel(defaultCpuSchedEvtChanSize),
 	}
 
@@ -122,23 +127,23 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 
 	for _, metricDesc := range config.ProgramConfig(name).Metrics {
 		switch metricDesc {
-		case "runq_latency_usecs":
+		case "runq_latency":
 			csProg.runQueueLatencyDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("cpu", "schedule", metricDesc),
-				"A histogram of the a task spends waiting on a attatchToRun queue for a turn on-CPU durations.",
+				"This measures the time a task spends waiting on a run queue for a turn on-CPU, and shows this time as a histogram. in microseconds.",
 				[]string{"res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
 			)
-		case "offcpu_over_time":
-			csProg.offCPUOverTimeDesc = prometheus.NewDesc(
+		case "offcpu_duration":
+			csProg.offCPUDurationDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("cpu", "schedule", metricDesc),
-				"The off-CPU delay time of tasks that exceed the threshold.",
+				"The duration of the Task's off-CPU state, in milliseconds.",
 				[]string{"pid", "tgid", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
 			)
 		case "hang_process":
 			csProg.hangProcessDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("cpu", "schedule", metricDesc),
-				"Display processes that are hung in the process scheduler.",
-				[]string{"pid", "tgid", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
+				"pid of the process that is hung",
+				[]string{"tgid", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
 			)
 		}
 	}
@@ -180,12 +185,39 @@ L:
 		select {
 		case cpuSchedEvtData, ok := <-csp.cpuSchedEvtDataChan.C:
 			if ok {
-				glog.Infof("eBPFProgram:'%s' cpuSchedEvtData:%s", csp.name, litter.Sdump(cpuSchedEvtData))
+				//glog.Infof("eBPFProgram:'%s' cpuSchedEvtData:%s", csp.name, litter.Sdump(cpuSchedEvtData))
+				if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_OFFCPU {
+					if !csp.metricsUpdateFilter.Contains(cpuSchedEvtData.Pid) {
+						ch <- prometheus.MustNewConstMetric(csp.offCPUDurationDesc,
+							prometheus.GaugeValue, float64(cpuSchedEvtData.OffcpuDurationMillsecs),
+							strconv.FormatInt(int64(cpuSchedEvtData.Pid), 10),
+							strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
+							func() string {
+								return csp.roData.FilterScopeType.String()
+							}(),
+							func() string {
+								return strconv.Itoa(csp.roData.FilterScopeValue)
+							}())
+						csp.metricsUpdateFilter.Add(cpuSchedEvtData.Pid)
+					}
+				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HANG {
+					ch <- prometheus.MustNewConstMetric(csp.hangProcessDesc,
+						prometheus.GaugeValue, float64(cpuSchedEvtData.Pid),
+						strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
+						func() string {
+							return csp.roData.FilterScopeType.String()
+						}(),
+						func() string {
+							return strconv.Itoa(csp.roData.FilterScopeValue)
+						}())
+				}
 			}
 		default:
 			break L
 		}
 	}
+
+	csp.metricsUpdateFilter.Clear()
 	return nil
 }
 
@@ -260,7 +292,6 @@ loop:
 func (csp *cpuSchedProgram) tracingCSEvent() {
 	glog.Infof("eBPFProgram:'%s' start tracing cpu sched event data...", csp.name)
 
-	var scEvtData bpfmodule.XMCpuScheduleXmCpuSchedEvtData
 loop:
 	for {
 		record, err := csp.scEvtRD.Read()
@@ -274,12 +305,15 @@ loop:
 		}
 
 		// 解析数据
-		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &scEvtData); err != nil {
+		scEvtData := new(bpfmodule.XMCpuScheduleXmCpuSchedEvtData)
+		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, scEvtData); err != nil {
 			glog.Errorf("failed to parse XMCpuScheduleXmCpuSchedEvtData, err: %v", err)
 			continue
 		}
 
 		glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', offcpu_duration_millsecs:%d",
 			csp.name, scEvtData.Tgid, scEvtData.Pid, internal.CommToString(scEvtData.Comm[:]), scEvtData.OffcpuDurationMillsecs)
+
+		csp.cpuSchedEvtDataChan.SafeSend(scEvtData, false)
 	}
 }
