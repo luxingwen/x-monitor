@@ -137,13 +137,13 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 			csProg.offCPUDurationDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("cpu", "schedule", metricDesc),
 				"The duration of the Task's off-CPU state, in milliseconds.",
-				[]string{"pid", "tgid", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
+				[]string{"pid", "tgid", "comm", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
 			)
 		case "hang_process":
 			csProg.hangProcessDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("cpu", "schedule", metricDesc),
 				"pid of the process that is hung",
-				[]string{"tgid", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
+				[]string{"tgid", "comm", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
 			)
 		}
 	}
@@ -192,6 +192,7 @@ L:
 							prometheus.GaugeValue, float64(cpuSchedEvtData.OffcpuDurationMillsecs),
 							strconv.FormatInt(int64(cpuSchedEvtData.Pid), 10),
 							strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
+							internal.CommToString(cpuSchedEvtData.Comm[:]),
 							func() string {
 								return csp.roData.FilterScopeType.String()
 							}(),
@@ -204,6 +205,7 @@ L:
 					ch <- prometheus.MustNewConstMetric(csp.hangProcessDesc,
 						prometheus.GaugeValue, float64(cpuSchedEvtData.Pid),
 						strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
+						internal.CommToString(cpuSchedEvtData.Comm[:]),
 						func() string {
 							return csp.roData.FilterScopeType.String()
 						}(),
