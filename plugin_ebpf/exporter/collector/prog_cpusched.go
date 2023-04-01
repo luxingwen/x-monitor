@@ -42,7 +42,6 @@ type cpuSchedProgExcludeFilter struct {
 type cpuSchedProgram struct {
 	*eBPFBaseProgram
 	roData         cpuSchedProgRodata
-	excludeFilter  cpuSchedProgExcludeFilter
 	gatherInterval time.Duration
 
 	// prometheus metric desc
@@ -52,6 +51,8 @@ type cpuSchedProgram struct {
 
 	// 指标输出过滤
 	metricsUpdateFilter *hashset.Set
+	// comm过滤
+	commExcludeFilter *hashset.Set
 
 	sampleCount        uint64
 	sampleSum          float64
@@ -124,12 +125,18 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 		gatherInterval:      config.ProgramConfig(name).GatherInterval * time.Second,
 		runQLatencyBuckets:  make(map[float64]uint64, len(runQueueLayBucketLimits)),
 		metricsUpdateFilter: hashset.New(),
+		commExcludeFilter:   hashset.New(),
 		cpuSchedEvtDataChan: bpfmodule.NewCpuSchedEvtDataChannel(defaultCpuSchedEvtChanSize),
 	}
 
+	var excludeFilter cpuSchedProgExcludeFilter
 	mapstructure.Decode(config.ProgramConfig(name).ProgRodata, &csProg.roData)
-	mapstructure.Decode(config.ProgramConfig(name).Exclude, &csProg.excludeFilter)
-	glog.Infof("eBPFProgram:'%s' roData:%s, exclude:%s", name, litter.Sdump(csProg.roData), litter.Sdump(csProg.excludeFilter))
+	mapstructure.Decode(config.ProgramConfig(name).Exclude, &excludeFilter)
+	glog.Infof("eBPFProgram:'%s' roData:%s, exclude:%s", name, litter.Sdump(csProg.roData), litter.Sdump(excludeFilter))
+
+	for _, comm := range excludeFilter.Comms {
+		csProg.commExcludeFilter.Add(comm)
+	}
 
 	for _, metricDesc := range config.ProgramConfig(name).Metrics {
 		switch metricDesc {
@@ -320,13 +327,10 @@ loop:
 		}
 
 		comm := internal.CommToString(scEvtData.Comm[:])
-		glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', offcpu_duration_millsecs:%d",
-			csp.name, scEvtData.Tgid, scEvtData.Pid, comm, scEvtData.OffcpuDurationMillsecs)
-
-		for _, excludeComm := range csp.excludeFilter.Comms {
-			if excludeComm != comm {
-				csp.cpuSchedEvtDataChan.SafeSend(scEvtData, false)
-			}
+		if !csp.commExcludeFilter.Contains(comm) {
+			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', offcpu_duration_millsecs:%d",
+				csp.name, scEvtData.Tgid, scEvtData.Pid, comm, scEvtData.OffcpuDurationMillsecs)
+			csp.cpuSchedEvtDataChan.SafeSend(scEvtData, false)
 		}
 	}
 }

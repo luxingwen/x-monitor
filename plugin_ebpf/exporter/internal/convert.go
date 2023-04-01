@@ -14,7 +14,11 @@ import (
 func CommToString(commSlice []int8) string {
 	byteSlice := make([]byte, 0, len(commSlice))
 	for _, v := range commSlice {
-		byteSlice = append(byteSlice, byte(v))
+		if v != 0 {
+			byteSlice = append(byteSlice, byte(v))
+		} else {
+			break
+		}
 	}
 	return calmutils.Bytes2String(byteSlice)
 }

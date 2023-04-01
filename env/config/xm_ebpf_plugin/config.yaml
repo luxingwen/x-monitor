@@ -38,6 +38,8 @@ eBPF:
       exclude:
         comms:
           - "NetworkWatcherA"
+          - "x-monitor"
+          - "x-monitor.eBPF"
 
 
 
