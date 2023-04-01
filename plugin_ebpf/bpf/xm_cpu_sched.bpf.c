@@ -25,8 +25,9 @@ const volatile __s32 __filter_scope_type =
 const volatile __s64 __filter_scope_value =
     0; // 范围具体值，例如pidnsID, pid,
        // pgid，如果scope_type为1，表示范围为整个os
-const volatile __s64 __offcpu_threshold_nanosecs =
-    500000000; // 从离开cpu到从新进入cpu的时间间隔，单位纳秒
+const volatile __s64 __offcpu_min_duration_nanosecs = 500000000;
+const volatile __s64 __offcpu_max_duration_nanosecs =
+    50000000000; // 从离开cpu到从新进入cpu的时间间隔，单位纳秒
 const volatile __s8 __offcpu_task_type = 0; // 0: all，1：user，2：kernel
 
 // **bpf map定义
@@ -169,7 +170,8 @@ static __s32 __process_return_to_cpu_task(struct task_struct *ts,
         goto cleanup;
     }
 
-    if (offcpu_duration > __offcpu_threshold_nanosecs) {
+    if (offcpu_duration >= __offcpu_min_duration_nanosecs
+        && offcpu_duration <= __offcpu_max_duration_nanosecs) {
         // 如果回归超时，生成事件，通过ringbuf发送
         struct xm_cpu_sched_evt_data *evt = bpf_ringbuf_reserve(
             &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_evt_data), 0);

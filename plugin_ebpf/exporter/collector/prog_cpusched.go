@@ -29,10 +29,11 @@ import (
 )
 
 type cpuSchedProgRodata struct {
-	FilterScopeType         config.XMInternalResourceType `mapstructure:"filter_scope_type"`         // 过滤的资源类型
-	FilterScopeValue        int                           `mapstructure:"filter_scope_value"`        // 过滤资源的值
-	OffCPUThresholdMillsecs int                           `mapstructure:"offcpu_threshold_millsecs"` // offcpu状态的持续时间阈值，毫秒
-	OffCPUTaskType          int                           `mapstructure:"offcpu_task_type"`          // offcpu状态的任务类型
+	FilterScopeType           config.XMInternalResourceType `mapstructure:"filter_scope_type"`   // 过滤的资源类型
+	FilterScopeValue          int                           `mapstructure:"filter_scope_value"`  // 过滤资源的值
+	OffCPUMinDurationMillsecs int                           `mapstructure:"offcpu_min_millsecs"` // offcpu状态的持续时间阈值，毫秒
+	OffCPUMaxDurationMillsecs int                           `mapstructure:"offcpu_max_millsecs"` // offcpu状态的持续时间阈值，毫秒
+	OffCPUTaskType            int                           `mapstructure:"offcpu_task_type"`    // offcpu状态的任务类型
 }
 
 type cpuSchedProgExcludeFilter struct {
@@ -85,10 +86,11 @@ func loadToRunCPUSchedEBPFProg(name string, prog *cpuSchedProgram) error {
 	prog.objs = new(bpfmodule.XMCpuScheduleObjects)
 	prog.links, err = attatchToRun(name, prog.objs, bpfmodule.LoadXMCpuSchedule, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_scope_type":         int32(prog.roData.FilterScopeType),
-			"__filter_scope_value":        int64(prog.roData.FilterScopeValue),
-			"__offcpu_threshold_nanosecs": int64(time.Duration(prog.roData.OffCPUThresholdMillsecs) * time.Millisecond),
-			"__offcpu_task_type":          int8(prog.roData.OffCPUTaskType),
+			"__filter_scope_type":            int32(prog.roData.FilterScopeType),
+			"__filter_scope_value":           int64(prog.roData.FilterScopeValue),
+			"__offcpu_min_duration_nanosecs": int64(time.Duration(prog.roData.OffCPUMinDurationMillsecs) * time.Millisecond),
+			"__offcpu_max_duration_nanosecs": int64(time.Duration(prog.roData.OffCPUMaxDurationMillsecs) * time.Millisecond),
+			"__offcpu_task_type":             int8(prog.roData.OffCPUTaskType),
 		})
 
 		if err != nil {
