@@ -29,11 +29,15 @@ eBPF:
       prog_rodata:
         filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
         filter_scope_value: 0
-        offcpu_threshold_millsecs: 1000 # 单位：毫秒
+        offcpu_threshold_millsecs: 3000 # 单位：毫秒
         offcpu_task_type: 1 # 0: all，1：user，2：kernel
       metrcs:
         - runq_latency
         - offcpu_duration
         - hang_process
+      exclude:
+        comms:
+          - "NetworkWatcherA"
+
 
 

@@ -35,9 +35,14 @@ type cpuSchedProgRodata struct {
 	OffCPUTaskType          int                           `mapstructure:"offcpu_task_type"`          // offcpu状态的任务类型
 }
 
+type cpuSchedProgExcludeFilter struct {
+	Comms []string `mapstructure:"comms"`
+}
+
 type cpuSchedProgram struct {
 	*eBPFBaseProgram
 	roData         cpuSchedProgRodata
+	excludeFilter  cpuSchedProgExcludeFilter
 	gatherInterval time.Duration
 
 	// prometheus metric desc
@@ -123,7 +128,8 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 	}
 
 	mapstructure.Decode(config.ProgramConfig(name).ProgRodata, &csProg.roData)
-	glog.Infof("eBPFProgram:'%s' roData:%s", name, litter.Sdump(csProg.roData))
+	mapstructure.Decode(config.ProgramConfig(name).Exclude, &csProg.excludeFilter)
+	glog.Infof("eBPFProgram:'%s' roData:%s, exclude:%s", name, litter.Sdump(csProg.roData), litter.Sdump(csProg.excludeFilter))
 
 	for _, metricDesc := range config.ProgramConfig(name).Metrics {
 		switch metricDesc {
@@ -313,9 +319,14 @@ loop:
 			continue
 		}
 
+		comm := internal.CommToString(scEvtData.Comm[:])
 		glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', offcpu_duration_millsecs:%d",
-			csp.name, scEvtData.Tgid, scEvtData.Pid, internal.CommToString(scEvtData.Comm[:]), scEvtData.OffcpuDurationMillsecs)
+			csp.name, scEvtData.Tgid, scEvtData.Pid, comm, scEvtData.OffcpuDurationMillsecs)
 
-		csp.cpuSchedEvtDataChan.SafeSend(scEvtData, false)
+		for _, excludeComm := range csp.excludeFilter.Comms {
+			if excludeComm != comm {
+				csp.cpuSchedEvtDataChan.SafeSend(scEvtData, false)
+			}
+		}
 	}
 }

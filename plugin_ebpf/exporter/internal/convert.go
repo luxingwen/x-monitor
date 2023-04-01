@@ -12,7 +12,7 @@ import (
 )
 
 func CommToString(commSlice []int8) string {
-	byteSlice := make([]byte, len(commSlice))
+	byteSlice := make([]byte, 0, len(commSlice))
 	for _, v := range commSlice {
 		byteSlice = append(byteSlice, byte(v))
 	}

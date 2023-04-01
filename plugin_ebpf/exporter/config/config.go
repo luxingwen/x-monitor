@@ -50,6 +50,7 @@ type programConfig struct {
 	GatherInterval time.Duration `mapstructure:"gather_interval"`
 	ProgRodata     interface{}   `mapstructure:"prog_rodata"`
 	Metrics        []string      `mapstructure:"metrcs"`
+	Exclude        interface{}   `mapstructure:"exclude"`
 }
 
 var (
