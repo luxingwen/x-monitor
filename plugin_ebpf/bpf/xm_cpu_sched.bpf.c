@@ -25,7 +25,7 @@ const volatile __s32 __filter_scope_type =
 const volatile __s64 __filter_scope_value =
     0; // 范围具体值，例如pidnsID, pid,
        // pgid，如果scope_type为1，表示范围为整个os
-const volatile __s64 __offcpu_min_duration_nanosecs = 500000000;
+const volatile __s64 __offcpu_min_duration_nanosecs = 1000000000;
 const volatile __s64 __offcpu_max_duration_nanosecs =
     50000000000; // 从离开cpu到从新进入cpu的时间间隔，单位纳秒
 const volatile __s8 __offcpu_task_type = 0; // 0: all，1：user，2：kernel
@@ -48,7 +48,7 @@ struct {
     __uint(key_size, sizeof(__u32));
     __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64));
     __uint(max_entries, 1024);
-} xm_sched_stack_map SEC(".maps");
+} xm_cs_stack_map SEC(".maps");
 
 // ** 类型标识，为了bpf2go程序生成golang类型
 static struct xm_runqlat_hist __zero_hist = {
@@ -251,9 +251,9 @@ __s32 BPF_PROG(xm_btp_sched_process_hang, struct task_struct *ts) {
         evt->tgid = tgid;
         bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
         evt->kernel_stack_id =
-            bpf_get_stackid(ctx, &xm_sched_stack_map, KERN_STACKID_FLAGS);
+            bpf_get_stackid(ctx, &xm_cs_stack_map, KERN_STACKID_FLAGS);
         evt->user_stack_id =
-            bpf_get_stackid(ctx, &xm_sched_stack_map, USER_STACKID_FLAGS);
+            bpf_get_stackid(ctx, &xm_cs_stack_map, USER_STACKID_FLAGS);
         bpf_ringbuf_submit(evt, 0);
     }
 
