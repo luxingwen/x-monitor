@@ -8,6 +8,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/fs.h>
+#include <linux/init.h>
 #include <asm/uaccess.h>
 
 #define AUTHOR "calm.wu <wubo0067@hotmail.com>"
@@ -16,20 +17,46 @@
     "from the dev file"
 #define DEVICE_NAME "calmwu_chardev"
 #define ALLOC_SIZE PAGE_SIZE
+#define MSG_BUF_LEN 128
 
 static int major_num;
+static int device_is_open = 0;
+static char msg[MSG_BUF_LEN] = { 0 };
+static char *p_msg = msg;
 
 static int device_open(struct inode *inode, struct file *filp) {
+    static int counter = 0;
+
+    if (device_is_open) {
+        return -EBUSY;
+    }
+
+    device_is_open = 1;
+    sprintf(msg, "I already told you %d times Hello world!\n", counter++);
+    try_module_get(THIS_MODULE);
     return 0;
 }
 
 static int device_release(struct inode *inode, struct file *filp) {
+    device_is_open--;
+    module_put(THIS_MODULE);
     return 0;
 }
 
 static ssize_t device_read(struct file *filp, char *buffer, size_t length,
                            loff_t *offset) {
     int bytes_read = 0;
+
+    if (*p_msg == 0) {
+        // we're at the end of the message
+        return 0;
+    }
+
+    while (length && *p_msg) {
+        put_user(*(p_msg++), buffer++);
+        length--;
+        bytes_read++;
+    }
     return bytes_read;
 }
 
