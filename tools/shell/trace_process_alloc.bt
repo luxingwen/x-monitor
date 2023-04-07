@@ -1,0 +1,20 @@
+#!/usr/bin/env bpftrace
+
+BEGIN
+{
+	printf("Tracing... Hit Ctrl-C to end.\n");
+    @count = 0;
+}
+
+// 追踪应用进程的虚拟内存分配
+kprobe:do_mmap /pid == $1/ {
+    @count++;
+    printf("do_mmap addr:%08x, len:%lu, port:%08x\n", arg1, arg2, arg3);
+    printf("do_mmap, %d\n%s%s\n", @count, kstack(perf), ustack(perf));
+}
+
+kprobe:do_brk_flags /pid == $1/ {
+    @count++;
+    printf("do_brk_flags addr:%08x, len:%lu, flag:%08x\n", arg0, arg1, arg2);
+    printf("do_brk_flags, %d\n%s%s\n", @count, kstack(perf), ustack(perf));
+}

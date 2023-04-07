@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-12-23 11:43:29
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-12-23 17:13:37
+ * @Last Modified time: 2023-04-07 10:57:26
  */
 
 #include "utils/common.h"
@@ -12,7 +12,8 @@
 #include "utils/strings.h"
 
 void match(const char *pattern, const char *str) {
-    SIMPLE_PATTERN *sp = simple_pattern_create(pattern, NULL, SIMPLE_PATTERN_EXACT);
+    SIMPLE_PATTERN *sp =
+        simple_pattern_create(pattern, NULL, SIMPLE_PATTERN_EXACT);
 
     // simple_pattern_dump(sp);
 
@@ -47,7 +48,8 @@ int32_t main(int32_t argc, char **argv) {
     // // mismatch
     // match("!*c*", "sdsdcsdfoobar");
     // // match
-    // match("/proc/* /sys/* /var/run/user/* /run/user/* /snap/* /var/lib/docker/*",
+    // match("/proc/* /sys/* /var/run/user/* /run/user/* /snap/*
+    // /var/lib/docker/*",
     //            "/sys/fs/cgroup/");
 
     char *x = (char *)malloc(10 * sizeof(char *));
