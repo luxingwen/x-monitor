@@ -1,5 +1,9 @@
 # eBPF观察进程虚拟地址空间的分配
 
+堆：层层叠叠，向上递增，所以地址向上。
+
+栈：向下压，一层一层，所以地址向下。
+
 ## 关键函数
 
 ### sys_brk
@@ -101,3 +105,29 @@ Return value:
 - On failure, the function returns one of the following error codes: `-ENOMEM` (out of memory), `-EACCES` (permission denied), `-EINVAL` (invalid argument), or `-ENFILE` (too many open files).
 
 Overall, the `do_mmap` function is a complex and powerful function that allows the kernel to manage virtual memory mappings in a flexible and efficient way. It is used extensively by many different parts of the Linux kernel, including the process scheduler, file system drivers, and device drivers.
+
+## bpftrace观察脚本
+
+```
+#!/usr/bin/env bpftrace
+
+BEGIN
+{
+	printf("Tracing... Hit Ctrl-C to end.\n");
+    @count = 0;
+}
+
+// 追踪应用进程的虚拟地址空间的分配
+kprobe:do_mmap /pid == $1/ {
+    @count++;
+    printf("do_mmap addr:%08x, len:%lu, port:%08x\n", arg1, arg2, arg3);
+    printf("do_mmap, %d\n%s%s\n", @count, kstack(perf), ustack(perf));
+}
+
+kprobe:do_brk_flags /pid == $1/ {
+    @count++;
+    printf("do_brk_flags addr:%08x, len:%lu, flag:%08x\n", arg0, arg1, arg2);
+    printf("do_brk_flags, %d\n%s%s\n", @count, kstack(perf), ustack(perf));
+}
+```
+
