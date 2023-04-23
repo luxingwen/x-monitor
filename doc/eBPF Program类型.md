@@ -1,4 +1,4 @@
-# eBPF Section类型
+# eBPF Program类型
 
 ## SEC宏
 
@@ -36,23 +36,27 @@ Section Headers:
 
 ### SEC中的内容
 
-文件libbpf.c中定义了SEC参数内容，带有+号的意味前缀。
+文件libbpf.c中定义了SEC参数内容，**带有+号的意味前缀**。bpf_sec_def结构体定义了bpf_prog_type、bpf_attach_type类型变量
 
 ```
 static const struct bpf_sec_def section_defs[] = {
-	SEC_DEF("socket",		SOCKET_FILTER, 0, SEC_NONE | SEC_SLOPPY_PFX),
-	SEC_DEF("sk_reuseport/migrate",	SK_REUSEPORT, BPF_SK_REUSEPORT_SELECT_OR_MIGRATE, SEC_ATTACHABLE | SEC_SLOPPY_PFX),
-	SEC_DEF("sk_reuseport",		SK_REUSEPORT, BPF_SK_REUSEPORT_SELECT, SEC_ATTACHABLE | SEC_SLOPPY_PFX),
+	SEC_DEF("socket",		SOCKET_FILTER, 0, SEC_NONE),
+	SEC_DEF("sk_reuseport/migrate",	SK_REUSEPORT, BPF_SK_REUSEPORT_SELECT_OR_MIGRATE, SEC_ATTACHABLE),
+	SEC_DEF("sk_reuseport",		SK_REUSEPORT, BPF_SK_REUSEPORT_SELECT, SEC_ATTACHABLE),
 	SEC_DEF("kprobe+",		KPROBE,	0, SEC_NONE, attach_kprobe),
 	SEC_DEF("uprobe+",		KPROBE,	0, SEC_NONE, attach_uprobe),
+	SEC_DEF("uprobe.s+",		KPROBE,	0, SEC_SLEEPABLE, attach_uprobe),
 	SEC_DEF("kretprobe+",		KPROBE, 0, SEC_NONE, attach_kprobe),
 	SEC_DEF("uretprobe+",		KPROBE, 0, SEC_NONE, attach_uprobe),
+	SEC_DEF("uretprobe.s+",		KPROBE, 0, SEC_SLEEPABLE, attach_uprobe),
 	SEC_DEF("kprobe.multi+",	KPROBE,	BPF_TRACE_KPROBE_MULTI, SEC_NONE, attach_kprobe_multi),
 	SEC_DEF("kretprobe.multi+",	KPROBE,	BPF_TRACE_KPROBE_MULTI, SEC_NONE, attach_kprobe_multi),
+	SEC_DEF("ksyscall+",		KPROBE,	0, SEC_NONE, attach_ksyscall),
+	SEC_DEF("kretsyscall+",		KPROBE, 0, SEC_NONE, attach_ksyscall),
 	SEC_DEF("usdt+",		KPROBE,	0, SEC_NONE, attach_usdt),
 	SEC_DEF("tc",			SCHED_CLS, 0, SEC_NONE),
-	SEC_DEF("classifier",		SCHED_CLS, 0, SEC_NONE | SEC_SLOPPY_PFX | SEC_DEPRECATED),
-	SEC_DEF("action",		SCHED_ACT, 0, SEC_NONE | SEC_SLOPPY_PFX),
+	SEC_DEF("classifier",		SCHED_CLS, 0, SEC_NONE),
+	SEC_DEF("action",		SCHED_ACT, 0, SEC_NONE),
 	SEC_DEF("tracepoint+",		TRACEPOINT, 0, SEC_NONE, attach_tp),
 	SEC_DEF("tp+",			TRACEPOINT, 0, SEC_NONE, attach_tp),
 	SEC_DEF("raw_tracepoint+",	RAW_TRACEPOINT, 0, SEC_NONE, attach_raw_tp),
@@ -60,14 +64,111 @@ static const struct bpf_sec_def section_defs[] = {
 	SEC_DEF("raw_tracepoint.w+",	RAW_TRACEPOINT_WRITABLE, 0, SEC_NONE, attach_raw_tp),
 	SEC_DEF("raw_tp.w+",		RAW_TRACEPOINT_WRITABLE, 0, SEC_NONE, attach_raw_tp),
 	SEC_DEF("tp_btf+",		TRACING, BPF_TRACE_RAW_TP, SEC_ATTACH_BTF, attach_trace),
-	......
+	SEC_DEF("fentry+",		TRACING, BPF_TRACE_FENTRY, SEC_ATTACH_BTF, attach_trace),
+	SEC_DEF("fmod_ret+",		TRACING, BPF_MODIFY_RETURN, SEC_ATTACH_BTF, attach_trace),
+	SEC_DEF("fexit+",		TRACING, BPF_TRACE_FEXIT, SEC_ATTACH_BTF, attach_trace),
+	SEC_DEF("fentry.s+",		TRACING, BPF_TRACE_FENTRY, SEC_ATTACH_BTF | SEC_SLEEPABLE, attach_trace),
+	SEC_DEF("fmod_ret.s+",		TRACING, BPF_MODIFY_RETURN, SEC_ATTACH_BTF | SEC_SLEEPABLE, attach_trace),
+	SEC_DEF("fexit.s+",		TRACING, BPF_TRACE_FEXIT, SEC_ATTACH_BTF | SEC_SLEEPABLE, attach_trace),
+	SEC_DEF("freplace+",		EXT, 0, SEC_ATTACH_BTF, attach_trace),
+	SEC_DEF("lsm+",			LSM, BPF_LSM_MAC, SEC_ATTACH_BTF, attach_lsm),
+	SEC_DEF("lsm.s+",		LSM, BPF_LSM_MAC, SEC_ATTACH_BTF | SEC_SLEEPABLE, attach_lsm),
+	SEC_DEF("lsm_cgroup+",		LSM, BPF_LSM_CGROUP, SEC_ATTACH_BTF),
+	SEC_DEF("iter+",		TRACING, BPF_TRACE_ITER, SEC_ATTACH_BTF, attach_iter),
+	SEC_DEF("iter.s+",		TRACING, BPF_TRACE_ITER, SEC_ATTACH_BTF | SEC_SLEEPABLE, attach_iter),
+	SEC_DEF("syscall",		SYSCALL, 0, SEC_SLEEPABLE),
+	SEC_DEF("xdp.frags/devmap",	XDP, BPF_XDP_DEVMAP, SEC_XDP_FRAGS),
+	SEC_DEF("xdp/devmap",		XDP, BPF_XDP_DEVMAP, SEC_ATTACHABLE),
+	SEC_DEF("xdp.frags/cpumap",	XDP, BPF_XDP_CPUMAP, SEC_XDP_FRAGS),
+	SEC_DEF("xdp/cpumap",		XDP, BPF_XDP_CPUMAP, SEC_ATTACHABLE),
+	SEC_DEF("xdp.frags",		XDP, BPF_XDP, SEC_XDP_FRAGS),
+	SEC_DEF("xdp",			XDP, BPF_XDP, SEC_ATTACHABLE_OPT),
+	SEC_DEF("perf_event",		PERF_EVENT, 0, SEC_NONE),
+	SEC_DEF("lwt_in",		LWT_IN, 0, SEC_NONE),
+	SEC_DEF("lwt_out",		LWT_OUT, 0, SEC_NONE),
+	SEC_DEF("lwt_xmit",		LWT_XMIT, 0, SEC_NONE),
+	SEC_DEF("lwt_seg6local",	LWT_SEG6LOCAL, 0, SEC_NONE),
+	SEC_DEF("sockops",		SOCK_OPS, BPF_CGROUP_SOCK_OPS, SEC_ATTACHABLE_OPT),
+	SEC_DEF("sk_skb/stream_parser",	SK_SKB, BPF_SK_SKB_STREAM_PARSER, SEC_ATTACHABLE_OPT),
+	SEC_DEF("sk_skb/stream_verdict",SK_SKB, BPF_SK_SKB_STREAM_VERDICT, SEC_ATTACHABLE_OPT),
+	SEC_DEF("sk_skb",		SK_SKB, 0, SEC_NONE),
+	SEC_DEF("sk_msg",		SK_MSG, BPF_SK_MSG_VERDICT, SEC_ATTACHABLE_OPT),
+	SEC_DEF("lirc_mode2",		LIRC_MODE2, BPF_LIRC_MODE2, SEC_ATTACHABLE_OPT),
+	SEC_DEF("flow_dissector",	FLOW_DISSECTOR, BPF_FLOW_DISSECTOR, SEC_ATTACHABLE_OPT),
+	SEC_DEF("cgroup_skb/ingress",	CGROUP_SKB, BPF_CGROUP_INET_INGRESS, SEC_ATTACHABLE_OPT),
+	SEC_DEF("cgroup_skb/egress",	CGROUP_SKB, BPF_CGROUP_INET_EGRESS, SEC_ATTACHABLE_OPT),
+	SEC_DEF("cgroup/skb",		CGROUP_SKB, 0, SEC_NONE),
+	SEC_DEF("cgroup/sock_create",	CGROUP_SOCK, BPF_CGROUP_INET_SOCK_CREATE, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/sock_release",	CGROUP_SOCK, BPF_CGROUP_INET_SOCK_RELEASE, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/sock",		CGROUP_SOCK, BPF_CGROUP_INET_SOCK_CREATE, SEC_ATTACHABLE_OPT),
+	SEC_DEF("cgroup/post_bind4",	CGROUP_SOCK, BPF_CGROUP_INET4_POST_BIND, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/post_bind6",	CGROUP_SOCK, BPF_CGROUP_INET6_POST_BIND, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/bind4",		CGROUP_SOCK_ADDR, BPF_CGROUP_INET4_BIND, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/bind6",		CGROUP_SOCK_ADDR, BPF_CGROUP_INET6_BIND, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/connect4",	CGROUP_SOCK_ADDR, BPF_CGROUP_INET4_CONNECT, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/connect6",	CGROUP_SOCK_ADDR, BPF_CGROUP_INET6_CONNECT, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/sendmsg4",	CGROUP_SOCK_ADDR, BPF_CGROUP_UDP4_SENDMSG, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/sendmsg6",	CGROUP_SOCK_ADDR, BPF_CGROUP_UDP6_SENDMSG, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/recvmsg4",	CGROUP_SOCK_ADDR, BPF_CGROUP_UDP4_RECVMSG, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/recvmsg6",	CGROUP_SOCK_ADDR, BPF_CGROUP_UDP6_RECVMSG, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/getpeername4",	CGROUP_SOCK_ADDR, BPF_CGROUP_INET4_GETPEERNAME, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/getpeername6",	CGROUP_SOCK_ADDR, BPF_CGROUP_INET6_GETPEERNAME, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/getsockname4",	CGROUP_SOCK_ADDR, BPF_CGROUP_INET4_GETSOCKNAME, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/getsockname6",	CGROUP_SOCK_ADDR, BPF_CGROUP_INET6_GETSOCKNAME, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/sysctl",	CGROUP_SYSCTL, BPF_CGROUP_SYSCTL, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/getsockopt",	CGROUP_SOCKOPT, BPF_CGROUP_GETSOCKOPT, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/setsockopt",	CGROUP_SOCKOPT, BPF_CGROUP_SETSOCKOPT, SEC_ATTACHABLE),
+	SEC_DEF("cgroup/dev",		CGROUP_DEVICE, BPF_CGROUP_DEVICE, SEC_ATTACHABLE_OPT),
+	SEC_DEF("struct_ops+",		STRUCT_OPS, 0, SEC_NONE),
+	SEC_DEF("sk_lookup",		SK_LOOKUP, BPF_SK_LOOKUP, SEC_ATTACHABLE),
+};
 ```
 
-## SEC的函数编写
+SEC的匹配逻辑，+号的处理
+
+```
+static bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_name)
+{
+	size_t len = strlen(sec_def->sec);
+
+	/* "type/" always has to have proper SEC("type/extras") form */
+	if (sec_def->sec[len - 1] == '/') {
+		if (str_has_pfx(sec_name, sec_def->sec))
+			return true;
+		return false;
+	}
+
+	/* "type+" means it can be either exact SEC("type") or
+	 * well-formed SEC("type/extras") with proper '/' separator
+	 */
+	if (sec_def->sec[len - 1] == '+') {
+		len--;
+		/* not even a prefix */
+		if (strncmp(sec_name, sec_def->sec, len) != 0)
+			return false;
+		/* exact match or has '/' separator */
+		if (sec_name[len] == '\0' || sec_name[len] == '/')
+			return true;
+		return false;
+	}
+
+	return strcmp(sec_name, sec_def->sec) == 0;
+}
+```
+
+
+
+## Program的函数编写
 
 编写最多的是kprobe、tracepoint、**btf raw tracepoint**的函数，为了简便函数定义和参数读取，下面分类描述。
 
-### tracepoint enter函数
+### Program Context参数
+
+所有的eBPF program都接受一个context指针作为参数，但它所指向的结构取决于触发事件的类型，eBPF程序员需要编写接受适当类型上下文的程序。
+
+### Tracepoint  Program
+
+#### enter函数
 
 - 参数：struct trace_event_raw_sys_enter *ctx，方便读取前6个参数
 
@@ -139,7 +240,7 @@ static const struct bpf_sec_def section_defs[] = {
   ```
 
 
-### tracepoint exit函数
+#### exit函数
 
 - 参数：struct trace_event_raw_sys_exit *ctx
 
@@ -156,7 +257,7 @@ static const struct bpf_sec_def section_defs[] = {
   int handle_openat_exit(struct trace_event_raw_sys_exit *ctx)
   ```
 
-### kprobe函数
+### kprobe program 
 
 - 函数定义：int BPF_KPROBE(函数名, 内核函数参数)，BPF_KPROBE宏实际是展开了struct pt_regs *ctx（Registers and BPF context）。
 
@@ -201,7 +302,7 @@ static const struct bpf_sec_def section_defs[] = {
   	bpf_probe_read_kernel(&sd, sizeof(sd), (void *)PT_REGS_PARM2(ctx));
   ```
 
-### kproberet函数
+### kproberet program
 
 - 函数定义：int BPF_KRETPROBE(函数名，参数)。example如下，宏会带上ctx，获取返回值需要ctx。
 
@@ -217,7 +318,7 @@ static const struct bpf_sec_def section_defs[] = {
 
 - 获取函数返回值：int ret = PT_REGS_RC(ctx);
 
-### raw_tracepoint函数
+### raw_tracepoint program
 
 可以通过查看`/sys/kernel/debug/tracing/available_events` 文件的内容找到 **raw_tracepoint 可监控**的事件。raw_tracepoint相对于tracepoint不会将函数参数展开，而是读取的原始参数
 
@@ -248,7 +349,7 @@ static const struct bpf_sec_def section_defs[] = {
 
   在内核代码中宏DEFINE_EVENT、TRACE_EVENT、TRACE_EVENT_FN定义能找到参数定义TP_PROTO、TP_ARGS。
 
-### tp_btf/fentry/fexit函数
+### tp_btf/fentry/fexit program
 
 - btf raw tracepoint
 
@@ -299,7 +400,7 @@ static const struct bpf_sec_def section_defs[] = {
 
 - fexit
 
-### perf_event函数
+### perf_event program
 
 ```
 SEC("perf_event")
@@ -341,6 +442,12 @@ BPF_PROG(func_name, int a, int b, int ret)
 }
 ```
 
+### socket-related program types - SOCKET_FILTER, SK_SKB, SOCK_OPS
+
+### tc (traffic control) subsystem programs
+
+### xdp : the Xpress Data Path
+
 ## 资料
 
 - [x86-64汇编入门 - nifengz](https://nifengz.com/introduction_x64_assembly/)
@@ -350,6 +457,8 @@ BPF_PROG(func_name, int a, int b, int ret)
 - [c++ - eBPF: raw_tracepoint arguments - Stack Overflow](https://stackoverflow.com/questions/70652825/ebpf-raw-tracepoint-arguments)
 - [Writing asm for eBPF programs with the Go eBPF library (fntlnz.wtf)](https://fntlnz.wtf/post/bpf-go-asm/)
 - [Introducing gobpf - Using eBPF from Go | Kinvolk](https://kinvolk.io/blog/2016/11/introducing-gobpf-using-ebpf-from-go/)
+- [BPF: A Tour of Program Types (oracle.com)](https://blogs.oracle.com/linux/post/bpf-a-tour-of-program-types)
+- [BPF In Depth: BPF Helper Functions (oracle.com)](https://blogs.oracle.com/linux/post/bpf-in-depth-bpf-helper-functions)
 
 
 
