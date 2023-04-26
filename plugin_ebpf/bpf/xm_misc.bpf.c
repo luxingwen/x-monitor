@@ -6,11 +6,21 @@
  */
 
 #include "vmlinux.h"
-#include <bpf/bpf_helpers.h>
-#include <bpf/bpf_tracing.h>
-#include <bpf/bpf_core_read.h>
+#include "xm_bpf_helpers_common.h"
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
+
+static __attribute((noinline)) __s32
+get_opcode(struct bpf_raw_tracepoint_args *ctx) {
+    return ctx->args[1];
+}
+
+SEC("raw_tp/")
+__s32 hello(struct bpf_raw_tracepoint_args *ctx) {
+    __s32 opcode = get_opcode(ctx);
+    bpf_printk("Syscall: %d", opcode);
+    return 0;
+}
 
 SEC("kprobe/do_unlinkat")
 int BPF_KPROBE(do_unlinkat, int dfd, struct filename *name) {

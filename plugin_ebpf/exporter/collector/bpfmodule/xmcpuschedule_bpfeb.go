@@ -91,7 +91,7 @@ type XMCpuScheduleMapSpecs struct {
 	XmCsOffcpuStartMap  *ebpf.MapSpec `ebpf:"xm_cs_offcpu_start_map"`
 	XmCsRunqlatHistsMap *ebpf.MapSpec `ebpf:"xm_cs_runqlat_hists_map"`
 	XmCsRunqlatStartMap *ebpf.MapSpec `ebpf:"xm_cs_runqlat_start_map"`
-	XmSchedStackMap     *ebpf.MapSpec `ebpf:"xm_sched_stack_map"`
+	XmCsStackMap        *ebpf.MapSpec `ebpf:"xm_cs_stack_map"`
 }
 
 // XMCpuScheduleObjects contains all objects after they have been loaded into the kernel.
@@ -117,7 +117,7 @@ type XMCpuScheduleMaps struct {
 	XmCsOffcpuStartMap  *ebpf.Map `ebpf:"xm_cs_offcpu_start_map"`
 	XmCsRunqlatHistsMap *ebpf.Map `ebpf:"xm_cs_runqlat_hists_map"`
 	XmCsRunqlatStartMap *ebpf.Map `ebpf:"xm_cs_runqlat_start_map"`
-	XmSchedStackMap     *ebpf.Map `ebpf:"xm_sched_stack_map"`
+	XmCsStackMap        *ebpf.Map `ebpf:"xm_cs_stack_map"`
 }
 
 func (m *XMCpuScheduleMaps) Close() error {
@@ -126,7 +126,7 @@ func (m *XMCpuScheduleMaps) Close() error {
 		m.XmCsOffcpuStartMap,
 		m.XmCsRunqlatHistsMap,
 		m.XmCsRunqlatStartMap,
-		m.XmSchedStackMap,
+		m.XmCsStackMap,
 	)
 }
 

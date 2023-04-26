@@ -15,7 +15,7 @@ GOARCH ?= $(shell go env GOARCH)
 GOOS ?= $(shell go env GOOS)
 GO_VERSION := $(shell go version)
 
-.PHONY: all build image clean lint test swagger upload-images deps build-version validation
+.PHONY: all build image clean lint test swagger upload-images deps build-version validation generate
 .IGNORE : lint
 
 all: build
@@ -54,6 +54,9 @@ build-version:
 
 swagger:
 	swag i
+
+generate:
+	go generate -v -x ./...
 
 clean:
 	-rm ../../bin/plugins.d/$(APP)

@@ -124,7 +124,7 @@ static const struct bpf_sec_def section_defs[] = {
 };
 ```
 
-SEC的匹配逻辑，+号的处理
+SEC的匹配逻辑，+号的处理，实际上内核不同这里的实现稍有不同，新内核逻辑会有扩充
 
 ```
 static bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_name)
@@ -257,7 +257,7 @@ static bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_n
   int handle_openat_exit(struct trace_event_raw_sys_exit *ctx)
   ```
 
-### kprobe program 
+### KProbe program 
 
 - 函数定义：int BPF_KPROBE(函数名, 内核函数参数)，BPF_KPROBE宏实际是展开了struct pt_regs *ctx（Registers and BPF context）。
 
@@ -283,7 +283,7 @@ static bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_n
   }
   ```
   
-  也可以直接使用struct pt_regs *ctx作为参数，需要使用PT_REGS_XXX宏来读取参数信息
+  也可以直接使用struct pt_regs *ctx作为参数，需要使用PT_REGS_XXX宏来读取参数信息，第一个参数是从1开始的，而不是0。
   
   ```
   SEC("kprobe/__seccomp_filter")
@@ -302,7 +302,7 @@ static bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_n
   	bpf_probe_read_kernel(&sd, sizeof(sd), (void *)PT_REGS_PARM2(ctx));
   ```
 
-### kproberet program
+### KProbeRet program
 
 - 函数定义：int BPF_KRETPROBE(函数名，参数)。example如下，宏会带上ctx，获取返回值需要ctx。
 

@@ -19,12 +19,10 @@
 #include "../bpf_and_user.h"
 
 // **全局变量：过滤条件
-const volatile __s32 __filter_scope_type =
-    1; // 过滤范围，1:
-       // os，2：namespace，3：CGroup，4：PID，5：PGID，暂时不支持cg
-const volatile __s64 __filter_scope_value =
-    0; // 范围具体值，例如pidnsID, pid,
-       // pgid，如果scope_type为1，表示范围为整个os
+// 过滤范围，1:os，2：namespace，3：CGroup，4：PID，5：PGID，暂时不支持cg
+const volatile __s32 __filter_scope_type = 1;
+// 范围具体值，例如pidnsID, pid, pgid，如果scope_type为1，表示范围为整个os
+const volatile __s64 __filter_scope_value = 0;
 const volatile __s64 __offcpu_min_duration_nanosecs = 1000000000;
 const volatile __s64 __offcpu_max_duration_nanosecs =
     50000000000; // 从离开cpu到从新进入cpu的时间间隔，单位纳秒

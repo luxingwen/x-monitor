@@ -2,20 +2,16 @@
  * @Author: CALM.WU
  * @Date: 2022-08-11 11:01:21
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-08-11 14:18:23
+ * @Last Modified time: 2023-04-25 15:42:58
  */
 
 #include <vmlinux.h>
 #include "xm_bpf_helpers_common.h"
+#include "xm_bpf_helpers_maps.h"
 #include "xm_bpf_helpers_net.h"
 
 // 用来设置尾调函数句柄的map
-struct {
-    __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
-    __uint(key_size, sizeof(__u32));
-    __uint(value_size, sizeof(__u32));
-    __uint(max_entries, 8);
-} tail_call_progs SEC(".maps");
+BPF_PROG_ARRAY(xm_filter_sock_jmp_table, 8);
 
 #define PARSE_VLAN 1
 #define PARSE_MPLS 2
@@ -37,17 +33,17 @@ static inline void parse_eth_proto(struct __sk_buff *skb, __u16 eth_proto) {
     switch (eth_proto) {
     case ETH_P_8021Q:
     case ETH_P_8021AD:
-        bpf_tail_call(skb, &tail_call_progs, PARSE_VLAN);
+        bpf_tail_call(skb, &xm_filter_sock_jmp_table, PARSE_VLAN);
         break;
     case ETH_P_MPLS_UC:
     case ETH_P_MPLS_MC:
-        bpf_tail_call(skb, &tail_call_progs, PARSE_MPLS);
+        bpf_tail_call(skb, &xm_filter_sock_jmp_table, PARSE_MPLS);
         break;
     case ETH_P_IP:
-        bpf_tail_call(skb, &tail_call_progs, PARSE_IP);
+        bpf_tail_call(skb, &xm_filter_sock_jmp_table, PARSE_IP);
         break;
     case ETH_P_IPV6:
-        bpf_tail_call(skb, &tail_call_progs, PARSE_IPV6);
+        bpf_tail_call(skb, &xm_filter_sock_jmp_table, PARSE_IPV6);
         break;
     }
 }
