@@ -48,6 +48,8 @@ eBPF:
           - "systemd-udevd"
           - "auditd"
           - "sshd"
+    - name: processvmm
+      enabled: true
 
 
 

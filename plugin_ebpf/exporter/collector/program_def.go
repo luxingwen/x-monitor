@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-27 11:20:44
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-03-27 11:27:06
+ * @Last Modified time: 2023-04-27 14:27:16
  */
 
 package collector
@@ -20,6 +20,7 @@ const (
 	cacheStateProgName  = "cachestat"
 	runQLatencyProgName = "runqlatency"
 	cpuSchedProgName    = "cpusched"
+	processVMAProgName  = "processvmm"
 )
 
 type eBPFProgramFilterCfg struct {

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-15 14:06:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-03-25 12:47:26
+ * @Last Modified time: 2023-04-27 15:08:03
  */
 
 #pragma once
@@ -86,3 +86,18 @@ struct cachestat_top_statistics {
 };
 
 #define CACHE_STATE_MAX_SIZE 1024
+
+//------------------------ process vma
+enum xm_vmm_evt_type {
+    XM_VMA_EVT_TYPE_NONE = 0,
+    XM_VMA_EVT_TYPE_MMAP,
+    XM_VMA_EVT_TYPE_BRK,
+};
+
+struct xm_vmm_evt_data {
+    pid_t pid; // 线程id
+    pid_t tgid; // 进程id
+    char comm[TASK_COMM_LEN];
+    enum xm_vmm_evt_type evt_type;
+    __u64 len;
+};
