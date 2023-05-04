@@ -88,12 +88,26 @@ struct cachestat_top_statistics {
 #define CACHE_STATE_MAX_SIZE 1024
 
 //------------------------ process vma
+// Defining an enumeration type `xm_vmm_evt_type` with three possible values:
+// `XM_VMA_EVT_TYPE_NONE`, `XM_VMA_EVT_TYPE_MMAP`, and `XM_VMA_EVT_TYPE_BRK`.
+// These values represent different types of virtual memory management events
+// that can occur in a system. `XM_VMA_EVT_TYPE_NONE` is assigned the value 0,
+// while `XM_VMA_EVT_TYPE_MMAP` and `XM_VMA_EVT_TYPE_BRK` are assigned the
+// values 1 and 2, respectively. This enumeration type is likely used in a
+// program that monitors and analyzes virtual memory management events in the
+// system.
 enum xm_vmm_evt_type {
     XM_VMA_EVT_TYPE_NONE = 0,
     XM_VMA_EVT_TYPE_MMAP,
     XM_VMA_EVT_TYPE_BRK,
 };
 
+// This is a structure definition for storing data related to virtual memory
+// management events. It includes the process ID (pid), thread group ID (tgid),
+// process name (comm), event type (evt_type), and length (len) of the event.
+// The event type can be one of three types: none, mmap, or brk. This structure
+// is likely used in a program that monitors and analyzes virtual memory
+// management events in the system.
 struct xm_vmm_evt_data {
     pid_t pid; // 线程id
     pid_t tgid; // 进程id

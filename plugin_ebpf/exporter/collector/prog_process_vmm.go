@@ -36,12 +36,12 @@ type processVMMProgram struct {
 	roData         processVMMProgRodata
 	gatherInterval time.Duration
 
-	vmaEvtRd *ringbuf.Reader
+	vmmEvtRD *ringbuf.Reader
 	objs     *bpfmodule.XMProcessVMMObjects
 }
 
 func init() {
-	registerEBPFProgram(processVMAProgName, newProcessVMAProgram)
+	registerEBPFProgram(processVMMProgName, newProcessVMMProgram)
 }
 
 func loadToRunProcessVMAProg(name string, prog *processVMMProgram) error {
@@ -66,7 +66,7 @@ func loadToRunProcessVMAProg(name string, prog *processVMMProgram) error {
 		return err
 	}
 
-	prog.vmaEvtRd, err = ringbuf.NewReader(prog.objs.XmVmaEventRingbufMap)
+	prog.vmmEvtRD, err = ringbuf.NewReader(prog.objs.XmVmaEventRingbufMap)
 	if err != nil {
 		for _, link := range prog.links {
 			link.Close()
@@ -80,7 +80,7 @@ func loadToRunProcessVMAProg(name string, prog *processVMMProgram) error {
 	return err
 }
 
-func newProcessVMAProgram(name string) (eBPFProgram, error) {
+func newProcessVMMProgram(name string) (eBPFProgram, error) {
 	prog := &processVMMProgram{
 		eBPFBaseProgram: &eBPFBaseProgram{
 			name:        name,
@@ -102,7 +102,7 @@ func (pvp *processVMMProgram) tracingProcessVMAEvent() {
 
 loop:
 	for {
-		record, err := pvp.vmaEvtRd.Read()
+		record, err := pvp.vmmEvtRD.Read()
 		if err != nil {
 			if errors.Is(err, ringbuf.ErrClosed) {
 				glog.Warningf("eBPFProgram:'%s' tracing process vma event receive stop notify", pvp.name)
@@ -129,8 +129,8 @@ func (pvp *processVMMProgram) Update(ch chan<- prometheus.Metric) error {
 }
 
 func (pvp *processVMMProgram) Stop() {
-	if pvp.vmaEvtRd != nil {
-		pvp.vmaEvtRd.Close()
+	if pvp.vmmEvtRD != nil {
+		pvp.vmmEvtRD.Close()
 	}
 
 	pvp.stop()
