@@ -101,6 +101,8 @@ typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
         return 0;                                                             \
     }
 
+extern int LINUX_KERNEL_VERSION __kconfig;
+
 static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
     __sync_fetch_and_add(res, value);
     if ((0xFFFFFFFFFFFFFFFF - *res) <= value) {
@@ -193,18 +195,42 @@ __xm_get_task_dflcgrp_assoc_kernfs(struct task_struct *task) {
  * task: The task whose cgroup id we want to get.
  * subsys_id: The id of the cgroup subsystem whose cgroup id we want to get.
  */
+struct kernfs_node___418 {
+    union {
+        u64 id;
+        struct {
+            union kernfs_node_id id;
+        } rh_kabi_hidden_172;
+        union {};
+    };
+};
+
+struct kernfs_node___new {
+    union kernfs_node_id id;
+};
+
 static __u64 __xm_get_task_cgid_by_subsys(struct task_struct *task,
                                           enum cgroup_subsys_id subsys_id) {
     struct css_set *css;
     struct cgroup_subsys_state *cg_ss;
     struct cgroup *cg;
-    struct kernfs_node *kn;
+    struct kernfs_node___418 *kn;
 
     css = READ_KERN(task->cgroups);
     cg_ss = READ_KERN(css->subsys[subsys_id]);
     cg = READ_KERN(cg_ss->cgroup);
-    kn = READ_KERN(cg->kn);
-    return READ_KERN(kn->id);
+    kn = (struct kernfs_node___418 *)READ_KERN(cg->kn);
+    if (bpf_core_field_exists(
+            ((struct kernfs_node___418 *)0)->rh_kabi_hidden_172)) {
+        return READ_KERN(kn->id);
+    } else {
+        return BPF_CORE_READ((struct kernfs_node___new *)kn, id.id);
+    }
+    // #if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0)
+    //     return BPF_CORE_READ(kn, id.id);
+    // #else
+    //     return READ_KERN(kn->id);
+    // #endif
 }
 
 // 获取进程的进程组ID，PIDTYPE_PGID

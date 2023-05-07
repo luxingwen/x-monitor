@@ -25,9 +25,9 @@ type XMProcessVMMXmVmmEvtData struct {
 type XMProcessVMMXmVmmEvtType uint32
 
 const (
-	XMProcessVMMXmVmmEvtTypeXM_VMA_EVT_TYPE_NONE XMProcessVMMXmVmmEvtType = 0
-	XMProcessVMMXmVmmEvtTypeXM_VMA_EVT_TYPE_MMAP XMProcessVMMXmVmmEvtType = 1
-	XMProcessVMMXmVmmEvtTypeXM_VMA_EVT_TYPE_BRK  XMProcessVMMXmVmmEvtType = 2
+	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_NONE XMProcessVMMXmVmmEvtType = 0
+	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP XMProcessVMMXmVmmEvtType = 1
+	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_BRK  XMProcessVMMXmVmmEvtType = 2
 )
 
 // LoadXMProcessVMM returns the embedded CollectionSpec for XMProcessVMM.

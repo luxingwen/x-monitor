@@ -11,6 +11,7 @@
 
 #include "../bpf_and_user.h"
 
+#define MAP_SHARED 0x01 /* Share changes */
 #define MAP_PRIVATE 0x02 /* Changes are private */
 #define MAP_ANONYMOUS 0x10 /* don't use a file */
 
@@ -21,7 +22,7 @@ const volatile __s32 __filter_scope_type = 1;
 const volatile __s64 __filter_scope_value = 0;
 
 // !! Force emitting struct event into the ELF. 切记不能使用static做修饰符
-const struct xm_vmm_evt_data *__unused_vma_evt __attribute__((unused));
+const struct xm_vmm_evt_data *__unused_vmm_evt __attribute__((unused));
 
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
@@ -59,7 +60,7 @@ static void __insert_vmm_alloc_event(struct task_struct *ts,
         evt->pid = __xm_get_tid();
         evt->tgid = __xm_get_pid();
         evt->len = alloc_len;
-        bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
+        bpf_core_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
         // !!如果evt放在submit后面调用，就会被检查出内存无效
         bpf_printk("xm_ebpf_exporter vma alloc event type:%d tgid:%d len:%lu\n",
                    evt_type, evt->tgid, evt->len);
@@ -81,10 +82,20 @@ __s32 xm_process_vm_do_mmap(struct pt_regs *ctx) {
     if (flags & (MAP_PRIVATE | MAP_ANONYMOUS)) {
         // 使用mmap分配的私有匿名虚拟地址空间
         if (0 == __filter_check(ts)) {
-            // bpf_printk("xm_ebpf_exporter process_vm tgid:%d use mmap alloc "
-            //            "len:%lu private anonymous space\n",
-            //            tgid, alloc_vm_len);
-            __insert_vmm_alloc_event(ts, XM_VMA_EVT_TYPE_MMAP, alloc_vm_len);
+            __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MMAP_ANON_PRIV,
+                                     alloc_vm_len);
+        }
+    } else if (flags & MAP_SHARED) {
+        // 使用mmap分配的共享虚拟地址空间
+        if (0 == __filter_check(ts)) {
+            __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MMAP_SHARED,
+                                     alloc_vm_len);
+        }
+    } else {
+        // 使用mmap分配的其他虚拟地址空间
+        if (0 == __filter_check(ts)) {
+            __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MMAP_OTHER,
+                                     alloc_vm_len);
         }
     }
 
@@ -103,7 +114,7 @@ __s32 xm_process_vm_do_brk_flags(struct pt_regs *ctx) {
         // bpf_printk("xm_ebpf_exporter process_vm tgid:%d use brk alloc "
         //            "len:%lu heap space\n",
         //            tgid, alloc_vm_len);
-        __insert_vmm_alloc_event(ts, XM_VMA_EVT_TYPE_BRK, alloc_vm_len);
+        __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_BRK, alloc_vm_len);
     }
 
     return 0;

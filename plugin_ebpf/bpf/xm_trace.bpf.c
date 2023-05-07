@@ -17,6 +17,8 @@
 #include "xm_bpf_helpers_common.h"
 #include "../bpf_and_user.h"
 
+extern int LINUX_KERNEL_VERSION __kconfig;
+
 // 过滤系统调用的进程id
 const volatile pid_t xm_trace_syscall_filter_pid = 0;
 
@@ -74,7 +76,11 @@ __s32 BPF_PROG(xm_trace_tp_btf__sys_enter, struct pt_regs *regs,
     se.pid = pid;
     se.tid = tid;
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0)
+    bpf_map_update_elem(&xm_syscalls_record_map, &tid, &se, 0);
+#else
     bpf_map_update_elem(&xm_syscalls_record_map, &tid, &se, BPF_ANY);
+#endif
 
     // if (syscall_nr == 267) {
     //     bpf_printk("xm_trace_syscalls pid:%d, tid:%d sys_enter
