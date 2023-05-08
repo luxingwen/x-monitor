@@ -201,11 +201,15 @@ struct kernfs_node___418 {
         } rh_kabi_hidden_172;
         union {};
     };
-};
+} __attribute__((preserve_access_index));
 
-struct kernfs_node___new {
+struct kernfs_node___54x {
     union kernfs_node_id id;
-};
+} __attribute__((preserve_access_index));
+
+struct kernfs_node___60x {
+    u64 id;
+} __attribute__((preserve_access_index));
 
 static __u64 __xm_get_task_cgid_by_subsys(struct task_struct *task,
                                           enum cgroup_subsys_id subsys_id) {
@@ -218,17 +222,14 @@ static __u64 __xm_get_task_cgid_by_subsys(struct task_struct *task,
     cg_ss = READ_KERN(css->subsys[subsys_id]);
     cg = READ_KERN(cg_ss->cgroup);
     kn = (struct kernfs_node___418 *)READ_KERN(cg->kn);
-    if (bpf_core_field_exists(
-            ((struct kernfs_node___418 *)0)->rh_kabi_hidden_172)) {
+    if (bpf_core_field_exists(kn->id)) {
         return READ_KERN(kn->id);
-    } else {
-        return BPF_CORE_READ((struct kernfs_node___new *)kn, id.id);
+    } else if (bpf_core_field_exists(((struct kernfs_node___54x *)kn)->id)) {
+        return BPF_CORE_READ((struct kernfs_node___54x *)kn, id.id);
+    } else if (bpf_core_field_exists(((struct kernfs_node___60x *)kn)->id)) {
+        return READ_KERN(kn->id);
     }
-    // #if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0)
-    //     return BPF_CORE_READ(kn, id.id);
-    // #else
-    //     return READ_KERN(kn->id);
-    // #endif
+    return 0;
 }
 
 // 获取进程的进程组ID，PIDTYPE_PGID
