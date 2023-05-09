@@ -27,7 +27,7 @@ const struct xm_vmm_evt_data *__unused_vmm_evt __attribute__((unused));
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 1 << 24); // 16M
-} xm_vma_event_ringbuf_map SEC(".maps");
+} xm_vmm_event_ringbuf_map SEC(".maps");
 
 static __s32 __filter_check(struct task_struct *ts) {
     pid_t tgid = READ_KERN(ts->tgid);
@@ -54,13 +54,13 @@ static void __insert_vmm_alloc_event(struct task_struct *ts,
                                      enum xm_vmm_evt_type evt_type,
                                      __u64 alloc_len) {
     struct xm_vmm_evt_data *evt = bpf_ringbuf_reserve(
-        &xm_vma_event_ringbuf_map, sizeof(struct xm_vmm_evt_data), 0);
+        &xm_vmm_event_ringbuf_map, sizeof(struct xm_vmm_evt_data), 0);
     if (evt) {
         evt->evt_type = evt_type;
         evt->pid = __xm_get_tid();
         evt->tgid = __xm_get_pid();
         evt->len = alloc_len;
-        bpf_core_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
+        bpf_core_read_str(evt->comm, sizeof(evt->comm), &ts->comm);
         // !!如果evt放在submit后面调用，就会被检查出内存无效
         bpf_printk("xm_ebpf_exporter vma alloc event type:%d tgid:%d len:%lu\n",
                    evt_type, evt->tgid, evt->len);
@@ -70,7 +70,7 @@ static void __insert_vmm_alloc_event(struct task_struct *ts,
 }
 
 SEC("kprobe/do_mmap")
-__s32 xm_process_vm_do_mmap(struct pt_regs *ctx) {
+__s32 xm_process_do_mmap(struct pt_regs *ctx) {
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
     __u64 alloc_vm_len = (__u64)PT_REGS_PARM3(ctx);
     // 表示映射区域的保护权限，可以是PROT_NONE、PROT_READ、PROT_WRITE、PROT_EXEC，或它们的组合
@@ -79,21 +79,17 @@ __s32 xm_process_vm_do_mmap(struct pt_regs *ctx) {
     // MAP_SHARED、MAP_PRIVATE、MAP_FIXED、MAP_ANONYMOUS、MAP_LOCKED 等。
     __u64 flags = (__u64)PT_REGS_PARM5(ctx);
 
-    if (flags & (MAP_PRIVATE | MAP_ANONYMOUS)) {
-        // 使用mmap分配的私有匿名虚拟地址空间
-        if (0 == __filter_check(ts)) {
+    if (0 == __filter_check(ts)) {
+        if (flags & (MAP_PRIVATE | MAP_ANONYMOUS)) {
+            // 使用mmap分配的私有匿名虚拟地址空间
             __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MMAP_ANON_PRIV,
                                      alloc_vm_len);
-        }
-    } else if (flags & MAP_SHARED) {
-        // 使用mmap分配的共享虚拟地址空间
-        if (0 == __filter_check(ts)) {
+        } else if (flags & MAP_SHARED) {
+            // 使用mmap分配的共享虚拟地址空间
             __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MMAP_SHARED,
                                      alloc_vm_len);
-        }
-    } else {
-        // 使用mmap分配的其他虚拟地址空间
-        if (0 == __filter_check(ts)) {
+        } else {
+            // 使用mmap分配的其他虚拟地址空间
             __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MMAP_OTHER,
                                      alloc_vm_len);
         }
@@ -103,7 +99,7 @@ __s32 xm_process_vm_do_mmap(struct pt_regs *ctx) {
 }
 
 SEC("kprobe/do_brk_flags")
-__s32 xm_process_vm_do_brk_flags(struct pt_regs *ctx) {
+__s32 xm_process_do_brk_flags(struct pt_regs *ctx) {
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
     // pid_t tgid = __xm_get_pid();
     // request：表示要增加或减少的内存大小。如果该值为
@@ -117,6 +113,11 @@ __s32 xm_process_vm_do_brk_flags(struct pt_regs *ctx) {
         __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_BRK, alloc_vm_len);
     }
 
+    return 0;
+}
+
+SEC("kprobe/__do_munmap")
+__s32 xm_process_do_munmap(struct pt_regs *ctx) {
     return 0;
 }
 

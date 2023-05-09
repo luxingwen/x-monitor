@@ -9,16 +9,18 @@
 
 #include "utils/common.h"
 #include "utils/compiler.h"
+#include <malloc.h>
 #include "utils/log.h"
 #include "utils/strings.h"
 
 #define BUF_SIZE 1024
+#define MMAP_SIZE 256
 
 static void malloc_test() {
     char *buf[4];
 
     for (int32_t i = 0; i < 4; i++) {
-        buf[i] = (char *)calloc(BUF_SIZE * (i + 1), 1);
+        buf[i] = (char *)calloc(BUF_SIZE, 1);
         strlcpy(buf[i], "Hello, world!", BUF_SIZE);
     }
 
@@ -29,7 +31,7 @@ static void malloc_test() {
 
 static void mmap_anonymous_test() {
     // allocate memory using anonymous mmap
-    char *buf = (char *)mmap(NULL, BUF_SIZE, PROT_READ | PROT_WRITE,
+    char *buf = (char *)mmap(NULL, MMAP_SIZE, PROT_READ | PROT_WRITE,
                              MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (buf == MAP_FAILED) {
         perror("mmap");
@@ -37,10 +39,10 @@ static void mmap_anonymous_test() {
     }
 
     // write some data to the mapped memory
-    strlcpy(buf, "Hello, world!", BUF_SIZE);
+    strlcpy(buf, "Hello, world!", MMAP_SIZE);
 
     // unmap the memory
-    if (munmap(buf, BUF_SIZE) == -1) {
+    if (munmap(buf, MMAP_SIZE) == -1) {
         perror("munmap");
         exit(EXIT_FAILURE);
     }
@@ -60,24 +62,24 @@ static void mmap_file_test() {
     }
 
     // map the file into memory
-    char *mapped =
-        (char *)mmap(NULL, BUF_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    char *mapped = (char *)mmap(NULL, MMAP_SIZE, PROT_READ | PROT_WRITE,
+                                MAP_SHARED, fd, 0);
     if (mapped == MAP_FAILED) {
         perror("mmap");
         exit(EXIT_FAILURE);
     }
 
     // write some data to the mapped region
-    strlcpy(mapped, "Hello, world!", BUF_SIZE);
+    strlcpy(mapped, "Hello, world!", MMAP_SIZE);
 
     // flush the changes to the file
-    if (msync(mapped, BUF_SIZE, MS_SYNC) == -1) {
+    if (msync(mapped, MMAP_SIZE, MS_SYNC) == -1) {
         perror("msync");
         exit(EXIT_FAILURE);
     }
 
     // unmap the memory region
-    if (munmap(mapped, BUF_SIZE) == -1) {
+    if (munmap(mapped, MMAP_SIZE) == -1) {
         perror("munmap");
         exit(EXIT_FAILURE);
     }
@@ -96,6 +98,7 @@ int32_t main(int32_t argc, char **argv) {
     }
 
     debug("pid:%d", getpid());
+    malloc_trim(0);
 
     sleep(10);
 

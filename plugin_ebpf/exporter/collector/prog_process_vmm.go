@@ -15,8 +15,10 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/golang/glog"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sanity-io/litter"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
@@ -33,7 +35,8 @@ type processVMMProgRodata struct {
 type processVMMProgram struct {
 	*eBPFBaseProgram
 
-	roData         processVMMProgRodata
+	roData         *processVMMProgRodata
+	excludeFilter  *eBPFProgramExclude
 	gatherInterval time.Duration
 
 	vmmEvtRD *ringbuf.Reader
@@ -44,14 +47,14 @@ func init() {
 	registerEBPFProgram(processVMMProgName, newProcessVMMProgram)
 }
 
-func loadToRunProcessVMAProg(name string, prog *processVMMProgram) error {
+func loadToRunProcessVMMProg(name string, prog *processVMMProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMProcessVMMObjects)
 	prog.links, err = attatchToRun(name, prog.objs, bpfmodule.LoadXMProcessVMM, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_scope_type":  int32(0),
-			"__filter_scope_value": int64(0),
+			"__filter_scope_type":  int32(prog.roData.FilterScopeType),
+			"__filter_scope_value": int64(prog.roData.FilterScopeValue),
 		})
 
 		if err != nil {
@@ -66,7 +69,7 @@ func loadToRunProcessVMAProg(name string, prog *processVMMProgram) error {
 		return err
 	}
 
-	prog.vmmEvtRD, err = ringbuf.NewReader(prog.objs.XmVmaEventRingbufMap)
+	prog.vmmEvtRD, err = ringbuf.NewReader(prog.objs.XmVmmEventRingbufMap)
 	if err != nil {
 		for _, link := range prog.links {
 			link.Close()
@@ -76,7 +79,7 @@ func loadToRunProcessVMAProg(name string, prog *processVMMProgram) error {
 		prog.objs = nil
 	}
 
-	prog.wg.Go(prog.tracingProcessVMAEvent)
+	prog.wg.Go(prog.tracingProcessVMMEvent)
 	return err
 }
 
@@ -87,40 +90,48 @@ func newProcessVMMProgram(name string) (eBPFProgram, error) {
 			stopChan:    make(chan struct{}),
 			gatherTimer: calmutils.NewTimer(),
 		},
+		roData:        new(processVMMProgRodata),
+		excludeFilter: new(eBPFProgramExclude),
 	}
 
-	if err := loadToRunProcessVMAProg(name, prog); err != nil {
-		err = errors.Wrapf(err, "eBPFProgram:'%s' runProcessVMAProgram failed.", name)
+	mapstructure.Decode(config.ProgramConfig(name).ProgRodata, prog.roData)
+	mapstructure.Decode(config.ProgramConfig(name).Exclude, prog.excludeFilter)
+	glog.Infof("eBPFProgram:'%s' roData:%s, exclude:%s", name, litter.Sdump(prog.roData), litter.Sdump(prog.excludeFilter))
+
+	if err := loadToRunProcessVMMProg(name, prog); err != nil {
+		err = errors.Wrapf(err, "eBPFProgram:'%s' runProcessVMMProgram failed.", name)
 		glog.Error(err)
 		return nil, err
 	}
 	return prog, nil
 }
 
-func (pvp *processVMMProgram) tracingProcessVMAEvent() {
-	glog.Infof("eBPFProgram:'%s' start tracing process vma event data...", pvp.name)
+func (pvp *processVMMProgram) tracingProcessVMMEvent() {
+	glog.Infof("eBPFProgram:'%s' start tracing process VMM event data...", pvp.name)
 
 loop:
 	for {
 		record, err := pvp.vmmEvtRD.Read()
 		if err != nil {
 			if errors.Is(err, ringbuf.ErrClosed) {
-				glog.Warningf("eBPFProgram:'%s' tracing process vma event receive stop notify", pvp.name)
+				glog.Warningf("eBPFProgram:'%s' tracing process VMM event receive stop notify", pvp.name)
 				break loop
 			}
 			glog.Errorf("eBPFProgram:'%s' Read error. err:%s", pvp.name, err.Error())
 			continue
 		}
 
-		processVMAEvtData := new(bpfmodule.XMProcessVMMXmVmmEvtData)
-		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, processVMAEvtData); err != nil {
-			glog.Errorf("failed to parse XMProcessVMAXmVmaEvtData, err: %v", err)
+		processVMMEvtData := new(bpfmodule.XMProcessVMMXmVmmEvtData)
+		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, processVMMEvtData); err != nil {
+			glog.Errorf("failed to parse XMProcessVMMXmVMMEvtData, err: %v", err)
 			continue
 		}
 
-		comm := internal.CommToString(processVMAEvtData.Comm[:])
-		glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s' expand VA space by '%d' bytes",
-			pvp.name, processVMAEvtData.Tgid, processVMAEvtData.Pid, comm, processVMAEvtData.Len)
+		comm := internal.CommToString(processVMMEvtData.Comm[:])
+		if !pvp.excludeFilter.IsExcludeComm(comm) {
+			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s' evt:'%d' alloc virtual address '%d' bytes space",
+				pvp.name, processVMMEvtData.Tgid, processVMMEvtData.Pid, comm, processVMMEvtData.EvtType, processVMMEvtData.Len)
+		}
 	}
 }
 

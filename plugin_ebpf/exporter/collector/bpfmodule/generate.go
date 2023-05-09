@@ -14,3 +14,4 @@ package bpfmodule
 //go:generate env GOPACKAGE=bpfmodule bpf2go -cc clang -cflags "-g -O2 -Wall -Werror -Wno-unused-function -D__TARGET_ARCH_x86 -DOUTPUT_SKB" -type xm_vmm_evt_type -type xm_vmm_evt_data XMProcessVMM ../../../bpf/xm_process_vmm.bpf.c -- -I../../../ -I../../../bpf/.output -I../../../../extra/include/bpf
 
 //go:generate genny -in=../../../../vendor/github.com/wubo0067/calmwu-go/utils/generic_channel.go -out=gen_xm_cs_sched_evt_data_channel.go -pkg=bpfmodule gen "ChannelCustomType=*XMCpuScheduleXmCpuSchedEvtData ChannelCustomName=CpuSchedEvtData"
+//go:generate stringer -type=XMProcessVMMXmVmmEvtType -output=vmmevttype_string.go
