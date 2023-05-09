@@ -25,9 +25,11 @@ type XMProcessVMMXmVmmEvtData struct {
 type XMProcessVMMXmVmmEvtType uint32
 
 const (
-	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_NONE XMProcessVMMXmVmmEvtType = 0
-	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP XMProcessVMMXmVmmEvtType = 1
-	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_BRK  XMProcessVMMXmVmmEvtType = 2
+	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_NONE           XMProcessVMMXmVmmEvtType = 0
+	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_ANON_PRIV XMProcessVMMXmVmmEvtType = 1
+	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_SHARED    XMProcessVMMXmVmmEvtType = 2
+	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_OTHER     XMProcessVMMXmVmmEvtType = 3
+	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_BRK            XMProcessVMMXmVmmEvtType = 4
 )
 
 // LoadXMProcessVMM returns the embedded CollectionSpec for XMProcessVMM.
@@ -79,7 +81,7 @@ type XMProcessVMMProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProcessVMMMapSpecs struct {
-	XmVmaEventRingbufMap *ebpf.MapSpec `ebpf:"xm_vma_event_ringbuf_map"`
+	XmVmmEventRingbufMap *ebpf.MapSpec `ebpf:"xm_vmm_event_ringbuf_map"`
 }
 
 // XMProcessVMMObjects contains all objects after they have been loaded into the kernel.
@@ -101,12 +103,12 @@ func (o *XMProcessVMMObjects) Close() error {
 //
 // It can be passed to LoadXMProcessVMMObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProcessVMMMaps struct {
-	XmVmaEventRingbufMap *ebpf.Map `ebpf:"xm_vma_event_ringbuf_map"`
+	XmVmmEventRingbufMap *ebpf.Map `ebpf:"xm_vmm_event_ringbuf_map"`
 }
 
 func (m *XMProcessVMMMaps) Close() error {
 	return _XMProcessVMMClose(
-		m.XmVmaEventRingbufMap,
+		m.XmVmmEventRingbufMap,
 	)
 }
 

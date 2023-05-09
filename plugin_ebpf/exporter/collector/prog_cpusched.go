@@ -36,24 +36,17 @@ type cpuSchedProgRodata struct {
 	OffCPUTaskType            int                           `mapstructure:"offcpu_task_type"`    // offcpu状态的任务类型
 }
 
-type cpuSchedProgExcludeFilter struct {
-	Comms []string `mapstructure:"comms"`
-}
-
 type cpuSchedProgram struct {
 	*eBPFBaseProgram
-	roData         cpuSchedProgRodata
-	gatherInterval time.Duration
+	roData              *cpuSchedProgRodata
+	gatherInterval      time.Duration
+	metricsUpdateFilter *hashset.Set
+	excludeFilter       *eBPFProgramExclude
 
 	// prometheus metric desc
 	runQueueLatencyDesc *prometheus.Desc
 	offCPUDurationDesc  *prometheus.Desc
 	hangProcessDesc     *prometheus.Desc
-
-	// 指标输出过滤
-	metricsUpdateFilter *hashset.Set
-	// comm过滤
-	commExcludeFilter *hashset.Set
 
 	sampleCount        uint64
 	sampleSum          float64
@@ -124,21 +117,17 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 			stopChan:    make(chan struct{}),
 			gatherTimer: calmutils.NewTimer(),
 		},
+		roData:              new(cpuSchedProgRodata),
 		gatherInterval:      config.ProgramConfig(name).GatherInterval * time.Second,
-		runQLatencyBuckets:  make(map[float64]uint64, len(runQueueLayBucketLimits)),
 		metricsUpdateFilter: hashset.New(),
-		commExcludeFilter:   hashset.New(),
+		excludeFilter:       new(eBPFProgramExclude),
+		runQLatencyBuckets:  make(map[float64]uint64, len(runQueueLayBucketLimits)),
 		cpuSchedEvtDataChan: bpfmodule.NewCpuSchedEvtDataChannel(defaultCpuSchedEvtChanSize),
 	}
 
-	var excludeFilter cpuSchedProgExcludeFilter
-	mapstructure.Decode(config.ProgramConfig(name).ProgRodata, &csProg.roData)
-	mapstructure.Decode(config.ProgramConfig(name).Exclude, &excludeFilter)
-	glog.Infof("eBPFProgram:'%s' roData:%s, exclude:%s", name, litter.Sdump(csProg.roData), litter.Sdump(excludeFilter))
-
-	for _, comm := range excludeFilter.Comms {
-		csProg.commExcludeFilter.Add(comm)
-	}
+	mapstructure.Decode(config.ProgramConfig(name).ProgRodata, csProg.roData)
+	mapstructure.Decode(config.ProgramConfig(name).Exclude, csProg.excludeFilter)
+	glog.Infof("eBPFProgram:'%s' roData:%s, exclude:%s", name, litter.Sdump(csProg.roData), litter.Sdump(csProg.excludeFilter))
 
 	for _, metricDesc := range config.ProgramConfig(name).Metrics {
 		switch metricDesc {
@@ -329,7 +318,7 @@ loop:
 		}
 
 		comm := internal.CommToString(scEvtData.Comm[:])
-		if !csp.commExcludeFilter.Contains(comm) {
+		if !csp.excludeFilter.IsExcludeComm(comm) {
 			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', offcpu_duration_millsecs:%d",
 				csp.name, scEvtData.Tgid, scEvtData.Pid, comm, scEvtData.OffcpuDurationMillsecs)
 			csp.cpuSchedEvtDataChan.SafeSend(scEvtData, false)
