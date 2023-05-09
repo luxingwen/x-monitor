@@ -101,8 +101,6 @@ typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
         return 0;                                                             \
     }
 
-extern int LINUX_KERNEL_VERSION __kconfig;
-
 static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
     __sync_fetch_and_add(res, value);
     if ((0xFFFFFFFFFFFFFFFF - *res) <= value) {

@@ -10,6 +10,8 @@
 #define SEC(name) __attribute__((section(name), used))
 ```
 
+使用libbpf需要对每个eBPF程序进行标记，标记需要使用SEC()宏定义程序类型，例如：SEC("kprobe")，这将在编译后的ELF对象中生成一个名为"kprobe"的节区，使得libbpf知道将其加载为BPF_PROG_TYPE_KPROBE。我们将进一步讨论不同的程序类型。根据程序类型，您还可以使用节区名称来指定程序将附加到哪个事件上。libbpf库将使用这些信息自动设置附加，而不是让您在用户空间代码中显式设置。
+
 ### 宏输出
 
 这个宏的目的是在elf文件中添加对应的Section，如下执行readelf命令会看到
@@ -34,7 +36,7 @@ Section Headers:
   [ 5] license           PROGBITS         0000000000000000  00000070
 ```
 
-### SEC中的内容
+### SEC中的内容，对应关系
 
 文件libbpf.c中定义了SEC参数内容，**带有+号的意味前缀**。bpf_sec_def结构体定义了bpf_prog_type、bpf_attach_type类型变量
 
@@ -123,6 +125,8 @@ static const struct bpf_sec_def section_defs[] = {
 	SEC_DEF("sk_lookup",		SK_LOOKUP, BPF_SK_LOOKUP, SEC_ATTACHABLE),
 };
 ```
+
+[Program Types and ELF Sections — libbpf documentation](https://libbpf.readthedocs.io/en/latest/program_types.html)
 
 SEC的匹配逻辑，+号的处理，实际上内核不同这里的实现稍有不同，新内核逻辑会有扩充
 
