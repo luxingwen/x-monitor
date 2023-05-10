@@ -29,6 +29,9 @@ struct {
     __uint(max_entries, 1 << 24); // 16M
 } xm_vmm_event_ringbuf_map SEC(".maps");
 
+BPF_HASH(xm_brk_shrink_map, __u32, __u64, 1024);
+BPF_HASH(xm_mmap_shrink_map, __u32, __u64, 1024);
+
 static __s32 __filter_check(struct task_struct *ts) {
     pid_t tgid = READ_KERN(ts->tgid);
 
@@ -77,7 +80,7 @@ __s32 xm_process_do_mmap(struct pt_regs *ctx) {
     // __u64 prot = (__u64)PT_REGS_PARM4(ctx);
     // flags：表示映射区域的标志，可以是
     // MAP_SHARED、MAP_PRIVATE、MAP_FIXED、MAP_ANONYMOUS、MAP_LOCKED 等。
-    __u64 flags = (__u64)PT_REGS_PARM5(ctx);
+    __u64 flags = (__u64)PT_REGS_PARM5_CORE(ctx);
 
     if (0 == __filter_check(ts)) {
         if (flags & (MAP_PRIVATE | MAP_ANONYMOUS)) {
@@ -104,7 +107,7 @@ __s32 xm_process_do_brk_flags(struct pt_regs *ctx) {
     // pid_t tgid = __xm_get_pid();
     // request：表示要增加或减少的内存大小。如果该值为
     // 0，则表示不需要增加或减少内存大小，只需要查看当前数据段的结束地址。
-    __u64 alloc_vm_len = (__u64)PT_REGS_PARM2(ctx);
+    __u64 alloc_vm_len = (__u64)PT_REGS_PARM2_CORE(ctx);
 
     if (0 == __filter_check(ts)) {
         // bpf_printk("xm_ebpf_exporter process_vm tgid:%d use brk alloc "
@@ -116,8 +119,62 @@ __s32 xm_process_do_brk_flags(struct pt_regs *ctx) {
     return 0;
 }
 
+SEC("kprobe/" SYSCALL(sys_brk))
+__s32 xm_process_sys_brk(struct pt_regs *ctx) {
+    __u64 orig_brk = 0;
+    __u32 tid = __xm_get_tid();
+
+    // 获取要设置堆顶地址
+    __u64 brk = (__u64)PT_REGS_PARM1_CORE(ctx);
+    // 获取task
+    struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
+    // 读取task的堆顶地址
+    orig_brk = BPF_CORE_READ(ts, mm, brk);
+    // 判断进程堆顶地址
+    if (brk <= orig_brk) {
+        // kernel会调用__do_munmap，用线程id作为标识
+        bpf_map_update_elem(&xm_brk_shrink_map, &tid, &tid, BPF_ANY);
+    }
+    return 0;
+}
+
 SEC("kprobe/__do_munmap")
 __s32 xm_process_do_munmap(struct pt_regs *ctx) {
+    __u32 tid = __xm_get_tid();
+    // 第三个参数堆释放的长度
+    __u64 len = (__u64)PT_REGS_PARM3_CORE(ctx);
+    __u64 *res = bpf_map_lookup_elem(&xm_brk_shrink_map, &tid);
+    if (res) {
+        bpf_map_update_elem(&xm_brk_shrink_map, &tid, &len, BPF_EXIST);
+    } else {
+        bpf_map_update_elem(&xm_mmap_shrink_map, &tid, &len, BPF_NOEXIST);
+    }
+    return 0;
+}
+
+SEC("kretprobe/__do_munmap")
+__s32 BPF_KRETPROBE(do_mummap_exit, __s32 ret) {
+    if (ret >= 0) {
+        __u32 tid = __xm_get_tid();
+        // 地址空间释放成功
+        struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
+
+        if (0 == __filter_check(ts)) {
+            __u64 *res = bpf_map_lookup_elem(&xm_brk_shrink_map, &tid);
+            if (res) {
+                // 释放的是堆空间
+                __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_BRK_SHRINK, *res);
+                bpf_map_delete_elem(&xm_brk_shrink_map, &tid);
+            } else {
+                res = bpf_map_lookup_elem(&xm_mmap_shrink_map, &tid);
+                if (res) {
+                    // 释放的是mmap映射空间
+                    __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MUNMAP, *res);
+                    bpf_map_delete_elem(&xm_mmap_shrink_map, &tid);
+                }
+            }
+        }
+    }
     return 0;
 }
 

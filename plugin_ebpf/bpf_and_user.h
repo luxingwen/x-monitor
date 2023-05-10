@@ -94,6 +94,8 @@ enum xm_vmm_evt_type {
     XM_VMM_EVT_TYPE_MMAP_SHARED,
     XM_VMM_EVT_TYPE_MMAP_OTHER,
     XM_VMM_EVT_TYPE_BRK,
+    XM_VMM_EVT_TYPE_BRK_SHRINK,
+    XM_VMM_EVT_TYPE_MUNMAP,
 };
 
 // This is a structure definition for storing data related to virtual memory
