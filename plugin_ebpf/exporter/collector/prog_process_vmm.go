@@ -129,7 +129,7 @@ loop:
 
 		comm := internal.CommToString(processVMMEvtData.Comm[:])
 		if !pvp.excludeFilter.IsExcludeComm(comm) {
-			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s' evt:'%d' alloc virtual address '%d' bytes space",
+			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s' evt:'%d' virtual address '%d' bytes",
 				pvp.name, processVMMEvtData.Tgid, processVMMEvtData.Pid, comm, processVMMEvtData.EvtType, processVMMEvtData.Len)
 		}
 	}
