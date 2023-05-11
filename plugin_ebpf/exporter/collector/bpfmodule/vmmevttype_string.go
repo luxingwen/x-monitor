@@ -13,11 +13,13 @@ func _() {
 	_ = x[XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_SHARED-2]
 	_ = x[XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_OTHER-3]
 	_ = x[XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_BRK-4]
+	_ = x[XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_BRK_SHRINK-5]
+	_ = x[XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MUNMAP-6]
 }
 
-const _XMProcessVMMXmVmmEvtType_name = "XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_NONEXMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_ANON_PRIVXMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_SHAREDXMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_OTHERXMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_BRK"
+const _XMProcessVMMXmVmmEvtType_name = "XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_NONEXMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_ANON_PRIVXMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_SHAREDXMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_OTHERXMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_BRKXMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_BRK_SHRINKXMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MUNMAP"
 
-var _XMProcessVMMXmVmmEvtType_index = [...]uint8{0, 44, 98, 149, 199, 242}
+var _XMProcessVMMXmVmmEvtType_index = [...]uint16{0, 44, 98, 149, 199, 242, 292, 338}
 
 func (i XMProcessVMMXmVmmEvtType) String() string {
 	if i >= XMProcessVMMXmVmmEvtType(len(_XMProcessVMMXmVmmEvtType_index)-1) {

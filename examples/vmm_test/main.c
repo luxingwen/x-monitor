@@ -13,25 +13,30 @@
 #include "utils/log.h"
 #include "utils/strings.h"
 
-#define BUF_SIZE 1024
-#define MMAP_SIZE 256
+#define BUF_SIZE 4095
+#define MMAP_SIZE(x) ((1 << x) << 12)
 
-static void malloc_test() {
-    char *buf[4];
+static char *alloc_list[4] = { 0 };
 
+static void calloc_list() {
     for (int32_t i = 0; i < 4; i++) {
-        buf[i] = (char *)calloc(BUF_SIZE, 1);
-        strlcpy(buf[i], "Hello, world!", BUF_SIZE);
+        alloc_list[i] = (char *)calloc(BUF_SIZE, 1);
+        strlcpy(alloc_list[i], "Hello, world!", BUF_SIZE);
     }
+}
 
+static void free_list() {
     for (int32_t i = 0; i < 4; i++) {
-        free(buf[i]);
+        free(alloc_list[i]);
     }
+    malloc_trim(0);
 }
 
 static void mmap_anonymous_test() {
     // allocate memory using anonymous mmap
-    char *buf = (char *)mmap(NULL, MMAP_SIZE, PROT_READ | PROT_WRITE,
+    size_t mmap_size = MMAP_SIZE(2);
+
+    char *buf = (char *)mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
                              MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (buf == MAP_FAILED) {
         perror("mmap");
@@ -39,16 +44,22 @@ static void mmap_anonymous_test() {
     }
 
     // write some data to the mapped memory
-    strlcpy(buf, "Hello, world!", MMAP_SIZE);
+    strlcpy(buf, "Hello, world!", mmap_size);
+
+    debug("mmap anonymous buf: %p, %lu bytes", buf, mmap_size);
+    sleep(10);
 
     // unmap the memory
-    if (munmap(buf, MMAP_SIZE) == -1) {
+    if (munmap(buf, mmap_size) == -1) {
         perror("munmap");
         exit(EXIT_FAILURE);
     }
+    debug("munmap anonymous buf: %p", buf);
 }
 
 static void mmap_file_test() {
+    size_t mmap_size = MMAP_SIZE(2);
+
     int32_t fd =
         open("vmalloc_process.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     if (fd == -1) {
@@ -62,7 +73,7 @@ static void mmap_file_test() {
     }
 
     // map the file into memory
-    char *mapped = (char *)mmap(NULL, MMAP_SIZE, PROT_READ | PROT_WRITE,
+    char *mapped = (char *)mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
                                 MAP_SHARED, fd, 0);
     if (mapped == MAP_FAILED) {
         perror("mmap");
@@ -70,16 +81,16 @@ static void mmap_file_test() {
     }
 
     // write some data to the mapped region
-    strlcpy(mapped, "Hello, world!", MMAP_SIZE);
+    strlcpy(mapped, "Hello, world!", mmap_size);
 
     // flush the changes to the file
-    if (msync(mapped, MMAP_SIZE, MS_SYNC) == -1) {
+    if (msync(mapped, mmap_size, MS_SYNC) == -1) {
         perror("msync");
         exit(EXIT_FAILURE);
     }
 
     // unmap the memory region
-    if (munmap(mapped, MMAP_SIZE) == -1) {
+    if (munmap(mapped, mmap_size) == -1) {
         perror("munmap");
         exit(EXIT_FAILURE);
     }
@@ -98,19 +109,20 @@ int32_t main(int32_t argc, char **argv) {
     }
 
     debug("pid:%d", getpid());
-    malloc_trim(0);
 
     sleep(10);
+    malloc_trim(0);
 
     debug("start alloc...");
 
     for (int i = 0; i < 5; i++) {
-        malloc_test();
+        calloc_list();
         sleep(1);
         mmap_anonymous_test();
-        sleep(1);
-        mmap_file_test();
-        sleep(1);
+        // sleep(1);
+        // mmap_file_test();
+        // sleep(1);
+        free_list();
     }
 
     debug("stop alloc...");

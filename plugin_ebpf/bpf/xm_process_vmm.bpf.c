@@ -65,8 +65,9 @@ static void __insert_vmm_alloc_event(struct task_struct *ts,
         evt->len = alloc_len;
         bpf_core_read_str(evt->comm, sizeof(evt->comm), &ts->comm);
         // !!如果evt放在submit后面调用，就会被检查出内存无效
-        bpf_printk("xm_ebpf_exporter vma alloc event type:%d tgid:%d len:%lu\n",
-                   evt_type, evt->tgid, evt->len);
+        // bpf_printk("xm_ebpf_exporter vma alloc event type:%d tgid:%d
+        // len:%lu\n",
+        //            evt_type, evt->tgid, evt->len);
         bpf_ringbuf_submit(evt, 0);
     }
     return;
@@ -110,7 +111,7 @@ __s32 xm_process_do_brk_flags(struct pt_regs *ctx) {
     __u64 alloc_vm_len = (__u64)PT_REGS_PARM2_CORE(ctx);
 
     if (0 == __filter_check(ts)) {
-        // bpf_printk("xm_ebpf_exporter process_vm tgid:%d use brk alloc "
+        // bpf_printk("xm_ebpf_exporter process_vmm tgid:%d use brk alloc "
         //            "len:%lu heap space\n",
         //            tgid, alloc_vm_len);
         __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_BRK, alloc_vm_len);
@@ -125,15 +126,21 @@ __s32 xm_process_sys_brk(struct pt_regs *ctx) {
     __u32 tid = __xm_get_tid();
 
     // 获取要设置堆顶地址
-    __u64 brk = (__u64)PT_REGS_PARM1_CORE(ctx);
+    __u64 new_brk = (__u64)PT_REGS_PARM1_CORE(ctx);
     // 获取task
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
-    // 读取task的堆顶地址
-    orig_brk = BPF_CORE_READ(ts, mm, brk);
-    // 判断进程堆顶地址
-    if (brk <= orig_brk) {
-        // kernel会调用__do_munmap，用线程id作为标识
-        bpf_map_update_elem(&xm_brk_shrink_map, &tid, &tid, BPF_ANY);
+    if (0 == __filter_check(ts)) {
+        // 读取task的堆顶地址
+        orig_brk = BPF_CORE_READ(ts, mm, brk);
+        // 判断进程堆顶地址
+        if (new_brk <= orig_brk) {
+            bpf_printk("xm_ebpf_exporter xm_process_sys_brk tid:%d, "
+                       "orig_brk:0x%p, new_brk:0x%p\n",
+                       tid, orig_brk, new_brk);
+            // kernel会调用__do_munmap，用线程id作为标识
+            // !!map的数据类型必须完全对应，否则报错
+            bpf_map_update_elem(&xm_brk_shrink_map, &tid, &new_brk, BPF_ANY);
+        }
     }
     return 0;
 }

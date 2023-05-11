@@ -55,13 +55,13 @@ eBPF:
         filter_scope_value: 0
       exclude:
         comms:
-        - "git"
-        - "pmcd"
-        - "wc"
-        - "zsh"
-        - "top"
-        - "x-monitor.eBPF"
-        - "pmlogger"
-
-
-
+          - "git"
+          - "pmcd"
+          - "wc"
+          - "zsh"
+          - "top"
+          - "x-monitor.eBPF"
+          - "pmlogger"
+          - "tail"
+          - "pmlogger"
+          - "systemd-cgroups"

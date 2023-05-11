@@ -30,6 +30,8 @@ const (
 	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_SHARED    XMProcessVMMXmVmmEvtType = 2
 	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MMAP_OTHER     XMProcessVMMXmVmmEvtType = 3
 	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_BRK            XMProcessVMMXmVmmEvtType = 4
+	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_BRK_SHRINK     XMProcessVMMXmVmmEvtType = 5
+	XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_MUNMAP         XMProcessVMMXmVmmEvtType = 6
 )
 
 // LoadXMProcessVMM returns the embedded CollectionSpec for XMProcessVMM.
@@ -73,14 +75,19 @@ type XMProcessVMMSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProcessVMMProgramSpecs struct {
-	XmProcessVmDoBrkFlags *ebpf.ProgramSpec `ebpf:"xm_process_vm_do_brk_flags"`
-	XmProcessVmDoMmap     *ebpf.ProgramSpec `ebpf:"xm_process_vm_do_mmap"`
+	DoMummapExit        *ebpf.ProgramSpec `ebpf:"do_mummap_exit"`
+	XmProcessDoBrkFlags *ebpf.ProgramSpec `ebpf:"xm_process_do_brk_flags"`
+	XmProcessDoMmap     *ebpf.ProgramSpec `ebpf:"xm_process_do_mmap"`
+	XmProcessDoMunmap   *ebpf.ProgramSpec `ebpf:"xm_process_do_munmap"`
+	XmProcessSysBrk     *ebpf.ProgramSpec `ebpf:"xm_process_sys_brk"`
 }
 
 // XMProcessVMMMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProcessVMMMapSpecs struct {
+	XmBrkShrinkMap       *ebpf.MapSpec `ebpf:"xm_brk_shrink_map"`
+	XmMmapShrinkMap      *ebpf.MapSpec `ebpf:"xm_mmap_shrink_map"`
 	XmVmmEventRingbufMap *ebpf.MapSpec `ebpf:"xm_vmm_event_ringbuf_map"`
 }
 
@@ -103,11 +110,15 @@ func (o *XMProcessVMMObjects) Close() error {
 //
 // It can be passed to LoadXMProcessVMMObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProcessVMMMaps struct {
+	XmBrkShrinkMap       *ebpf.Map `ebpf:"xm_brk_shrink_map"`
+	XmMmapShrinkMap      *ebpf.Map `ebpf:"xm_mmap_shrink_map"`
 	XmVmmEventRingbufMap *ebpf.Map `ebpf:"xm_vmm_event_ringbuf_map"`
 }
 
 func (m *XMProcessVMMMaps) Close() error {
 	return _XMProcessVMMClose(
+		m.XmBrkShrinkMap,
+		m.XmMmapShrinkMap,
 		m.XmVmmEventRingbufMap,
 	)
 }
@@ -116,14 +127,20 @@ func (m *XMProcessVMMMaps) Close() error {
 //
 // It can be passed to LoadXMProcessVMMObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProcessVMMPrograms struct {
-	XmProcessVmDoBrkFlags *ebpf.Program `ebpf:"xm_process_vm_do_brk_flags"`
-	XmProcessVmDoMmap     *ebpf.Program `ebpf:"xm_process_vm_do_mmap"`
+	DoMummapExit        *ebpf.Program `ebpf:"do_mummap_exit"`
+	XmProcessDoBrkFlags *ebpf.Program `ebpf:"xm_process_do_brk_flags"`
+	XmProcessDoMmap     *ebpf.Program `ebpf:"xm_process_do_mmap"`
+	XmProcessDoMunmap   *ebpf.Program `ebpf:"xm_process_do_munmap"`
+	XmProcessSysBrk     *ebpf.Program `ebpf:"xm_process_sys_brk"`
 }
 
 func (p *XMProcessVMMPrograms) Close() error {
 	return _XMProcessVMMClose(
-		p.XmProcessVmDoBrkFlags,
-		p.XmProcessVmDoMmap,
+		p.DoMummapExit,
+		p.XmProcessDoBrkFlags,
+		p.XmProcessDoMmap,
+		p.XmProcessDoMunmap,
+		p.XmProcessSysBrk,
 	)
 }
 
