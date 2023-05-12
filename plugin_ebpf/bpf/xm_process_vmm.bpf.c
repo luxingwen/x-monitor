@@ -76,14 +76,15 @@ static void __insert_vmm_alloc_event(struct task_struct *ts,
 SEC("kprobe/do_mmap")
 __s32 xm_process_do_mmap(struct pt_regs *ctx) {
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
-    __u64 alloc_vm_len = (__u64)PT_REGS_PARM3(ctx);
-    // 表示映射区域的保护权限，可以是PROT_NONE、PROT_READ、PROT_WRITE、PROT_EXEC，或它们的组合
-    // __u64 prot = (__u64)PT_REGS_PARM4(ctx);
-    // flags：表示映射区域的标志，可以是
-    // MAP_SHARED、MAP_PRIVATE、MAP_FIXED、MAP_ANONYMOUS、MAP_LOCKED 等。
-    __u64 flags = (__u64)PT_REGS_PARM5_CORE(ctx);
 
     if (0 == __filter_check(ts)) {
+        __u64 alloc_vm_len = (__u64)PT_REGS_PARM3(ctx);
+        // 表示映射区域的保护权限，可以是PROT_NONE、PROT_READ、PROT_WRITE、PROT_EXEC，或它们的组合
+        // __u64 prot = (__u64)PT_REGS_PARM4(ctx);
+        // flags：表示映射区域的标志，可以是
+        // MAP_SHARED、MAP_PRIVATE、MAP_FIXED、MAP_ANONYMOUS、MAP_LOCKED 等。
+        __u64 flags = (__u64)PT_REGS_PARM5_CORE(ctx);
+
         if (flags & (MAP_PRIVATE | MAP_ANONYMOUS)) {
             // 使用mmap分配的私有匿名虚拟地址空间
             __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MMAP_ANON_PRIV,
@@ -108,12 +109,12 @@ __s32 xm_process_do_brk_flags(struct pt_regs *ctx) {
     // pid_t tgid = __xm_get_pid();
     // request：表示要增加或减少的内存大小。如果该值为
     // 0，则表示不需要增加或减少内存大小，只需要查看当前数据段的结束地址。
-    __u64 alloc_vm_len = (__u64)PT_REGS_PARM2_CORE(ctx);
 
     if (0 == __filter_check(ts)) {
         // bpf_printk("xm_ebpf_exporter process_vmm tgid:%d use brk alloc "
         //            "len:%lu heap space\n",
         //            tgid, alloc_vm_len);
+        __u64 alloc_vm_len = (__u64)PT_REGS_PARM2_CORE(ctx);
         __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_BRK, alloc_vm_len);
     }
 
@@ -121,8 +122,9 @@ __s32 xm_process_do_brk_flags(struct pt_regs *ctx) {
 }
 
 SEC("kprobe/" SYSCALL(sys_brk))
-__s32 xm_process_sys_brk(struct pt_regs *ctx) {
+__s32 BPF_KPROBE(xm_process_sys_brk, __u64 brk) {
     __u64 orig_brk = 0;
+    __u64 start_brk = 0;
     __u32 tid = __xm_get_tid();
 
     // 获取要设置堆顶地址
@@ -131,12 +133,17 @@ __s32 xm_process_sys_brk(struct pt_regs *ctx) {
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
     if (0 == __filter_check(ts)) {
         // 读取task的堆顶地址
-        orig_brk = BPF_CORE_READ(ts, mm, brk);
+        start_brk = (__u64)BPF_CORE_READ(ts, mm, start_brk);
+        orig_brk = (__u64)BPF_CORE_READ(ts, mm, brk);
+
+        bpf_printk("xm_ebpf_exporter xm_process_sys_brk tid:%d, "
+                   "start_brk:%lu, orig_brk:%lu",
+                   tid, start_brk, orig_brk);
+        bpf_printk("xm_ebpf_exporter xm_process_sys_brk tid:%d, "
+                   "new_brk:%lu, brk:%lu",
+                   tid, new_brk, brk);
         // 判断进程堆顶地址
         if (new_brk <= orig_brk) {
-            bpf_printk("xm_ebpf_exporter xm_process_sys_brk tid:%d, "
-                       "orig_brk:0x%p, new_brk:0x%p\n",
-                       tid, orig_brk, new_brk);
             // kernel会调用__do_munmap，用线程id作为标识
             // !!map的数据类型必须完全对应，否则报错
             bpf_map_update_elem(&xm_brk_shrink_map, &tid, &new_brk, BPF_ANY);
@@ -147,22 +154,30 @@ __s32 xm_process_sys_brk(struct pt_regs *ctx) {
 
 SEC("kprobe/__do_munmap")
 __s32 xm_process_do_munmap(struct pt_regs *ctx) {
-    __u32 tid = __xm_get_tid();
-    // 第三个参数堆释放的长度
-    __u64 len = (__u64)PT_REGS_PARM3_CORE(ctx);
-    __u64 *res = bpf_map_lookup_elem(&xm_brk_shrink_map, &tid);
-    if (res) {
-        bpf_map_update_elem(&xm_brk_shrink_map, &tid, &len, BPF_EXIST);
-    } else {
-        bpf_map_update_elem(&xm_mmap_shrink_map, &tid, &len, BPF_NOEXIST);
+    struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
+
+    if (0 == __filter_check(ts)) {
+        // 第三个参数堆释放的长度
+        __u32 tid = __xm_get_tid();
+        __u64 len = (__u64)PT_REGS_PARM3_CORE(ctx);
+        __u64 *res = bpf_map_lookup_elem(&xm_brk_shrink_map, &tid);
+        if (res) {
+            bpf_printk("xm_ebpf_exporter xm_process_do_munmap tid:%d, "
+                       "new_brk:0x%p, len:%lu",
+                       tid, *res, len);
+            bpf_map_update_elem(&xm_brk_shrink_map, &tid, &len, BPF_EXIST);
+        } else {
+            bpf_map_update_elem(&xm_mmap_shrink_map, &tid, &len, BPF_NOEXIST);
+        }
     }
+
     return 0;
 }
 
 SEC("kretprobe/__do_munmap")
-__s32 BPF_KRETPROBE(do_mummap_exit, __s32 ret) {
+__s32 BPF_KRETPROBE(xm_do_mummap_exit, __s32 ret) {
+    __u32 tid = __xm_get_tid();
     if (ret >= 0) {
-        __u32 tid = __xm_get_tid();
         // 地址空间释放成功
         struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
 
@@ -171,16 +186,17 @@ __s32 BPF_KRETPROBE(do_mummap_exit, __s32 ret) {
             if (res) {
                 // 释放的是堆空间
                 __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_BRK_SHRINK, *res);
-                bpf_map_delete_elem(&xm_brk_shrink_map, &tid);
             } else {
                 res = bpf_map_lookup_elem(&xm_mmap_shrink_map, &tid);
                 if (res) {
                     // 释放的是mmap映射空间
                     __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MUNMAP, *res);
-                    bpf_map_delete_elem(&xm_mmap_shrink_map, &tid);
                 }
             }
         }
+    }
+    if (0 != bpf_map_delete_elem(&xm_mmap_shrink_map, &tid)) {
+        bpf_map_delete_elem(&xm_brk_shrink_map, &tid);
     }
     return 0;
 }
