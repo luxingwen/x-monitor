@@ -102,6 +102,52 @@ static void mmap_file_test() {
     }
 }
 
+void malloc_trim_test() {
+    debug("start malloc_trim_test...");
+
+    sleep(15);
+    // Address Perm   Offset Device    Inode  Size  Rss Pss Referenced Anonymous
+    // LazyFree ShmemPmdMapped FilePmdMapped Shared_Hugetlb Private_Hugetlb Swap
+    // SwapPss Locked THPeligible Mapping
+    // 018df000 rw-p 00000000  00:00        0 264  136 136        136 136 0 0 0
+    // 0               0    0 0 0           0 [heap]
+
+    char *alloc_bufs[10] = { 0 };
+    for (int32_t i = 0; i < 10; i++) {
+        alloc_bufs[i] = (char *)malloc(BUF_SIZE);
+        memset(alloc_bufs[i], 0, BUF_SIZE);
+    }
+
+    debug("malloc_trim_test: first buf address:%p", alloc_bufs[0]);
+    // first buf address:0x1900250
+
+    debug("malloc_trim_test: malloc 10 * %d bytes", BUF_SIZE);
+    // 018df000 rw-p 00000000  00:00        0   264  176 176        176 176 0 0
+    // 0              0               0    0       0      0           0 [heap]
+
+    sleep(30);
+
+    for (int32_t i = 0; i < 10; i++) {
+        free(alloc_bufs[i]);
+    }
+
+    debug("malloc_trim_test: free 10 * %d bytes", BUF_SIZE);
+    // 018df000 rw-p 00000000  00:00        0   264  176 176        176 176 0 0
+    // 0              0               0    0       0      0           0 [heap]
+
+    sleep(30);
+
+    int32_t ret = malloc_trim(10 * BUF_SIZE);
+
+    debug("malloc_trim_test: malloc_trim(10 * %d bytes) = %d", BUF_SIZE, ret);
+    // 018df000 rw-p 00000000  00:00        0   176  176 176        176 176 0 0
+    // 0              0               0    0       0      0           0 [heap]
+
+    sleep(10);
+
+    debug("stop malloc_trim_test...");
+}
+
 int32_t main(int32_t argc, char **argv) {
     if (log_init("../examples/log.cfg", "alloc_test") != 0) {
         fprintf(stderr, "log init failed\n");
@@ -110,22 +156,17 @@ int32_t main(int32_t argc, char **argv) {
 
     debug("pid:%d", getpid());
 
-    sleep(10);
-    malloc_trim(0);
+    // for (int i = 0; i < 5; i++) {
+    //     calloc_list();
+    //     sleep(1);
+    //     mmap_anonymous_test();
+    //     // sleep(1);
+    //     // mmap_file_test();
+    //     // sleep(1);
+    //     free_list();
+    // }
+    malloc_trim_test();
 
-    debug("start alloc...");
-
-    for (int i = 0; i < 5; i++) {
-        calloc_list();
-        sleep(1);
-        mmap_anonymous_test();
-        // sleep(1);
-        // mmap_file_test();
-        // sleep(1);
-        free_list();
-    }
-
-    debug("stop alloc...");
     log_fini();
     return 0;
 }
