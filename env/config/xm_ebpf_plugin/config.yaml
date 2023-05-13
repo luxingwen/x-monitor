@@ -65,3 +65,5 @@ eBPF:
           - "tail"
           - "pmlogger"
           - "systemd-cgroups"
+          - "dmsetup"
+          - "sadc"

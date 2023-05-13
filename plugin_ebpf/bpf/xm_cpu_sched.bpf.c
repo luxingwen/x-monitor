@@ -180,6 +180,7 @@ static __s32 __process_return_to_cpu_task(struct task_struct *ts,
             evt->tgid = tgid;
             evt->offcpu_duration_millsecs = offcpu_duration / 1000000U;
             bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
+            // 进程如果sleep后重新执行，这里会显示offcpu duration睡眠时间
             bpf_printk("xm_ebpf_exporter pid:%d, comm:'%s', offcpu duration "
                        "nanosecs:%lld",
                        evt->pid, evt->comm, offcpu_duration);

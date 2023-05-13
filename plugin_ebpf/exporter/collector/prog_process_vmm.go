@@ -10,6 +10,7 @@ package collector
 import (
 	"bytes"
 	"encoding/binary"
+	"strings"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -129,8 +130,8 @@ loop:
 
 		comm := internal.CommToString(processVMMEvtData.Comm[:])
 		if !pvp.excludeFilter.IsExcludeComm(comm) {
-			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s' evt:'%d' virtual address '%d' bytes",
-				pvp.name, processVMMEvtData.Tgid, processVMMEvtData.Pid, comm, processVMMEvtData.EvtType, processVMMEvtData.Len)
+			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s' %s:'%d' bytes in virtual address space",
+				pvp.name, processVMMEvtData.Tgid, processVMMEvtData.Pid, comm, pvp.getEvtName(processVMMEvtData.EvtType), processVMMEvtData.Len)
 		}
 	}
 }
@@ -152,4 +153,14 @@ func (pvp *processVMMProgram) Stop() {
 	}
 
 	glog.Infof("eBPFProgram:'%s' stopped", pvp.name)
+}
+
+// getEvtName takes in an XMProcessVMMXmVmmEvtType and returns the name of the event. If the event type is not found, "Unknown" is returned.
+func (pvp *processVMMProgram) getEvtName(evt bpfmodule.XMProcessVMMXmVmmEvtType) string {
+	evtStr := evt.String()
+	evtName, exist := strings.CutPrefix(evtStr, "XMProcessVMMXmVmmEvtTypeXM_VMM_EVT_TYPE_")
+	if exist {
+		return evtName
+	}
+	return "Unknown"
 }

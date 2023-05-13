@@ -22,12 +22,14 @@ kprobe:do_brk_flags {
 */
 
 kprobe:__x64_sys_brk /comm == "vmm_test"/ {
-    printf("__x64_sys_brk comm:'%s', brk:%lu, arg1:%lu\n", comm, *((uint64*)arg0), arg1);
+    printf("__x64_sys_brk comm:'%s', brk:%lu\n", comm, arg0);
     printf("__x64_sys_brk, %s%s\n", kstack(perf), ustack(perf));
 }
 
-kprobe:do_syscall_64 /comm == "vmm_test"/ {
-    printf("do_syscall_64 comm:'%s', nr:%lu, reg(di):%lu, reg(bp):%lu, reg(sp):%lu, reg(cx):%lu, reg(r8):%lu\n", comm, arg0, reg("di"), reg("bp"), reg("sp"), reg("cx"), reg("r8"));
-}
+//kprobe:do_syscall_64 /comm == "vmm_test"/ {
+//    printf("do_syscall_64 comm:'%s', nr:%lu, reg(di):%lu, reg(bp):%lu, reg(sp):%lu, reg(cx):%lu, reg(r8):%lu\n", comm, arg0, reg("di"), reg("bp"), reg("sp"), reg("cx"), reg("r8"));
+//}
 
-kprobe:do_sys_open /comm == "vmm_test"/ { printf("opening: '%s'\n", str(arg0)); }
+tracepoint:syscalls:sys_enter_brk /comm == "vmm_test"/ {
+    printf("sys_enter_brk brk:%lu\n", args->brk);
+}
