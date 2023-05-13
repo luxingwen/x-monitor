@@ -94,15 +94,17 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 				}
 			case ebpf.TracePoint:
 				// from spec section get group name
-				group := strings.Split(progSpec.SectionName, "/")[1]
-				linkTP, err := link.Tracepoint(group, progSpec.AttachTo, bpfProg, nil)
+				secUnits := strings.Split(progSpec.SectionName, "/")
+				group := secUnits[1]
+				name := secUnits[2]
+				linkTP, err := link.Tracepoint(group, name, bpfProg, nil)
 				if err == nil {
 					links = append(links, linkTP)
-					glog.Infof("ObjProgs:'%s' field name:'%s', attach tracepoint program:'%s' ===> target:'%s' successed.",
-						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
+					glog.Infof("ObjProgs:'%s' field name:'%s' group:'%s', attach tracepoint program:'%s' ===> target:'%s' successed.",
+						objProgsT.Name(), objProgsField.Name, group, ebpfProgName, name)
 				} else {
-					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach tracepoint program:'%s' ===> target:'%s' failed.",
-						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
+					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s' group:'%s', attach tracepoint program:'%s' ===> target:'%s' failed.",
+						objProgsT.Name(), objProgsField.Name, group, ebpfProgName, name)
 					glog.Error(err.Error())
 					return nil, err
 				}

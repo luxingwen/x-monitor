@@ -121,29 +121,33 @@ __s32 xm_process_do_brk_flags(struct pt_regs *ctx) {
     return 0;
 }
 
-SEC("kprobe/" SYSCALL(sys_brk))
-__s32 BPF_KPROBE(xm_process_sys_brk, __u64 brk) {
+// !!不知道为何kprobe无法获取系统调用的参数，只有换为tracepoint
+// SEC("kprobe/" SYSCALL(sys_brk))
+// __s32 BPF_KPROBE(xm_process_sys_brk, __u64 brk) {
+SEC("tracepoint/syscalls/sys_enter_brk")
+__s32 xm_process_sys_enter_brk(struct trace_event_raw_sys_enter *ctx) {
     __u64 orig_brk = 0;
-    __u64 start_brk = 0;
+    //__u64 start_brk = 0;
     __u32 tid = __xm_get_tid();
 
     // 获取要设置堆顶地址
-    __u64 new_brk = (__u64)PT_REGS_PARM1_CORE(ctx);
+    __u64 new_brk = (__u64)ctx->args[0];
+    if (new_brk == 0) {
+        return 0;
+    }
+
     // 获取task
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
     if (0 == __filter_check(ts)) {
         // 读取task的堆顶地址
-        start_brk = (__u64)BPF_CORE_READ(ts, mm, start_brk);
+        // start_brk = (__u64)BPF_CORE_READ(ts, mm, start_brk);
         orig_brk = (__u64)BPF_CORE_READ(ts, mm, brk);
 
-        bpf_printk("xm_ebpf_exporter xm_process_sys_brk tid:%d, "
-                   "start_brk:%lu, orig_brk:%lu",
-                   tid, start_brk, orig_brk);
-        bpf_printk("xm_ebpf_exporter xm_process_sys_brk tid:%d, "
-                   "new_brk:%lu, brk:%lu",
-                   tid, new_brk, brk);
         // 判断进程堆顶地址
         if (new_brk <= orig_brk) {
+            // bpf_printk("xm_ebpf_exporter xm_process_sys_brk tid:%d, "
+            //            "new_brk:%lu <= orig_brk:%lu",
+            //            tid, new_brk, orig_brk);
             // kernel会调用__do_munmap，用线程id作为标识
             // !!map的数据类型必须完全对应，否则报错
             bpf_map_update_elem(&xm_brk_shrink_map, &tid, &new_brk, BPF_ANY);
@@ -162,9 +166,9 @@ __s32 xm_process_do_munmap(struct pt_regs *ctx) {
         __u64 len = (__u64)PT_REGS_PARM3_CORE(ctx);
         __u64 *res = bpf_map_lookup_elem(&xm_brk_shrink_map, &tid);
         if (res) {
-            bpf_printk("xm_ebpf_exporter xm_process_do_munmap tid:%d, "
-                       "new_brk:0x%p, len:%lu",
-                       tid, *res, len);
+            // bpf_printk("xm_ebpf_exporter xm_process_do_munmap tid:%d, "
+            //            "new_brk:0x%p, len:%lu",
+            //            tid, *res, len);
             bpf_map_update_elem(&xm_brk_shrink_map, &tid, &len, BPF_EXIST);
         } else {
             bpf_map_update_elem(&xm_mmap_shrink_map, &tid, &len, BPF_NOEXIST);
@@ -175,7 +179,7 @@ __s32 xm_process_do_munmap(struct pt_regs *ctx) {
 }
 
 SEC("kretprobe/__do_munmap")
-__s32 BPF_KRETPROBE(xm_do_mummap_exit, __s32 ret) {
+__s32 BPF_KRETPROBE(xm_process_do_mummap_exit, __s32 ret) {
     __u32 tid = __xm_get_tid();
     if (ret >= 0) {
         // 地址空间释放成功

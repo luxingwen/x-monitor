@@ -2,8 +2,8 @@
 
 tracepoint:syscalls:sys_enter_write
 {
-    $task = (struct task_struct *)curtask;
-    if($task->real_parent->pid == 4014539) {
-        printf("%s %s\n", comm, str(args->buf));
-    }
+    //$task = (struct task_struct *)curtask;
+    //if($task->real_parent->pid == 4014539) {
+    printf("%s %s\n", comm, str(args->buf));
+    //}
 }
