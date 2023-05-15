@@ -58,6 +58,7 @@ extern "C" {
 #include <unistd.h>
 #include <uuid/uuid.h>
 #include <argp.h>
+#include <malloc.h>
 
 // C11 新增的concurrency相关的header，gcc4.9以上才支持, -std=c11
 #if GCC_VERSION >= 40900

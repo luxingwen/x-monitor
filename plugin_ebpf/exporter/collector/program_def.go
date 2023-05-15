@@ -20,7 +20,7 @@ const (
 	cacheStateProgName  = "cachestat"
 	runQLatencyProgName = "runqlatency"
 	cpuSchedProgName    = "cpusched"
-	processVMMProgName  = "processvmm"
+	processVMMProgName  = "processvm"
 )
 
 type eBPFProgramFilterCfg struct {

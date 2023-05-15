@@ -22,12 +22,12 @@ const volatile __s32 __filter_scope_type = 1;
 const volatile __s64 __filter_scope_value = 0;
 
 // !! Force emitting struct event into the ELF. 切记不能使用static做修饰符
-const struct xm_vmm_evt_data *__unused_vmm_evt __attribute__((unused));
+const struct xm_processvm_evt_data *__unused_vm_evt __attribute__((unused));
 
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 1 << 24); // 16M
-} xm_vmm_event_ringbuf_map SEC(".maps");
+} xm_processvm_event_ringbuf_map SEC(".maps");
 
 BPF_HASH(xm_brk_shrink_map, __u32, __u64, 1024);
 BPF_HASH(xm_mmap_shrink_map, __u32, __u64, 1024);
@@ -53,11 +53,12 @@ static __s32 __filter_check(struct task_struct *ts) {
     return 0;
 }
 
-static void __insert_vmm_alloc_event(struct task_struct *ts,
-                                     enum xm_vmm_evt_type evt_type,
-                                     __u64 alloc_len) {
-    struct xm_vmm_evt_data *evt = bpf_ringbuf_reserve(
-        &xm_vmm_event_ringbuf_map, sizeof(struct xm_vmm_evt_data), 0);
+static void __insert_processvm_alloc_event(struct task_struct *ts,
+                                           enum xm_processvm_evt_type evt_type,
+                                           __u64 alloc_len) {
+    struct xm_processvm_evt_data *evt =
+        bpf_ringbuf_reserve(&xm_processvm_event_ringbuf_map,
+                            sizeof(struct xm_processvm_evt_data), 0);
     if (evt) {
         evt->evt_type = evt_type;
         evt->pid = __xm_get_tid();
@@ -87,16 +88,16 @@ __s32 xm_process_do_mmap(struct pt_regs *ctx) {
 
         if (flags & (MAP_PRIVATE | MAP_ANONYMOUS)) {
             // 使用mmap分配的私有匿名虚拟地址空间
-            __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MMAP_ANON_PRIV,
-                                     alloc_vm_len);
+            __insert_processvm_alloc_event(
+                ts, XM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV, alloc_vm_len);
         } else if (flags & MAP_SHARED) {
             // 使用mmap分配的共享虚拟地址空间
-            __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MMAP_SHARED,
-                                     alloc_vm_len);
+            __insert_processvm_alloc_event(
+                ts, XM_PROCESSVM_EVT_TYPE_MMAP_SHARED, alloc_vm_len);
         } else {
             // 使用mmap分配的其他虚拟地址空间
-            __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MMAP_OTHER,
-                                     alloc_vm_len);
+            __insert_processvm_alloc_event(ts, XM_PROCESSVM_EVT_TYPE_MMAP_OTHER,
+                                           alloc_vm_len);
         }
     }
 
@@ -115,7 +116,8 @@ __s32 xm_process_do_brk_flags(struct pt_regs *ctx) {
         //            "len:%lu heap space\n",
         //            tgid, alloc_vm_len);
         __u64 alloc_vm_len = (__u64)PT_REGS_PARM2_CORE(ctx);
-        __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_BRK, alloc_vm_len);
+        __insert_processvm_alloc_event(ts, XM_PROCESSVM_EVT_TYPE_BRK,
+                                       alloc_vm_len);
     }
 
     return 0;
@@ -189,12 +191,14 @@ __s32 BPF_KRETPROBE(xm_process_do_mummap_exit, __s32 ret) {
             __u64 *res = bpf_map_lookup_elem(&xm_brk_shrink_map, &tid);
             if (res) {
                 // 释放的是堆空间
-                __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_BRK_SHRINK, *res);
+                __insert_processvm_alloc_event(
+                    ts, XM_PROCESSVM_EVT_TYPE_BRK_SHRINK, *res);
             } else {
                 res = bpf_map_lookup_elem(&xm_mmap_shrink_map, &tid);
                 if (res) {
                     // 释放的是mmap映射空间
-                    __insert_vmm_alloc_event(ts, XM_VMM_EVT_TYPE_MUNMAP, *res);
+                    __insert_processvm_alloc_event(
+                        ts, XM_PROCESSVM_EVT_TYPE_MUNMAP, *res);
                 }
             }
         }

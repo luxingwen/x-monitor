@@ -48,8 +48,9 @@ eBPF:
           - "systemd-udevd"
           - "auditd"
           - "sshd"
-    - name: processvmm
+    - name: processvm
       enabled: true
+      gather_interval: 60 # 单位：秒
       prog_rodata:
         filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
         filter_scope_value: 0
@@ -63,7 +64,29 @@ eBPF:
           - "x-monitor.eBPF"
           - "pmlogger"
           - "tail"
-          - "pmlogger"
           - "systemd-cgroups"
           - "dmsetup"
           - "sadc"
+          - "grep"
+          - "ls"
+          - "basename"
+          - "mktemp"
+          - "cat"
+          - "pmgetopt"
+          - "sed"
+          - "rm"
+          - "touch"
+          - "ps"
+          - "id"
+          - "pmlock"
+          - "find"
+          - "egrep"
+          - "logger"
+          - "mv"
+          - "sort"
+          - "which"
+          - "pmlogctl"
+          - "awk"
+          - "hostname"
+          - "gawk"
+          - "sa1"

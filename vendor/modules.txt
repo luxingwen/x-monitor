@@ -25,8 +25,12 @@ github.com/cilium/ebpf/rlimit
 # github.com/emirpasic/gods v1.18.1
 ## explicit; go 1.2
 github.com/emirpasic/gods/containers
+github.com/emirpasic/gods/maps
+github.com/emirpasic/gods/maps/treemap
 github.com/emirpasic/gods/sets
 github.com/emirpasic/gods/sets/hashset
+github.com/emirpasic/gods/trees
+github.com/emirpasic/gods/trees/redblacktree
 github.com/emirpasic/gods/utils
 # github.com/fatih/color v1.13.0
 ## explicit; go 1.13
