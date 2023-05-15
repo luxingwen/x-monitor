@@ -199,7 +199,7 @@ add_subdirectory(examples/regex_cli)
 add_subdirectory(examples/config_test)
 add_subdirectory(examples/pdpids_test)
 add_subdirectory(examples/proc_sock_test)
-add_subdirectory(examples/vmm_test)
+add_subdirectory(examples/vm_test)
 
 add_subdirectory(examples/ebpf/cachestat_top_cli)
 # add_subdirectory(examples/ebpf/perf_event_stack_cli)
