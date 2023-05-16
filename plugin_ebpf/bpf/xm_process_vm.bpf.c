@@ -210,9 +210,9 @@ __s32 BPF_KRETPROBE(xm_process_do_mummap_exit, __s32 ret) {
                 __insert_processvm_alloc_event(
                     ts, (enum xm_processvm_evt_type)(vsi->type), vsi->len);
             }
-            bpf_map_delete_elem(&vm_shrink_map, &tid);
         }
     }
+    bpf_map_delete_elem(&vm_shrink_map, &tid);
     // if (0 != bpf_map_delete_elem(&xm_mmap_shrink_map, &tid)) {
     //     bpf_map_delete_elem(&xm_brk_shrink_map, &tid);
     // }
