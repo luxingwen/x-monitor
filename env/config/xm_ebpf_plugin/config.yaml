@@ -50,7 +50,8 @@ eBPF:
           - "sshd"
     - name: processvm
       enabled: true
-      gather_interval: 60 # 单位：秒
+      gather_interval: 120 # 单位：秒
+      object_count: 10 # gather_interval时间内虚拟地址扩张最大的进程对象
       prog_rodata:
         filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
         filter_scope_value: 0
@@ -90,3 +91,4 @@ eBPF:
           - "hostname"
           - "gawk"
           - "sa1"
+          - "expr"

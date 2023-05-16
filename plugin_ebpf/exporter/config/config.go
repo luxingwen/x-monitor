@@ -48,6 +48,7 @@ type programConfig struct {
 	Name           string        `mapstructure:"name"`
 	Enabled        bool          `mapstructure:"enabled"`
 	GatherInterval time.Duration `mapstructure:"gather_interval"`
+	ObjectCount    int           `mapstructure:"object_count"`
 	ProgRodata     interface{}   `mapstructure:"prog_rodata"`
 	Metrics        []string      `mapstructure:"metrcs"`
 	Exclude        interface{}   `mapstructure:"exclude"`
