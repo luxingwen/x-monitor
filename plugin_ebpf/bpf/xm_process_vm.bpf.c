@@ -29,8 +29,13 @@ struct {
     __uint(max_entries, 1 << 24); // 16M
 } xm_processvm_event_ringbuf_map SEC(".maps");
 
-BPF_HASH(xm_brk_shrink_map, __u32, __u64, 1024);
-BPF_HASH(xm_mmap_shrink_map, __u32, __u64, 1024);
+//**如果type是__u32，整个结构会有空洞，如果不memset，加载器会报错，导致加载失败
+struct vm_shrink_info {
+    __u64 len;
+    __u64 type;
+};
+
+BPF_HASH(vm_shrink_map, __u32, struct vm_shrink_info, 4096);
 
 static __s32 __filter_check(struct task_struct *ts) {
     pid_t tgid = READ_KERN(ts->tgid);
@@ -152,7 +157,11 @@ __s32 xm_process_sys_enter_brk(struct trace_event_raw_sys_enter *ctx) {
             //            tid, new_brk, orig_brk);
             // kernel会调用__do_munmap，用线程id作为标识
             // !!map的数据类型必须完全对应，否则报错
-            bpf_map_update_elem(&xm_brk_shrink_map, &tid, &new_brk, BPF_ANY);
+            struct vm_shrink_info vsi = {
+                .len = 0,
+                .type = (__u64)XM_PROCESSVM_EVT_TYPE_BRK_SHRINK,
+            };
+            bpf_map_update_elem(&vm_shrink_map, &tid, &vsi, BPF_ANY);
         }
     }
     return 0;
@@ -166,14 +175,20 @@ __s32 xm_process_do_munmap(struct pt_regs *ctx) {
         // 第三个参数堆释放的长度
         __u32 tid = __xm_get_tid();
         __u64 len = (__u64)PT_REGS_PARM3_CORE(ctx);
-        __u64 *res = bpf_map_lookup_elem(&xm_brk_shrink_map, &tid);
-        if (res) {
+        struct vm_shrink_info *vsi = bpf_map_lookup_elem(&vm_shrink_map, &tid);
+        if (vsi) {
             // bpf_printk("xm_ebpf_exporter xm_process_do_munmap tid:%d, "
             //            "new_brk:0x%p, len:%lu",
             //            tid, *res, len);
-            bpf_map_update_elem(&xm_brk_shrink_map, &tid, &len, BPF_EXIST);
+            // bpf_map_update_elem(&vm_shrink_map, &tid, &len, BPF_EXIST);
+            __sync_fetch_and_add(&(vsi->len), len);
         } else {
-            bpf_map_update_elem(&xm_mmap_shrink_map, &tid, &len, BPF_NOEXIST);
+            struct vm_shrink_info temp = {
+                .len = len,
+                .type = (__u64)XM_PROCESSVM_EVT_TYPE_MUNMAP,
+            };
+            // __builtin_memset(&temp, 0, sizeof(temp));
+            bpf_map_update_elem(&vm_shrink_map, &tid, &temp, BPF_NOEXIST);
         }
     }
 
@@ -188,24 +203,19 @@ __s32 BPF_KRETPROBE(xm_process_do_mummap_exit, __s32 ret) {
         struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
 
         if (0 == __filter_check(ts)) {
-            __u64 *res = bpf_map_lookup_elem(&xm_brk_shrink_map, &tid);
-            if (res) {
+            struct vm_shrink_info *vsi =
+                bpf_map_lookup_elem(&vm_shrink_map, &tid);
+            if (vsi) {
                 // 释放的是堆空间
                 __insert_processvm_alloc_event(
-                    ts, XM_PROCESSVM_EVT_TYPE_BRK_SHRINK, *res);
-            } else {
-                res = bpf_map_lookup_elem(&xm_mmap_shrink_map, &tid);
-                if (res) {
-                    // 释放的是mmap映射空间
-                    __insert_processvm_alloc_event(
-                        ts, XM_PROCESSVM_EVT_TYPE_MUNMAP, *res);
-                }
+                    ts, (enum xm_processvm_evt_type)(vsi->type), vsi->len);
             }
+            bpf_map_delete_elem(&vm_shrink_map, &tid);
         }
     }
-    if (0 != bpf_map_delete_elem(&xm_mmap_shrink_map, &tid)) {
-        bpf_map_delete_elem(&xm_brk_shrink_map, &tid);
-    }
+    // if (0 != bpf_map_delete_elem(&xm_mmap_shrink_map, &tid)) {
+    //     bpf_map_delete_elem(&xm_brk_shrink_map, &tid);
+    // }
     return 0;
 }
 

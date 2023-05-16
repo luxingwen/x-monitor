@@ -158,7 +158,7 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 
-	csProg.wg.Go(csProg.tracingCSEvent)
+	csProg.wg.Go(csProg.tracingeBPFEvent)
 	csProg.wg.Go(csProg.tracingRunQLayency)
 
 	return csProg, nil
@@ -295,15 +295,15 @@ loop:
 	}
 }
 
-func (csp *cpuSchedProgram) tracingCSEvent() {
-	glog.Infof("eBPFProgram:'%s' start tracing cpu sched event data...", csp.name)
+func (csp *cpuSchedProgram) tracingeBPFEvent() {
+	glog.Infof("eBPFProgram:'%s' start tracing eBPF Event...", csp.name)
 
 loop:
 	for {
 		record, err := csp.scEvtRD.Read()
 		if err != nil {
 			if errors.Is(err, ringbuf.ErrClosed) {
-				glog.Warningf("eBPFProgram:'%s' tracing cpu sched event receive stop notify", csp.name)
+				glog.Warningf("eBPFProgram:'%s' tracing eBPF Event goroutine receive stop notify", csp.name)
 				break loop
 			}
 			glog.Errorf("eBPFProgram:'%s' Read error. err:%s", csp.name, err.Error())

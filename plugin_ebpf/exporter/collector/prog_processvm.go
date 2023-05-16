@@ -10,6 +10,7 @@ package collector
 import (
 	"bytes"
 	"encoding/binary"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -57,8 +58,8 @@ type processVMProgram struct {
 	vmmEvtRD *ringbuf.Reader
 	objs     *bpfmodule.XMProcessVMObjects
 	// manager
-	processVMMap      *treemap.Map
-	processVMMapGuard sync.Mutex
+	processVMMap         *treemap.Map
+	processVMExportGuard sync.Mutex
 	// channel
 	processVMDataEvtChan *bpfmodule.ProcessVMEvtDataChannel
 }
@@ -125,21 +126,21 @@ func newProcessVMMProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 
-	prog.wg.Go(prog.tracingProcessVMMEvent)
-	prog.wg.Go(prog.processing)
+	prog.wg.Go(prog.tracingeBPFEvent)
+	prog.wg.Go(prog.handingeBPFData)
 
 	return prog, nil
 }
 
-func (pvp *processVMProgram) tracingProcessVMMEvent() {
-	glog.Infof("eBPFProgram:'%s' start reading eEBP Prog data...", pvp.name)
+func (pvp *processVMProgram) tracingeBPFEvent() {
+	glog.Infof("eBPFProgram:'%s' start tracing eBPF Event...", pvp.name)
 
 loop:
 	for {
 		record, err := pvp.vmmEvtRD.Read()
 		if err != nil {
 			if errors.Is(err, ringbuf.ErrClosed) {
-				glog.Warningf("eBPFProgram:'%s' reading eEBP Prog data receive stop notify", pvp.name)
+				glog.Warningf("eBPFProgram:'%s' tracing eBPF Event goroutine receive stop notify", pvp.name)
 				break loop
 			}
 			glog.Errorf("eBPFProgram:'%s' Read error. err:%s", pvp.name, err.Error())
@@ -156,8 +157,8 @@ loop:
 	}
 }
 
-func (pvp *processVMProgram) processing() {
-	glog.Infof("eBPFProgram:'%s' start processing processVM event data...", pvp.name)
+func (pvp *processVMProgram) handingeBPFData() {
+	glog.Infof("eBPFProgram:'%s' start handingeBPFData processVM event data...", pvp.name)
 
 	pvp.gatherTimer.Reset(pvp.gatherInterval)
 
@@ -165,19 +166,20 @@ loop:
 	for {
 		select {
 		case <-pvp.stopChan:
-			glog.Warningf("eBPFProgram:'%s' processing processVM event receive stop notify", pvp.name)
+			glog.Warningf("eBPFProgram:'%s' handingeBPFData processVM event receive stop notify", pvp.name)
 			break loop
 		case data, ok := <-pvp.processVMDataEvtChan.C:
 			if ok {
 				comm := internal.CommToString(data.Comm[:])
 				if !pvp.excludeFilter.IsExcludeComm(comm) {
 
-					opStr, _ := strings.CutPrefix(data.EvtType.String(), "XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_")
-					pvp.processVMMapGuard.Lock()
+					pvp.processVMExportGuard.Lock()
 
-					if pvmI, ok := pvp.processVMMap.Get(data.Pid); !ok {
+					opStr, _ := strings.CutPrefix(data.EvtType.String(), "XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_")
+
+					if pvmI, ok := pvp.processVMMap.Get(data.Tgid); !ok {
 						pvm := new(processVM)
-						pvm.pid = data.Pid
+						pvm.pid = data.Tgid
 						switch data.EvtType {
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV:
 							fallthrough
@@ -218,9 +220,9 @@ loop:
 							} else {
 								// 进程不同
 								prevComm := pvm.comm
-								pvp.processVMMap.Remove(data.Pid)
+								pvp.processVMMap.Remove(data.Tgid)
 								pvm := new(processVM)
-								pvm.pid = data.Pid
+								pvm.pid = data.Tgid
 								switch data.EvtType {
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV:
 									fallthrough
@@ -238,21 +240,48 @@ loop:
 							}
 						}
 					}
-
-					pvp.processVMMapGuard.Unlock()
+					pvp.processVMExportGuard.Unlock()
 				}
 			}
 		case <-pvp.gatherTimer.Chan():
-			pvp.processVMMapGuard.Lock()
+			pvp.processVMExportGuard.Lock()
 			pvp.processVMMap.Clear()
 			glog.Infof("eBPFProgram:'%s' clean up all processVMs!", pvp.name)
-			pvp.processVMMapGuard.Unlock()
+			pvp.processVMExportGuard.Unlock()
 			pvp.gatherTimer.Reset(pvp.gatherInterval)
 		}
 	}
 }
 
 func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
+	count := 0
+	maxExportCount := config.ProgramConfig(pvp.name).ObjectCount
+	processVMs := make([]*processVM, pvp.processVMMap.Size())
+
+	pvp.processVMExportGuard.Lock()
+	iter := pvp.processVMMap.Iterator()
+	iter.Begin()
+	for iter.Next() {
+		if pvm, ok := iter.Value().(*processVM); ok {
+			processVMs[count] = pvm
+			count++
+		}
+	}
+	pvp.processVMExportGuard.Unlock()
+
+	// 排序
+	sort.Slice(processVMs, func(i, j int) bool {
+		return (processVMs[i].brkSize + processVMs[i].mmapSize) > (processVMs[j].brkSize + processVMs[j].mmapSize)
+	})
+
+	for i := 0; i < count && i < maxExportCount; i++ {
+		pvm := processVMs[i]
+		glog.Infof("eBPFProgram:'%s' pid:%d, comm:'%s', mmapSize:%d, brkSize:%d",
+			pvp.name, pvm.pid, pvm.comm, pvm.mmapSize, pvm.brkSize)
+	}
+
+	// 释放
+	processVMs = nil
 	return nil
 }
 
