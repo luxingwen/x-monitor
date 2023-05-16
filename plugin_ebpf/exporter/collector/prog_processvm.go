@@ -256,9 +256,10 @@ loop:
 func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 	count := 0
 	maxExportCount := config.ProgramConfig(pvp.name).ObjectCount
-	processVMs := make([]*processVM, pvp.processVMMap.Size())
 
 	pvp.processVMExportGuard.Lock()
+	processVMs := make([]*processVM, pvp.processVMMap.Size())
+
 	iter := pvp.processVMMap.Iterator()
 	iter.Begin()
 	for iter.Next() {
