@@ -29,19 +29,16 @@ import (
 )
 
 type cpuSchedProgRodata struct {
-	FilterScopeType           config.XMInternalResourceType `mapstructure:"filter_scope_type"`   // 过滤的资源类型
-	FilterScopeValue          int                           `mapstructure:"filter_scope_value"`  // 过滤资源的值
-	OffCPUMinDurationMillsecs int                           `mapstructure:"offcpu_min_millsecs"` // offcpu状态的持续时间阈值，毫秒
-	OffCPUMaxDurationMillsecs int                           `mapstructure:"offcpu_max_millsecs"` // offcpu状态的持续时间阈值，毫秒
-	OffCPUTaskType            int                           `mapstructure:"offcpu_task_type"`    // offcpu状态的任务类型
+	config.ProgRodataBase
+	OffCPUMinDurationMillsecs int `mapstructure:"offcpu_min_millsecs"` // offcpu状态的持续时间阈值，毫秒
+	OffCPUMaxDurationMillsecs int `mapstructure:"offcpu_max_millsecs"` // offcpu状态的持续时间阈值，毫秒
+	OffCPUTaskType            int `mapstructure:"offcpu_task_type"`    // offcpu状态的任务类型
 }
 
 type cpuSchedProgram struct {
 	*eBPFBaseProgram
-	roData              *cpuSchedProgRodata
 	gatherInterval      time.Duration
 	metricsUpdateFilter *hashset.Set
-	excludeFilter       *eBPFProgramExclude
 
 	// prometheus metric desc
 	runQueueLatencyDesc *prometheus.Desc
@@ -67,6 +64,10 @@ const (
 	defaultRunQueueLatMapKey   int32 = -1
 )
 
+var (
+	roData cpuSchedProgRodata
+)
+
 var runQueueLayBucketLimits = [20]float64{1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535, 131071, 262143, 524287, 1048575}
 
 func init() {
@@ -79,11 +80,11 @@ func loadToRunCPUSchedEBPFProg(name string, prog *cpuSchedProgram) error {
 	prog.objs = new(bpfmodule.XMCpuScheduleObjects)
 	prog.links, err = attatchToRun(name, prog.objs, bpfmodule.LoadXMCpuSchedule, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_scope_type":            int32(prog.roData.FilterScopeType),
-			"__filter_scope_value":           int64(prog.roData.FilterScopeValue),
-			"__offcpu_min_duration_nanosecs": int64(time.Duration(prog.roData.OffCPUMinDurationMillsecs) * time.Millisecond),
-			"__offcpu_max_duration_nanosecs": int64(time.Duration(prog.roData.OffCPUMaxDurationMillsecs) * time.Millisecond),
-			"__offcpu_task_type":             int8(prog.roData.OffCPUTaskType),
+			"__filter_scope_type":            int32(roData.FilterScopeType),
+			"__filter_scope_value":           int64(roData.FilterScopeValue),
+			"__offcpu_min_duration_nanosecs": int64(time.Duration(roData.OffCPUMinDurationMillsecs) * time.Millisecond),
+			"__offcpu_max_duration_nanosecs": int64(time.Duration(roData.OffCPUMaxDurationMillsecs) * time.Millisecond),
+			"__offcpu_task_type":             int8(roData.OffCPUTaskType),
 		})
 
 		if err != nil {
@@ -117,19 +118,16 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 			stopChan:    make(chan struct{}),
 			gatherTimer: calmutils.NewTimer(),
 		},
-		roData:              new(cpuSchedProgRodata),
-		gatherInterval:      config.ProgramConfig(name).GatherInterval * time.Second,
+		gatherInterval:      config.ProgramConfigByName(name).GatherInterval * time.Second,
 		metricsUpdateFilter: hashset.New(),
-		excludeFilter:       new(eBPFProgramExclude),
 		runQLatencyBuckets:  make(map[float64]uint64, len(runQueueLayBucketLimits)),
 		cpuSchedEvtDataChan: bpfmodule.NewCpuSchedEvtDataChannel(defaultCpuSchedEvtChanSize),
 	}
 
-	mapstructure.Decode(config.ProgramConfig(name).ProgRodata, csProg.roData)
-	mapstructure.Decode(config.ProgramConfig(name).Exclude, csProg.excludeFilter)
-	glog.Infof("eBPFProgram:'%s' roData:%s, exclude:%s", name, litter.Sdump(csProg.roData), litter.Sdump(csProg.excludeFilter))
+	mapstructure.Decode(config.ProgramConfigByName(name).Filter.ProgRodata, &roData)
+	glog.Infof("eBPFProgram:'%s' roData:%s", name, litter.Sdump(roData))
 
-	for _, metricDesc := range config.ProgramConfig(name).Metrics {
+	for _, metricDesc := range config.ProgramConfigByName(name).Metrics {
 		switch metricDesc {
 		case "runq_latency":
 			csProg.runQueueLatencyDesc = prometheus.NewDesc(
@@ -175,10 +173,10 @@ func (csp *cpuSchedProgram) Update(ch chan<- prometheus.Metric) error {
 	ch <- prometheus.MustNewConstHistogram(csp.runQueueLatencyDesc,
 		csp.sampleCount, csp.sampleSum, buckets,
 		func() string {
-			return csp.roData.FilterScopeType.String()
+			return roData.FilterScopeType.String()
 		}(),
 		func() string {
-			return strconv.Itoa(csp.roData.FilterScopeValue)
+			return strconv.Itoa(roData.FilterScopeValue)
 		}(),
 	)
 	csp.guard.Unlock()
@@ -197,12 +195,8 @@ L:
 							strconv.FormatInt(int64(cpuSchedEvtData.Pid), 10),
 							strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
 							internal.CommToString(cpuSchedEvtData.Comm[:]),
-							func() string {
-								return csp.roData.FilterScopeType.String()
-							}(),
-							func() string {
-								return strconv.Itoa(csp.roData.FilterScopeValue)
-							}())
+							roData.FilterScopeType.String(),
+							strconv.Itoa(roData.FilterScopeValue))
 						csp.metricsUpdateFilter.Add(cpuSchedEvtData.Pid)
 					}
 				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HANG {
@@ -210,12 +204,8 @@ L:
 						prometheus.GaugeValue, float64(cpuSchedEvtData.Pid),
 						strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
 						internal.CommToString(cpuSchedEvtData.Comm[:]),
-						func() string {
-							return csp.roData.FilterScopeType.String()
-						}(),
-						func() string {
-							return strconv.Itoa(csp.roData.FilterScopeValue)
-						}())
+						roData.FilterScopeType.String(),
+						strconv.Itoa(roData.FilterScopeValue))
 				}
 			}
 		default:
@@ -282,7 +272,7 @@ loop:
 						if i == 0 {
 							return 0
 						} else {
-							return int(_buckets[i-1]) + 1
+							return int(runQueueLayBucketLimits[i-1]) + 1
 						}
 					}(), int(bucket), slot)
 				}
@@ -318,7 +308,7 @@ loop:
 		}
 
 		comm := internal.CommToString(scEvtData.Comm[:])
-		if !csp.excludeFilter.IsExcludeComm(comm) {
+		if config.ProgramCommFilter(csp.name, comm) {
 			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', offcpu_duration_millsecs:%d",
 				csp.name, scEvtData.Tgid, scEvtData.Pid, comm, scEvtData.OffcpuDurationMillsecs)
 			csp.cpuSchedEvtDataChan.SafeSend(scEvtData, false)

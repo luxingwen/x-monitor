@@ -35,19 +35,6 @@ type eBPFProgramFuncCfg struct {
 	ThresholdTime  time.Duration `mapstructure:"threshold_ms"`
 }
 
-type eBPFProgramExclude struct {
-	Comms []string `mapstructure:"comms"`
-}
-
-func (ebp *eBPFProgramExclude) IsExcludeComm(comm string) bool {
-	for _, c := range ebp.Comms {
-		if c == comm {
-			return true
-		}
-	}
-	return false
-}
-
 type eBPFBaseProgram struct {
 	// module
 	name        string

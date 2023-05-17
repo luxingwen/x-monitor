@@ -90,7 +90,7 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 
 	glog.Infof("eBPFProgram:'%s' start attatchToRun successfully.", name)
 
-	gatherInterval := config.ProgramConfig(csp.name).GatherInterval * time.Second
+	gatherInterval := config.ProgramConfigByName(csp.name).GatherInterval * time.Second
 
 	// Prometheus initialization area
 	csp.hitsDesc = prometheus.NewDesc(
