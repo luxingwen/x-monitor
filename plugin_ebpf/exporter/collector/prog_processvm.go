@@ -10,7 +10,9 @@ package collector
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -37,8 +39,7 @@ const (
 // processVMMProgRodata is used to filter the resources of the specified type
 // and value in the rodata section of the process vmmap
 type processVMMProgRodata struct {
-	FilterScopeType  config.XMInternalResourceType `mapstructure:"filter_scope_type"`  // 过滤的资源类型
-	FilterScopeValue int                           `mapstructure:"filter_scope_value"` // 过滤资源的值
+	config.ProgRodataBase
 }
 
 type processVM struct {
@@ -51,8 +52,6 @@ type processVM struct {
 type processVMProgram struct {
 	*eBPFBaseProgram
 	// self config
-	roData         *processVMMProgRodata
-	excludeFilter  *eBPFProgramExclude
 	gatherInterval time.Duration
 	// ebpf
 	vmmEvtRD *ringbuf.Reader
@@ -62,7 +61,13 @@ type processVMProgram struct {
 	processVMExportGuard sync.Mutex
 	// channel
 	processVMDataEvtChan *bpfmodule.ProcessVMEvtDataChannel
+	// prometheus metric desc
+	addressSpaceExpandDesc *prometheus.Desc
 }
+
+var (
+	pvmRoData processVMMProgRodata
+)
 
 func init() {
 	registerEBPFProgram(processVMMProgName, newProcessVMMProgram)
@@ -74,8 +79,8 @@ func loadToRunProcessVMMProg(name string, prog *processVMProgram) error {
 	prog.objs = new(bpfmodule.XMProcessVMObjects)
 	prog.links, err = attatchToRun(name, prog.objs, bpfmodule.LoadXMProcessVM, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_scope_type":  int32(prog.roData.FilterScopeType),
-			"__filter_scope_value": int64(prog.roData.FilterScopeValue),
+			"__filter_scope_type":  int32(pvmRoData.FilterScopeType),
+			"__filter_scope_value": int64(pvmRoData.FilterScopeValue),
 		})
 
 		if err != nil {
@@ -109,16 +114,25 @@ func newProcessVMMProgram(name string) (eBPFProgram, error) {
 			stopChan:    make(chan struct{}),
 			gatherTimer: calmutils.NewTimer(),
 		},
-		roData:               new(processVMMProgRodata),
-		excludeFilter:        new(eBPFProgramExclude),
-		gatherInterval:       config.ProgramConfig(name).GatherInterval * time.Second,
+		gatherInterval:       config.ProgramConfigByName(name).GatherInterval * time.Second,
 		processVMMap:         treemap.NewWith(utils.Int32Comparator),
 		processVMDataEvtChan: bpfmodule.NewProcessVMEvtDataChannel(defaultProcessVMEvtChanSize),
 	}
 
-	mapstructure.Decode(config.ProgramConfig(name).ProgRodata, prog.roData)
-	mapstructure.Decode(config.ProgramConfig(name).Exclude, prog.excludeFilter)
-	glog.Infof("eBPFProgram:'%s' roData:%s, exclude:%s", name, litter.Sdump(prog.roData), litter.Sdump(prog.excludeFilter))
+	mapstructure.Decode(config.ProgramConfigByName(name).Filter.ProgRodata, &pvmRoData)
+	glog.Infof("eBPFProgram:'%s' roData:%s", name, litter.Sdump(pvmRoData))
+
+	for _, metricDesc := range config.ProgramConfigByName(name).Metrics {
+		switch metricDesc {
+		case "expand_pages":
+			prog.addressSpaceExpandDesc = prometheus.NewDesc(
+				prometheus.BuildFQName("process", "address_space", metricDesc),
+				fmt.Sprintf("Within %d seconds, the process uses mmap or brk to expand the size of private anonymous or shared or heap address spaces, measured in PageSize.",
+					int(prog.gatherInterval/time.Second)),
+				[]string{"tgid", "comm", "call", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
+			)
+		}
+	}
 
 	if err := loadToRunProcessVMMProg(name, prog); err != nil {
 		err = errors.Wrapf(err, "eBPFProgram:'%s' runProcessVMMProgram failed.", name)
@@ -171,7 +185,7 @@ loop:
 		case data, ok := <-pvp.processVMDataEvtChan.C:
 			if ok {
 				comm := internal.CommToString(data.Comm[:])
-				if !pvp.excludeFilter.IsExcludeComm(comm) {
+				if config.ProgramCommFilter(pvp.name, comm) {
 
 					pvp.processVMExportGuard.Lock()
 
@@ -255,7 +269,7 @@ loop:
 
 func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 	count := 0
-	maxExportCount := config.ProgramConfig(pvp.name).ObjectCount
+	maxExportCount := config.ProgramConfigByName(pvp.name).Filter.ObjectCount
 
 	pvp.processVMExportGuard.Lock()
 	processVMs := make([]*processVM, pvp.processVMMap.Size())
@@ -268,7 +282,6 @@ func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 			count++
 		}
 	}
-	pvp.processVMExportGuard.Unlock()
 
 	// 排序
 	sort.Slice(processVMs, func(i, j int) bool {
@@ -277,9 +290,18 @@ func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 
 	for i := 0; i < count && i < maxExportCount; i++ {
 		pvm := processVMs[i]
-		glog.Infof("eBPFProgram:'%s' pid:%d, comm:'%s', mmapSize:%d, brkSize:%d",
-			pvp.name, pvm.pid, pvm.comm, pvm.mmapSize, pvm.brkSize)
+		// glog.Infof("eBPFProgram:'%s' pid:%d, comm:'%s', mmapSize:%d, brkSize:%d",
+		// 	pvp.name, pvm.pid, pvm.comm, pvm.mmapSize, pvm.brkSize)
+		pidStr := strconv.FormatInt(int64(pvm.pid), 10)
+		ch <- prometheus.MustNewConstMetric(pvp.addressSpaceExpandDesc,
+			prometheus.GaugeValue, float64(pvm.mmapSize>>12),
+			pidStr, pvm.comm, "mmap", roData.FilterScopeType.String(), strconv.Itoa(roData.FilterScopeValue))
+		ch <- prometheus.MustNewConstMetric(pvp.addressSpaceExpandDesc,
+			prometheus.GaugeValue, float64(pvm.brkSize>>12),
+			pidStr, pvm.comm, "brk", roData.FilterScopeType.String(), strconv.Itoa(roData.FilterScopeValue))
 	}
+
+	pvp.processVMExportGuard.Unlock()
 
 	// 释放
 	processVMs = nil

@@ -44,18 +44,28 @@ func (v *viperDebugAdapterLog) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-type programConfig struct {
-	Name           string        `mapstructure:"name"`
-	Enabled        bool          `mapstructure:"enabled"`
-	GatherInterval time.Duration `mapstructure:"gather_interval"`
-	ObjectCount    int           `mapstructure:"object_count"`
-	ProgRodata     interface{}   `mapstructure:"prog_rodata"`
-	Metrics        []string      `mapstructure:"metrcs"`
-	Exclude        interface{}   `mapstructure:"exclude"`
+type ProgRodataBase struct {
+	FilterScopeType  XMInternalResourceType `mapstructure:"filter_scope_type"`  // 过滤的资源类型
+	FilterScopeValue int                    `mapstructure:"filter_scope_value"` // 过滤资源的值
+}
+
+type ProgConfigFilter struct {
+	ProgRodata   interface{} `mapstructure:"prog_rodata"`
+	ObjectCount  int         `mapstructure:"object_count"`
+	IncludeComms []string    `mapstructure:"include_comms"`
+	ExcludeComms []string    `mapstructure:"exclude_comms"`
+}
+
+type ProgramConfig struct {
+	Name           string           `mapstructure:"name"`
+	Enabled        bool             `mapstructure:"enabled"`
+	GatherInterval time.Duration    `mapstructure:"gather_interval"`
+	Metrics        []string         `mapstructure:"metrcs"`
+	Filter         ProgConfigFilter `mapstructure:"filter"`
 }
 
 var (
-	programConfigs []*programConfig
+	programConfigs []*ProgramConfig
 	mu             sync.RWMutex
 )
 
@@ -85,7 +95,7 @@ func InitConfig(cfgFile string) error {
 		// update
 		mu.Lock()
 		defer mu.Unlock()
-		var tmpCfgs []*programConfig
+		var tmpCfgs []*ProgramConfig
 		if err := viper.UnmarshalKey("ebpf.programs", &tmpCfgs); err != nil {
 			err = errors.Wrapf(err, "unmarshal key ebpf.programs")
 			glog.Error(err)
@@ -183,7 +193,7 @@ func Enabled(name string) bool {
 	return false
 }
 
-func ProgramConfig(name string) *programConfig {
+func ProgramConfigByName(name string) *ProgramConfig {
 	mu.RLock()
 	defer mu.RUnlock()
 
@@ -193,4 +203,32 @@ func ProgramConfig(name string) *programConfig {
 		}
 	}
 	return nil
+}
+
+// This function filters program communication based on included and excluded communication types
+// specified in the program configuration.
+func ProgramCommFilter(progName, comm string) bool {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if progCfg := ProgramConfigByName(progName); progCfg != nil {
+		// 只要存在include就不会处理exclude
+		if len(progCfg.Filter.IncludeComms) > 0 {
+			for _, includeComm := range progCfg.Filter.IncludeComms {
+				if includeComm == comm {
+					// 保留
+					return true
+				}
+			}
+			return false
+		} else if len(progCfg.Filter.ExcludeComms) > 0 {
+			for _, excludeComm := range progCfg.Filter.ExcludeComms {
+				if excludeComm == comm {
+					return false
+				}
+			}
+			return true
+		}
+	}
+	return false
 }

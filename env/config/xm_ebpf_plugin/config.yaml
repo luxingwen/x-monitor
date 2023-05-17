@@ -15,32 +15,22 @@ eBPF:
     - name: cachestat
       enabled: true
       gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
-    #- name: oomkill
-    #  enabled: false
-    #- name: runqlatency
-    #  enabled: false
-    #  gather_interval: 3
-    #  prog_rodata:
-    #    filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
-    #    filter_scope_value: 0
     - name: cpusched
       enabled: true
       gather_interval: 3 # 单位：秒
-      prog_rodata:
-        filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
-        filter_scope_value: 0
-        offcpu_min_millsecs: 3000 # 单位：毫秒
-        offcpu_max_millsecs: 50000 #
-        offcpu_task_type: 1 # 0: all，1：user，2：kernel
       metrcs:
         - runq_latency
         - offcpu_duration
         - hang_process
-      exclude:
-        comms:
+      filter:
+        prog_rodata:
+          filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
+          filter_scope_value: 0
+          offcpu_min_millsecs: 3000 # 单位：毫秒
+          offcpu_max_millsecs: 50000 #
+          offcpu_task_type: 1 # 0: all，1：user，2：kernel
+        exclude_comms:
           - "NetworkWatcherA"
-          - "x-monitor"
-          - "x-monitor.eBPF"
           - "systemd"
           - "systemd-journal"
           - "systemd-logind"
@@ -48,21 +38,27 @@ eBPF:
           - "systemd-udevd"
           - "auditd"
           - "sshd"
+        include_comms:
     - name: processvm
       enabled: true
       gather_interval: 120 # 单位：秒
-      object_count: 10 # gather_interval时间内虚拟地址扩张最大的进程对象
-      prog_rodata:
-        filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
-        filter_scope_value: 0
-      exclude:
-        comms:
+      metrcs:
+        - expand_pages
+      filter:
+        object_count: 10 # gather_interval时间内虚拟地址扩张最大的进程对象
+        prog_rodata:
+          filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
+          filter_scope_value: 0
+        include_comms:
+          #- "xm_vm_test"
+          #- "x-monitor"
+          #- "x-monitor.eBPF"
+        exclude_comms:
           - "git"
           - "pmcd"
           - "wc"
           - "zsh"
           - "top"
-          - "x-monitor.eBPF"
           - "pmlogger"
           - "tail"
           - "systemd-cgroups"
