@@ -13,6 +13,11 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type XMProcessVMVmShrinkInfo struct {
+	Len  uint64
+	Type uint64
+}
+
 type XMProcessVMXmProcessvmEvtData struct {
 	Pid     int32
 	Tgid    int32
@@ -86,8 +91,7 @@ type XMProcessVMProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProcessVMMapSpecs struct {
-	XmBrkShrinkMap             *ebpf.MapSpec `ebpf:"xm_brk_shrink_map"`
-	XmMmapShrinkMap            *ebpf.MapSpec `ebpf:"xm_mmap_shrink_map"`
+	VmShrinkMap                *ebpf.MapSpec `ebpf:"vm_shrink_map"`
 	XmProcessvmEventRingbufMap *ebpf.MapSpec `ebpf:"xm_processvm_event_ringbuf_map"`
 }
 
@@ -110,15 +114,13 @@ func (o *XMProcessVMObjects) Close() error {
 //
 // It can be passed to LoadXMProcessVMObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProcessVMMaps struct {
-	XmBrkShrinkMap             *ebpf.Map `ebpf:"xm_brk_shrink_map"`
-	XmMmapShrinkMap            *ebpf.Map `ebpf:"xm_mmap_shrink_map"`
+	VmShrinkMap                *ebpf.Map `ebpf:"vm_shrink_map"`
 	XmProcessvmEventRingbufMap *ebpf.Map `ebpf:"xm_processvm_event_ringbuf_map"`
 }
 
 func (m *XMProcessVMMaps) Close() error {
 	return _XMProcessVMClose(
-		m.XmBrkShrinkMap,
-		m.XmMmapShrinkMap,
+		m.VmShrinkMap,
 		m.XmProcessvmEventRingbufMap,
 	)
 }

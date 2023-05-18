@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-25 12:43:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-03-28 18:27:11
+ * @Last Modified time: 2023-05-18 14:34:08
  */
 
 package collector
@@ -60,7 +60,7 @@ type cpuSchedProgram struct {
 }
 
 const (
-	defaultCpuSchedEvtChanSize       = 256
+	defaultCpuSchedEvtChanSize       = (1 << 8)
 	defaultRunQueueLatMapKey   int32 = -1
 )
 

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-04-27 14:10:51
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-04-27 15:21:07
+ * @Last Modified time: 2023-05-18 14:33:24
  */
 
 package collector
@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	defaultProcessVMEvtChanSize = ((1 << 3) << 10)
+	defaultProcessVMEvtChanSize = ((1 << 2) << 10)
 )
 
 // processVMMProgRodata is used to filter the resources of the specified type

@@ -41,6 +41,7 @@ enum xm_cpu_sched_evt_type {
     XM_CS_EVT_TYPE_RUNQLAT,
     XM_CS_EVT_TYPE_OFFCPU,
     XM_CS_EVT_TYPE_HANG,
+    XM_CS_EVT_TYPE_PROCESS_EXIT,
 };
 
 // 结构体成员按字节大小从大到小排列

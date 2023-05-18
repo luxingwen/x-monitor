@@ -263,9 +263,26 @@ __s32 BPF_PROG(xm_btp_sched_process_hang, struct task_struct *ts) {
 SEC("tp_btf/sched_process_exit")
 __s32 BPF_PROG(xm_btp_sched_process_exit, struct task_struct *ts) {
     pid_t pid = ts->pid;
+    pid_t tgid = ts->tgid;
+
+    struct xm_cpu_sched_evt_data *evt = bpf_ringbuf_reserve(
+        &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_evt_data), 0);
+    if (!evt) {
+        bpf_printk("xm_ebpf_exporter reserving ringbuf for pid:%d, tgid:%d "
+                   "failed",
+                   pid, tgid);
+    } else {
+        evt->evt_type = XM_CS_EVT_TYPE_PROCESS_EXIT;
+        evt->pid = pid;
+        evt->tgid = tgid;
+        bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
+        bpf_ringbuf_submit(evt, 0);
+    }
+
     // 如果task被调度处cpu后结束生命周期，从offcpu map中删除
     bpf_map_delete_elem(&xm_cs_offcpu_start_map, &pid);
     bpf_map_delete_elem(&xm_cs_runqlat_start_map, &pid);
+
     return 0;
 }
 
