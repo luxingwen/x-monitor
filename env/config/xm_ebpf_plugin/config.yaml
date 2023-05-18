@@ -50,9 +50,10 @@ eBPF:
           filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
           filter_scope_value: 0
         include_comms:
-          #- "xm_vm_test"
-          #- "x-monitor"
-          #- "x-monitor.eBPF"
+          - "xm_vm_test"
+          - "x-monitor"
+          - "x-monitor.eBPF"
+          - "prometheus"
         exclude_comms:
           - "git"
           - "pmcd"
