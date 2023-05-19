@@ -25,6 +25,7 @@ import (
 	"golang.org/x/sync/singleflight"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/netutil"
 )
 
@@ -134,6 +135,9 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	bind, _ := config.PProfBindAddr()
 	calmutils.InstallPProf(bind)
 
+	//
+	eventcenter.InitDefault()
+
 	// 注册prometheus collectors
 	registerPromCollectors()
 
@@ -170,6 +174,8 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	_apiSrv.Stop()
 
 	_eBPFCollector.Stop()
+
+	eventcenter.StopDefault()
 
 	glog.Info("xm-monitor.eBPF exporter exit!")
 }

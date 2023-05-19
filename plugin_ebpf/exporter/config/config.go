@@ -51,17 +51,17 @@ type ProgRodataBase struct {
 
 type ProgConfigFilter struct {
 	ProgRodata   interface{} `mapstructure:"prog_rodata"`
-	ObjectCount  int         `mapstructure:"object_count"`
 	IncludeComms []string    `mapstructure:"include_comms"`
 	ExcludeComms []string    `mapstructure:"exclude_comms"`
+	ObjectCount  int         `mapstructure:"object_count"`
 }
 
 type ProgramConfig struct {
 	Name           string           `mapstructure:"name"`
-	Enabled        bool             `mapstructure:"enabled"`
-	GatherInterval time.Duration    `mapstructure:"gather_interval"`
 	Metrics        []string         `mapstructure:"metrcs"`
 	Filter         ProgConfigFilter `mapstructure:"filter"`
+	GatherInterval time.Duration    `mapstructure:"gather_interval"`
+	Enabled        bool             `mapstructure:"enabled"`
 }
 
 var (

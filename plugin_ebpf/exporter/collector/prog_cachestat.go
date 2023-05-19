@@ -27,23 +27,18 @@ func init() {
 }
 
 type cacheStateProgram struct {
-	name        string
-	stopChan    chan struct{}
 	wg          conc.WaitGroup
+	stopChan    chan struct{}
 	gatherTimer *calmutils.Timer
-	// prometheus对象
-	hitsDesc   *prometheus.Desc
-	missesDesc *prometheus.Desc
-	ratioDesc  *prometheus.Desc
-
-	// Statistical value
-	hits   atomic.Uint64
-	misses atomic.Uint64
-	ratio  atomic.Float64
-
-	// eBPF对象
-	objs  *bpfmodule.XMCacheStatObjects
-	links []link.Link
+	hitsDesc    *prometheus.Desc
+	missesDesc  *prometheus.Desc
+	ratioDesc   *prometheus.Desc
+	objs        *bpfmodule.XMCacheStatObjects
+	name        string
+	links       []link.Link
+	hits        atomic.Uint64
+	misses      atomic.Uint64
+	ratio       atomic.Float64
 }
 
 func newCacheStatProgram(name string) (eBPFProgram, error) {

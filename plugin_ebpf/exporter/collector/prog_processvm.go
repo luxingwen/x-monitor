@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-04-27 14:10:51
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-05-18 14:33:24
+ * @Last Modified time: 2023-05-18 16:06:40
  */
 
 package collector
@@ -10,12 +10,10 @@ package collector
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"
@@ -30,6 +28,7 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
 )
 
 const (
@@ -43,26 +42,20 @@ type processVMMProgRodata struct {
 }
 
 type processVM struct {
-	pid      int32
 	comm     string
-	brkSize  uint64 // brk扩展的地址空间大小
-	mmapSize uint64 // mmap私有匿名映射 + file映射的空间大小
+	brkSize  uint64
+	mmapSize uint64
+	pid      int32
 }
 
 type processVMProgram struct {
 	*eBPFBaseProgram
-	// self config
-	gatherInterval time.Duration
-	// ebpf
-	vmmEvtRD *ringbuf.Reader
-	objs     *bpfmodule.XMProcessVMObjects
-	// manager
-	processVMMap         *treemap.Map
-	processVMExportGuard sync.Mutex
-	// channel
-	processVMDataEvtChan *bpfmodule.ProcessVMEvtDataChannel
-	// prometheus metric desc
+	vmmEvtRD               *ringbuf.Reader
+	objs                   *bpfmodule.XMProcessVMObjects
+	processVMMap           *treemap.Map
+	processVMDataEvtChan   *bpfmodule.ProcessVMEvtDataChannel
 	addressSpaceExpandDesc *prometheus.Desc
+	processVMMapGuard      sync.Mutex
 }
 
 var (
@@ -114,7 +107,6 @@ func newProcessVMMProgram(name string) (eBPFProgram, error) {
 			stopChan:    make(chan struct{}),
 			gatherTimer: calmutils.NewTimer(),
 		},
-		gatherInterval:       config.ProgramConfigByName(name).GatherInterval * time.Second,
 		processVMMap:         treemap.NewWith(utils.Int32Comparator),
 		processVMDataEvtChan: bpfmodule.NewProcessVMEvtDataChannel(defaultProcessVMEvtChanSize),
 	}
@@ -124,13 +116,11 @@ func newProcessVMMProgram(name string) (eBPFProgram, error) {
 
 	for _, metricDesc := range config.ProgramConfigByName(name).Metrics {
 		switch metricDesc {
-		case "expand_pages":
+		case "privanon_share_pages":
 			prog.addressSpaceExpandDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("process", "address_space", metricDesc),
-				fmt.Sprintf("Within %d seconds, the process uses mmap or brk to expand the size of private anonymous or shared or heap address spaces, measured in PageSize.",
-					int(prog.gatherInterval/time.Second)),
-				[]string{"tgid", "comm", "call", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
-			)
+				"In Life Cycle, The process uses mmap or brk to expand the size of private anonymous or shared or heap address spaces, measured in PageSize.",
+				[]string{"tgid", "comm", "call", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"})
 		}
 	}
 
@@ -174,7 +164,7 @@ loop:
 func (pvp *processVMProgram) handingeBPFData() {
 	glog.Infof("eBPFProgram:'%s' start handingeBPFData processVM event data...", pvp.name)
 
-	pvp.gatherTimer.Reset(pvp.gatherInterval)
+	eBPFEventReadChan := eventcenter.DefInstance.Subscribe(pvp.name, eventcenter.EBPF_EVENT_PROCESS_EXIT)
 
 loop:
 	for {
@@ -182,12 +172,25 @@ loop:
 		case <-pvp.stopChan:
 			glog.Warningf("eBPFProgram:'%s' handingeBPFData processVM event receive stop notify", pvp.name)
 			break loop
+		case eBPFEvtInfo, ok := <-eBPFEventReadChan.C:
+			if ok {
+				switch eBPFEvtInfo.EvtType {
+				case eventcenter.EBPF_EVENT_PROCESS_EXIT:
+					processExitEvt := eBPFEvtInfo.EvtData.(*eventcenter.EBPFEventDataProcessExit)
+					if config.ProgramCommFilter(pvp.name, processExitEvt.Comm) {
+						pvp.processVMMapGuard.Lock()
+						glog.Infof("eBPFProgram:'%s', receive eBPF Event'%s'", pvp.name, litter.Sdump(eBPFEvtInfo))
+						pvp.processVMMap.Remove(processExitEvt.Tgid)
+						pvp.processVMMapGuard.Unlock()
+					}
+				}
+			}
 		case data, ok := <-pvp.processVMDataEvtChan.C:
 			if ok {
 				comm := internal.CommToString(data.Comm[:])
 				if config.ProgramCommFilter(pvp.name, comm) {
 
-					pvp.processVMExportGuard.Lock()
+					pvp.processVMMapGuard.Lock()
 
 					opStr, _ := strings.CutPrefix(data.EvtType.String(), "XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_")
 
@@ -206,7 +209,7 @@ loop:
 						}
 						pvm.comm = comm
 						pvp.processVMMap.Put(pvm.pid, pvm)
-						glog.Infof("eBPFProgram:'%s', count:%d, new comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
+						glog.Infof("eBPFProgram:'%s', count:%d, new comm:'%s', tgid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
 							pvp.name, pvp.processVMMap.Size(), pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len)
 					} else {
 						if pvm, ok := pvmI.(*processVM); ok {
@@ -229,7 +232,7 @@ loop:
 										pvm.mmapSize -= data.Len
 									}
 								}
-								glog.Infof("eBPFProgram:'%s', count:%d, comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
+								glog.Infof("eBPFProgram:'%s', count:%d, comm:'%s', tgid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
 									pvp.name, pvp.processVMMap.Size(), pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len)
 							} else {
 								// 进程不同
@@ -249,20 +252,14 @@ loop:
 								}
 								pvm.comm = comm
 								pvp.processVMMap.Put(pvm.pid, pvm)
-								glog.Infof("eBPFProgram:'%s', count:%d, change prev:'%s', comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
+								glog.Infof("eBPFProgram:'%s', count:%d, change prev:'%s', comm:'%s', tgid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
 									pvp.name, pvp.processVMMap.Size(), prevComm, pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len)
 							}
 						}
 					}
-					pvp.processVMExportGuard.Unlock()
+					pvp.processVMMapGuard.Unlock()
 				}
 			}
-		case <-pvp.gatherTimer.Chan():
-			pvp.processVMExportGuard.Lock()
-			pvp.processVMMap.Clear()
-			glog.Infof("eBPFProgram:'%s' clean up all processVMs!", pvp.name)
-			pvp.processVMExportGuard.Unlock()
-			pvp.gatherTimer.Reset(pvp.gatherInterval)
 		}
 	}
 }
@@ -271,7 +268,7 @@ func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 	count := 0
 	maxExportCount := config.ProgramConfigByName(pvp.name).Filter.ObjectCount
 
-	pvp.processVMExportGuard.Lock()
+	pvp.processVMMapGuard.Lock()
 	processVMs := make([]*processVM, pvp.processVMMap.Size())
 
 	iter := pvp.processVMMap.Iterator()
@@ -301,7 +298,7 @@ func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 			pidStr, pvm.comm, "brk", roData.FilterScopeType.String(), strconv.Itoa(roData.FilterScopeValue))
 	}
 
-	pvp.processVMExportGuard.Unlock()
+	pvp.processVMMapGuard.Unlock()
 
 	// 释放
 	processVMs = nil

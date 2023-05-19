@@ -12,13 +12,13 @@ func _() {
 	_ = x[EBPF_EVENT_PROCESS_EXIT-1]
 }
 
-const _eBPFEventType_name = "EBPF_EVENT_NONEEBPF_EVENT_PROCESS_EXIT"
+const _EBPFEventType_name = "EBPF_EVENT_NONEEBPF_EVENT_PROCESS_EXIT"
 
-var _eBPFEventType_index = [...]uint8{0, 15, 38}
+var _EBPFEventType_index = [...]uint8{0, 15, 38}
 
 func (i EBPFEventType) String() string {
-	if i >= EBPFEventType(len(_eBPFEventType_index)-1) {
+	if i >= EBPFEventType(len(_EBPFEventType_index)-1) {
 		return "EBPFEventType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _eBPFEventType_name[_eBPFEventType_index[i]:_eBPFEventType_index[i+1]]
+	return _EBPFEventType_name[_EBPFEventType_index[i]:_EBPFEventType_index[i+1]]
 }
