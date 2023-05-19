@@ -26,6 +26,7 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
 )
 
 type cpuSchedProgRodata struct {
@@ -36,27 +37,19 @@ type cpuSchedProgRodata struct {
 }
 
 type cpuSchedProgram struct {
-	*eBPFBaseProgram
-	gatherInterval      time.Duration
+	scEvtRD             *ringbuf.Reader
+	cpuSchedEvtDataChan *bpfmodule.CpuSchedEvtDataChannel
 	metricsUpdateFilter *hashset.Set
-
-	// prometheus metric desc
 	runQueueLatencyDesc *prometheus.Desc
 	offCPUDurationDesc  *prometheus.Desc
 	hangProcessDesc     *prometheus.Desc
-
+	*eBPFBaseProgram
+	objs               *bpfmodule.XMCpuScheduleObjects
+	runQLatencyBuckets map[float64]uint64
 	sampleCount        uint64
 	sampleSum          float64
-	runQLatencyBuckets map[float64]uint64
+	gatherInterval     time.Duration
 	guard              sync.Mutex
-	// ebpf ringbuf map fd
-	scEvtRD *ringbuf.Reader
-
-	// eBPF对象
-	objs *bpfmodule.XMCpuScheduleObjects
-
-	// cpu sched evt data channel
-	cpuSchedEvtDataChan *bpfmodule.CpuSchedEvtDataChannel
 }
 
 const (
@@ -206,6 +199,15 @@ L:
 						internal.CommToString(cpuSchedEvtData.Comm[:]),
 						roData.FilterScopeType.String(),
 						strconv.Itoa(roData.FilterScopeValue))
+				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_PROCESS_EXIT {
+					evtInfo := new(eventcenter.EBPFEventInfo)
+					evtInfo.EvtType = eventcenter.EBPF_EVENT_PROCESS_EXIT
+					evtInfo.EvtData = &eventcenter.EBPFEventDataProcessExit{
+						Pid:  cpuSchedEvtData.Pid,
+						Tgid: cpuSchedEvtData.Tgid,
+						Comm: internal.CommToString(cpuSchedEvtData.Comm[:]),
+					}
+					eventcenter.DefInstance.Publish(csp.name, evtInfo)
 				}
 			}
 		default:

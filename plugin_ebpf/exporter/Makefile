@@ -9,7 +9,7 @@ VersionMinor ?= 0
 WORKDIR=$(shell pwd)
 ADDX=$(shell sh -c chmod +x ./hack/*)
 PACKAGES=`go list ./... | grep -v /vendor/`
-GOFILES=$(shell find . -name "*.go" -type f -not -path "./vendor/*")
+GOFILES=$(shell find . -name "*.go" -type f -not -path "./vendor/*" -not -path "./collector/bpfmodule/*")
 
 GOARCH ?= $(shell go env GOARCH)
 GOOS ?= $(shell go env GOOS)
@@ -32,6 +32,10 @@ build:
 
 test:
 	go test --race -v ./...
+
+fieldalignment:
+	#go vet -vettool=$(which fieldalignment) ./...
+	fieldalignment -fix -json ./...
 
 fmt:
 	gofmt -s -w $(GOFILES)

@@ -39,11 +39,17 @@ eBPF:
           - "auditd"
           - "sshd"
         include_comms:
+          - "xm_vm_test"
+          - "x-monitor"
+          - "x-monitor.eBPF"
+          - "prometheus"
+          - "top"
+          - "pmlogger"
+          - "systemd-cgroups"
     - name: processvm
       enabled: true
-      gather_interval: 120 # 单位：秒
       metrcs:
-        - expand_pages
+        - privanon_share_pages
       filter:
         object_count: 10 # gather_interval时间内虚拟地址扩张最大的进程对象
         prog_rodata:
@@ -54,15 +60,15 @@ eBPF:
           - "x-monitor"
           - "x-monitor.eBPF"
           - "prometheus"
+          - "top"
+          - "pmlogger"
+          - "systemd-cgroups"
         exclude_comms:
           - "git"
           - "pmcd"
           - "wc"
           - "zsh"
-          - "top"
-          - "pmlogger"
           - "tail"
-          - "systemd-cgroups"
           - "dmsetup"
           - "sadc"
           - "grep"

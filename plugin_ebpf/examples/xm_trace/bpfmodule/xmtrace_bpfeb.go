@@ -65,8 +65,8 @@ type XMTraceSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMTraceProgramSpecs struct {
-	XmTraceBtfTpSysEnter *ebpf.ProgramSpec `ebpf:"xm_trace_btf_tp__sys_enter"`
-	XmTraceBtfTpSysExit  *ebpf.ProgramSpec `ebpf:"xm_trace_btf_tp__sys_exit"`
+	XmTraceTpBtfSysEnter *ebpf.ProgramSpec `ebpf:"xm_trace_tp_btf__sys_enter"`
+	XmTraceTpBtfSysExit  *ebpf.ProgramSpec `ebpf:"xm_trace_tp_btf__sys_exit"`
 }
 
 // XMTraceMapSpecs contains maps before they are loaded into the kernel.
@@ -117,14 +117,14 @@ func (m *XMTraceMaps) Close() error {
 //
 // It can be passed to LoadXMTraceObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMTracePrograms struct {
-	XmTraceBtfTpSysEnter *ebpf.Program `ebpf:"xm_trace_btf_tp__sys_enter"`
-	XmTraceBtfTpSysExit  *ebpf.Program `ebpf:"xm_trace_btf_tp__sys_exit"`
+	XmTraceTpBtfSysEnter *ebpf.Program `ebpf:"xm_trace_tp_btf__sys_enter"`
+	XmTraceTpBtfSysExit  *ebpf.Program `ebpf:"xm_trace_tp_btf__sys_exit"`
 }
 
 func (p *XMTracePrograms) Close() error {
 	return _XMTraceClose(
-		p.XmTraceBtfTpSysEnter,
-		p.XmTraceBtfTpSysExit,
+		p.XmTraceTpBtfSysEnter,
+		p.XmTraceTpBtfSysExit,
 	)
 }
 
