@@ -12,6 +12,8 @@
 #include "xm_bpf_helpers_maps.h"
 #include "../bpf_and_user.h"
 
+// extern int LINUX_KERNEL_VERSION __kconfig;
+
 // __s64 xm_cs_total = 0; /* mark_page_accessed() - number of
 // mark_buffer_dirty() */
 // __s64 xm_cs_misses = 0; /* add_to_page_cache_lru() - number of
@@ -42,14 +44,16 @@ __s32 BPF_KPROBE(xm_kp_cs_mpa) {
     return 0;
 }
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 15, 0))
 SEC("kprobe/folio_account_dirtied")
 __s32 BPF_KPROBE(xm_kp_cs_fad) {
     __u64 ip = PT_REGS_IP(ctx);
     __xm_bpf_map_increment(&xm_page_cache_ops_count, &ip, 1);
     return 0;
 }
-#else
+
+// 这个函数在Linux 5.0版本中被移除了2。取而代之的是account_page_dirtied_in_file函数3。
+// 所以，如果你的内核版本是5.0或更高，你就不能使用account_page_dirtied函数了。
+// 需要在加载是进行判断
 SEC("kprobe/account_page_dirtied")
 __s32 BPF_KPROBE(xm_kp_cs_apd) {
     __u64 ip = PT_REGS_IP(ctx);
@@ -57,7 +61,6 @@ __s32 BPF_KPROBE(xm_kp_cs_apd) {
     //__sync_fetch_and_add(&xm_cs_misses, -1);
     return 0;
 }
-#endif
 
 SEC("kprobe/mark_buffer_dirty")
 __s32 BPF_KPROBE(xm_kp_cs_mbd) {
@@ -75,3 +78,4 @@ __s32 BPF_KPROBE(xm_kp_cs_mbd) {
 }
 
 char _license[] SEC("license") = "GPL";
+//__u32 _version SEC("version") = LINUX_VERSION_CODE;

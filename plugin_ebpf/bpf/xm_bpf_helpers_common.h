@@ -193,21 +193,30 @@ __xm_get_task_dflcgrp_assoc_kernfs(struct task_struct *task) {
  * task: The task whose cgroup id we want to get.
  * subsys_id: The id of the cgroup subsystem whose cgroup id we want to get.
  */
+
+union kernfs_node_id___old {
+    struct {
+        u32 ino;
+        u32 generation;
+    };
+    u64 id;
+} __attribute__((preserve_access_index));
 struct kernfs_node___418 {
     union {
         u64 id;
         struct {
-            union kernfs_node_id id;
+            union kernfs_node_id___old id;
         } rh_kabi_hidden_172;
         union {};
     };
 } __attribute__((preserve_access_index));
 
 struct kernfs_node___54x {
-    union kernfs_node_id id;
+    union kernfs_node_id___old id;
 } __attribute__((preserve_access_index));
 
-struct kernfs_node___60x {
+struct kernfs_node___514x {
+    //
     u64 id;
 } __attribute__((preserve_access_index));
 
@@ -217,17 +226,26 @@ static __u64 __xm_get_task_cgid_by_subsys(struct task_struct *task,
     struct cgroup_subsys_state *cg_ss;
     struct cgroup *cg;
     struct kernfs_node___418 *kn;
+    __u64 id = 0;
+    __s32 err = 0;
 
     css = READ_KERN(task->cgroups);
     cg_ss = READ_KERN(css->subsys[subsys_id]);
     cg = READ_KERN(cg_ss->cgroup);
     kn = (struct kernfs_node___418 *)READ_KERN(cg->kn);
-    if (bpf_core_field_exists(kn->id)) {
-        return READ_KERN(kn->id);
-    } else if (bpf_core_field_exists(((struct kernfs_node___54x *)kn)->id)) {
-        return BPF_CORE_READ((struct kernfs_node___54x *)kn, id.id);
-    } else if (bpf_core_field_exists(((struct kernfs_node___60x *)kn)->id)) {
-        return READ_KERN(kn->id);
+    if (bpf_core_type_exists(union kernfs_node_id___old)) {
+        err = bpf_core_read(&id, sizeof(__u64), &kn->id);
+        if (0 == err) {
+            return id;
+        } else {
+            if (bpf_core_field_exists(((struct kernfs_node___54x *)kn)->id)) {
+                return BPF_CORE_READ((struct kernfs_node___54x *)kn, id.id);
+            }
+        }
+    } else {
+        if (bpf_core_field_exists(((struct kernfs_node___514x *)kn)->id)) {
+            return READ_KERN(kn->id);
+        }
     }
     return 0;
 }
