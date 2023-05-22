@@ -66,6 +66,7 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 
 			switch bpfProg.Type() {
 			case ebpf.Kprobe:
+				// todo: 要判断progSpec.AttachTo这个是否在/proc/kallsyms存在，不然就是一个非法的绑定
 				linkKP, err := link.Kprobe(progSpec.AttachTo, bpfProg, nil)
 				if err == nil {
 					links = append(links, linkKP)

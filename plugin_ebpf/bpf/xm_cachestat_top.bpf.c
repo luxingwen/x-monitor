@@ -9,8 +9,6 @@
 #include "xm_bpf_helpers_common.h"
 #include "../bpf_and_user.h"
 
-// #if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 14))
-
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, CACHE_STATE_MAX_SIZE);

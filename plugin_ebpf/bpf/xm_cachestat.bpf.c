@@ -22,6 +22,9 @@
 
 BPF_HASH(xm_page_cache_ops_count, __u64, __u64, 4);
 
+#define PRINT_MACRO(x) #x "=" __stringify(x)
+#pragma message(PRINT_MACRO(LINUX_VERSION_CODE))
+
 SEC("kprobe/add_to_page_cache_lru")
 __s32 BPF_KPROBE(xm_kp_cs_atpcl) {
     __u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
@@ -78,4 +81,3 @@ __s32 BPF_KPROBE(xm_kp_cs_mbd) {
 }
 
 char _license[] SEC("license") = "GPL";
-//__u32 _version SEC("version") = LINUX_VERSION_CODE;
