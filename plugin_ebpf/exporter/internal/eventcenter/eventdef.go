@@ -19,7 +19,7 @@ type EBPFEventInfo struct {
 	EvtType EBPFEventType
 }
 
-type EBPFEventDataProcessExit struct {
+type EBPFEventProcessExit struct {
 	Comm string
 	Pid  int32
 	Tgid int32

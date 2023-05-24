@@ -38,7 +38,6 @@ eBPF:
           - "top"
           - "pmlogger"
           - "irqbalance"
-          - "sshd"
           - "systemd-journal"
     - name: processvm
       enabled: true
@@ -57,6 +56,5 @@ eBPF:
           - "top"
           - "pmlogger"
           - "irqbalance"
-          - "sshd"
           - "systemd-journal"
         exclude_comms:

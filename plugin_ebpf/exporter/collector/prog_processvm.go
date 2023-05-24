@@ -43,8 +43,8 @@ type processVMMProgRodata struct {
 
 type processVM struct {
 	comm     string
-	brkSize  uint64
-	mmapSize uint64
+	brkSize  int64
+	mmapSize int64
 	pid      int32
 }
 
@@ -176,7 +176,7 @@ loop:
 			if ok {
 				switch eBPFEvtInfo.EvtType {
 				case eventcenter.EBPF_EVENT_PROCESS_EXIT:
-					processExitEvt := eBPFEvtInfo.EvtData.(*eventcenter.EBPFEventDataProcessExit)
+					processExitEvt := eBPFEvtInfo.EvtData.(*eventcenter.EBPFEventProcessExit)
 					if config.ProgramCommFilter(pvp.name, processExitEvt.Comm) {
 						pvp.processVMMapGuard.Lock()
 						glog.Infof("eBPFProgram:'%s', receive eBPF Event'%s'", pvp.name, litter.Sdump(eBPFEvtInfo))
@@ -203,9 +203,9 @@ loop:
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED:
 							fallthrough
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_OTHER:
-							pvm.mmapSize = data.Len
+							pvm.mmapSize = (int64)(data.Len)
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK:
-							pvm.brkSize = data.Len
+							pvm.brkSize = (int64)(data.Len)
 						}
 						pvm.comm = comm
 						pvp.processVMMap.Put(pvm.pid, pvm)
@@ -220,17 +220,13 @@ loop:
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED:
 									fallthrough
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_OTHER:
-									pvm.mmapSize += data.Len
+									pvm.mmapSize += (int64)(data.Len)
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK:
-									pvm.brkSize += data.Len
+									pvm.brkSize += (int64)(data.Len)
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK_SHRINK:
-									if pvm.brkSize >= data.Len {
-										pvm.brkSize -= data.Len
-									}
+									pvm.brkSize -= (int64)(data.Len)
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MUNMAP:
-									if pvm.mmapSize >= data.Len {
-										pvm.mmapSize -= data.Len
-									}
+									pvm.mmapSize -= (int64)(data.Len)
 								}
 								glog.Infof("eBPFProgram:'%s', count:%d, comm:'%s', tgid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
 									pvp.name, pvp.processVMMap.Size(), pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len)
@@ -246,9 +242,9 @@ loop:
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED:
 									fallthrough
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_OTHER:
-									pvm.mmapSize = data.Len
+									pvm.mmapSize = (int64)(data.Len)
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK:
-									pvm.brkSize = data.Len
+									pvm.brkSize = (int64)(data.Len)
 								}
 								pvm.comm = comm
 								pvp.processVMMap.Put(pvm.pid, pvm)

@@ -70,7 +70,7 @@ func InitDefault() (EBPFEventCenterInterface, error) {
 		ec.eventPublishChan = NewEBPFEventInfoChannel(defaultPublishChanSize)
 		ec.stopCh = make(chan struct{})
 
-		ec.wg.Go(ec.PumpEvent)
+		ec.wg.Go(ec.DispatchEvent)
 
 		DefInstance = ec
 		glog.Info("eBPFEventCenter has been initialized.")
@@ -140,7 +140,7 @@ func (ec *EBPFEventCenter) Publish(progName string, evtInfo *EBPFEventInfo) erro
 	return nil
 }
 
-func (ec *EBPFEventCenter) PumpEvent() {
+func (ec *EBPFEventCenter) DispatchEvent() {
 	glog.Infof("eBPFEventCenter start Pump events now....")
 
 loop:

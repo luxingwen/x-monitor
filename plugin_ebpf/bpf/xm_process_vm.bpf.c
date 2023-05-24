@@ -30,12 +30,12 @@ struct {
 } xm_processvm_event_ringbuf_map SEC(".maps");
 
 //**如果type是__u32，整个结构会有空洞，如果不memset，加载器会报错，导致加载失败
-struct vm_shrink_info {
+struct vm_op_info {
     __u64 len;
     __u64 type;
 };
 
-BPF_HASH(vm_shrink_map, __u32, struct vm_shrink_info, 4096);
+BPF_HASH(vm_op_map, __u32, struct vm_op_info, 4096);
 
 static __s32 __filter_check(struct task_struct *ts) {
     pid_t tgid = READ_KERN(ts->tgid);
@@ -79,11 +79,24 @@ static void __insert_processvm_alloc_event(struct task_struct *ts,
     return;
 }
 
+SEC("kretprobe/vma_merge")
+__s32 BPF_KRETPROBE(xm_process_vma_merge_ret, struct vm_area_struct *vma) {
+    // 如果返回值vma不为空，表示合并成功，vma进行了扩展
+    return 0;
+}
+
+SEC("kretprobe/vm_area_alloc")
+__s32 kretprobe(xm_process_vma_area_alloc_ret, struct vm_area_struct *vma) {
+    // 如果返回值vma不为空，表示重新分配了一个vma
+    return 0;
+}
+
 SEC("kprobe/do_mmap")
 __s32 xm_process_do_mmap(struct pt_regs *ctx) {
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
 
     if (0 == __filter_check(ts)) {
+        struct file *file = (struct file *)PT_REGS_PARM1(ctx);
         __u64 alloc_vm_len = (__u64)PT_REGS_PARM3(ctx);
         // 表示映射区域的保护权限，可以是PROT_NONE、PROT_READ、PROT_WRITE、PROT_EXEC，或它们的组合
         // __u64 prot = (__u64)PT_REGS_PARM4(ctx);
@@ -157,11 +170,11 @@ __s32 xm_process_sys_enter_brk(struct trace_event_raw_sys_enter *ctx) {
             //            tid, new_brk, orig_brk);
             // kernel会调用__do_munmap，用线程id作为标识
             // !!map的数据类型必须完全对应，否则报错
-            struct vm_shrink_info vsi = {
+            struct vm_op_info vsi = {
                 .len = 0,
                 .type = (__u64)XM_PROCESSVM_EVT_TYPE_BRK_SHRINK,
             };
-            bpf_map_update_elem(&vm_shrink_map, &tid, &vsi, BPF_ANY);
+            bpf_map_update_elem(&vm_op_map, &tid, &vsi, BPF_ANY);
         }
     }
     return 0;
@@ -175,20 +188,20 @@ __s32 xm_process_do_munmap(struct pt_regs *ctx) {
         // 第三个参数堆释放的长度
         __u32 tid = __xm_get_tid();
         __u64 len = (__u64)PT_REGS_PARM3_CORE(ctx);
-        struct vm_shrink_info *vsi = bpf_map_lookup_elem(&vm_shrink_map, &tid);
+        struct vm_op_info *vsi = bpf_map_lookup_elem(&vm_op_map, &tid);
         if (vsi) {
             // bpf_printk("xm_ebpf_exporter xm_process_do_munmap tid:%d, "
             //            "new_brk:0x%p, len:%lu",
             //            tid, *res, len);
-            // bpf_map_update_elem(&vm_shrink_map, &tid, &len, BPF_EXIST);
+            // bpf_map_update_elem(&vm_op_map, &tid, &len, BPF_EXIST);
             __sync_fetch_and_add(&(vsi->len), len);
         } else {
-            struct vm_shrink_info temp = {
+            struct vm_op_info temp = {
                 .len = len,
                 .type = (__u64)XM_PROCESSVM_EVT_TYPE_MUNMAP,
             };
             // __builtin_memset(&temp, 0, sizeof(temp));
-            bpf_map_update_elem(&vm_shrink_map, &tid, &temp, BPF_NOEXIST);
+            bpf_map_update_elem(&vm_op_map, &tid, &temp, BPF_NOEXIST);
         }
     }
 
@@ -196,15 +209,14 @@ __s32 xm_process_do_munmap(struct pt_regs *ctx) {
 }
 
 SEC("kretprobe/__do_munmap")
-__s32 BPF_KRETPROBE(xm_process_do_mummap_exit, __s32 ret) {
+__s32 BPF_KRETPROBE(xm_process_do_mummap_ret, __s32 ret) {
     __u32 tid = __xm_get_tid();
     if (ret >= 0) {
         // 地址空间释放成功
         struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
 
         if (0 == __filter_check(ts)) {
-            struct vm_shrink_info *vsi =
-                bpf_map_lookup_elem(&vm_shrink_map, &tid);
+            struct vm_op_info *vsi = bpf_map_lookup_elem(&vm_op_map, &tid);
             if (vsi) {
                 // 释放的是堆空间
                 __insert_processvm_alloc_event(
@@ -212,7 +224,7 @@ __s32 BPF_KRETPROBE(xm_process_do_mummap_exit, __s32 ret) {
             }
         }
     }
-    bpf_map_delete_elem(&vm_shrink_map, &tid);
+    bpf_map_delete_elem(&vm_op_map, &tid);
     // if (0 != bpf_map_delete_elem(&xm_mmap_shrink_map, &tid)) {
     //     bpf_map_delete_elem(&xm_brk_shrink_map, &tid);
     // }

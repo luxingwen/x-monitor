@@ -202,7 +202,7 @@ L:
 				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_PROCESS_EXIT {
 					evtInfo := new(eventcenter.EBPFEventInfo)
 					evtInfo.EvtType = eventcenter.EBPF_EVENT_PROCESS_EXIT
-					evtInfo.EvtData = &eventcenter.EBPFEventDataProcessExit{
+					evtInfo.EvtData = &eventcenter.EBPFEventProcessExit{
 						Pid:  cpuSchedEvtData.Pid,
 						Tgid: cpuSchedEvtData.Tgid,
 						Comm: internal.CommToString(cpuSchedEvtData.Comm[:]),

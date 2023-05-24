@@ -325,6 +325,8 @@ github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df h1:OviZH7qLw/7Zo
 github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df/go.mod h1:JP3t17pCcGlemwknint6hfoeCVQrEMVwxRLRjXpq+BU=
 github.com/wubo0067/calmwu-go v0.0.0-20230112091944-9f98808d8cb4 h1:E2th02lgoBzpPoA1ktbq2b0E/NcgaOJvcUrvGPxPGr4=
 github.com/wubo0067/calmwu-go v0.0.0-20230112091944-9f98808d8cb4/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20230524070634-31efe1b00452 h1:tYZZSH6xSWZ4djidv1opfCSMxgaLoQVdJpd8aiJIEjI=
+github.com/wubo0067/calmwu-go v0.0.0-20230524070634-31efe1b00452/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
