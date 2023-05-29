@@ -23,12 +23,12 @@ static const struct option __opts[] = {
 };
 
 static void mmap_anonymous_test() {
-    debug("start mmap_anonymous_test...");
     // allocate memory using anonymous mmap
     size_t mmap_size = MMAP_SIZE(2);
 
-    sleep(10);
+    sleep(15);
 
+    debug("start mmap_anonymous_test...");
     char *mapped = (char *)mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
                                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (mapped == MAP_FAILED) {
@@ -41,15 +41,15 @@ static void mmap_anonymous_test() {
     debug("mmap_anonymous_test mmap %lu bytes and write data to mapped region: "
           "%p",
           mmap_size, mapped);
-    sleep(10);
+    sleep(15);
 
     // unmap the memory
     if (munmap(mapped, mmap_size) == -1) {
         perror("munmap");
         exit(EXIT_FAILURE);
     }
-    debug("mmap_anonymous_test anonymous buf: %p", mapped);
-    sleep(10);
+    debug("mmap_anonymous_test munmap anonymous buf:%p", mapped);
+    sleep(15);
     debug("stop mmap_anonymous_test...");
 }
 

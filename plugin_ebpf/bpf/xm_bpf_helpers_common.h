@@ -14,6 +14,14 @@
 #define MAX_THREAD_COUNT 10240
 #define TASK_RUNNING 0
 
+#define PAGE_SIZE 4096
+#define PAGE_MASK (~(PAGE_SIZE - 1))
+#define PAGE_ALIGN(x) ((x + PAGE_SIZE - 1) & PAGE_MASK)
+
+#define MAX_ERRNO 4095
+#define IS_ERR_VALUE(x) \
+    ((unsigned long)(void *)(x) >= (unsigned long)-MAX_ERRNO)
+
 #ifndef memcpy
 #define memcpy(dest, src, n) __builtin_memcpy((dest), (src), (n))
 #endif

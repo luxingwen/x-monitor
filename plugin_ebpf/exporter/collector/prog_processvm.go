@@ -33,6 +33,7 @@ import (
 
 const (
 	defaultProcessVMEvtChanSize = ((1 << 2) << 10)
+	pageShift                   = 12
 )
 
 // processVMMProgRodata is used to filter the resources of the specified type
@@ -180,7 +181,7 @@ loop:
 					if config.ProgramCommFilter(pvp.name, processExitEvt.Comm) {
 						pvp.processVMMapGuard.Lock()
 						glog.Infof("eBPFProgram:'%s', receive eBPF Event'%s'", pvp.name, litter.Sdump(eBPFEvtInfo))
-						pvp.processVMMap.Remove(processExitEvt.Tgid)
+						pvp.processVMMap.Remove(processExitEvt.Pid)
 						pvp.processVMMapGuard.Unlock()
 					}
 				}
@@ -194,15 +195,13 @@ loop:
 
 					opStr, _ := strings.CutPrefix(data.EvtType.String(), "XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_")
 
-					if pvmI, ok := pvp.processVMMap.Get(data.Tgid); !ok {
+					if pvmI, ok := pvp.processVMMap.Get(data.Pid); !ok {
 						pvm := new(processVM)
-						pvm.pid = data.Tgid
+						pvm.pid = data.Pid
 						switch data.EvtType {
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV:
 							fallthrough
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED:
-							fallthrough
-						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_OTHER:
 							pvm.mmapSize = (int64)(data.Len)
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK:
 							pvm.brkSize = (int64)(data.Len)
@@ -218,8 +217,6 @@ loop:
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV:
 									fallthrough
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED:
-									fallthrough
-								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_OTHER:
 									pvm.mmapSize += (int64)(data.Len)
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK:
 									pvm.brkSize += (int64)(data.Len)
@@ -233,15 +230,13 @@ loop:
 							} else {
 								// 进程不同
 								prevComm := pvm.comm
-								pvp.processVMMap.Remove(data.Tgid)
+								pvp.processVMMap.Remove(data.Pid)
 								pvm := new(processVM)
-								pvm.pid = data.Tgid
+								pvm.pid = data.Pid
 								switch data.EvtType {
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV:
 									fallthrough
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED:
-									fallthrough
-								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_OTHER:
 									pvm.mmapSize = (int64)(data.Len)
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK:
 									pvm.brkSize = (int64)(data.Len)
@@ -287,10 +282,10 @@ func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 		// 	pvp.name, pvm.pid, pvm.comm, pvm.mmapSize, pvm.brkSize)
 		pidStr := strconv.FormatInt(int64(pvm.pid), 10)
 		ch <- prometheus.MustNewConstMetric(pvp.addressSpaceExpandDesc,
-			prometheus.GaugeValue, float64(pvm.mmapSize>>12),
+			prometheus.GaugeValue, float64(pvm.mmapSize>>pageShift),
 			pidStr, pvm.comm, "mmap", roData.FilterScopeType.String(), strconv.Itoa(roData.FilterScopeValue))
 		ch <- prometheus.MustNewConstMetric(pvp.addressSpaceExpandDesc,
-			prometheus.GaugeValue, float64(pvm.brkSize>>12),
+			prometheus.GaugeValue, float64(pvm.brkSize>>pageShift),
 			pidStr, pvm.comm, "brk", roData.FilterScopeType.String(), strconv.Itoa(roData.FilterScopeValue))
 	}
 

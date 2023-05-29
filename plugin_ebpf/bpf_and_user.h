@@ -93,17 +93,18 @@ enum xm_processvm_evt_type {
     XM_PROCESSVM_EVT_TYPE_NONE = 0,
     XM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV,
     XM_PROCESSVM_EVT_TYPE_MMAP_SHARED,
-    XM_PROCESSVM_EVT_TYPE_MMAP_OTHER,
     XM_PROCESSVM_EVT_TYPE_BRK,
     XM_PROCESSVM_EVT_TYPE_BRK_SHRINK,
     XM_PROCESSVM_EVT_TYPE_MUNMAP,
+    XM_PROCESSVM_EVT_TYPE_MAX,
 };
 
 struct xm_processvm_evt_data {
-    pid_t pid; // 线程id
-    pid_t tgid; // 进程id
+    pid_t tid; // 线程id
+    pid_t pid; // 进程id
     char comm[TASK_COMM_LEN];
     enum xm_processvm_evt_type evt_type;
+    __u64 addr;
     __u64 len;
     //__u64 start_addr;
 };

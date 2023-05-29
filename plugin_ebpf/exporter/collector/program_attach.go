@@ -15,6 +15,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
+	calmutils "github.com/wubo0067/calmwu-go/utils"
 )
 
 // AttachObjPrograms attaches the eBPF programs described by progSpecs to the
@@ -66,18 +67,37 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 
 			switch bpfProg.Type() {
 			case ebpf.Kprobe:
-				// todo: 要判断progSpec.AttachTo这个是否在/proc/kallsyms存在，不然就是一个非法的绑定
-
-				linkKP, err := link.Kprobe(progSpec.AttachTo, bpfProg, nil)
-				if err == nil {
-					links = append(links, linkKP)
-					glog.Infof("ObjProgs:'%s' field name:'%s', attach kprobe program:'%s' ===> target:'%s' successed.",
-						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
+				// **要判断progSpec.AttachTo这个是否在/proc/kallsyms存在，不然就是一个非法的绑定
+				if calmutils.KsymNameExists(progSpec.AttachTo) {
+					// **kretprobe也是这个类型，要通过sec的name来进行判断。tmd！！！
+					if strings.HasPrefix(progSpec.SectionName, "kprobe") {
+						linkKP, err := link.Kprobe(progSpec.AttachTo, bpfProg, nil)
+						if err == nil {
+							links = append(links, linkKP)
+							glog.Infof("ObjProgs:'%s' field name:'%s', attach kprobe program:'%s' ===> target:'%s' successed.",
+								objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
+						} else {
+							err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach kprobe program:'%s' ===> target:'%s' failed.",
+								objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
+							glog.Error(err.Error())
+							return nil, err
+						}
+					} else if strings.HasPrefix(progSpec.SectionName, "kretprobe") {
+						linkKetP, err := link.Kretprobe(progSpec.AttachTo, bpfProg, nil)
+						if err == nil {
+							links = append(links, linkKetP)
+							glog.Infof("ObjProgs:'%s' field name:'%s', attach kretprobe program:'%s' ===> target:'%s' successed.",
+								objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
+						} else {
+							err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach kretprobe program:'%s' ===> target:'%s' failed.",
+								objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
+							glog.Error(err.Error())
+							return nil, err
+						}
+					}
 				} else {
-					err := errors.Wrapf(err, "ObjProgs:'%s' field name:'%s', attach kprobe program:'%s' ===> target:'%s' failed.",
+					glog.Warningf("ObjProgs:'%s' field name:'%s', attach to ksym:'%s' not in /proc/kallsyms.",
 						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
-					glog.Error(err.Error())
-					return nil, err
 				}
 			case ebpf.RawTracepoint:
 				linkRawTP, err := link.AttachRawTracepoint(link.RawTracepointOptions{

@@ -11,15 +11,15 @@ func _() {
 	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_NONE-0]
 	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV-1]
 	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED-2]
-	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_OTHER-3]
-	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK-4]
-	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK_SHRINK-5]
-	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MUNMAP-6]
+	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK-3]
+	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK_SHRINK-4]
+	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MUNMAP-5]
+	_ = x[XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MAX-6]
 }
 
-const _XMProcessVMXmProcessvmEvtType_name = "XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_NONEXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIVXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHAREDXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_OTHERXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRKXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK_SHRINKXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MUNMAP"
+const _XMProcessVMXmProcessvmEvtType_name = "XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_NONEXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIVXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHAREDXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRKXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK_SHRINKXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MUNMAPXMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MAX"
 
-var _XMProcessVMXmProcessvmEvtType_index = [...]uint16{0, 55, 120, 182, 243, 297, 358, 415}
+var _XMProcessVMXmProcessvmEvtType_index = [...]uint16{0, 55, 120, 182, 236, 297, 354, 408}
 
 func (i XMProcessVMXmProcessvmEvtType) String() string {
 	if i >= XMProcessVMXmProcessvmEvtType(len(_XMProcessVMXmProcessvmEvtType_index)-1) {

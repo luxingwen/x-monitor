@@ -13,7 +13,7 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
 	github.com/vishvananda/netlink v1.1.0
-	github.com/wubo0067/calmwu-go v0.0.0-20230524070634-31efe1b00452
+	github.com/wubo0067/calmwu-go v0.0.0-20230528135736-c52f5f96db8e
 	go.uber.org/automaxprocs v1.5.1
 )
 

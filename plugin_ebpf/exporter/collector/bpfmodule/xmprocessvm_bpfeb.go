@@ -13,18 +13,22 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type XMProcessVMVmShrinkInfo struct {
+type XMProcessVMVmOpInfo struct {
+	Type XMProcessVMXmProcessvmEvtType
+	_    [4]byte
+	Addr uint64
 	Len  uint64
-	Type uint64
 }
 
 type XMProcessVMXmProcessvmEvtData struct {
-	Pid     int32
-	Tgid    int32
-	Comm    [16]int8
-	EvtType XMProcessVMXmProcessvmEvtType
-	_       [4]byte
-	Len     uint64
+	Tid          int32
+	Pid          int32
+	Comm         [16]int8
+	EvtType      XMProcessVMXmProcessvmEvtType
+	_            [4]byte
+	Addr         uint64
+	Len          uint64
+	VmaStartAddr uint64
 }
 
 type XMProcessVMXmProcessvmEvtType uint32
@@ -33,10 +37,10 @@ const (
 	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_NONE           XMProcessVMXmProcessvmEvtType = 0
 	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV XMProcessVMXmProcessvmEvtType = 1
 	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED    XMProcessVMXmProcessvmEvtType = 2
-	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_OTHER     XMProcessVMXmProcessvmEvtType = 3
-	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK            XMProcessVMXmProcessvmEvtType = 4
-	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK_SHRINK     XMProcessVMXmProcessvmEvtType = 5
-	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MUNMAP         XMProcessVMXmProcessvmEvtType = 6
+	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK            XMProcessVMXmProcessvmEvtType = 3
+	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK_SHRINK     XMProcessVMXmProcessvmEvtType = 4
+	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MUNMAP         XMProcessVMXmProcessvmEvtType = 5
+	XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MAX            XMProcessVMXmProcessvmEvtType = 6
 )
 
 // LoadXMProcessVM returns the embedded CollectionSpec for XMProcessVM.
@@ -80,18 +84,17 @@ type XMProcessVMSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProcessVMProgramSpecs struct {
-	XmProcessDoBrkFlags   *ebpf.ProgramSpec `ebpf:"xm_process_do_brk_flags"`
-	XmProcessDoMmap       *ebpf.ProgramSpec `ebpf:"xm_process_do_mmap"`
-	XmProcessDoMummapExit *ebpf.ProgramSpec `ebpf:"xm_process_do_mummap_exit"`
-	XmProcessDoMunmap     *ebpf.ProgramSpec `ebpf:"xm_process_do_munmap"`
-	XmProcessSysEnterBrk  *ebpf.ProgramSpec `ebpf:"xm_process_sys_enter_brk"`
+	KprobeXmDoMmap           *ebpf.ProgramSpec `ebpf:"kprobe__xm_do_mmap"`
+	KprobeXmMmapRegion       *ebpf.ProgramSpec `ebpf:"kprobe__xm_mmap_region"`
+	KprobeXmVmaMerge         *ebpf.ProgramSpec `ebpf:"kprobe__xm_vma_merge"`
+	KretprobeXmKsysMmapPgoff *ebpf.ProgramSpec `ebpf:"kretprobe__xm_ksys_mmap_pgoff"`
 }
 
 // XMProcessVMMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProcessVMMapSpecs struct {
-	VmShrinkMap                *ebpf.MapSpec `ebpf:"vm_shrink_map"`
+	VmOpMap                    *ebpf.MapSpec `ebpf:"vm_op_map"`
 	XmProcessvmEventRingbufMap *ebpf.MapSpec `ebpf:"xm_processvm_event_ringbuf_map"`
 }
 
@@ -114,13 +117,13 @@ func (o *XMProcessVMObjects) Close() error {
 //
 // It can be passed to LoadXMProcessVMObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProcessVMMaps struct {
-	VmShrinkMap                *ebpf.Map `ebpf:"vm_shrink_map"`
+	VmOpMap                    *ebpf.Map `ebpf:"vm_op_map"`
 	XmProcessvmEventRingbufMap *ebpf.Map `ebpf:"xm_processvm_event_ringbuf_map"`
 }
 
 func (m *XMProcessVMMaps) Close() error {
 	return _XMProcessVMClose(
-		m.VmShrinkMap,
+		m.VmOpMap,
 		m.XmProcessvmEventRingbufMap,
 	)
 }
@@ -129,20 +132,18 @@ func (m *XMProcessVMMaps) Close() error {
 //
 // It can be passed to LoadXMProcessVMObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProcessVMPrograms struct {
-	XmProcessDoBrkFlags   *ebpf.Program `ebpf:"xm_process_do_brk_flags"`
-	XmProcessDoMmap       *ebpf.Program `ebpf:"xm_process_do_mmap"`
-	XmProcessDoMummapExit *ebpf.Program `ebpf:"xm_process_do_mummap_exit"`
-	XmProcessDoMunmap     *ebpf.Program `ebpf:"xm_process_do_munmap"`
-	XmProcessSysEnterBrk  *ebpf.Program `ebpf:"xm_process_sys_enter_brk"`
+	KprobeXmDoMmap           *ebpf.Program `ebpf:"kprobe__xm_do_mmap"`
+	KprobeXmMmapRegion       *ebpf.Program `ebpf:"kprobe__xm_mmap_region"`
+	KprobeXmVmaMerge         *ebpf.Program `ebpf:"kprobe__xm_vma_merge"`
+	KretprobeXmKsysMmapPgoff *ebpf.Program `ebpf:"kretprobe__xm_ksys_mmap_pgoff"`
 }
 
 func (p *XMProcessVMPrograms) Close() error {
 	return _XMProcessVMClose(
-		p.XmProcessDoBrkFlags,
-		p.XmProcessDoMmap,
-		p.XmProcessDoMummapExit,
-		p.XmProcessDoMunmap,
-		p.XmProcessSysEnterBrk,
+		p.KprobeXmDoMmap,
+		p.KprobeXmMmapRegion,
+		p.KprobeXmVmaMerge,
+		p.KretprobeXmKsysMmapPgoff,
 	)
 }
 
