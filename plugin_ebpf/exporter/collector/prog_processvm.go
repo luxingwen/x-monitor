@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/emirpasic/gods/maps/treemap"
+	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/emirpasic/gods/utils"
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
@@ -43,10 +44,11 @@ type processVMMProgRodata struct {
 }
 
 type processVM struct {
-	comm     string
-	brkSize  int64
-	mmapSize int64
-	pid      int32
+	comm        string
+	brkSize     int64
+	mmapSize    int64
+	pid         int32
+	mmapAddrSet *hashset.Set
 }
 
 type processVMProgram struct {
@@ -54,7 +56,7 @@ type processVMProgram struct {
 	vmmEvtRD               *ringbuf.Reader
 	objs                   *bpfmodule.XMProcessVMObjects
 	processVMMap           *treemap.Map
-	processVMDataEvtChan   *bpfmodule.ProcessVMEvtDataChannel
+	processVMEvtDataChan   *bpfmodule.ProcessVMEvtDataChannel
 	addressSpaceExpandDesc *prometheus.Desc
 	processVMMapGuard      sync.Mutex
 }
@@ -109,7 +111,7 @@ func newProcessVMMProgram(name string) (eBPFProgram, error) {
 			gatherTimer: calmutils.NewTimer(),
 		},
 		processVMMap:         treemap.NewWith(utils.Int32Comparator),
-		processVMDataEvtChan: bpfmodule.NewProcessVMEvtDataChannel(defaultProcessVMEvtChanSize),
+		processVMEvtDataChan: bpfmodule.NewProcessVMEvtDataChannel(defaultProcessVMEvtChanSize),
 	}
 
 	mapstructure.Decode(config.ProgramConfigByName(name).Filter.ProgRodata, &pvmRoData)
@@ -121,7 +123,7 @@ func newProcessVMMProgram(name string) (eBPFProgram, error) {
 			prog.addressSpaceExpandDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("process", "address_space", metricDesc),
 				"In Life Cycle, The process uses mmap or brk to expand the size of private anonymous or shared or heap address spaces, measured in PageSize.",
-				[]string{"tgid", "comm", "call", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"})
+				[]string{"pid", "comm", "call", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"})
 		}
 	}
 
@@ -158,7 +160,7 @@ loop:
 			continue
 		}
 
-		pvp.processVMDataEvtChan.SafeSend(processVMMEvtData, false)
+		pvp.processVMEvtDataChan.SafeSend(processVMMEvtData, false)
 	}
 }
 
@@ -186,7 +188,7 @@ loop:
 					}
 				}
 			}
-		case data, ok := <-pvp.processVMDataEvtChan.C:
+		case data, ok := <-pvp.processVMEvtDataChan.C:
 			if ok {
 				comm := internal.CommToString(data.Comm[:])
 				if config.ProgramCommFilter(pvp.name, comm) {
@@ -198,17 +200,21 @@ loop:
 					if pvmI, ok := pvp.processVMMap.Get(data.Pid); !ok {
 						pvm := new(processVM)
 						pvm.pid = data.Pid
+						pvm.comm = comm
+						pvm.mmapAddrSet = hashset.New()
+
 						switch data.EvtType {
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV:
 							fallthrough
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED:
 							pvm.mmapSize = (int64)(data.Len)
+							// 将地址加入set
+							pvm.mmapAddrSet.Add(data.Addr)
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK:
 							pvm.brkSize = (int64)(data.Len)
 						}
-						pvm.comm = comm
 						pvp.processVMMap.Put(pvm.pid, pvm)
-						glog.Infof("eBPFProgram:'%s', count:%d, new comm:'%s', tgid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
+						glog.Infof("eBPFProgram:'%s', count:%d, new comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
 							pvp.name, pvp.processVMMap.Size(), pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len)
 					} else {
 						if pvm, ok := pvmI.(*processVM); ok {
@@ -217,15 +223,21 @@ loop:
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV:
 									fallthrough
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED:
+									pvm.mmapAddrSet.Add(data.Addr)
 									pvm.mmapSize += (int64)(data.Len)
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK:
 									pvm.brkSize += (int64)(data.Len)
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK_SHRINK:
 									pvm.brkSize -= (int64)(data.Len)
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MUNMAP:
-									pvm.mmapSize -= (int64)(data.Len)
+									if ok := pvm.mmapAddrSet.Contains(data.Addr); ok {
+										pvm.mmapAddrSet.Remove(data.Addr)
+										pvm.mmapSize -= (int64)(data.Len)
+										glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d munmap addr:%x, len:%d", pvp.name, pvm.comm, pvm.pid,
+											data.Addr, data.Len)
+									}
 								}
-								glog.Infof("eBPFProgram:'%s', count:%d, comm:'%s', tgid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
+								glog.Infof("eBPFProgram:'%s', count:%d, comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
 									pvp.name, pvp.processVMMap.Size(), pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len)
 							} else {
 								// 进程不同
@@ -233,17 +245,19 @@ loop:
 								pvp.processVMMap.Remove(data.Pid)
 								pvm := new(processVM)
 								pvm.pid = data.Pid
+								pvm.comm = comm
+								pvm.mmapAddrSet = hashset.New()
 								switch data.EvtType {
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV:
 									fallthrough
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED:
 									pvm.mmapSize = (int64)(data.Len)
+									pvm.mmapAddrSet.Add(data.Addr)
 								case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK:
 									pvm.brkSize = (int64)(data.Len)
 								}
-								pvm.comm = comm
 								pvp.processVMMap.Put(pvm.pid, pvm)
-								glog.Infof("eBPFProgram:'%s', count:%d, change prev:'%s', comm:'%s', tgid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
+								glog.Infof("eBPFProgram:'%s', count:%d, change prev:'%s', comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
 									pvp.name, pvp.processVMMap.Size(), prevComm, pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len)
 							}
 						}
@@ -308,7 +322,7 @@ func (pvp *processVMProgram) Stop() {
 		pvp.objs = nil
 	}
 
-	pvp.processVMDataEvtChan.SafeClose()
+	pvp.processVMEvtDataChan.SafeClose()
 	glog.Infof("eBPFProgram:'%s' stopped", pvp.name)
 }
 

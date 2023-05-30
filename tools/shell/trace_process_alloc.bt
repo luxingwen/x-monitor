@@ -8,28 +8,38 @@ BEGIN
 
 // 追踪应用进程的虚拟内存分配
 /*
-kprobe:do_mmap {
-    @count++;
-    printf("do_mmap addr:%08x, len:%lu, port:%08x\n", arg1, arg2, arg3);
-    printf("do_mmap, %d\n%s%s\n", @count, kstack(perf), ustack(perf));
-}
-
 kprobe:do_brk_flags {
     @count++;
     printf("do_brk_flags addr:%08x, len:%lu, flag:%08x\n", arg0, arg1, arg2);
     printf("do_brk_flags, %d\n%s%s\n", @count, kstack(perf), ustack(perf));
 }
-*/
 
-kprobe:__x64_sys_brk /comm == "vmm_test"/ {
+
+kprobe:__x64_sys_brk /comm == "xm_vm_test"/ {
     printf("__x64_sys_brk comm:'%s', brk:%lu\n", comm, arg0);
     printf("__x64_sys_brk, %s%s\n", kstack(perf), ustack(perf));
 }
 
-//kprobe:do_syscall_64 /comm == "vmm_test"/ {
-//    printf("do_syscall_64 comm:'%s', nr:%lu, reg(di):%lu, reg(bp):%lu, reg(sp):%lu, reg(cx):%lu, reg(r8):%lu\n", comm, arg0, reg("di"), reg("bp"), reg("sp"), reg("cx"), reg("r8"));
-//}
 
-tracepoint:syscalls:sys_enter_brk /comm == "vmm_test"/ {
+kprobe:do_syscall_64 /comm == "xm_vm_test"/ {
+    printf("do_syscall_64 comm:'%s', nr:%lu, reg(di):%lu, reg(bp):%lu, reg(sp):%lu, reg(cx):%lu, reg(r8):%lu\n", comm, arg0, reg("di"), reg("bp"), reg("sp"), reg("cx"), reg("r8"));
+}
+
+tracepoint:syscalls:sys_enter_brk /comm == "xm_vm_test"/ {
     printf("sys_enter_brk brk:%lu\n", args->brk);
+}
+
+
+kprobe:vma_merge /comm == "xm_vm_test"/ {
+    printf("kprobe__vma_merge, %s%s\n", kstack(perf), ustack(perf));
+}
+*/
+
+kprobe:do_mmap /comm == "xm_vm_test" / {
+    printf("kprobe__xm_do_mmap pid:%d, addr:%lx, len:%lu, flags:%x\n", pid, arg1, arg2, arg4);
+    printf("do_mmap, %s%s\n", kstack(perf), ustack(perf));
+}
+
+kretprobe:do_mmap /comm == "xm_vm_test"/ {
+    printf("kretprobe__xm_do_mmap pid:%d return %lx\n", pid, retval);
 }

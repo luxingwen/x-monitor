@@ -21,14 +21,13 @@ type XMProcessVMVmOpInfo struct {
 }
 
 type XMProcessVMXmProcessvmEvtData struct {
-	Tid          int32
-	Pid          int32
-	Comm         [16]int8
-	EvtType      XMProcessVMXmProcessvmEvtType
-	_            [4]byte
-	Addr         uint64
-	Len          uint64
-	VmaStartAddr uint64
+	Tid     int32
+	Pid     int32
+	Comm    [16]int8
+	EvtType XMProcessVMXmProcessvmEvtType
+	_       [4]byte
+	Addr    uint64
+	Len     uint64
 }
 
 type XMProcessVMXmProcessvmEvtType uint32
@@ -84,17 +83,21 @@ type XMProcessVMSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProcessVMProgramSpecs struct {
-	KprobeXmDoMmap           *ebpf.ProgramSpec `ebpf:"kprobe__xm_do_mmap"`
-	KprobeXmMmapRegion       *ebpf.ProgramSpec `ebpf:"kprobe__xm_mmap_region"`
-	KprobeXmVmaMerge         *ebpf.ProgramSpec `ebpf:"kprobe__xm_vma_merge"`
-	KretprobeXmKsysMmapPgoff *ebpf.ProgramSpec `ebpf:"kretprobe__xm_ksys_mmap_pgoff"`
+	KprobeXmDoMunmap        *ebpf.ProgramSpec `ebpf:"kprobe__xm___do_munmap"`
+	KprobeXmDoBrkFlags      *ebpf.ProgramSpec `ebpf:"kprobe__xm_do_brk_flags"`
+	KprobeXmDoMmap          *ebpf.ProgramSpec `ebpf:"kprobe__xm_do_mmap"`
+	KprobeXmMmapRegion      *ebpf.ProgramSpec `ebpf:"kprobe__xm_mmap_region"`
+	KretprobeXmDoMunmap     *ebpf.ProgramSpec `ebpf:"kretprobe__xm___do_munmap"`
+	KretprobeXmDoBrkFlags   *ebpf.ProgramSpec `ebpf:"kretprobe__xm_do_brk_flags"`
+	KretprobeXmDoMmap       *ebpf.ProgramSpec `ebpf:"kretprobe__xm_do_mmap"`
+	TracepointXmSysEnterBrk *ebpf.ProgramSpec `ebpf:"tracepoint_xm_sys_enter_brk"`
 }
 
 // XMProcessVMMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProcessVMMapSpecs struct {
-	VmOpMap                    *ebpf.MapSpec `ebpf:"vm_op_map"`
+	HashmapXmVmOp              *ebpf.MapSpec `ebpf:"hashmap_xm_vm_op"`
 	XmProcessvmEventRingbufMap *ebpf.MapSpec `ebpf:"xm_processvm_event_ringbuf_map"`
 }
 
@@ -117,13 +120,13 @@ func (o *XMProcessVMObjects) Close() error {
 //
 // It can be passed to LoadXMProcessVMObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProcessVMMaps struct {
-	VmOpMap                    *ebpf.Map `ebpf:"vm_op_map"`
+	HashmapXmVmOp              *ebpf.Map `ebpf:"hashmap_xm_vm_op"`
 	XmProcessvmEventRingbufMap *ebpf.Map `ebpf:"xm_processvm_event_ringbuf_map"`
 }
 
 func (m *XMProcessVMMaps) Close() error {
 	return _XMProcessVMClose(
-		m.VmOpMap,
+		m.HashmapXmVmOp,
 		m.XmProcessvmEventRingbufMap,
 	)
 }
@@ -132,18 +135,26 @@ func (m *XMProcessVMMaps) Close() error {
 //
 // It can be passed to LoadXMProcessVMObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProcessVMPrograms struct {
-	KprobeXmDoMmap           *ebpf.Program `ebpf:"kprobe__xm_do_mmap"`
-	KprobeXmMmapRegion       *ebpf.Program `ebpf:"kprobe__xm_mmap_region"`
-	KprobeXmVmaMerge         *ebpf.Program `ebpf:"kprobe__xm_vma_merge"`
-	KretprobeXmKsysMmapPgoff *ebpf.Program `ebpf:"kretprobe__xm_ksys_mmap_pgoff"`
+	KprobeXmDoMunmap        *ebpf.Program `ebpf:"kprobe__xm___do_munmap"`
+	KprobeXmDoBrkFlags      *ebpf.Program `ebpf:"kprobe__xm_do_brk_flags"`
+	KprobeXmDoMmap          *ebpf.Program `ebpf:"kprobe__xm_do_mmap"`
+	KprobeXmMmapRegion      *ebpf.Program `ebpf:"kprobe__xm_mmap_region"`
+	KretprobeXmDoMunmap     *ebpf.Program `ebpf:"kretprobe__xm___do_munmap"`
+	KretprobeXmDoBrkFlags   *ebpf.Program `ebpf:"kretprobe__xm_do_brk_flags"`
+	KretprobeXmDoMmap       *ebpf.Program `ebpf:"kretprobe__xm_do_mmap"`
+	TracepointXmSysEnterBrk *ebpf.Program `ebpf:"tracepoint_xm_sys_enter_brk"`
 }
 
 func (p *XMProcessVMPrograms) Close() error {
 	return _XMProcessVMClose(
+		p.KprobeXmDoMunmap,
+		p.KprobeXmDoBrkFlags,
 		p.KprobeXmDoMmap,
 		p.KprobeXmMmapRegion,
-		p.KprobeXmVmaMerge,
-		p.KretprobeXmKsysMmapPgoff,
+		p.KretprobeXmDoMunmap,
+		p.KretprobeXmDoBrkFlags,
+		p.KretprobeXmDoMmap,
+		p.TracepointXmSysEnterBrk,
 	)
 }
 

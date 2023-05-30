@@ -56,6 +56,7 @@ type XMCacheStatSpecs struct {
 type XMCacheStatProgramSpecs struct {
 	XmKpCsApd   *ebpf.ProgramSpec `ebpf:"xm_kp_cs_apd"`
 	XmKpCsAtpcl *ebpf.ProgramSpec `ebpf:"xm_kp_cs_atpcl"`
+	XmKpCsFad   *ebpf.ProgramSpec `ebpf:"xm_kp_cs_fad"`
 	XmKpCsMbd   *ebpf.ProgramSpec `ebpf:"xm_kp_cs_mbd"`
 	XmKpCsMpa   *ebpf.ProgramSpec `ebpf:"xm_kp_cs_mpa"`
 }
@@ -101,6 +102,7 @@ func (m *XMCacheStatMaps) Close() error {
 type XMCacheStatPrograms struct {
 	XmKpCsApd   *ebpf.Program `ebpf:"xm_kp_cs_apd"`
 	XmKpCsAtpcl *ebpf.Program `ebpf:"xm_kp_cs_atpcl"`
+	XmKpCsFad   *ebpf.Program `ebpf:"xm_kp_cs_fad"`
 	XmKpCsMbd   *ebpf.Program `ebpf:"xm_kp_cs_mbd"`
 	XmKpCsMpa   *ebpf.Program `ebpf:"xm_kp_cs_mpa"`
 }
@@ -109,6 +111,7 @@ func (p *XMCacheStatPrograms) Close() error {
 	return _XMCacheStatClose(
 		p.XmKpCsApd,
 		p.XmKpCsAtpcl,
+		p.XmKpCsFad,
 		p.XmKpCsMbd,
 		p.XmKpCsMpa,
 	)

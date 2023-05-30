@@ -459,9 +459,12 @@ func main() {
 		}
 
 		// float64(syscallEvt.DelayNs)/float64(time.Millisecond)
-		glog.Infof("pid:%d, tid:%d, (%f ms) syscall_nr:%d = %d",
+		glog.Infof("pid:%d, tid:%d, (%f ms) syscall_nr:%d(%s) = %d",
 			syscallEvt.Pid, syscallEvt.Tid, float64(syscallEvt.CallDelayNs)/float64(time.Millisecond),
-			syscallEvt.SyscallNr, syscallEvt.SyscallRet)
+			syscallEvt.SyscallNr, func() string {
+				syscallStr, _ := calmutils.ConvertSysCallNR2Str_X86_64(int(syscallEvt.SyscallNr))
+				return syscallStr
+			}(), syscallEvt.SyscallRet)
 
 		var stackAddrs [_perf_max_stack_depth]uint64
 

@@ -97,7 +97,7 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 					}
 				} else {
 					glog.Warningf("ObjProgs:'%s' field name:'%s', attach to ksym:'%s' not in /proc/kallsyms.",
-						objProgsT.Name(), objProgsField.Name, ebpfProgName, progSpec.AttachTo)
+						objProgsT.Name(), objProgsField.Name, progSpec.AttachTo)
 				}
 			case ebpf.RawTracepoint:
 				linkRawTP, err := link.AttachRawTracepoint(link.RawTracepointOptions{
