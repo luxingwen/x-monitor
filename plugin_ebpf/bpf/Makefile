@@ -20,7 +20,7 @@ INCLUDES := -I$(abspath $(OUTPUT)) \
 			-I$(abspath ../../extra/include) \
 			-I$(abspath ../../extra/libbpf/libbpf_repo/include/uapi)
 
-CFLAGS := -g -Wall
+CFLAGS := -g -Wall -O2
 
 ARCH := $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's/ppc64le/powerpc/' | sed 's/mips.*/mips/')
 
@@ -64,7 +64,7 @@ all: $(BPF_KERN_OBJS) skels
 
 $(BPF_KERN_OBJS): $(OUTPUT)/%.bpf.o: $(OUTPUT)/vmlinux.h $(LIBBPF_OBJ) %.bpf.c
 	$(call msg,BPF,$@)
-	$(Q)$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.bpf.c,$^) -o $@
+	$(Q)$(CLANG) $(CFLAGS) -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.bpf.c,$^) -o $@
 	$(Q)$(LLVM_STRIP) -g $@ # strip useless DWARF info
 
 
@@ -89,7 +89,7 @@ $(LIBBPF_OBJ): $(wildcard $(LIBBPF_SRC)/*.[ch] $(LIBBPF_SRC)/Makefile)
 	$(call msg,LIB,$@)
 	$(Q)$(MAKE) $(submake_extras) -C $(LIBBPF_SRC) BUILD_STATIC_ONLY=1  \
 									OBJDIR=$(dir $@) DESTDIR=	\
-									INCLUDEDIR=$(abspath ../../extra/include) LIBDIR=$(abspath ../../extra/libs) UAPIDIR=	    \
+									INCLUDEDIR=$(abspath ../../extra/include) LIBDIR=$(abspath ../../extra/libs) UAPIDIR= \
 									install
 
 $(OUTPUT):

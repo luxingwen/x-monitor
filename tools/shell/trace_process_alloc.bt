@@ -33,7 +33,6 @@ tracepoint:syscalls:sys_enter_brk /comm == "xm_vm_test"/ {
 kprobe:vma_merge /comm == "xm_vm_test"/ {
     printf("kprobe__vma_merge, %s%s\n", kstack(perf), ustack(perf));
 }
-*/
 
 kprobe:do_mmap /comm == "xm_vm_test" / {
     printf("kprobe__xm_do_mmap pid:%d, addr:%lx, len:%lu, flags:%x\n", pid, arg1, arg2, arg4);
@@ -42,4 +41,10 @@ kprobe:do_mmap /comm == "xm_vm_test" / {
 
 kretprobe:do_mmap /comm == "xm_vm_test"/ {
     printf("kretprobe__xm_do_mmap pid:%d return %lx\n", pid, retval);
+}
+*/
+
+kprobe:__do_munmap /comm == "x-monitor.eBPF"/ {
+    time("%H:%M:%S\n");
+    printf("__do_munmap, pid:%d, start:%lx, len:%lu, %s%s\n", pid, arg1, arg2, kstack(perf), ustack(perf));
 }

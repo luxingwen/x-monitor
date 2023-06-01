@@ -214,8 +214,8 @@ loop:
 							pvm.brkSize = (int64)(data.Len)
 						}
 						pvp.processVMMap.Put(pvm.pid, pvm)
-						glog.Infof("eBPFProgram:'%s', count:%d, new comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
-							pvp.name, pvp.processVMMap.Size(), pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len)
+						glog.Infof("eBPFProgram:'%s', count:%d, new comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes, addr:%x in VM",
+							pvp.name, pvp.processVMMap.Size(), pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len, data.Addr)
 					} else {
 						if pvm, ok := pvmI.(*processVM); ok {
 							if pvm.comm == comm {
@@ -235,10 +235,19 @@ loop:
 										pvm.mmapSize -= (int64)(data.Len)
 										glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d munmap addr:%x, len:%d", pvp.name, pvm.comm, pvm.pid,
 											data.Addr, data.Len)
+									} else {
+										glog.Warningf("eBPFProgram:'%s' comm:'%s', pid:%d munmap addr:%x, len:%d not in mmapAddrSet", pvp.name, pvm.comm, pvm.pid,
+											data.Addr, data.Len)
+										prevAddr := data.Addr - data.Len
+										if ok := pvm.mmapAddrSet.Contains(prevAddr); ok {
+											pvm.mmapSize -= (int64)(data.Len)
+											glog.Warningf("eBPFProgram:'%s' pid:%d munmap addr offset forward by %d bytes, the prevAddr:%x in mmapAddrSet",
+												pvp.name, pvm.pid, data.Len, prevAddr)
+										}
 									}
 								}
-								glog.Infof("eBPFProgram:'%s', count:%d, comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
-									pvp.name, pvp.processVMMap.Size(), pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len)
+								glog.Infof("eBPFProgram:'%s', count:%d, comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes, addr:%x in VM",
+									pvp.name, pvp.processVMMap.Size(), pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len, data.Addr)
 							} else {
 								// 进程不同
 								prevComm := pvm.comm
@@ -257,8 +266,8 @@ loop:
 									pvm.brkSize = (int64)(data.Len)
 								}
 								pvp.processVMMap.Put(pvm.pid, pvm)
-								glog.Infof("eBPFProgram:'%s', count:%d, change prev:'%s', comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes in VM",
-									pvp.name, pvp.processVMMap.Size(), prevComm, pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len)
+								glog.Infof("eBPFProgram:'%s', count:%d, change prev:'%s', comm:'%s', pid:%d, mmapSize:%d, brkSize:%d, '%s':%d bytes, addr:%x in VM",
+									pvp.name, pvp.processVMMap.Size(), prevComm, pvm.comm, pvm.pid, pvm.mmapSize, pvm.brkSize, opStr, data.Len, data.Addr)
 							}
 						}
 					}

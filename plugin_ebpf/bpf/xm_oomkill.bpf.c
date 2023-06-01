@@ -35,7 +35,8 @@ struct {
 } xm_oomkill SEC(".maps");
 
 SEC("tp/oom/mark_victim")
-__s32 BPF_PROG(xm_oom_mark_victim, struct trace_event_raw_mark_victim *evt) {
+__s32 BPF_PROG(tracepoint__xm_oom_mark_victim,
+               struct trace_event_raw_mark_victim *evt) {
     struct oomkill_info info = {};
     __u8 val = 0;
 
