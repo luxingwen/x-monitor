@@ -77,11 +77,11 @@ type XMCpuScheduleSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMCpuScheduleProgramSpecs struct {
-	XmBtpSchedProcessExit *ebpf.ProgramSpec `ebpf:"xm_btp_sched_process_exit"`
-	XmBtpSchedProcessHang *ebpf.ProgramSpec `ebpf:"xm_btp_sched_process_hang"`
-	XmBtpSchedSwitch      *ebpf.ProgramSpec `ebpf:"xm_btp_sched_switch"`
-	XmBtpSchedWakeup      *ebpf.ProgramSpec `ebpf:"xm_btp_sched_wakeup"`
-	XmBtpSchedWakeupNew   *ebpf.ProgramSpec `ebpf:"xm_btp_sched_wakeup_new"`
+	BtfTracepointXmSchedProcessExit *ebpf.ProgramSpec `ebpf:"btf_tracepoint__xm_sched_process_exit"`
+	BtfTracepointXmSchedProcessHang *ebpf.ProgramSpec `ebpf:"btf_tracepoint__xm_sched_process_hang"`
+	BtfTracepointXmSchedSwitch      *ebpf.ProgramSpec `ebpf:"btf_tracepoint__xm_sched_switch"`
+	BtfTracepointXmSchedWakeup      *ebpf.ProgramSpec `ebpf:"btf_tracepoint__xm_sched_wakeup"`
+	BtfTracepointXmSchedWakeupNew   *ebpf.ProgramSpec `ebpf:"btf_tracepoint__xm_sched_wakeup_new"`
 }
 
 // XMCpuScheduleMapSpecs contains maps before they are loaded into the kernel.
@@ -135,20 +135,20 @@ func (m *XMCpuScheduleMaps) Close() error {
 //
 // It can be passed to LoadXMCpuScheduleObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMCpuSchedulePrograms struct {
-	XmBtpSchedProcessExit *ebpf.Program `ebpf:"xm_btp_sched_process_exit"`
-	XmBtpSchedProcessHang *ebpf.Program `ebpf:"xm_btp_sched_process_hang"`
-	XmBtpSchedSwitch      *ebpf.Program `ebpf:"xm_btp_sched_switch"`
-	XmBtpSchedWakeup      *ebpf.Program `ebpf:"xm_btp_sched_wakeup"`
-	XmBtpSchedWakeupNew   *ebpf.Program `ebpf:"xm_btp_sched_wakeup_new"`
+	BtfTracepointXmSchedProcessExit *ebpf.Program `ebpf:"btf_tracepoint__xm_sched_process_exit"`
+	BtfTracepointXmSchedProcessHang *ebpf.Program `ebpf:"btf_tracepoint__xm_sched_process_hang"`
+	BtfTracepointXmSchedSwitch      *ebpf.Program `ebpf:"btf_tracepoint__xm_sched_switch"`
+	BtfTracepointXmSchedWakeup      *ebpf.Program `ebpf:"btf_tracepoint__xm_sched_wakeup"`
+	BtfTracepointXmSchedWakeupNew   *ebpf.Program `ebpf:"btf_tracepoint__xm_sched_wakeup_new"`
 }
 
 func (p *XMCpuSchedulePrograms) Close() error {
 	return _XMCpuScheduleClose(
-		p.XmBtpSchedProcessExit,
-		p.XmBtpSchedProcessHang,
-		p.XmBtpSchedSwitch,
-		p.XmBtpSchedWakeup,
-		p.XmBtpSchedWakeupNew,
+		p.BtfTracepointXmSchedProcessExit,
+		p.BtfTracepointXmSchedProcessHang,
+		p.BtfTracepointXmSchedSwitch,
+		p.BtfTracepointXmSchedWakeup,
+		p.BtfTracepointXmSchedWakeupNew,
 	)
 }
 

@@ -202,7 +202,7 @@ github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df
 ## explicit; go 1.12
 github.com/vishvananda/netns
-# github.com/wubo0067/calmwu-go v0.0.0-20230528135736-c52f5f96db8e
+# github.com/wubo0067/calmwu-go v0.0.0-20230607033816-60c638616af1
 ## explicit
 github.com/wubo0067/calmwu-go/utils
 # go.uber.org/atomic v1.10.0
@@ -227,6 +227,9 @@ go.uber.org/zap/zapcore
 # golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 ## explicit; go 1.17
 golang.org/x/crypto/sha3
+# golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
+## explicit; go 1.20
+golang.org/x/exp/constraints
 # golang.org/x/sync v0.1.0
 ## explicit
 golang.org/x/sync/singleflight

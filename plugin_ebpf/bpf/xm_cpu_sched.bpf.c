@@ -98,6 +98,7 @@ static __s32 __insert_cs_start_map(struct task_struct *ts,
             // 只关注用户的task
             bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns,
                                 BPF_ANY);
+            // bpf_printk("xm_cs_offcpu_start_map add user pid:%d", pid);
         } else if (__offcpu_task_type == 2 && __xm_task_is_kthread(ts)) {
             // 只关注内核的task
             bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns,
@@ -196,25 +197,41 @@ cleanup:
 // ** ebpf program
 // ts被唤醒
 SEC("tp_btf/sched_wakeup")
-__s32 BPF_PROG(xm_btp_sched_wakeup, struct task_struct *ts) {
+__s32 BPF_PROG(btf_tracepoint__xm_sched_wakeup, struct task_struct *ts) {
     // bpf_printk("xm_ebpf_exporter runqlat sched_wakeup pid:%d", ts->pid);
     return __insert_cs_start_map(ts, XM_CS_EVT_TYPE_RUNQLAT);
 }
 
 SEC("tp_btf/sched_wakeup_new")
-__s32 BPF_PROG(xm_btp_sched_wakeup_new, struct task_struct *ts) {
+__s32 BPF_PROG(btf_tracepoint__xm_sched_wakeup_new, struct task_struct *ts) {
     // ts被唤醒
     return __insert_cs_start_map(ts, XM_CS_EVT_TYPE_RUNQLAT);
 }
 
 SEC("tp_btf/sched_switch")
-__s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
-               struct task_struct *next) {
+__s32 BPF_PROG(btf_tracepoint__xm_sched_switch, bool preempt,
+               struct task_struct *prev, struct task_struct *next) {
     // 调度出cpu的task，如果状态还是RUNNING，继续插入wakeup
     // map，算成一种重新唤醒
-    if (__xm_get_task_state(prev) == TASK_RUNNING) {
+    __s64 prev_task_state = __xm_get_task_state(prev);
+    if (prev_task_state == TASK_RUNNING) {
         __insert_cs_start_map(prev, XM_CS_EVT_TYPE_RUNQLAT);
     }
+
+    pid_t prev_pid = prev->pid;
+    if (prev->exit_state != 0
+        || (0
+            != (prev_task_state
+                & (TASK_DEAD | TASK_WAKEKILL | __TASK_STOPPED)))) {
+        bpf_map_delete_elem(&xm_cs_offcpu_start_map, &prev_pid);
+        bpf_map_delete_elem(&xm_cs_runqlat_start_map, &prev_pid);
+        return 0;
+    }
+
+    // bpf_printk("btf_tracepoint__xm_sched_switch prev_task pid:%d, state:%lx,
+    // "
+    //            "exit_state:%lx",
+    //            prev_pid, prev_task_state, prev->exit_state);
 
     // 因为是raw BTF tracepoint，所以可以直接使用内核结构
     // next是被选中即将在cpu上执行的task
@@ -234,15 +251,15 @@ __s32 BPF_PROG(xm_btp_sched_switch, bool preempt, struct task_struct *prev,
 }
 
 SEC("tp_btf/sched_process_hang")
-__s32 BPF_PROG(xm_btp_sched_process_hang, struct task_struct *ts) {
+__s32 BPF_PROG(btf_tracepoint__xm_sched_process_hang, struct task_struct *ts) {
     pid_t pid = ts->pid;
     pid_t tgid = ts->tgid;
 
     struct xm_cpu_sched_evt_data *evt = bpf_ringbuf_reserve(
         &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_evt_data), 0);
     if (!evt) {
-        bpf_printk("xm_ebpf_exporter reserving ringbuf for pid:%d, tgid:%d "
-                   "failed",
+        bpf_printk("btf_tracepoint__xm_sched_process_hang reserving ringbuf "
+                   "for pid:%d, tgid:%d failed",
                    pid, tgid);
     } else {
         evt->evt_type = XM_CS_EVT_TYPE_HANG;
@@ -261,15 +278,15 @@ __s32 BPF_PROG(xm_btp_sched_process_hang, struct task_struct *ts) {
 
 // task被释放
 SEC("tp_btf/sched_process_exit")
-__s32 BPF_PROG(xm_btp_sched_process_exit, struct task_struct *ts) {
+__s32 BPF_PROG(btf_tracepoint__xm_sched_process_exit, struct task_struct *ts) {
     pid_t pid = ts->pid;
     pid_t tgid = ts->tgid;
 
     struct xm_cpu_sched_evt_data *evt = bpf_ringbuf_reserve(
         &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_evt_data), 0);
     if (!evt) {
-        bpf_printk("xm_ebpf_exporter reserving ringbuf for pid:%d, tgid:%d "
-                   "failed",
+        bpf_printk("btf_tracepoint__xm_sched_process_exit reserving ringbuf "
+                   "for pid:%d, tgid:%d failed",
                    pid, tgid);
     } else {
         evt->evt_type = XM_CS_EVT_TYPE_PROCESS_EXIT;

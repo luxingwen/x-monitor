@@ -142,13 +142,13 @@ __s32 kprobe__xm_vma_merge(struct pt_regs *ctx) {
 SEC("kprobe/mmap_region")
 __s32 kprobe__xm_mmap_region(struct pt_regs *ctx) {
     __u32 tid = __xm_get_tid();
-    __u32 pid = __xm_get_pid();
+    //__u32 pid = __xm_get_pid();
     struct vm_op_info *voi = bpf_map_lookup_elem(&hashmap_xm_vm_op, &tid);
     if (voi) {
         voi->addr = (__u64)PT_REGS_PARM2(ctx);
         voi->len = (__u64)PT_REGS_PARM3(ctx);
-        bpf_printk("kprobe__xm_mmap_region pid:%d, addr:0x%lx, len:%lu", pid,
-                   voi->addr, voi->len);
+        // bpf_printk("kprobe__xm_mmap_region pid:%d, addr:0x%lx, len:%lu", pid,
+        //            voi->addr, voi->len);
     }
     return 0;
 }
@@ -156,7 +156,7 @@ __s32 kprobe__xm_mmap_region(struct pt_regs *ctx) {
 SEC("kprobe/do_mmap")
 __s32 kprobe__xm_do_mmap(struct pt_regs *ctx) {
     __u32 tid = __xm_get_tid();
-    __u32 pid = __xm_get_pid();
+    //__u32 pid = __xm_get_pid();
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
 
     if (0 == __filter_check(ts)) {
@@ -176,17 +176,18 @@ __s32 kprobe__xm_do_mmap(struct pt_regs *ctx) {
         // !addr非MAP_FIXED
         if (!pf && !addr && ((flags & (MAP_PRIVATE | MAP_ANONYMOUS)) != 0)) {
             // 使用mmap分配的私有匿名虚拟地址空间
-            bpf_printk("kprobe__xm_do_mmap MMAP_ANON_PRIV comm:'%s', "
-                       "pid:%d, len:%lu",
-                       comm, pid, len);
+            // bpf_printk("kprobe__xm_do_mmap MMAP_ANON_PRIV comm:'%s', "
+            //            "pid:%d, len:%lu",
+            //            comm, pid, len);
             voi.len = len;
             voi.type = XM_PROCESSVM_EVT_TYPE_MMAP_ANON_PRIV;
             if (0
                 != bpf_map_update_elem(&hashmap_xm_vm_op, &tid, &voi,
                                        BPF_NOEXIST)) {
-                bpf_printk("kprobe__xm_do_mmap update map:'hashmap_xm_vm_op' "
-                           "key:%d already exist.",
-                           tid);
+                // bpf_printk("kprobe__xm_do_mmap update map:'hashmap_xm_vm_op'
+                // "
+                //            "key:%d already exist.",
+                //            tid);
             }
 
         } else if (pf && !addr && (flags & MAP_SHARED)) {
@@ -194,9 +195,9 @@ __s32 kprobe__xm_do_mmap(struct pt_regs *ctx) {
             voi.len = len;
             voi.type = XM_PROCESSVM_EVT_TYPE_MMAP_SHARED;
             bpf_map_update_elem(&hashmap_xm_vm_op, &tid, &voi, BPF_ANY);
-            bpf_printk("kprobe__xm_do_mmap MMAP_SHARED comm:'%s', "
-                       "pid:%d, len:%lu",
-                       comm, pid, len);
+            // bpf_printk("kprobe__xm_do_mmap MMAP_SHARED comm:'%s', "
+            //            "pid:%d, len:%lu",
+            //            comm, pid, len);
         }
     }
     return 0;
@@ -205,13 +206,13 @@ __s32 kprobe__xm_do_mmap(struct pt_regs *ctx) {
 SEC("kretprobe/do_mmap")
 __s32 BPF_KRETPROBE(kretprobe__xm_do_mmap, unsigned long ret) {
     __u32 tid = __xm_get_tid();
-    __u32 pid = __xm_get_pid();
+    //__u32 pid = __xm_get_pid();
     struct vm_op_info *voi = bpf_map_lookup_elem(&hashmap_xm_vm_op, &tid);
     if (voi) {
         if (!IS_ERR_VALUE(ret)) {
             // do_mmap成功
-            bpf_printk("kretprobe__xm_do_mmap pid:%d, addr:0x%lx, ret:0x%lx",
-                       pid, voi->addr, ret);
+            // bpf_printk("kretprobe__xm_do_mmap pid:%d, addr:0x%lx, ret:0x%lx",
+            //            pid, voi->addr, ret);
             __insert_processvm_event(voi);
         }
     }
@@ -222,7 +223,7 @@ __s32 BPF_KRETPROBE(kretprobe__xm_do_mmap, unsigned long ret) {
 SEC("kprobe/do_brk_flags")
 __s32 kprobe__xm_do_brk_flags(struct pt_regs *ctx) {
     __u32 tid = __xm_get_tid();
-    __u32 pid = __xm_get_pid();
+    //__u32 pid = __xm_get_pid();
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
     // pid_t tgid = __xm_get_pid();
     // request：表示要增加或减少的内存大小。如果该值为
@@ -241,8 +242,8 @@ __s32 kprobe__xm_do_brk_flags(struct pt_regs *ctx) {
         voi.len = len;
         voi.type = XM_PROCESSVM_EVT_TYPE_BRK;
         bpf_map_update_elem(&hashmap_xm_vm_op, &tid, &voi, BPF_ANY);
-        bpf_printk("kprobe__xm_do_brk_flags comm:'%s', pid:%d", comm, pid);
-        bpf_printk("addr:0x%lx, len:%lu", addr, len);
+        // bpf_printk("kprobe__xm_do_brk_flags comm:'%s', pid:%d", comm, pid);
+        // bpf_printk("addr:0x%lx, len:%lu", addr, len);
     }
 
     return 0;
@@ -251,15 +252,16 @@ __s32 kprobe__xm_do_brk_flags(struct pt_regs *ctx) {
 SEC("kretprobe/do_brk_flags")
 __s32 BPF_KRETPROBE(kretprobe__xm_do_brk_flags, __s32 ret) {
     __u32 tid = __xm_get_tid();
-    __u32 pid = __xm_get_pid();
+    //__u32 pid = __xm_get_pid();
     struct vm_op_info *voi = bpf_map_lookup_elem(&hashmap_xm_vm_op, &tid);
 
     if (voi) {
         // 返回成功，触发事件
         if (ret == 0) {
             __insert_processvm_event(voi);
-            bpf_printk("kretprobe__xm_do_brk_flags pid:%d, ret:%d, len:%lu\n",
-                       pid, ret, voi->len);
+            // bpf_printk("kretprobe__xm_do_brk_flags pid:%d, ret:%d,
+            // len:%lu\n",
+            //            pid, ret, voi->len);
         }
     }
     bpf_map_delete_elem(&hashmap_xm_vm_op, &tid);
@@ -267,6 +269,7 @@ __s32 BPF_KRETPROBE(kretprobe__xm_do_brk_flags, __s32 ret) {
 }
 
 // !!不知道为何kprobe无法获取系统调用的参数，只有换为tracepoint
+// **是不是应该改为ksyscall/
 // SEC("kprobe/" SYSCALL(sys_brk))
 // __s32 BPF_KPROBE(xm_process_sys_brk, __u64 brk) {
 SEC("tracepoint/syscalls/sys_enter_brk")
@@ -274,7 +277,7 @@ __s32 tracepoint_xm_sys_enter_brk(struct trace_event_raw_sys_enter *ctx) {
     __u64 orig_brk = 0;
     //__u64 start_brk = 0;
     __u32 tid = __xm_get_tid();
-    __u32 pid = __xm_get_pid();
+    //__u32 pid = __xm_get_pid();
 
     // 获取要设置堆顶地址
     __u64 new_brk = (__u64)ctx->args[0];
@@ -291,9 +294,9 @@ __s32 tracepoint_xm_sys_enter_brk(struct trace_event_raw_sys_enter *ctx) {
 
         // 判断进程堆顶地址
         if (new_brk <= orig_brk) {
-            bpf_printk("tracepoint_xm_sys_enter_brk pid:%d, new_brk:%lu <= "
-                       "orig_brk:%lu",
-                       pid, new_brk, orig_brk);
+            // bpf_printk("tracepoint_xm_sys_enter_brk pid:%d, new_brk:%lu <= "
+            //            "orig_brk:%lu",
+            //            pid, new_brk, orig_brk);
             // !!map的数据类型必须完全对应，否则报错
             struct vm_op_info voi;
             __builtin_memset((void *)&voi, 0, sizeof(voi));
@@ -336,13 +339,13 @@ SEC("kretprobe/__do_munmap")
 __s32 BPF_KRETPROBE(kretprobe__xm___do_munmap, __s32 ret) {
     // sys_x86_64.c __do_munmap return downgrade ? 1 : 0;
     __u32 tid = __xm_get_tid();
-    __u32 pid = __xm_get_pid();
+    //__u32 pid = __xm_get_pid();
     struct vm_op_info *voi = bpf_map_lookup_elem(&hashmap_xm_vm_op, &tid);
     if (voi) {
         if (ret == 1) {
-            bpf_printk("kretprobe__xm___do_munmap pid:'%d', addr:0x%lx, "
-                       "len:%lu",
-                       pid, voi->addr, voi->len);
+            // bpf_printk("kretprobe__xm___do_munmap pid:'%d', addr:0x%lx, "
+            //            "len:%lu",
+            //            pid, voi->addr, voi->len);
             __insert_processvm_event(voi);
         }
     }

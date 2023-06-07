@@ -12,7 +12,11 @@
 
 #define TASK_COMM_LEN 16
 #define MAX_THREAD_COUNT 10240
+
 #define TASK_RUNNING 0
+#define TASK_DEAD 0x0080
+#define TASK_WAKEKILL 0x0100
+#define __TASK_STOPPED 0x0004
 
 #define PAGE_SIZE 4096
 #define PAGE_MASK (~(PAGE_SIZE - 1))
@@ -287,7 +291,7 @@ static pid_t __xm_get_task_sessionid(struct task_struct *task) {
 static __always_inline bool __xm_task_is_kthread(struct task_struct *task) {
     __u32 flags;
     flags = READ_KERN(task->flags);
-    return flags & PF_KTHREAD;
+    return 0 != (flags & PF_KTHREAD);
 }
 
 /* new kernel task_struct definition */
@@ -315,7 +319,6 @@ static __s64 __xm_get_task_state(struct task_struct *task) {
     } else {
         /* 老内核里面field是task */
         struct task_struct___old *t_old = (void *)task;
-
         return BPF_CORE_READ(t_old, state);
     }
 }

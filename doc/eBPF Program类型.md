@@ -126,6 +126,90 @@ static const struct bpf_sec_def section_defs[] = {
 };
 ```
 
+| Program Type                                                 | Attach Type                                                  | ELF Section Name                                             | Sleepable |
+| :----------------------------------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------- | :-------- |
+| `BPF_PROG_TYPE_CGROUP_DEVICE`                                | `BPF_CGROUP_DEVICE`                                          | `cgroup/dev`                                                 |           |
+| `BPF_PROG_TYPE_CGROUP_SKB`                                   |                                                              | `cgroup/skb`                                                 |           |
+| `BPF_CGROUP_INET_EGRESS`                                     | `cgroup_skb/egress`                                          |                                                              |           |
+| `BPF_CGROUP_INET_INGRESS`                                    | `cgroup_skb/ingress`                                         |                                                              |           |
+| `BPF_PROG_TYPE_CGROUP_SOCKOPT`                               | `BPF_CGROUP_GETSOCKOPT`                                      | `cgroup/getsockopt`                                          |           |
+| `BPF_CGROUP_SETSOCKOPT`                                      | `cgroup/setsockopt`                                          |                                                              |           |
+| `BPF_PROG_TYPE_CGROUP_SOCK_ADDR`                             | `BPF_CGROUP_INET4_BIND`                                      | `cgroup/bind4`                                               |           |
+| `BPF_CGROUP_INET4_CONNECT`                                   | `cgroup/connect4`                                            |                                                              |           |
+| `BPF_CGROUP_INET4_GETPEERNAME`                               | `cgroup/getpeername4`                                        |                                                              |           |
+| `BPF_CGROUP_INET4_GETSOCKNAME`                               | `cgroup/getsockname4`                                        |                                                              |           |
+| `BPF_CGROUP_INET6_BIND`                                      | `cgroup/bind6`                                               |                                                              |           |
+| `BPF_CGROUP_INET6_CONNECT`                                   | `cgroup/connect6`                                            |                                                              |           |
+| `BPF_CGROUP_INET6_GETPEERNAME`                               | `cgroup/getpeername6`                                        |                                                              |           |
+| `BPF_CGROUP_INET6_GETSOCKNAME`                               | `cgroup/getsockname6`                                        |                                                              |           |
+| `BPF_CGROUP_UDP4_RECVMSG`                                    | `cgroup/recvmsg4`                                            |                                                              |           |
+| `BPF_CGROUP_UDP4_SENDMSG`                                    | `cgroup/sendmsg4`                                            |                                                              |           |
+| `BPF_CGROUP_UDP6_RECVMSG`                                    | `cgroup/recvmsg6`                                            |                                                              |           |
+| `BPF_CGROUP_UDP6_SENDMSG`                                    | `cgroup/sendmsg6`                                            |                                                              |           |
+| `BPF_PROG_TYPE_CGROUP_SOCK`                                  | `BPF_CGROUP_INET4_POST_BIND`                                 | `cgroup/post_bind4`                                          |           |
+| `BPF_CGROUP_INET6_POST_BIND`                                 | `cgroup/post_bind6`                                          |                                                              |           |
+| `BPF_CGROUP_INET_SOCK_CREATE`                                | `cgroup/sock_create`                                         |                                                              |           |
+| `cgroup/sock`                                                |                                                              |                                                              |           |
+| `BPF_CGROUP_INET_SOCK_RELEASE`                               | `cgroup/sock_release`                                        |                                                              |           |
+| `BPF_PROG_TYPE_CGROUP_SYSCTL`                                | `BPF_CGROUP_SYSCTL`                                          | `cgroup/sysctl`                                              |           |
+| `BPF_PROG_TYPE_EXT`                                          |                                                              | `freplace+` [1](https://docs.kernel.org/bpf/libbpf/program_types.html#fentry) |           |
+| `BPF_PROG_TYPE_FLOW_DISSECTOR`                               | `BPF_FLOW_DISSECTOR`                                         | `flow_dissector`                                             |           |
+| `BPF_PROG_TYPE_KPROBE`                                       |                                                              | `kprobe+` [2](https://docs.kernel.org/bpf/libbpf/program_types.html#kprobe) |           |
+| `kretprobe+` [2](https://docs.kernel.org/bpf/libbpf/program_types.html#kprobe) |                                                              |                                                              |           |
+| `ksyscall+` [3](https://docs.kernel.org/bpf/libbpf/program_types.html#ksyscall) |                                                              |                                                              |           |
+| `kretsyscall+` [3](https://docs.kernel.org/bpf/libbpf/program_types.html#ksyscall) |                                                              |                                                              |           |
+| `uprobe+` [4](https://docs.kernel.org/bpf/libbpf/program_types.html#uprobe) |                                                              |                                                              |           |
+| `uprobe.s+` [4](https://docs.kernel.org/bpf/libbpf/program_types.html#uprobe) | Yes                                                          |                                                              |           |
+| `uretprobe+` [4](https://docs.kernel.org/bpf/libbpf/program_types.html#uprobe) |                                                              |                                                              |           |
+| `uretprobe.s+` [4](https://docs.kernel.org/bpf/libbpf/program_types.html#uprobe) | Yes                                                          |                                                              |           |
+| `usdt+` [5](https://docs.kernel.org/bpf/libbpf/program_types.html#usdt) |                                                              |                                                              |           |
+| `BPF_TRACE_KPROBE_MULTI`                                     | `kprobe.multi+` [6](https://docs.kernel.org/bpf/libbpf/program_types.html#kpmulti) |                                                              |           |
+| `kretprobe.multi+` [6](https://docs.kernel.org/bpf/libbpf/program_types.html#kpmulti) |                                                              |                                                              |           |
+| `BPF_PROG_TYPE_LIRC_MODE2`                                   | `BPF_LIRC_MODE2`                                             | `lirc_mode2`                                                 |           |
+| `BPF_PROG_TYPE_LSM`                                          | `BPF_LSM_CGROUP`                                             | `lsm_cgroup+`                                                |           |
+| `BPF_LSM_MAC`                                                | `lsm+` [7](https://docs.kernel.org/bpf/libbpf/program_types.html#lsm) |                                                              |           |
+| `lsm.s+` [7](https://docs.kernel.org/bpf/libbpf/program_types.html#lsm) | Yes                                                          |                                                              |           |
+| `BPF_PROG_TYPE_LWT_IN`                                       |                                                              | `lwt_in`                                                     |           |
+| `BPF_PROG_TYPE_LWT_OUT`                                      |                                                              | `lwt_out`                                                    |           |
+| `BPF_PROG_TYPE_LWT_SEG6LOCAL`                                |                                                              | `lwt_seg6local`                                              |           |
+| `BPF_PROG_TYPE_LWT_XMIT`                                     |                                                              | `lwt_xmit`                                                   |           |
+| `BPF_PROG_TYPE_PERF_EVENT`                                   |                                                              | `perf_event`                                                 |           |
+| `BPF_PROG_TYPE_RAW_TRACEPOINT_WRITABLE`                      |                                                              | `raw_tp.w+` [8](https://docs.kernel.org/bpf/libbpf/program_types.html#rawtp) |           |
+| `raw_tracepoint.w+`                                          |                                                              |                                                              |           |
+| `BPF_PROG_TYPE_RAW_TRACEPOINT`                               |                                                              | `raw_tp+` [8](https://docs.kernel.org/bpf/libbpf/program_types.html#rawtp) |           |
+| `raw_tracepoint+`                                            |                                                              |                                                              |           |
+| `BPF_PROG_TYPE_SCHED_ACT`                                    |                                                              | `action`                                                     |           |
+| `BPF_PROG_TYPE_SCHED_CLS`                                    |                                                              | `classifier`                                                 |           |
+| `tc`                                                         |                                                              |                                                              |           |
+| `BPF_PROG_TYPE_SK_LOOKUP`                                    | `BPF_SK_LOOKUP`                                              | `sk_lookup`                                                  |           |
+| `BPF_PROG_TYPE_SK_MSG`                                       | `BPF_SK_MSG_VERDICT`                                         | `sk_msg`                                                     |           |
+| `BPF_PROG_TYPE_SK_REUSEPORT`                                 | `BPF_SK_REUSEPORT_SELECT_OR_MIGRATE`                         | `sk_reuseport/migrate`                                       |           |
+| `BPF_SK_REUSEPORT_SELECT`                                    | `sk_reuseport`                                               |                                                              |           |
+| `BPF_PROG_TYPE_SK_SKB`                                       |                                                              | `sk_skb`                                                     |           |
+| `BPF_SK_SKB_STREAM_PARSER`                                   | `sk_skb/stream_parser`                                       |                                                              |           |
+| `BPF_SK_SKB_STREAM_VERDICT`                                  | `sk_skb/stream_verdict`                                      |                                                              |           |
+| `BPF_PROG_TYPE_SOCKET_FILTER`                                |                                                              | `socket`                                                     |           |
+| `BPF_PROG_TYPE_SOCK_OPS`                                     | `BPF_CGROUP_SOCK_OPS`                                        | `sockops`                                                    |           |
+| `BPF_PROG_TYPE_STRUCT_OPS`                                   |                                                              | `struct_ops+`                                                |           |
+| `BPF_PROG_TYPE_SYSCALL`                                      |                                                              | `syscall`                                                    | Yes       |
+| `BPF_PROG_TYPE_TRACEPOINT`                                   |                                                              | `tp+` [9](https://docs.kernel.org/bpf/libbpf/program_types.html#tp) |           |
+| `tracepoint+` [9](https://docs.kernel.org/bpf/libbpf/program_types.html#tp) |                                                              |                                                              |           |
+| `BPF_PROG_TYPE_TRACING`                                      | `BPF_MODIFY_RETURN`                                          | `fmod_ret+` [1](https://docs.kernel.org/bpf/libbpf/program_types.html#fentry) |           |
+| `fmod_ret.s+` [1](https://docs.kernel.org/bpf/libbpf/program_types.html#fentry) | Yes                                                          |                                                              |           |
+| `BPF_TRACE_FENTRY`                                           | `fentry+` [1](https://docs.kernel.org/bpf/libbpf/program_types.html#fentry) |                                                              |           |
+| `fentry.s+` [1](https://docs.kernel.org/bpf/libbpf/program_types.html#fentry) | Yes                                                          |                                                              |           |
+| `BPF_TRACE_FEXIT`                                            | `fexit+` [1](https://docs.kernel.org/bpf/libbpf/program_types.html#fentry) |                                                              |           |
+| `fexit.s+` [1](https://docs.kernel.org/bpf/libbpf/program_types.html#fentry) | Yes                                                          |                                                              |           |
+| `BPF_TRACE_ITER`                                             | `iter+` [10](https://docs.kernel.org/bpf/libbpf/program_types.html#iter) |                                                              |           |
+| `iter.s+` [10](https://docs.kernel.org/bpf/libbpf/program_types.html#iter) | Yes                                                          |                                                              |           |
+| `BPF_TRACE_RAW_TP`                                           | `tp_btf+` [1](https://docs.kernel.org/bpf/libbpf/program_types.html#fentry) |                                                              |           |
+| `BPF_PROG_TYPE_XDP`                                          | `BPF_XDP_CPUMAP`                                             | `xdp.frags/cpumap`                                           |           |
+| `xdp/cpumap`                                                 |                                                              |                                                              |           |
+| `BPF_XDP_DEVMAP`                                             | `xdp.frags/devmap`                                           |                                                              |           |
+| `xdp/devmap`                                                 |                                                              |                                                              |           |
+| `BPF_XDP`                                                    | `xdp.frags`                                                  |                                                              |           |
+| `xdp`                                                        |                                                              |                                                              |           |
+
 [Program Types and ELF Sections — libbpf documentation](https://libbpf.readthedocs.io/en/latest/program_types.html)
 
 SEC的匹配逻辑，+号的处理，实际上内核不同这里的实现稍有不同，新内核逻辑会有扩充
