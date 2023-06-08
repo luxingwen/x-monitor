@@ -187,6 +187,7 @@ loop:
 						pvp.processVMMapGuard.Unlock()
 					}
 				}
+				eBPFEvtInfo = nil
 			}
 		case data, ok := <-pvp.processVMEvtDataChan.C:
 			if ok {
@@ -273,6 +274,7 @@ loop:
 					}
 					pvp.processVMMapGuard.Unlock()
 				}
+				data = nil
 			}
 		}
 	}

@@ -30,7 +30,7 @@ int BPF_KPROBE(do_unlinkat, int dfd, struct filename *name) {
 #endif
 
 SEC("kprobe/add_to_page_cache_lru")
-int BPF_KPROBE(xm_cst_add_to_page_cache_lru) {
+int BPF_KPROBE(kprobe__xm_add_to_page_cache_lru) {
     __s32 ret = 0;
     __u32 pid;
     struct cachestat_top_statistics *fill;
@@ -43,7 +43,7 @@ int BPF_KPROBE(xm_cst_add_to_page_cache_lru) {
         __xm_update_u64(&fill->add_to_page_cache_lru, 1);
         // 有可能因为execve导致comm改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
-        bpf_printk("xmonitor update add_to_page_cache_lru pcomm: '%s' pid: %d "
+        bpf_printk("kprobe__xm_add_to_page_cache_lru pcomm: '%s' pid: %d "
                    "value: %lu",
                    fill->comm, pid, fill->add_to_page_cache_lru);
 
@@ -68,7 +68,7 @@ int BPF_KPROBE(xm_cst_add_to_page_cache_lru) {
 }
 
 SEC("kprobe/mark_page_accessed")
-int BPF_KPROBE(xm_cst_mark_page_accessed) {
+int BPF_KPROBE(kprobe__xm_mark_page_accessed) {
     __s32 ret = 0;
     __u32 pid;
     struct cachestat_top_statistics *fill;
@@ -81,7 +81,7 @@ int BPF_KPROBE(xm_cst_mark_page_accessed) {
         __xm_update_u64(&fill->mark_page_accessed, 1);
         // 有可能因为execve导致comm改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
-        bpf_printk("xmonitor update mark_page_accessed pcomm: '%s' pid: %d "
+        bpf_printk("kprobe__xm_mark_page_accessed comm: '%s' pid: %d "
                    "value: %lu",
                    fill->comm, pid, fill->mark_page_accessed);
 
@@ -97,7 +97,7 @@ int BPF_KPROBE(xm_cst_mark_page_accessed) {
         ret = bpf_map_update_elem(&xm_cachestat_top_map, &pid, &init_value,
                                   BPF_NOEXIST);
         if (0 == ret) {
-            bpf_printk("xmonitor mark_page_accessed add new pcomm: '%s' pid: "
+            bpf_printk("kprobe__xm_mark_page_accessed add new pcomm: '%s' pid: "
                        "%d successed",
                        init_value.comm, pid);
         }
@@ -106,7 +106,7 @@ int BPF_KPROBE(xm_cst_mark_page_accessed) {
 }
 
 SEC("kprobe/account_page_dirtied")
-int BPF_KPROBE(xm_cst_account_page_dirtied) {
+int BPF_KPROBE(kprobe__xm_account_page_dirtied) {
     __s32 ret = 0;
     __u32 pid;
     struct cachestat_top_statistics *fill;
@@ -118,7 +118,7 @@ int BPF_KPROBE(xm_cst_account_page_dirtied) {
     if (fill) {
         __xm_update_u64(&fill->account_page_dirtied, 1);
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
-        bpf_printk("xmonitor update account_page_dirtied pcomm: '%s' pid: %d "
+        bpf_printk("kprobe__xm_account_page_dirtied comm: '%s' pid: %d "
                    "value: %lu",
                    fill->comm, pid, fill->account_page_dirtied);
 
@@ -134,8 +134,8 @@ int BPF_KPROBE(xm_cst_account_page_dirtied) {
         ret = bpf_map_update_elem(&xm_cachestat_top_map, &pid, &init_value,
                                   BPF_NOEXIST);
         if (0 == ret) {
-            bpf_printk("xmonitor account_page_dirtied add new pcomm: '%s' pid: "
-                       "%d successed",
+            bpf_printk("kprobe__xm_account_page_dirtied add new comm: '%s' "
+                       "pid: %d successed",
                        init_value.comm, pid);
         }
     }
@@ -143,7 +143,7 @@ int BPF_KPROBE(xm_cst_account_page_dirtied) {
 }
 
 SEC("kprobe/mark_buffer_dirty")
-int BPF_KPROBE(xm_cst_mark_buffer_dirty) {
+int BPF_KPROBE(kprobe__xm_mark_buffer_dirty) {
     __s32 ret = 0;
     __u32 pid;
     struct cachestat_top_statistics *fill;
@@ -156,7 +156,7 @@ int BPF_KPROBE(xm_cst_mark_buffer_dirty) {
         __xm_update_u64(&fill->mark_buffer_dirty, 1);
         // 有可能因为execve导致comm改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
-        bpf_printk("xmonitor update mark_buffer_dirty pcomm: '%s' pid: %d "
+        bpf_printk("kprobe__xm_mark_buffer_dirty comm: '%s' pid: %d "
                    "value: %lu",
                    fill->comm, pid, fill->mark_buffer_dirty);
         // bpf_map_update_elem(&xm_cachestat_top_map, &pid, fill, BPF_ANY);
@@ -172,7 +172,7 @@ int BPF_KPROBE(xm_cst_mark_buffer_dirty) {
         ret = bpf_map_update_elem(&xm_cachestat_top_map, &pid, &init_value,
                                   BPF_NOEXIST);
         if (0 == ret) {
-            bpf_printk("xmonitor mark_buffer_dirty add new pcomm: '%s' pid: %d "
+            bpf_printk("kprobe__xm_mark_buffer_dirty comm: '%s' pid: %d "
                        "successed",
                        init_value.comm, pid);
         }
