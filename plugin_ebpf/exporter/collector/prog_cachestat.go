@@ -223,8 +223,8 @@ func (csp *cacheStateProgram) Update(ch chan<- prometheus.Metric) error {
 // Stop stops the eBPF module. This function is called when the eBPF module is removed from the system.
 func (csp *cacheStateProgram) Stop() {
 	close(csp.stopChan)
-	if panic := csp.wg.WaitAndRecover(); panic != nil {
-		glog.Errorf("eBPFProgram:'%s' panic: %v", csp.name, panic.Error())
+	if recover := csp.wg.WaitAndRecover(); recover != nil {
+		glog.Errorf("eBPFProgram:'%s' recover: %v", csp.name, recover.String())
 	}
 
 	if csp.links != nil {

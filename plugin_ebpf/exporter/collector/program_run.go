@@ -66,8 +66,8 @@ func attatchToRun(name string, objs interface{}, loadF __load, rewriteConstVarsF
 
 func (ebm *eBPFBaseProgram) stop() {
 	close(ebm.stopChan)
-	if panic := ebm.wg.WaitAndRecover(); panic != nil {
-		glog.Errorf("eBPFProgram:'%s' panic: %v", ebm.name, panic.Error())
+	if recover := ebm.wg.WaitAndRecover(); recover != nil {
+		glog.Errorf("eBPFProgram:'%s' recover: %v", ebm.name, recover.String())
 	}
 
 	if ebm.links != nil {

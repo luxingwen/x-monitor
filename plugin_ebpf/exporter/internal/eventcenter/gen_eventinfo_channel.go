@@ -12,9 +12,10 @@
 package eventcenter
 
 import (
-	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 // NOTE: this is how easy it is to define a generic type

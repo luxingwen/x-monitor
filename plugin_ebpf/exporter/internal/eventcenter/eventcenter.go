@@ -89,8 +89,8 @@ func (ec *EBPFEventCenter) Stop() {
 	// Close the stop channel
 	close(DefInstance.stopCh)
 	// Wait for the waitgroup to finish and recover from any panics
-	if panic := ec.wg.WaitAndRecover(); panic != nil {
-		glog.Errorf("EBPFEventCenter panic: %v", panic.Error())
+	if recover := ec.wg.WaitAndRecover(); recover != nil {
+		glog.Errorf("EBPFEventCenter recover: %s", recover.String())
 	}
 	// Iterate over the eBPFEventProgramMap
 	for _, evtProg := range ec.eBPFEventProgramMap {
