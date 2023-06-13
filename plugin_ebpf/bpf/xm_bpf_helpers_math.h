@@ -9,7 +9,7 @@
 
 #include <bpf/bpf_helpers.h>
 
-static inline __attribute__((always_inline)) __u64 __xm_log2(__u32 v) {
+static __always_inline __u64 __xm_log2(__u32 v) {
     __u32 r, shift;
 
     r = (v > 0xFFFF) << 4;
@@ -45,7 +45,7 @@ log2l(14)=3
 log2l(15)=3
 log2l(16)=4
 */
-static inline __attribute__((always_inline)) __u64 __xm_log2l(__u64 v) {
+static __always_inline __u64 __xm_log2l(__u64 v) {
     __u32 hi = v >> 32;
     if (hi)
         return __xm_log2(hi) + 32;

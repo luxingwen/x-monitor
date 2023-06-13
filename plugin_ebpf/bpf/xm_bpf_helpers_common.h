@@ -228,38 +228,51 @@ struct kernfs_node___54x {
 } __attribute__((preserve_access_index));
 
 struct kernfs_node___514x {
-    //
     u64 id;
 } __attribute__((preserve_access_index));
+
+static __always_inline __u64 __xm_get_cgroup_id(struct cgroup *cg) {
+    __s32 err = 0;
+    __u64 id = 0;
+
+    void *kn = (void *)READ_KERN(cg->kn);
+    if (bpf_core_type_exists(union kernfs_node_id___old)) {
+        // 如果存在union kernfs_node_id___old，那么kernel是4.18 or 5.4
+        // 尝试从4.18内核结构中读取
+        struct kernfs_node___418 *kn_418 = (struct kernfs_node___418 *)kn;
+        err = bpf_core_read(&id, sizeof(__u64), &kn_418->id);
+        if (0 == err) {
+            // 如果读取成功，返回id
+            return id;
+        } else {
+            // 尝试从5.4内核读取
+            struct kernfs_node___54x *kn_54 = (struct kernfs_node___54x *)kn;
+            // **如果不加这个判断，加载失败
+            if (bpf_core_field_exists(kn_54->id)) {
+                return BPF_CORE_READ(kn_54, id.id);
+            }
+        }
+    } else {
+        // 如果不存在union kernfs_node_id___old，那么kernel可能是5.14
+        struct kernfs_node___514x *kn_514 = (struct kernfs_node___514x *)kn;
+        err = bpf_core_read(&id, sizeof(__u64), &kn_514->id);
+        if (0 == err) {
+            return id;
+        }
+    }
+    return 0;
+}
 
 static __u64 __xm_get_task_cgid_by_subsys(struct task_struct *task,
                                           enum cgroup_subsys_id subsys_id) {
     struct css_set *css;
     struct cgroup_subsys_state *cg_ss;
     struct cgroup *cg;
-    struct kernfs_node___418 *kn;
-    __u64 id = 0;
-    __s32 err = 0;
 
     css = READ_KERN(task->cgroups);
     cg_ss = READ_KERN(css->subsys[subsys_id]);
     cg = READ_KERN(cg_ss->cgroup);
-    kn = (struct kernfs_node___418 *)READ_KERN(cg->kn);
-    if (bpf_core_type_exists(union kernfs_node_id___old)) {
-        err = bpf_core_read(&id, sizeof(__u64), &kn->id);
-        if (0 == err) {
-            return id;
-        } else {
-            if (bpf_core_field_exists(((struct kernfs_node___54x *)kn)->id)) {
-                return BPF_CORE_READ((struct kernfs_node___54x *)kn, id.id);
-            }
-        }
-    } else {
-        if (bpf_core_field_exists(((struct kernfs_node___514x *)kn)->id)) {
-            return READ_KERN(kn->id);
-        }
-    }
-    return 0;
+    return __xm_get_cgroup_id(cg);
 }
 
 // 获取进程的进程组ID，PIDTYPE_PGID

@@ -108,3 +108,19 @@ struct xm_processvm_evt_data {
     __u64 len;
     //__u64 start_addr;
 };
+
+//------------------------ oom_kill
+#define OOM_KILL_MSG_LEN 32
+struct xm_oomkill_evt {
+    pid_t tid; // 线程id
+    pid_t pid; // 进程id
+    __u64 memcg_id;
+    __u64 memcg_page_counter; // physical memory page count
+    __u64 points; // heuristic badness points
+    __u64 rss_filepages;
+    __u64 rss_anonpages;
+    __u64 rss_shmepages;
+    __u64 total_pages; // 全部的物理内存或者cg的配置的limit上限
+    char comm[TASK_COMM_LEN];
+    char msg[OOM_KILL_MSG_LEN];
+};
