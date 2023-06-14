@@ -13,10 +13,10 @@ eBPF:
   enabled: true
   programs:
     - name: cachestat
-      enabled: true
+      enabled: false
       gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
     - name: cpusched
-      enabled: true
+      enabled: false
       gather_interval: 3 # 单位：秒
       metrcs:
         - runq_latency
@@ -40,7 +40,7 @@ eBPF:
           - "irqbalance"
           - "systemd-journal"
     - name: processvm
-      enabled: true
+      enabled: false
       metrcs:
         - privanon_share_pages
       filter:
@@ -59,4 +59,4 @@ eBPF:
           - "systemd-journal"
         exclude_comms:
     - name: oomkill
-      enable: true
+      enabled: true

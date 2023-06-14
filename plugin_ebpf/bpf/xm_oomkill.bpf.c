@@ -70,10 +70,13 @@ __s32 BPF_KPROBE(kprobe__xm_oom_kill_process, struct oom_control *oc,
             // get cgroup
             BPF_CORE_READ_INTO(&cg, memcg, css.cgroup);
             // 获取cgroup id
-            evt->memcg_id = __xm_get_cgroup_id(cg);
+            evt->memcg_id = (__u32)__xm_get_cgroup_id(cg);
             // 获取物理内存分配的page数量
             evt->memcg_page_counter =
                 BPF_CORE_READ(memcg, memory.usage.counter);
+            bpf_printk("kprobe__xm_oom_kill_process memcg_id:%d, "
+                       "memcg_page_counter:%lu",
+                       evt->memcg_id, evt->memcg_page_counter);
         }
         // oom_badness函数计算中rss的计算，包括MM_FILEPAGES,MM_ANONPAGES,MM_SHMEMPAGES
         evt->rss_filepages =
@@ -84,6 +87,10 @@ __s32 BPF_KPROBE(kprobe__xm_oom_kill_process, struct oom_control *oc,
             BPF_CORE_READ(ts, mm, rss_stat.count[MM_SHMEMPAGES].counter);
         // 获取应用程序的comm
         bpf_core_read_str(evt->comm, sizeof(evt->comm), &ts->comm);
+        bpf_printk("kprobe__xm_oom_kill_process pid:%d, comm:%s, points:%lu "
+                   "was killed "
+                   "because oom",
+                   evt->pid, evt->comm, evt->points);
         bpf_ringbuf_submit(evt, 0);
     } else {
         bpf_printk("kprobe__xm_oom_kill_process bpf_ringbuf_reserve alloc "

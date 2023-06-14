@@ -114,7 +114,7 @@ struct xm_processvm_evt_data {
 struct xm_oomkill_evt_data {
     pid_t tid; // 线程id
     pid_t pid; // 进程id
-    __u64 memcg_id;
+    __u32 memcg_id;
     __u64 memcg_page_counter; // physical memory page count
     __u64 points; // heuristic badness points
     __u64 rss_filepages;
