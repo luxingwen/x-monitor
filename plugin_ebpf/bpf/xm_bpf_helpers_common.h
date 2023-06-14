@@ -236,7 +236,7 @@ static __always_inline __u64 __xm_get_cgroup_id(struct cgroup *cg) {
     __u64 id = 0;
 
     void *kn = (void *)READ_KERN(cg->kn);
-    if (bpf_core_type_exists(union kernfs_node_id___old)) {
+    if (bpf_core_type_exists(struct kernfs_node___418)) {
         // 如果存在union kernfs_node_id___old，那么kernel是4.18 or 5.4
         // 尝试从4.18内核结构中读取
         struct kernfs_node___418 *kn_418 = (struct kernfs_node___418 *)kn;
@@ -244,15 +244,15 @@ static __always_inline __u64 __xm_get_cgroup_id(struct cgroup *cg) {
         if (0 == err) {
             // 如果读取成功，返回id
             return id;
-        } else {
-            // 尝试从5.4内核读取
-            struct kernfs_node___54x *kn_54 = (struct kernfs_node___54x *)kn;
-            // **如果不加这个判断，加载失败
-            if (bpf_core_field_exists(kn_54->id)) {
-                return BPF_CORE_READ(kn_54, id.id);
-            }
         }
-    } else {
+    } else if (bpf_core_type_exists(struct kernfs_node___54x)) {
+        // 尝试从5.4内核读取
+        struct kernfs_node___54x *kn_54 = (struct kernfs_node___54x *)kn;
+        // **如果不加这个判断，加载失败
+        // if (bpf_core_field_exists(kn_54->id)) {
+        return BPF_CORE_READ(kn_54, id.id);
+        // }
+    } else if (bpf_core_type_exists(struct kernfs_node___514x)) {
         // 如果不存在union kernfs_node_id___old，那么kernel可能是5.14
         struct kernfs_node___514x *kn_514 = (struct kernfs_node___514x *)kn;
         err = bpf_core_read(&id, sizeof(__u64), &kn_514->id);
@@ -332,6 +332,7 @@ static __s64 __xm_get_task_state(struct task_struct *task) {
     } else {
         /* 老内核里面field是task */
         struct task_struct___old *t_old = (void *)task;
+
         return BPF_CORE_READ(t_old, state);
     }
 }

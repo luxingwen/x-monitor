@@ -25,12 +25,12 @@ struct {
     __uint(max_entries, 1 << 16); // 64k
 } xm_oomkill_event_ringbuf_map SEC(".maps");
 
-const struct xm_oomkill_evt *__unused_oom_evt __attribute__((unused));
+const struct xm_oomkill_evt_data *__unused_oom_evt __attribute__((unused));
 
 // SEC("tp/oom/mark_victim")
 // __s32 BPF_PROG(tracepoint__xm_oom_mark_victim,
 //                struct trace_event_raw_mark_victim *evt) {
-//     struct xm_oomkill_evt info = {};
+//     struct xm_oomkill_evt_data info = {};
 //     __u8 val = 0;
 
 //     bpf_get_current_comm(&info.comm, sizeof(info.comm));
@@ -49,8 +49,8 @@ __s32 BPF_KPROBE(kprobe__xm_oom_kill_process, struct oom_control *oc,
     struct task_struct *ts;
 
     // 通过ringbuf分配事件结构
-    struct xm_oomkill_evt *evt = bpf_ringbuf_reserve(
-        &xm_oomkill_event_ringbuf_map, sizeof(struct xm_oomkill_evt), 0);
+    struct xm_oomkill_evt_data *evt = bpf_ringbuf_reserve(
+        &xm_oomkill_event_ringbuf_map, sizeof(struct xm_oomkill_evt_data), 0);
     if (evt) {
         // 读取oom msg
         bpf_core_read_str(evt->msg, OOM_KILL_MSG_LEN, message);

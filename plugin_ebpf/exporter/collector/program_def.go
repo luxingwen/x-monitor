@@ -21,6 +21,7 @@ const (
 	runQLatencyProgName = "runqlatency"
 	cpuSchedProgName    = "cpusched"
 	processVMMProgName  = "processvm"
+	oomKillProgName     = "oomkill"
 )
 
 type eBPFProgramFilterCfg struct {

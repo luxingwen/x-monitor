@@ -41,8 +41,8 @@ fmt:
 	gofmt -s -w $(GOFILES)
 
 lint:
-	docker run --rm -v ${WORKDIR}:/src/thor-med -w /src/thor-med golangci/golangci-lint:v1.40.1-alpine \
-		golangci-lint run -v --config=../../.golangci.yml ./...
+	docker run --rm -v ${WORKDIR}:/src/exporter -w /src/exporter golangci/golangci-lint:v1.40.1-alpine \
+		golangci-lint run -v --config=.golangci.yml ./...
 
 build-version:
 	@echo ------------ Start Build Version Details ------------

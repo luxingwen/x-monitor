@@ -58,3 +58,5 @@ eBPF:
           - "irqbalance"
           - "systemd-journal"
         exclude_comms:
+    - name: oomkill
+      enable: true

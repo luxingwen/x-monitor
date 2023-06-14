@@ -111,7 +111,7 @@ struct xm_processvm_evt_data {
 
 //------------------------ oom_kill
 #define OOM_KILL_MSG_LEN 32
-struct xm_oomkill_evt {
+struct xm_oomkill_evt_data {
     pid_t tid; // 线程id
     pid_t pid; // 进程id
     __u64 memcg_id;

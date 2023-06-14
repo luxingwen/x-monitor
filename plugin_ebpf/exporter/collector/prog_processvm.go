@@ -44,11 +44,11 @@ type processVMMProgRodata struct {
 }
 
 type processVM struct {
+	mmapAddrSet *hashset.Set
 	comm        string
 	brkSize     int64
 	mmapSize    int64
 	pid         int32
-	mmapAddrSet *hashset.Set
 }
 
 type processVMProgram struct {
