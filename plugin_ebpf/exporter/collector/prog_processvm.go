@@ -165,7 +165,7 @@ loop:
 }
 
 func (pvp *processVMProgram) handingeBPFData() {
-	glog.Infof("eBPFProgram:'%s' start handingeBPFData processVM event data...", pvp.name)
+	glog.Infof("eBPFProgram:'%s' start handling eBPF Data...", pvp.name)
 
 	eBPFEventReadChan := eventcenter.DefInstance.Subscribe(pvp.name, eventcenter.EBPF_EVENT_PROCESS_EXIT)
 
@@ -173,7 +173,7 @@ loop:
 	for {
 		select {
 		case <-pvp.stopChan:
-			glog.Warningf("eBPFProgram:'%s' handingeBPFData processVM event receive stop notify", pvp.name)
+			glog.Warningf("eBPFProgram:'%s' handling eBPF Data goroutine receive stop notify", pvp.name)
 			break loop
 		case eBPFEvtInfo, ok := <-eBPFEventReadChan.C:
 			if ok {

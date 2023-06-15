@@ -8,12 +8,16 @@
 package collector
 
 import (
+	"bytes"
+	"encoding/binary"
+
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal"
 )
 
 const (
@@ -72,7 +76,62 @@ func newOomKillProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 
+	prog.wg.Go(prog.tracingBPFEvent)
+	prog.wg.Go(prog.handingeBPFData)
 	return prog, nil
+}
+
+func (okp *oomKillProgram) tracingBPFEvent() {
+	glog.Infof("eBPFProgram:'%s' start tracing eBPF Event...", okp.name)
+
+loop:
+	for {
+		record, err := okp.oomKillEvtRD.Read()
+		if err != nil {
+			if errors.Is(err, ringbuf.ErrClosed) {
+				glog.Warningf("eBPFProgram:'%s' tracing eBPF Event goroutine receive stop notify", okp.name)
+				break loop
+			}
+			glog.Errorf("eBPFProgram:'%s' Read error. err:%s", okp.name, err.Error())
+			continue
+		}
+		oomKillEvtData := new(bpfmodule.XMOomKillXmOomkillEvtData)
+		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, oomKillEvtData); err != nil {
+			glog.Errorf("failed to parse XMOomKillXmOomkillEvtData, err: %s", err.Error())
+			continue
+		}
+		okp.oomKillEvtDataChan.SafeSend(oomKillEvtData, false)
+	}
+}
+
+func (okp *oomKillProgram) handingeBPFData() {
+	glog.Infof("eBPFProgram:'%s' start handling eBPF Data...", okp.name)
+
+loop:
+	for {
+		select {
+		case <-okp.stopChan:
+			glog.Warningf("eBPFProgram:'%s' handling eBPF Data goroutine receive stop notify", okp.name)
+			break loop
+		case data, ok := <-okp.oomKillEvtDataChan.C:
+			if ok {
+				comm := internal.CommToString(data.Comm[:])
+				oomMsg := internal.CommToString(data.Msg[:])
+				fileRssKB := data.RssFilepages << 2
+				anonRssKB := data.RssAnonpages << 2
+				shmemRssKB := data.RssShmepages << 2
+				memoryLimitKB := data.TotalPages << 2
+				if data.MemcgId != 0 {
+					// memcgid就是inode，通过类似命令可以找到对应的cg目录，find / -inum 140451 -print
+					glog.Infof("eBPFProgram:'%s' Process pid:%d, tid:%d, comm:'%s' happens OOMKill, in MemCgroup:%d, MemCgroup pageCounter:%d, badness points:%d, file-rss:%dkB, anon-rss:%dkB, shmem-rss:%dkB, memoryLimit:%dkB, Msg:%s",
+						okp.name, data.Pid, data.Tid, comm, data.MemcgId, data.MemcgPageCounter, data.Points, fileRssKB, anonRssKB, shmemRssKB, memoryLimitKB, oomMsg)
+				} else {
+					glog.Infof("eBPFProgram:'%s' Process pid:%d, tid:%d, comm:'%s' happens OOMKill, badness points:%d, file-rss:%dkB, anon-rss:%dkB, shmem-rss:%dkB, memoryLimit:%dkB, Msg:%s",
+						okp.name, data.Pid, data.Tid, comm, data.Points, fileRssKB, anonRssKB, shmemRssKB, memoryLimitKB, oomMsg)
+				}
+			}
+		}
+	}
 }
 
 func (okp *oomKillProgram) Update(ch chan<- prometheus.Metric) error {
@@ -94,3 +153,22 @@ func (okp *oomKillProgram) Stop() {
 	okp.oomKillEvtDataChan.SafeClose()
 	glog.Infof("eBPFProgram:'%s' stopped", okp.name)
 }
+
+/*
+I0615 07:28:43.679520 1284119 prog_oomkill.go:126] eBPFProgram:'oomkill' Process pid:1284158, tid:1284158, comm:'stress-ng-vm' happens OOMKill, in MemCgroup:140451, MemCgroup pageCounter:262144, badness points:524271, file-rss:1372kB, anon-rss:1045532kB, shmem-rss:36kB, memoryLimit:1048576kB, Msg:Memory cgroup out of memory
+
+➜  pingan find  / -inum 140451 -print
+/sys/fs/cgroup/memory/user.slice/hello-cg
+
+
+[3020572.724656] [1284158]     0 1284158   282787   261735  2195456        0          1000 stress-ng-vm
+[3020572.729020] oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=/,mems_allowed=0,oom_memcg=/user.slice/hello-cg,task_memcg=/user.slice/hello-cg,task=stress-ng-vm,pid=1284158,uid=0
+[3020572.737251] Memory cgroup out of memory: Killed process 1284158 (stress-ng-vm) total-vm:1131148kB, anon-rss:1045532kB, file-rss:1372kB, shmem-rss:36kB, UID:0 pgtables:2144kB oom_score_adj:1000
+[3020572.748425] oom_reaper: reaped process 1284158 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:36kB
+
+
+cgget -g memory:/user.slice/hello-cg
+memory.kmem.slabinfo:
+memory.limit_in_bytes: 1073741824 = 1048576kB
+memory.swappiness: 60
+*/
