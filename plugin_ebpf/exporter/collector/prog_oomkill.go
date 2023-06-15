@@ -123,8 +123,9 @@ loop:
 				memoryLimitKB := data.TotalPages << 2
 				if data.MemcgId != 0 {
 					// memcgid就是inode，通过类似命令可以找到对应的cg目录，find / -inum 140451 -print
-					glog.Infof("eBPFProgram:'%s' Process pid:%d, tid:%d, comm:'%s' happens OOMKill, in MemCgroup:%d, MemCgroup pageCounter:%d, badness points:%d, file-rss:%dkB, anon-rss:%dkB, shmem-rss:%dkB, memoryLimit:%dkB, Msg:%s",
-						okp.name, data.Pid, data.Tid, comm, data.MemcgId, data.MemcgPageCounter, data.Points, fileRssKB, anonRssKB, shmemRssKB, memoryLimitKB, oomMsg)
+					memcgKB := data.MemcgPageCounter << 2
+					glog.Infof("eBPFProgram:'%s' Process pid:%d, tid:%d, comm:'%s' happens OOMKill, in MemCgroup:%d, MemCgroup alloc:%dkB, badness points:%d, file-rss:%dkB, anon-rss:%dkB, shmem-rss:%dkB, memoryLimit:%dkB, Msg:%s",
+						okp.name, data.Pid, data.Tid, comm, data.MemcgId, memcgKB, data.Points, fileRssKB, anonRssKB, shmemRssKB, memoryLimitKB, oomMsg)
 				} else {
 					glog.Infof("eBPFProgram:'%s' Process pid:%d, tid:%d, comm:'%s' happens OOMKill, badness points:%d, file-rss:%dkB, anon-rss:%dkB, shmem-rss:%dkB, memoryLimit:%dkB, Msg:%s",
 						okp.name, data.Pid, data.Tid, comm, data.Points, fileRssKB, anonRssKB, shmemRssKB, memoryLimitKB, oomMsg)
