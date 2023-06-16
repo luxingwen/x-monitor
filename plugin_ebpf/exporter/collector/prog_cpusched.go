@@ -182,6 +182,7 @@ L:
 			if ok {
 				//glog.Infof("eBPFProgram:'%s' cpuSchedEvtData:%s", csp.name, litter.Sdump(cpuSchedEvtData))
 				if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_OFFCPU {
+					// 输出进程offcpu的时间
 					if !csp.metricsUpdateFilter.Contains(cpuSchedEvtData.Pid) {
 						ch <- prometheus.MustNewConstMetric(csp.offCPUDurationDesc,
 							prometheus.GaugeValue, float64(cpuSchedEvtData.OffcpuDurationMillsecs),
@@ -193,6 +194,7 @@ L:
 						csp.metricsUpdateFilter.Add(cpuSchedEvtData.Pid)
 					}
 				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HANG {
+					// 输出hang的进程pid
 					ch <- prometheus.MustNewConstMetric(csp.hangProcessDesc,
 						prometheus.GaugeValue, float64(cpuSchedEvtData.Pid),
 						strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),

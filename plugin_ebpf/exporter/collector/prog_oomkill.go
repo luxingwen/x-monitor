@@ -10,6 +10,7 @@ package collector
 import (
 	"bytes"
 	"encoding/binary"
+	"strconv"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"
@@ -29,6 +30,9 @@ type oomKillProgram struct {
 	oomKillEvtRD       *ringbuf.Reader
 	objs               *bpfmodule.XMOomKillObjects
 	oomKillEvtDataChan *bpfmodule.OomkillEvtDataChannel
+
+	sysOomKillPromDesc   *prometheus.Desc
+	memcgOomKillPromDesc *prometheus.Desc
 }
 
 func init() {
@@ -68,6 +72,12 @@ func newOomKillProgram(name string) (eBPFProgram, error) {
 			stopChan: make(chan struct{}),
 		},
 		oomKillEvtDataChan: bpfmodule.NewOomkillEvtDataChannel(defaultOomKillEvtChanSize),
+		sysOomKillPromDesc: prometheus.NewDesc("oom_kill_os", "Details of the process when it is oom killed in the system",
+			[]string{"pid", "tid", "comm", "file_rss_kb", "anon_rss_kb", "shmem_rss_kb", "mem_limit_kb", "msg"},
+			prometheus.Labels{"from": "xm_ebpf"}),
+		memcgOomKillPromDesc: prometheus.NewDesc("oom_kill_memcg", "Details of the process when it is oom killed in the memory cgroup",
+			[]string{"pid", "tid", "comm", "memcg_inode", "memcg_limit_kb", "file_rss_kb", "anon_rss_kb", "shmem_rss_kb", "msg"},
+			prometheus.Labels{"from": "xm_ebpf"}),
 	}
 
 	if err := loadToRunOomKillProg(name, prog); err != nil {
@@ -77,7 +87,6 @@ func newOomKillProgram(name string) (eBPFProgram, error) {
 	}
 
 	prog.wg.Go(prog.tracingBPFEvent)
-	prog.wg.Go(prog.handingeBPFData)
 	return prog, nil
 }
 
@@ -104,15 +113,10 @@ loop:
 	}
 }
 
-func (okp *oomKillProgram) handingeBPFData() {
-	glog.Infof("eBPFProgram:'%s' start handling eBPF Data...", okp.name)
-
+func (okp *oomKillProgram) Update(ch chan<- prometheus.Metric) error {
 loop:
 	for {
 		select {
-		case <-okp.stopChan:
-			glog.Warningf("eBPFProgram:'%s' handling eBPF Data goroutine receive stop notify", okp.name)
-			break loop
 		case data, ok := <-okp.oomKillEvtDataChan.C:
 			if ok {
 				comm := internal.CommToString(data.Comm[:])
@@ -126,16 +130,37 @@ loop:
 					memcgKB := data.MemcgPageCounter << 2
 					glog.Infof("eBPFProgram:'%s' Process pid:%d, tid:%d, comm:'%s' happens OOMKill, in MemCgroup:%d, MemCgroup alloc:%dkB, badness points:%d, file-rss:%dkB, anon-rss:%dkB, shmem-rss:%dkB, memoryLimit:%dkB, Msg:%s",
 						okp.name, data.Pid, data.Tid, comm, data.MemcgId, memcgKB, data.Points, fileRssKB, anonRssKB, shmemRssKB, memoryLimitKB, oomMsg)
+
+					ch <- prometheus.MustNewConstMetric(okp.memcgOomKillPromDesc,
+						prometheus.GaugeValue, float64(data.Points),
+						strconv.FormatInt(int64(data.Pid), 10),
+						strconv.FormatInt(int64(data.Tid), 10),
+						comm, strconv.FormatInt(int64(data.MemcgId), 10),
+						strconv.FormatInt(int64(memcgKB), 10),
+						strconv.FormatInt(int64(fileRssKB), 10),
+						strconv.FormatInt(int64(anonRssKB), 10),
+						strconv.FormatInt(int64(shmemRssKB), 10),
+						oomMsg)
 				} else {
 					glog.Infof("eBPFProgram:'%s' Process pid:%d, tid:%d, comm:'%s' happens OOMKill, badness points:%d, file-rss:%dkB, anon-rss:%dkB, shmem-rss:%dkB, memoryLimit:%dkB, Msg:%s",
 						okp.name, data.Pid, data.Tid, comm, data.Points, fileRssKB, anonRssKB, shmemRssKB, memoryLimitKB, oomMsg)
+
+					ch <- prometheus.MustNewConstMetric(okp.sysOomKillPromDesc,
+						prometheus.GaugeValue, float64(data.Points),
+						strconv.FormatInt(int64(data.Pid), 10),
+						strconv.FormatInt(int64(data.Tid), 10),
+						comm,
+						strconv.FormatInt(int64(fileRssKB), 10),
+						strconv.FormatInt(int64(anonRssKB), 10),
+						strconv.FormatInt(int64(shmemRssKB), 10),
+						strconv.FormatInt(int64(memoryLimitKB), 10),
+						oomMsg)
 				}
 			}
+		default:
+			break loop
 		}
 	}
-}
-
-func (okp *oomKillProgram) Update(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
