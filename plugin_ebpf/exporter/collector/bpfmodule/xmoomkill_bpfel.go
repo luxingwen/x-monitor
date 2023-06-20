@@ -16,7 +16,8 @@ import (
 type XMOomKillXmOomkillEvtData struct {
 	Tid              int32
 	Pid              int32
-	MemcgId          uint64
+	MemcgId          uint32
+	_                [4]byte
 	MemcgPageCounter uint64
 	Points           uint64
 	RssFilepages     uint64
