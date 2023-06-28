@@ -1,0 +1,40 @@
+#!/usr/bin/env bpftrace
+
+#include <linux/blkdev.h>
+
+BEGIN
+{
+	printf("Tracing... Hit Ctrl-C to end.\n");
+}
+
+// 内核中断处理函数
+kprobe:blk_update_request {
+	$req = (struct request*)arg0;
+
+	time("%H:%M:%S\n");
+	printf("blk_update_request, tid:%d, disk:%s\n", tid, $req->rq_disk->disk_name);
+	printf("\t%s\n", kstack(perf))
+}
+
+// 内核线程来处理插入请求
+kprobe:blk_mq_start_request {
+	$req = (struct request*)arg0;
+
+	time("%H:%M:%S\n");
+	printf("blk_mq_start_request, pid:%d, comm:'%s', disk:%s\n", pid, comm, $req->rq_disk->disk_name);
+	printf("\t%s%s\n", kstack(perf), ustack(perf))
+}
+
+kprobe:blk_mq_make_request {
+	$req = (struct request*)arg0;
+
+	time("%H:%M:%S\n");
+	printf("blk_mq_make_request, pid:%d, comm:'%s', disk:%s\n", pid, comm, $req->rq_disk->disk_name);
+	printf("\t%s%s\n", kstack(perf), ustack(perf))
+}
+
+tracepoint:block:block_plug {
+	time("%H:%M:%S\n");
+
+	printf("tracepoint:block:block_plug, comm:'%s'\n", args->comm);
+}
