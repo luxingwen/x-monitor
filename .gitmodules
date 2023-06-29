@@ -1,12 +1,27 @@
-[submodule "extra/libbpf/libbpf_repo"]
-	path = extra/libbpf/libbpf_repo
+[submodule "extra/vendor/libbpf/libbpf_repo"]
+	path = extra/vendor/libbpf/libbpf_repo
 	url = https://github.com/libbpf/libbpf
-[submodule "extra/zlog"]
-	path = extra/zlog
+[submodule "extra/vendor/zlog"]
+	path = extra/vendor/zlog
 	url = https://github.com/HardySimpson/zlog.git
-[submodule "extra/userspace-rcu"]
-	path = extra/userspace-rcu
+[submodule "extra/vendor/userspace-rcu"]
+	path = extra/vendor/userspace-rcu
 	url = git://git.liburcu.org/userspace-rcu.git
-[submodule "extra/zstd"]
-	path = extra/zstd
+[submodule "extra/vendor/zstd"]
+	path = extra/vendor/zstd
 	url = https://github.com/facebook/zstd.git
+[submodule "extra/vendor/prometheus-client-c"]
+	path = extra/vendor/prometheus-client-c
+	url = https://github.com/wubo0067/prometheus-client-c.git
+[submodule "extra/vendor/libconfig"]
+	path = extra/vendor/libconfig
+	url = https://github.com/hyperrealm/libconfig.git
+[submodule "extra/vendor/pcre2"]
+	path = extra/vendor/pcre2
+	url = https://github.com/PCRE2Project/pcre2.git
+[submodule "extra/vendor/libmicrohttpd"]
+	path = extra/vendor/libmicrohttpd
+	url = https://git.gnunet.org/libmicrohttpd.git
+[submodule "extra/vendor/Collections-C"]
+	path = extra/vendor/Collections-C
+	url = https://github.com/srdja/Collections-C.git
