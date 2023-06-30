@@ -8,6 +8,7 @@ SRCS			= $(wildcard *.c)
 BPF_KERN_OBJS  := $(patsubst %.bpf.c, $(OUTPUT)/%.bpf.o, $(SRCS))
 
 LIBBPF_SRC := $(abspath ../../extra/vendor/libbpf/libbpf_repo/src)
+#编译到该目录
 LIBBPF_OBJ := $(abspath ../../extra/vendor/libbpf/libbpf_repo/src/libbpf.a)
 
 BPFTOOL_OUTPUT := $(abspath ../skel)

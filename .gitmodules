@@ -1,6 +1,3 @@
-[submodule "extra/vendor/libbpf/libbpf_repo"]
-	path = extra/vendor/libbpf/libbpf_repo
-	url = https://github.com/libbpf/libbpf
 [submodule "extra/vendor/prometheus-client-c"]
 	path = extra/vendor/prometheus-client-c
 	url = https://github.com/wubo0067/prometheus-client-c.git
@@ -19,9 +16,12 @@
 [submodule "extra/vendor/zlog"]
 	path = extra/vendor/zlog
 	url = https://github.com/HardySimpson/zlog.git
-[submodule "extra/vendor/userspace-rcu"]
-	path = extra/vendor/userspace-rcu
-	url = git://git.liburcu.org/userspace-rcu.git
 [submodule "extra/vendor/zstd"]
 	path = extra/vendor/zstd
 	url = https://github.com/facebook/zstd.git
+[submodule "extra/vendor/libbpf/libbpf_repo"]
+	path = extra/vendor/libbpf/libbpf_repo
+	url = https://github.com/libbpf/libbpf.git
+[submodule "extra/vendor/userspace-rcu"]
+	path = extra/vendor/userspace-rcu
+	url = git://git.liburcu.org/userspace-rcu.git
