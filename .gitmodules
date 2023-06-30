@@ -25,3 +25,6 @@
 [submodule "extra/vendor/userspace-rcu"]
 	path = extra/vendor/userspace-rcu
 	url = git://git.liburcu.org/userspace-rcu.git
+[submodule "extra/vendor/curl"]
+	path = extra/vendor/curl
+	url = https://github.com/curl/curl.git
