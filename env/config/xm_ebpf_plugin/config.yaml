@@ -39,6 +39,7 @@ eBPF:
           - "pmlogger"
           - "irqbalance"
           - "systemd-journal"
+          - "test_offcpu.sh"
     - name: processvm
       enabled: false
       metrcs:
