@@ -31,7 +31,7 @@ const volatile __s8 __offcpu_task_type = 0; // 0: all，1：user，2：kernel
 // **bpf map定义
 // 记录task_struct插入running queue的时间
 BPF_HASH(xm_cs_runqlat_start_map, __u32, __u64, MAX_THREAD_COUNT);
-// 记录从插入running— queue时间到上cpu的等待时间的分布，单位微秒
+// 记录从插入running-queue时间到上cpu的等待时间的分布，单位微秒
 BPF_HASH(xm_cs_runqlat_hists_map, __u32, struct xm_runqlat_hist, 1);
 // 记录task_struct从cpu调度出去的时间
 BPF_HASH(xm_cs_offcpu_start_map, __u32, __u64, MAX_THREAD_COUNT);

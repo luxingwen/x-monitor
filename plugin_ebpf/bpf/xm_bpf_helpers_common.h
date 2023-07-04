@@ -336,3 +336,25 @@ static __s64 __xm_get_task_state(struct task_struct *task) {
         return BPF_CORE_READ(t_old, state);
     }
 }
+
+struct request_queue___x {
+    struct gendisk *disk;
+} __attribute__((preserve_access_index));
+
+struct request___old {
+    struct gendisk *rq_disk;
+} __attribute__((preserve_access_index));
+
+struct request___new {
+    struct request_queue___x *q;
+} __attribute__((preserve_access_index));
+
+static struct gendisk *__xm_get_disk(void *rq) {
+    struct request___old *o_rq = (struct request___old *)rq;
+    if (bpf_core_field_exists(o_rq->rq_disk)) {
+        return BPF_CORE_READ(o_rq, rq_disk);
+    } else {
+        struct request___new *n_rq = (struct request___new *)rq;
+        return BPF_CORE_READ(n_rq, q, disk);
+    }
+}

@@ -124,3 +124,17 @@ struct xm_oomkill_evt_data {
     char comm[TASK_COMM_LEN];
     char msg[OOM_KILL_MSG_LEN];
 };
+
+//------------------------ bio
+
+struct xm_bio_req_latency_hist_key {
+    __s32 major; /* major number of driver */
+    __s32 first_minor;
+    __u32 cmd_flags; /* op and common flags */
+};
+
+#define XM_BIO_REQ_LATENCY_MAX_SLOTS 20
+
+struct xm_bio_req_latency_hist {
+    __u32 slots[XM_BIO_REQ_LATENCY_MAX_SLOTS]; // 每个slot代表2的次方
+};

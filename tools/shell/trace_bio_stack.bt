@@ -38,3 +38,11 @@ tracepoint:block:block_plug {
 
 	printf("tracepoint:block:block_plug, comm:'%s'\n", args->comm);
 }
+
+kprobe:blk_update_request {
+	$req = (struct request*)arg0;
+
+	time("%H:%M:%S\n");
+	printf("blk_update_request, pid:%d, comm:'%s', disk:%s\n", pid, comm, $req->rq_disk->disk_name);
+	printf("\t%s\n", kstack(perf))
+}
