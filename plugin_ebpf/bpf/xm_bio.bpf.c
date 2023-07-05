@@ -16,7 +16,7 @@
 extern int LINUX_KERNEL_VERSION __kconfig;
 
 // 是否按每个request的cmd_flags进行过滤
-const volatile bool __filter_per_cmd_flag = 1;
+const volatile bool __filter_per_cmd_flag = false;
 
 struct bio_req_stage {
     __u64 insert;
@@ -25,18 +25,22 @@ struct bio_req_stage {
 
 BPF_HASH(xm_bio_request_start_map, struct request *, struct bio_req_stage,
          10240);
-BPF_HASH(xm_bio_request_latency_hists_map, struct xm_bio_req_latency_hist_key,
-         struct xm_bio_req_latency_hist, 1024); // op枚举乘以8个分区
+BPF_HASH(xm_bio_info_map, struct xm_bio_key, struct xm_bio_info,
+         1024); // op枚举乘以8个分区
 
 // ** 类型标识，为了bpf2go程序生成golang类型
-static struct xm_bio_req_latency_hist_key __zero_bio_req_latency_hist_key = {
+static struct xm_bio_key __zero_bio_key = {
     .major = 0,
     .first_minor = 0,
     .cmd_flags = 0,
 };
 
-static struct xm_bio_req_latency_hist __zero_bio_req_latency_hist = {
-    .slots = { 0 },
+static struct xm_bio_info __zero_bio_info = {
+    .req_latency_in2c_slots = { 0 },
+    .req_latency_is2c_slots = { 0 },
+    .bytes = 0,
+    .sequential_wr_count = 0,
+    .random_wr_count = 0,
 };
 
 static __always_inline __s32 xm_trace_request(struct request *rq, bool insert) {
@@ -55,6 +59,11 @@ static __always_inline __s32 xm_trace_request(struct request *rq, bool insert) {
     } else {
         // 记录request 从dispatch队列出来放入驱动队列的事件，开始执行
         stage_p->issue = now_ns;
+        __s64 delta = (__s64)(now_ns - stage_p->insert);
+        if (delta < 0) {
+            bpf_map_delete_elem(&xm_bio_request_start_map, &rq);
+            return 0;
+        }
     }
 
     if (stage_p == &init_stage) {
@@ -93,9 +102,77 @@ __s32 xm_tp_btf__block_rq_issue(__u64 *ctx) {
     return 0;
 }
 
+/**
+ * block_rq_complete - block IO operation completed by device driver
+ * @rq: block operations request
+ * @error: status code
+ * @nr_bytes: number of completed bytes
+ */
 SEC("tp_btf/block_rq_complete")
 __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
                __u32 nr_bytes) {
+    __s64 delta_in2c, delta_is2c;
+    struct xm_bio_key bio_key = { 0, 0, 0 };
+    __u64 now_ns = bpf_ktime_get_ns();
+    // 请求的扇区号
+    sector_t sector;
+    // 操作的扇区数量
+    __u32 nr_sector;
+
+    struct bio_req_stage *stage_p =
+        bpf_map_lookup_elem(&xm_bio_request_start_map, &rq);
+    if (!stage_p) {
+        // 如果在complete回调中找不到该request，直接返回
+        return 0;
+    }
+
+    // 计算延迟时间
+    delta_in2c = (__s64)(now_ns - stage_p->insert);
+    if (delta_in2c < 0) {
+        goto cleanup;
+    }
+    delta_is2c = (__s64)(now_ns - stage_p->issue);
+    if (delta_is2c < 0) {
+        goto cleanup;
+    }
+
+    // 获得磁盘信息
+    struct gendisk *disk = __xm_get_disk(rq);
+    if (disk) {
+        // 构建key
+        bio_key.major = BPF_CORE_READ(disk, major);
+        bio_key.first_minor = BPF_CORE_READ(disk, first_minor);
+        if (__filter_per_cmd_flag) {
+            // 读取cmd_flags
+            bio_key.cmd_flags = BPF_CORE_READ(rq, cmd_flags);
+        }
+    }
+
+    // 查询
+    struct xm_bio_info *bio_info_p = __xm_bpf_map_lookup_or_try_init(
+        &xm_bio_info_map, &bio_key, &__zero_bio_info);
+    // 请求的起始扇区号
+    sector = READ_KERN(rq->__sector);
+    // 操作的连续扇区数量
+    nr_sector = nr_bytes >> 9;
+    if (bio_info_p->last_sector) {
+        // 判断上次请求的最后扇区号
+        if (bio_info_p->last_sector == sector) {
+            // 循序操作
+            __xm_update_u64(&bio_info_p->sequential_wr_count, 1);
+        } else {
+            // 随机操作
+            __xm_update_u64(&bio_info_p->random_wr_count, 1);
+        }
+        // 累计块设备的操作字节数
+        __xm_update_u64(&bio_info_p->bytes, nr_bytes);
+    }
+    // 计算last sector
+    bio_info_p->last_sector = sector + nr_sector;
+
+cleanup:
+    bpf_map_delete_elem(&xm_bio_request_start_map, &rq);
+
     return 0;
 }
 

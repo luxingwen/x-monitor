@@ -122,8 +122,8 @@ static __s32 __statistics_runqlat(pid_t pid, __u64 now_ns) {
         return 0;
     } else {
         // 计算插入running queue到被选中上cpu的时间差，单位纳秒
-        __s64 wakeup_to_run_duration = (__s64)(now_ns - *wakeup_ns);
-        if (wakeup_to_run_duration < 0)
+        __s64 wakeup_to_run_duration_us = (__s64)(now_ns - *wakeup_ns);
+        if (wakeup_to_run_duration_us < 0)
             goto cleanup;
 
         __u32 hkey = -1;
@@ -135,11 +135,11 @@ static __s32 __statistics_runqlat(pid_t pid, __u64 now_ns) {
             goto cleanup;
         }
         // 时间换算为微秒
-        wakeup_to_run_duration = wakeup_to_run_duration / 1000U;
+        wakeup_to_run_duration_us = wakeup_to_run_duration_us / 1000U;
         // 计算2的对数，求出在哪个slot, 总共26个槽位，1---2的25次方
         // !! I found out the reason, is because of slot definition. "u32 slot"
         // !! doesn't work, u64 works, this is very strange.
-        __u64 slot = __xm_log2l(wakeup_to_run_duration);
+        __u64 slot = __xm_log2l(wakeup_to_run_duration_us);
         // 超过最大槽位，放到最后一个槽位
         if (slot >= XM_RUNQLAT_MAX_SLOTS) {
             slot = XM_RUNQLAT_MAX_SLOTS - 1;

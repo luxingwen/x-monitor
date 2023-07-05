@@ -127,7 +127,7 @@ struct xm_oomkill_evt_data {
 
 //------------------------ bio
 
-struct xm_bio_req_latency_hist_key {
+struct xm_bio_key {
     __s32 major; /* major number of driver */
     __s32 first_minor;
     __u32 cmd_flags; /* op and common flags */
@@ -135,6 +135,15 @@ struct xm_bio_req_latency_hist_key {
 
 #define XM_BIO_REQ_LATENCY_MAX_SLOTS 20
 
-struct xm_bio_req_latency_hist {
-    __u32 slots[XM_BIO_REQ_LATENCY_MAX_SLOTS]; // 每个slot代表2的次方
+struct xm_bio_info {
+    __u32 req_latency_in2c_slots
+        [XM_BIO_REQ_LATENCY_MAX_SLOTS]; // 延迟，request 从insert
+                                        // io-schedule.dispatch队列到complete执行完毕
+    __u32 req_latency_is2c_slots
+        [XM_BIO_REQ_LATENCY_MAX_SLOTS]; // 延迟，request 从
+                                        // io-schedule.dispatch队列取出到complete执行完毕
+    __u64 bytes; // 总共的字节数
+    __u64 last_sector; // 该磁盘最后读取的扇区
+    __u64 sequential_wr_count; // 顺序读写次数
+    __u64 random_wr_count; // 随机读写次数
 };
