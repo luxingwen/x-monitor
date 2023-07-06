@@ -8,6 +8,7 @@
 #include <vmlinux.h>
 #include "xm_bpf_helpers_common.h"
 #include "xm_bpf_helpers_maps.h"
+#include "xm_bpf_helpers_math.h"
 
 #include "../bpf_and_user.h"
 
@@ -39,8 +40,8 @@ static struct xm_bio_info __zero_bio_info = {
     .req_latency_in2c_slots = { 0 },
     .req_latency_is2c_slots = { 0 },
     .bytes = 0,
-    .sequential_wr_count = 0,
-    .random_wr_count = 0,
+    .sequential_count = 0,
+    .random_count = 0,
 };
 
 static __always_inline __s32 xm_trace_request(struct request *rq, bool insert) {
@@ -78,27 +79,24 @@ static __always_inline __s32 xm_trace_request(struct request *rq, bool insert) {
 // 因为在kernel 5.11.0之后，这个tracepoint的参数只有struct request了，
 // 所以这里没法用BPF_PROG宏，需直接使用ctx作为参数，根据内核版本来获取参数
 SEC("tp_btf/block_rq_insert") __s32 xm_tp_btf__block_rq_insert(__u64 *ctx) {
-    struct request *rq = NULL;
-
     if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0)) {
-        rq = (struct request *)ctx[1];
+        xm_trace_request((struct request *)ctx[1], true);
+        // !! 这里这样写导致了bpf_load失败
+        // rq = (struct request *)ctx[1];
     } else {
-        rq = (struct request *)ctx[0];
+        xm_trace_request((struct request *)ctx[0], true);
     }
-    xm_trace_request(rq, true);
     return 0;
 }
 
 SEC("tp_btf/block_rq_issue")
 __s32 xm_tp_btf__block_rq_issue(__u64 *ctx) {
-    struct request *rq = NULL;
-
     if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0)) {
-        rq = (struct request *)ctx[1];
+        xm_trace_request((struct request *)ctx[1], false);
+        // rq = (struct request *)ctx[1];
     } else {
-        rq = (struct request *)ctx[0];
+        xm_trace_request((struct request *)ctx[0], false);
     }
-    xm_trace_request(rq, false);
     return 0;
 }
 
@@ -118,6 +116,8 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
     sector_t sector;
     // 操作的扇区数量
     __u32 nr_sector;
+    //
+    __u64 slot;
 
     struct bio_req_stage *stage_p =
         bpf_map_lookup_elem(&xm_bio_request_start_map, &rq);
@@ -131,10 +131,14 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
     if (delta_in2c < 0) {
         goto cleanup;
     }
+    // 转换为微秒
+    delta_in2c /= 1000U;
+
     delta_is2c = (__s64)(now_ns - stage_p->issue);
     if (delta_is2c < 0) {
         goto cleanup;
     }
+    delta_is2c /= 1000U;
 
     // 获得磁盘信息
     struct gendisk *disk = __xm_get_disk(rq);
@@ -151,24 +155,39 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
     // 查询
     struct xm_bio_info *bio_info_p = __xm_bpf_map_lookup_or_try_init(
         &xm_bio_info_map, &bio_key, &__zero_bio_info);
-    // 请求的起始扇区号
-    sector = READ_KERN(rq->__sector);
-    // 操作的连续扇区数量
-    nr_sector = nr_bytes >> 9;
-    if (bio_info_p->last_sector) {
-        // 判断上次请求的最后扇区号
-        if (bio_info_p->last_sector == sector) {
-            // 循序操作
-            __xm_update_u64(&bio_info_p->sequential_wr_count, 1);
-        } else {
-            // 随机操作
-            __xm_update_u64(&bio_info_p->random_wr_count, 1);
+    if (bio_info_p) {
+        // 请求的起始扇区号
+        sector = READ_KERN(rq->__sector);
+        // 操作的连续扇区数量
+        nr_sector = nr_bytes >> 9;
+        if (bio_info_p->last_sector) {
+            // 判断上次请求的最后扇区号
+            if (bio_info_p->last_sector == sector) {
+                // 循序操作
+                __xm_update_u64(&bio_info_p->sequential_count, 1);
+            } else {
+                // 随机操作
+                __xm_update_u64(&bio_info_p->random_count, 1);
+            }
+            // 累计块设备的操作字节数
+            __xm_update_u64(&bio_info_p->bytes, nr_bytes);
         }
-        // 累计块设备的操作字节数
-        __xm_update_u64(&bio_info_p->bytes, nr_bytes);
+        // 计算last sector
+        bio_info_p->last_sector = sector + nr_sector;
+
+        // 计算延时槽位
+        slot = __xm_log2l(delta_in2c);
+        if (slot >= XM_BIO_REQ_LATENCY_MAX_SLOTS) {
+            slot = XM_BIO_REQ_LATENCY_MAX_SLOTS - 1;
+        }
+        __sync_fetch_and_add(&bio_info_p->req_latency_in2c_slots[slot], 1);
+
+        slot = __xm_log2l(delta_is2c);
+        if (slot >= XM_BIO_REQ_LATENCY_MAX_SLOTS) {
+            slot = XM_BIO_REQ_LATENCY_MAX_SLOTS - 1;
+        }
+        __sync_fetch_and_add(&bio_info_p->req_latency_is2c_slots[slot], 1);
     }
-    // 计算last sector
-    bio_info_p->last_sector = sector + nr_sector;
 
 cleanup:
     bpf_map_delete_elem(&xm_bio_request_start_map, &rq);

@@ -144,6 +144,6 @@ struct xm_bio_info {
                                         // io-schedule.dispatch队列取出到complete执行完毕
     __u64 bytes; // 总共的字节数
     __u64 last_sector; // 该磁盘最后读取的扇区
-    __u64 sequential_wr_count; // 顺序读写次数
-    __u64 random_wr_count; // 随机读写次数
+    __u64 sequential_count; // 顺序操作次数
+    __u64 random_count; // 随机操作次数
 };
