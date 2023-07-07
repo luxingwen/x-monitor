@@ -3,7 +3,7 @@ module xmonitor.calmwu
 go 1.20
 
 require (
-	github.com/cilium/ebpf v0.10.0
+	github.com/cilium/ebpf v0.11.0
 	github.com/emirpasic/gods v1.18.1
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/gin-gonic/gin v1.9.1

@@ -135,7 +135,7 @@ struct xm_bio_key {
 
 #define XM_BIO_REQ_LATENCY_MAX_SLOTS 20
 
-struct xm_bio_info {
+struct xm_bio_data {
     __u32 req_latency_in2c_slots
         [XM_BIO_REQ_LATENCY_MAX_SLOTS]; // 延迟，request 从insert
                                         // io-schedule.dispatch队列到complete执行完毕

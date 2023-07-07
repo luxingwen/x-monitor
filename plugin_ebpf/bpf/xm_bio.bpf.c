@@ -26,17 +26,17 @@ struct bio_req_stage {
 
 BPF_HASH(xm_bio_request_start_map, struct request *, struct bio_req_stage,
          10240);
-BPF_HASH(xm_bio_info_map, struct xm_bio_key, struct xm_bio_info,
+BPF_HASH(xm_bio_info_map, struct xm_bio_key, struct xm_bio_data,
          1024); // op枚举乘以8个分区
 
 // ** 类型标识，为了bpf2go程序生成golang类型
-static struct xm_bio_key __zero_bio_key = {
+static struct xm_bio_key __zero_bio_key __attribute__((unused)) = {
     .major = 0,
     .first_minor = 0,
     .cmd_flags = 0,
 };
 
-static struct xm_bio_info __zero_bio_info = {
+static struct xm_bio_data __zero_bio_info = {
     .req_latency_in2c_slots = { 0 },
     .req_latency_is2c_slots = { 0 },
     .bytes = 0,
@@ -153,7 +153,7 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
     }
 
     // 查询
-    struct xm_bio_info *bio_info_p = __xm_bpf_map_lookup_or_try_init(
+    struct xm_bio_data *bio_info_p = __xm_bpf_map_lookup_or_try_init(
         &xm_bio_info_map, &bio_key, &__zero_bio_info);
     if (bio_info_p) {
         // 请求的起始扇区号
