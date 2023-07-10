@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-27 11:20:44
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-04-27 14:27:16
+ * @Last Modified time: 2023-07-10 14:15:57
  */
 
 package collector
@@ -22,6 +22,7 @@ const (
 	cpuSchedProgName    = "cpusched"
 	processVMMProgName  = "processvm"
 	oomKillProgName     = "oomkill"
+	bioProgName         = "bio"
 )
 
 type eBPFProgramFilterCfg struct {

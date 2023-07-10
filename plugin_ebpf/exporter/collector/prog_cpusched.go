@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-25 12:43:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-05-18 14:34:08
+ * @Last Modified time: 2023-07-10 15:03:48
  */
 
 package collector
@@ -67,7 +67,7 @@ func init() {
 	registerEBPFProgram(cpuSchedProgName, newCpuSchedProgram)
 }
 
-func loadToRunCPUSchedEBPFProg(name string, prog *cpuSchedProgram) error {
+func loadToRunCPUSchedEProg(name string, prog *cpuSchedProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMCpuScheduleObjects)
@@ -143,7 +143,7 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 		}
 	}
 
-	if err := loadToRunCPUSchedEBPFProg(name, csProg); err != nil {
+	if err := loadToRunCPUSchedEProg(name, csProg); err != nil {
 		err = errors.Wrapf(err, "eBPFProgram:'%s' runCpuSchedProgram failed.", name)
 		glog.Error(err)
 		return nil, err

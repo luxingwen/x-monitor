@@ -61,3 +61,9 @@ eBPF:
         exclude_comms:
     - name: oomkill
       enabled: true
+    - name: bio
+      enabled: true
+      gather_interval: 3 # 单位：秒
+      filter:
+        prog_rodata:
+          filter_per_cmd_flag: false

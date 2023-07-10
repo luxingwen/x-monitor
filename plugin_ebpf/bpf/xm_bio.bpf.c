@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-07-03 10:07:51
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-07-03 10:19:19
+ * @Last Modified time: 2023-07-10 15:28:46
  */
 
 #include <vmlinux.h>
@@ -150,6 +150,8 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
             // 读取cmd_flags
             bio_key.cmd_flags = BPF_CORE_READ(rq, cmd_flags);
         }
+    } else {
+        goto cleanup;
     }
 
     // 查询
@@ -195,6 +197,7 @@ cleanup:
     return 0;
 }
 
+#if 0
 SEC("kprobe/blk_account_io_start")
 __s32 BPF_KPROBE(kprobe__xm_blk_account_io_start, struct request *rq) {
     return 0;
@@ -204,5 +207,6 @@ SEC("kprobe/blk_account_io_merge_bio")
 __s32 BPF_KPROBE(kprobe__xm_blk_account_io_merge_bio, struct request *rq) {
     return 0;
 }
+#endif
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
