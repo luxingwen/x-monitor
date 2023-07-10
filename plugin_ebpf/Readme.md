@@ -14,7 +14,7 @@
 | x-monitor.eBPF-CPUSched   | 1：支持按os、namespace、cgroup、pid、pgid进行进程过滤<br />2：使用btf_rawtracepoint提升内核数据访问效率<br />3：记录task_struct插入运行队列的时间、调度上cpu的时间、离开cpu的时间。<br />4：使用ringbuf与用户态交互。<br />5：使用hash直方图来统计task_struct在cpu运行队列中等待时间的分布。<br />6：用户态代码输出CPU运行队列延时Prometheus直方图、<br />7：用户态代码输出超过阈值Off-cpu状态的进程，<br />8：用户态代码输出输出ProcessHand状态的进程。 | 完成。                                           |
 | x-monitor.eBPF-ProcessVM  | 1：观察进程的private-anon和share地址空间的分配。<br />2：统计进程brk堆地址空间的分配。<br />3：进程私有地址空间、堆空间的释放<br />4：用户态代码到处Prometheus指标，显示过滤进程的private-anon+share地址空间大小，brk堆分配空间。 | 完成。                                           |
 | x-monitor.eBPF-OOMKill    | 1：收集系统触发的oomkill的进程信息，包括comm，pid，tid<br />2：区分进程是否在memory-cgroup限制环境中，如果是，获取memcg的inode<br />，获取memcg的memory-limit。如果不是获取系统物理内存大小<br />3：获取内核badness函数计算出的points。<br />4：获取oomkill进程的file-rss,anon-rss,shmem-rss的信息<br />5：获取系统ommkill的msg<br />6：Prometheus输出展示 | 完成                                             |
-| x-monitor.eBPF.BioLatency | 1：将块设备的I/O延迟总结为直方图。                           | 待实现                                           |
+| x-monitor.eBPF.BioLatency | 1：按设备号进行分类统计<br />2：设备的随机读取的比例<br />3：设备顺序读取的比例<br />4：设备读取的次数<br />5：设备读取的字节kB数<br />6：request从insert到complete执行的耗时分布，2的指数分布<br />7：request从issue到complete执行的耗时分布，2的指数分布 | 待实现                                           |
 | x-monitor.eBPF.nfs        | 1：对NFS进行监控                                             | 待实现                                           |
 | x-monitor.eBPF.NAPI       | 1：NAPI机制在高速网络环境下的状态                            | 待实现                                           |
 
