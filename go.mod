@@ -17,7 +17,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/vishvananda/netlink v1.1.0
-	github.com/wubo0067/calmwu-go v0.0.0-20230607033816-60c638616af1
+	github.com/wubo0067/calmwu-go v0.0.0-20230711061739-8c797f8d4326
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.5.2
 	golang.org/x/sync v0.2.0
@@ -71,7 +71,7 @@ require (
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/sys v0.10.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect

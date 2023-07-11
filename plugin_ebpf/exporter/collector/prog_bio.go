@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sanity-io/litter"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
+	"golang.org/x/sys/unix"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 )
@@ -92,6 +93,7 @@ func newBIOProgram(name string) (eBPFProgram, error) {
 func (bp *bioProgram) handingeBPFData() {
 	var bioInfoMapKey bpfmodule.XMBioXmBioKey
 	var bioInfoMapData bpfmodule.XMBioXmBioData
+	var dev uint64
 
 	glog.Infof("eBPFProgram:'%s' start handling eBPF Data...", bp.name)
 
@@ -104,15 +106,31 @@ loop:
 			glog.Warningf("eBPFProgram:'%s' handling eBPF Data goroutine receive stop notify", bp.name)
 			break loop
 		case <-bp.gatherTimer.Chan():
+			partitions, _ := calmutils.ProcPartitions()
+			//glog.Infof("eBPFProgram:'%s' partitions:%#v", bp.name, partitions)
+
 			entries := bp.objs.XmBioInfoMap.Iterate()
 			for entries.Next(&bioInfoMapKey, &bioInfoMapData) {
-				glog.Infof("eBPFProgram:'%s' key:%s, data:%#v", bp.name, litter.Sdump(bioInfoMapKey), bioInfoMapData)
+				// 开始计算bio采集数据
+				dev = unix.Mkdev(uint32(bioInfoMapKey.Major), uint32(bioInfoMapKey.FirstMinor))
+				// 查找设备名
+				devName := "Unknown"
+				for _, p := range partitions {
+					if p.Dev == dev {
+						devName = p.DevName
+					}
+				}
+
+				total := bioInfoMapData.SequentialCount + bioInfoMapData.RandomCount
+				random_percent := uint32(float64(bioInfoMapData.RandomCount) / float64(total) * 100.0)
+				sequential_percent := uint32(float64(bioInfoMapData.SequentialCount) / float64(total) * 100.0)
+				kBytes := (bioInfoMapData.Bytes >> 10)
+				glog.Infof("eBPFProgram:'%s' dev:'%d', devName:'%s', random:%d%%, sequential:%d%%, bytes:%dKB",
+					bp.name, dev, devName, random_percent, sequential_percent, kBytes)
 			}
 
 			if err := entries.Err(); err != nil {
 				glog.Errorf("eBPFProgram:'%s' iterator BioInfoMap failed, err:%s", err.Error())
-			} else {
-				// 开始计算bio采集数据
 			}
 
 			// 重置定时器

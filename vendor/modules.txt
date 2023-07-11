@@ -268,8 +268,8 @@ github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.4
 ## explicit; go 1.17
 github.com/vishvananda/netns
-# github.com/wubo0067/calmwu-go v0.0.0-20230607033816-60c638616af1
-## explicit; go 1.18
+# github.com/wubo0067/calmwu-go v0.0.0-20230711061739-8c797f8d4326
+## explicit
 github.com/wubo0067/calmwu-go/utils
 # go.uber.org/atomic v1.11.0
 ## explicit; go 1.18
@@ -314,7 +314,7 @@ golang.org/x/net/idna
 # golang.org/x/sync v0.2.0
 ## explicit
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.8.0
+# golang.org/x/sys v0.10.0
 ## explicit; go 1.17
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
