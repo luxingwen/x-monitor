@@ -45,7 +45,7 @@ type cpuSchedProgram struct {
 	hangProcessDesc     *prometheus.Desc
 	*eBPFBaseProgram
 	objs               *bpfmodule.XMCpuScheduleObjects
-	runQLatencyBuckets map[float64]uint64
+	runQLatencyBuckets map[int]uint64
 	sampleCount        uint64
 	sampleSum          float64
 	gatherInterval     time.Duration
@@ -60,8 +60,6 @@ const (
 var (
 	roData cpuSchedProgRodata
 )
-
-var runQueueLayBucketLimits = [20]float64{1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535, 131071, 262143, 524287, 1048575}
 
 func init() {
 	registerEBPFProgram(cpuSchedProgName, newCpuSchedProgram)
@@ -113,7 +111,7 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 		},
 		gatherInterval:      config.ProgramConfigByName(name).GatherInterval * time.Second,
 		metricsUpdateFilter: hashset.New(),
-		runQLatencyBuckets:  make(map[float64]uint64, len(runQueueLayBucketLimits)),
+		runQLatencyBuckets:  make(map[int]uint64, len(__powerOfTwo)),
 		cpuSchedEvtDataChan: bpfmodule.NewCpuSchedEvtDataChannel(defaultCpuSchedEvtChanSize),
 	}
 
@@ -160,7 +158,7 @@ func (csp *cpuSchedProgram) Update(ch chan<- prometheus.Metric) error {
 	// avoid data race
 	buckets := make(map[float64]uint64)
 	for k, v := range csp.runQLatencyBuckets {
-		buckets[k] = v
+		buckets[float64(k)] = v
 	}
 
 	ch <- prometheus.MustNewConstHistogram(csp.runQueueLatencyDesc,
@@ -268,15 +266,15 @@ loop:
 				csp.sampleSum = 0.0
 				glog.Infof("eBPFProgram:'%s' tracing runQueueLatency ===>", csp.name)
 				for i, slot := range histogram.Slots {
-					bucket := runQueueLayBucketLimits[i]
-					csp.sampleCount += uint64(slot)                  // 统计本周期的样本总数
-					csp.sampleSum += float64(slot) * bucket * 0.6    // 估算样本的总和
-					csp.runQLatencyBuckets[bucket] = csp.sampleCount // 每个桶的样本数，下层包括上层统计数量
+					bucket := __powerOfTwo[i]                              // 桶的上限
+					csp.sampleCount += uint64(slot)                        // 统计本周期的样本总数
+					csp.sampleSum += float64(slot) * float64(bucket) * 0.6 // 估算样本的总和
+					csp.runQLatencyBuckets[bucket] = csp.sampleCount       // 每个桶的样本数，下层包括上层统计数量
 					glog.Infof("\tusecs(%d -> %d) count: %d", func() int {
 						if i == 0 {
 							return 0
 						} else {
-							return int(runQueueLayBucketLimits[i-1]) + 1
+							return int(__powerOfTwo[i-1]) + 1
 						}
 					}(), int(bucket), slot)
 				}

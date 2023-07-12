@@ -46,3 +46,7 @@ type eBPFBaseProgram struct {
 	// ebpf
 	links []link.Link
 }
+
+var (
+	__powerOfTwo = [20]int{1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535, 131071, 262143, 524287, 1048575}
+)
