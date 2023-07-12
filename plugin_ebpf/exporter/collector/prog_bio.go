@@ -32,12 +32,12 @@ type bioProgram struct {
 	objs  *bpfmodule.XMBioObjects
 	guard sync.Mutex
 
-	bioRequestCompletedNumberDesc   *prometheus.Desc // bio request完成的数量
-	bioRequestSequentialPercentDesc *prometheus.Desc // bio request顺序完成的数量
-	bioRequestRandomizedPercentDesc *prometheus.Desc // bio request随机完成的数量
-	bioRequestBytesTotal            *prometheus.Desc // bio request总的字节数，单位kB
-	bioRequestIn2CLatency           *prometheus.Desc // bio request从insert到complete的时间，单位us
-	bioRequestIs2CLatency           *prometheus.Desc // bio request从issue到complete的时间，单位us
+	bioRequestCompletedNumberDesc *prometheus.Desc // bio request完成的数量
+	bioRequestSequentialRatioDesc *prometheus.Desc // bio request顺序完成的数量
+	bioRequestRandomizedRatioDesc *prometheus.Desc // bio request随机完成的数量
+	bioRequestBytesTotal          *prometheus.Desc // bio request总的字节数，单位kB
+	bioRequestIn2CLatency         *prometheus.Desc // bio request从insert到complete的时间，单位us
+	bioRequestIs2CLatency         *prometheus.Desc // bio request从issue到complete的时间，单位us
 }
 
 var (
@@ -84,12 +84,12 @@ func newBIOProgram(name string) (eBPFProgram, error) {
 		"Number of Completed BIO Requests.",
 		[]string{"dev_name"}, prometheus.Labels{"from": "xm_ebpf"})
 
-	bioProg.bioRequestSequentialPercentDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "sequential_percent"),
-		"Percentage of Sequentially Completed BIO Requests.",
+	bioProg.bioRequestSequentialRatioDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "sequential_ratio"),
+		"Ratio of Sequentially Completed BIO Requests.",
 		[]string{"dev_name"}, prometheus.Labels{"from": "xm_ebpf"})
 
-	bioProg.bioRequestRandomizedPercentDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "randomized_percent"),
-		"Percentage of Randomized Completed BIO Requests.",
+	bioProg.bioRequestRandomizedRatioDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "randomized_ratio"),
+		"Ratio of Randomized Completed BIO Requests.",
 		[]string{"dev_name"}, prometheus.Labels{"from": "xm_ebpf"})
 
 	bioProg.bioRequestBytesTotal = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "total_kbytes"),
@@ -143,18 +143,18 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 
 		total := bioInfoMapData.SequentialCount + bioInfoMapData.RandomCount
 		// 随机操作的百分比
-		random_percent := uint32(float32(bioInfoMapData.RandomCount) / float32(total) * 100.0)
+		random_ratio := uint32(float32(bioInfoMapData.RandomCount) / float32(total) * 100.0)
 		// 顺序操作的字节数
-		sequential_percent := uint32(float32(bioInfoMapData.SequentialCount) / float32(total) * 100.0)
+		sequential_ratio := uint32(float32(bioInfoMapData.SequentialCount) / float32(total) * 100.0)
 		// 操作完成的字节数
 		kBytes := (bioInfoMapData.Bytes >> 10)
 
 		glog.Infof("eBPFProgram:'%s' dev:'%d', devName:'%s', random:%d%%, sequential:%d%%, bytes:%dKB",
-			bp.name, dev, devName, random_percent, sequential_percent, kBytes)
+			bp.name, dev, devName, random_ratio, sequential_ratio, kBytes)
 
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestCompletedNumberDesc, prometheus.GaugeValue, float64(total), devName)
-		ch <- prometheus.MustNewConstMetric(bp.bioRequestSequentialPercentDesc, prometheus.GaugeValue, float64(sequential_percent), devName)
-		ch <- prometheus.MustNewConstMetric(bp.bioRequestRandomizedPercentDesc, prometheus.GaugeValue, float64(random_percent), devName)
+		ch <- prometheus.MustNewConstMetric(bp.bioRequestSequentialRatioDesc, prometheus.GaugeValue, float64(sequential_ratio), devName)
+		ch <- prometheus.MustNewConstMetric(bp.bioRequestRandomizedRatioDesc, prometheus.GaugeValue, float64(random_ratio), devName)
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestBytesTotal, prometheus.GaugeValue, float64(kBytes), devName)
 
 		for i, slot := range bioInfoMapData.ReqLatencyIn2cSlots {
