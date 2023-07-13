@@ -41,7 +41,15 @@ type bioProgram struct {
 }
 
 var (
-	bioRoData bioProgRodata
+	bioRoData            bioProgRodata
+	__zeroBioInfoMapData = bpfmodule.XMBioXmBioData{
+		// Bytes:               0,
+		// LastSector:          0,
+		// SequentialCount:     0,
+		// RandomCount:         0,
+		// ReqLatencyIn2cSlots: [20]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		// ReqLatencyIs2cSlots: [20]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	}
 )
 
 func init() {
@@ -201,11 +209,28 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 	}
 
 	// 删除XmBioInfoMap的所有数据
-	count, err := bp.objs.XmBioInfoMap.BatchDelete(keys, nil)
-	if err != nil {
-		glog.Errorf("eBPFProgram:'%s' BatchDelete XmBioInfoMap failed, err:%s", bp.name, err.Error())
-	} else {
-		glog.Infof("eBPFProgram:'%s' BatchDelete XmBioInfoMap count:%d", bp.name, count)
+	for _, key := range keys {
+		// 判断设备是否存在
+		exist := func(major, minor uint32) bool {
+			for _, p := range partitions {
+				if p.Major == major && p.Minor == minor {
+					return true
+				}
+			}
+			return false
+		}(uint32(key.Major), uint32(key.FirstMinor))
+
+		if exist {
+			// update
+			if err := bp.objs.XmBioInfoMap.Update(&key, &__zeroBioInfoMapData, ebpf.UpdateExist); err != nil {
+				glog.Errorf("eBPFProgram:'%s' Update XmBioInfoMap failed, err:%s", bp.name, err.Error())
+			}
+		} else {
+			// delete
+			if err := bp.objs.XmBioInfoMap.Delete(&key); err != nil {
+				glog.Errorf("eBPFProgram:'%s' Delete XmBioInfoMap failed, err:%s", bp.name, err.Error())
+			}
+		}
 	}
 
 	return nil
