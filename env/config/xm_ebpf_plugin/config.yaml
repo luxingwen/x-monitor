@@ -65,4 +65,4 @@ eBPF:
       enabled: true
       filter:
         prog_rodata:
-          filter_per_cmd_flag: false
+          filter_per_cmd_flag: true

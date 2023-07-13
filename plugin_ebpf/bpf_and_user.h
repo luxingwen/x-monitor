@@ -130,7 +130,7 @@ struct xm_oomkill_evt_data {
 struct xm_bio_key {
     __s32 major; /* major number of driver */
     __s32 first_minor;
-    __u32 cmd_flags; /* op and common flags */
+    __u8 cmd_flags; /* op and common flags */
 };
 
 #define XM_BIO_REQ_LATENCY_MAX_SLOTS 20

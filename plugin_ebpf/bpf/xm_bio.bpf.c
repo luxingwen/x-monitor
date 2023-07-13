@@ -13,6 +13,8 @@
 #include "../bpf_and_user.h"
 
 #define MAX_REQ_COUNT 10240
+#define REQ_OP_BITS 8
+#define REQ_OP_MASK ((1 << REQ_OP_BITS) - 1)
 
 extern int LINUX_KERNEL_VERSION __kconfig;
 
@@ -148,7 +150,8 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
         bio_key.first_minor = BPF_CORE_READ(disk, first_minor);
         if (__filter_per_cmd_flag) {
             // 读取cmd_flags
-            bio_key.cmd_flags = BPF_CORE_READ(rq, cmd_flags);
+            // bio_key.cmd_flags = BPF_CORE_READ(rq, cmd_flags) | REQ_OP_MASK;
+            bio_key.cmd_flags = rq->cmd_flags & REQ_OP_MASK;
         }
     } else {
         goto cleanup;

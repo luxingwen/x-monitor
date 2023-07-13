@@ -29,7 +29,8 @@ type XMBioXmBioData struct {
 type XMBioXmBioKey struct {
 	Major      int32
 	FirstMinor int32
-	CmdFlags   uint32
+	CmdFlags   uint8
+	_          [3]byte
 }
 
 // LoadXMBio returns the embedded CollectionSpec for XMBio.
@@ -73,11 +74,9 @@ type XMBioSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMBioProgramSpecs struct {
-	KprobeXmBlkAccountIoMergeBio *ebpf.ProgramSpec `ebpf:"kprobe__xm_blk_account_io_merge_bio"`
-	KprobeXmBlkAccountIoStart    *ebpf.ProgramSpec `ebpf:"kprobe__xm_blk_account_io_start"`
-	XmTpBtfBlockRqComplete       *ebpf.ProgramSpec `ebpf:"xm_tp_btf__block_rq_complete"`
-	XmTpBtfBlockRqInsert         *ebpf.ProgramSpec `ebpf:"xm_tp_btf__block_rq_insert"`
-	XmTpBtfBlockRqIssue          *ebpf.ProgramSpec `ebpf:"xm_tp_btf__block_rq_issue"`
+	XmTpBtfBlockRqComplete *ebpf.ProgramSpec `ebpf:"xm_tp_btf__block_rq_complete"`
+	XmTpBtfBlockRqInsert   *ebpf.ProgramSpec `ebpf:"xm_tp_btf__block_rq_insert"`
+	XmTpBtfBlockRqIssue    *ebpf.ProgramSpec `ebpf:"xm_tp_btf__block_rq_issue"`
 }
 
 // XMBioMapSpecs contains maps before they are loaded into the kernel.
@@ -122,17 +121,13 @@ func (m *XMBioMaps) Close() error {
 //
 // It can be passed to LoadXMBioObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMBioPrograms struct {
-	KprobeXmBlkAccountIoMergeBio *ebpf.Program `ebpf:"kprobe__xm_blk_account_io_merge_bio"`
-	KprobeXmBlkAccountIoStart    *ebpf.Program `ebpf:"kprobe__xm_blk_account_io_start"`
-	XmTpBtfBlockRqComplete       *ebpf.Program `ebpf:"xm_tp_btf__block_rq_complete"`
-	XmTpBtfBlockRqInsert         *ebpf.Program `ebpf:"xm_tp_btf__block_rq_insert"`
-	XmTpBtfBlockRqIssue          *ebpf.Program `ebpf:"xm_tp_btf__block_rq_issue"`
+	XmTpBtfBlockRqComplete *ebpf.Program `ebpf:"xm_tp_btf__block_rq_complete"`
+	XmTpBtfBlockRqInsert   *ebpf.Program `ebpf:"xm_tp_btf__block_rq_insert"`
+	XmTpBtfBlockRqIssue    *ebpf.Program `ebpf:"xm_tp_btf__block_rq_issue"`
 }
 
 func (p *XMBioPrograms) Close() error {
 	return _XMBioClose(
-		p.KprobeXmBlkAccountIoMergeBio,
-		p.KprobeXmBlkAccountIoStart,
 		p.XmTpBtfBlockRqComplete,
 		p.XmTpBtfBlockRqInsert,
 		p.XmTpBtfBlockRqIssue,

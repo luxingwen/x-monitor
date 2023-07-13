@@ -32,23 +32,40 @@ type bioProgram struct {
 	objs  *bpfmodule.XMBioObjects
 	guard sync.Mutex
 
-	bioRequestCompletedNumberDesc *prometheus.Desc // bio request完成的数量
+	bioRequestCompletedCountDesc  *prometheus.Desc // bio request完成的数量
 	bioRequestSequentialRatioDesc *prometheus.Desc // bio request顺序完成的数量
 	bioRequestRandomizedRatioDesc *prometheus.Desc // bio request随机完成的数量
-	bioRequestBytesTotal          *prometheus.Desc // bio request总的字节数，单位kB
-	bioRequestIn2CLatency         *prometheus.Desc // bio request从insert到complete的时间，单位us
-	bioRequestIs2CLatency         *prometheus.Desc // bio request从issue到complete的时间，单位us
+	bioRequestBytesTotalDesc      *prometheus.Desc // bio request总的字节数，单位kB
+	bioRequestIn2CLatencyDesc     *prometheus.Desc // bio request从insert到complete的时间，单位us
+	bioRequestIs2CLatencyDesc     *prometheus.Desc // bio request从issue到complete的时间，单位us
 }
+
+const (
+	REQ_OP_READ         = 0
+	REQ_OP_WRITE        = 1
+	REQ_OP_FLUSH        = 2
+	REQ_OP_DISCARD      = 3
+	REQ_OP_ZONE_REPORT  = 4
+	REQ_OP_SECURE_ERASE = 5
+	REQ_OP_ZONE_RESET   = 6
+	REQ_OP_WRITE_SAME   = 7
+	REQ_OP_WRITE_ZEROES = 9
+	REQ_OP_SCSI_IN      = 32
+	REQ_OP_SCSI_OUT     = 33
+	REQ_OP_DRV_IN       = 34
+	REQ_OP_DRV_OUT      = 35
+)
 
 var (
 	bioRoData            bioProgRodata
-	__zeroBioInfoMapData = bpfmodule.XMBioXmBioData{
-		// Bytes:               0,
-		// LastSector:          0,
-		// SequentialCount:     0,
-		// RandomCount:         0,
-		// ReqLatencyIn2cSlots: [20]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		// ReqLatencyIs2cSlots: [20]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	__zeroBioInfoMapData = bpfmodule.XMBioXmBioData{}
+	reqOpStrings         = map[uint8]string{
+		REQ_OP_READ:         "read",
+		REQ_OP_WRITE:        "write",
+		REQ_OP_FLUSH:        "flush",
+		REQ_OP_DISCARD:      "discard",
+		REQ_OP_WRITE_SAME:   "write_same",
+		REQ_OP_WRITE_ZEROES: "write_zeroes",
 	}
 )
 
@@ -88,29 +105,29 @@ func newBIOProgram(name string) (eBPFProgram, error) {
 		},
 	}
 
-	bioProg.bioRequestCompletedNumberDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "completed_number"),
-		"Number of Completed BIO Requests.",
-		[]string{"dev_name"}, prometheus.Labels{"from": "xm_ebpf"})
+	bioProg.bioRequestCompletedCountDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "completed_count"),
+		"Count of Completed BIO Requests.",
+		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
 	bioProg.bioRequestSequentialRatioDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "sequential_ratio"),
 		"Ratio of Sequentially Completed BIO Requests.",
-		[]string{"dev_name"}, prometheus.Labels{"from": "xm_ebpf"})
+		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
 	bioProg.bioRequestRandomizedRatioDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "randomized_ratio"),
 		"Ratio of Randomized Completed BIO Requests.",
-		[]string{"dev_name"}, prometheus.Labels{"from": "xm_ebpf"})
+		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
-	bioProg.bioRequestBytesTotal = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "total_kbytes"),
+	bioProg.bioRequestBytesTotalDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "total_kbytes"),
 		"Total KBytes in BIO Requests.",
-		[]string{"dev_name"}, prometheus.Labels{"from": "xm_ebpf"})
+		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
-	bioProg.bioRequestIn2CLatency = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "in2c_latency"),
+	bioProg.bioRequestIn2CLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "in2c_latency"),
 		"Latency from BIO Request Insert to Complete.",
-		[]string{"dev_name"}, prometheus.Labels{"from": "xm_ebpf"})
+		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
-	bioProg.bioRequestIs2CLatency = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "is2c_latency"),
+	bioProg.bioRequestIs2CLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "is2c_latency"),
 		"Latency from BIO Request Issue to Complete.",
-		[]string{"dev_name"}, prometheus.Labels{"from": "xm_ebpf"})
+		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
 	mapstructure.Decode(config.ProgramConfigByName(name).Filter.ProgRodata, &bioRoData)
 	glog.Infof("eBPFProgram:'%s' bioRoData:%s", name, litter.Sdump(bioRoData))
@@ -142,11 +159,16 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		// 开始计算bio采集数据
 		dev = unix.Mkdev(uint32(bioInfoMapKey.Major), uint32(bioInfoMapKey.FirstMinor))
 		// 查找设备名
-		devName := "Unknown"
+		devName := "unknown"
 		for _, p := range partitions {
 			if p.Dev == dev {
 				devName = p.DevName
 			}
+		}
+
+		opName := "unknown"
+		if s, ok := reqOpStrings[bioInfoMapKey.CmdFlags]; ok {
+			opName = s
 		}
 
 		total := bioInfoMapData.SequentialCount + bioInfoMapData.RandomCount
@@ -157,19 +179,19 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		// 操作完成的字节数
 		kBytes := (bioInfoMapData.Bytes >> 10)
 
-		glog.Infof("eBPFProgram:'%s' dev:'%d', devName:'%s', random:%d%%, sequential:%d%%, bytes:%dKB",
-			bp.name, dev, devName, random_ratio, sequential_ratio, kBytes)
+		glog.Infof("eBPFProgram:'%s' dev:'%d', devName:'%s', opName:%s(%d) random:%d%%, sequential:%d%%, bytes:%dKB",
+			bp.name, dev, devName, opName, bioInfoMapKey.CmdFlags, random_ratio, sequential_ratio, kBytes)
 
-		ch <- prometheus.MustNewConstMetric(bp.bioRequestCompletedNumberDesc, prometheus.GaugeValue, float64(total), devName)
-		ch <- prometheus.MustNewConstMetric(bp.bioRequestSequentialRatioDesc, prometheus.GaugeValue, float64(sequential_ratio), devName)
-		ch <- prometheus.MustNewConstMetric(bp.bioRequestRandomizedRatioDesc, prometheus.GaugeValue, float64(random_ratio), devName)
-		ch <- prometheus.MustNewConstMetric(bp.bioRequestBytesTotal, prometheus.GaugeValue, float64(kBytes), devName)
+		ch <- prometheus.MustNewConstMetric(bp.bioRequestCompletedCountDesc, prometheus.GaugeValue, float64(total), devName, opName)
+		ch <- prometheus.MustNewConstMetric(bp.bioRequestSequentialRatioDesc, prometheus.GaugeValue, float64(sequential_ratio), devName, opName)
+		ch <- prometheus.MustNewConstMetric(bp.bioRequestRandomizedRatioDesc, prometheus.GaugeValue, float64(random_ratio), devName, opName)
+		ch <- prometheus.MustNewConstMetric(bp.bioRequestBytesTotalDesc, prometheus.GaugeValue, float64(kBytes), devName, opName)
 
 		for i, slot := range bioInfoMapData.ReqLatencyIn2cSlots {
-			bucket := float64(__powerOfTwo[i])        // 桶的上限
-			sampleCount += uint64(slot)               // 统计本周期的样本总数
-			sampleSum += float64(slot) * bucket * 0.6 // 估算样本的总和
-			latencyBuckets[bucket] = sampleCount      // 每个桶的样本数，下层包括上层统计数量
+			bucket := float64(__powerOfTwo[i])   // 桶的上限
+			sampleCount += uint64(slot)          // 统计本周期的样本总数
+			sampleSum += float64(slot) * bucket  // * 0.6 // 估算样本的总和
+			latencyBuckets[bucket] = sampleCount // 每个桶的样本数，下层包括上层统计数量
 			glog.Infof("\tbioRequestIn2C usecs(%d -> %d) count: %d", func() int {
 				if i == 0 {
 					return 0
@@ -179,8 +201,8 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 			}(), int(bucket), slot)
 		}
 
-		ch <- prometheus.MustNewConstHistogram(bp.bioRequestIn2CLatency,
-			sampleCount, sampleSum, maps.Clone(latencyBuckets), devName)
+		ch <- prometheus.MustNewConstHistogram(bp.bioRequestIn2CLatencyDesc,
+			sampleCount, sampleSum, maps.Clone(latencyBuckets), devName, opName)
 
 		maps.Clear(latencyBuckets)
 
@@ -198,8 +220,8 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 			}(), int(bucket), slot)
 		}
 
-		ch <- prometheus.MustNewConstHistogram(bp.bioRequestIs2CLatency,
-			sampleCount, sampleSum, maps.Clone(latencyBuckets), devName)
+		ch <- prometheus.MustNewConstHistogram(bp.bioRequestIs2CLatencyDesc,
+			sampleCount, sampleSum, maps.Clone(latencyBuckets), devName, opName)
 
 		maps.Clear(latencyBuckets)
 	}
@@ -208,7 +230,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		glog.Errorf("eBPFProgram:'%s' iterator BioInfoMap failed, err:%s", err.Error())
 	}
 
-	// 删除XmBioInfoMap的所有数据
+	// 重置数据
 	for _, key := range keys {
 		// 判断设备是否存在
 		exist := func(major, minor uint32) bool {
