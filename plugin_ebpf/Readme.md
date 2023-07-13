@@ -40,3 +40,7 @@
    4. 随机读，fio --iodepth=32 --numjobs 16 --size=2GB --norandommap --readwrite=randread --bs=4K --runtime=30 --filename=iotest.test --ioengine=libaio --direct=1 --group_reporting --name=iops_read
 
 ## 部署
+
+## 资料
+
+1. process延迟太久，[tools/dslower: add dslower to trace process block time by curu · Pull Request #4392 · iovisor/bcc (github.com)](https://github.com/iovisor/bcc/pull/4392?notification_referrer_id=NT_kwDOAMWMprM1MDUzMzcwODE4OjEyOTQ2NTk4)。
