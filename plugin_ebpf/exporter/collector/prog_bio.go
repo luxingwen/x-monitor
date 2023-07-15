@@ -166,9 +166,13 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 			}
 		}
 
-		opName := "unknown"
-		if s, ok := reqOpStrings[bioInfoMapKey.CmdFlags]; ok {
-			opName = s
+		opName := "all"
+		if bioRoData.FilterPerCmdFlag {
+			if s, ok := reqOpStrings[bioInfoMapKey.CmdFlags]; ok {
+				opName = s
+			} else {
+				opName = "unknown"
+			}
 		}
 
 		total := bioInfoMapData.SequentialCount + bioInfoMapData.RandomCount
@@ -258,6 +262,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
+// Stop stops the bioProgram and closes its objects.
 func (bp *bioProgram) Stop() {
 	bp.stop()
 
