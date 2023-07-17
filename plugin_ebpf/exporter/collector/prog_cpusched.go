@@ -311,8 +311,8 @@ loop:
 
 		comm := internal.CommToString(scEvtData.Comm[:])
 		if config.ProgramCommFilter(csp.name, comm) {
-			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', offcpu_duration_millsecs:%d",
-				csp.name, scEvtData.Tgid, scEvtData.Pid, comm, scEvtData.OffcpuDurationMillsecs)
+			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', evtType:%d, offcpu_duration_millsecs:%d",
+				csp.name, scEvtData.Tgid, scEvtData.Pid, comm, scEvtData.EvtType, scEvtData.OffcpuDurationMillsecs)
 			csp.cpuSchedEvtDataChan.SafeSend(scEvtData, false)
 		}
 	}

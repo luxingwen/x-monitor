@@ -23,7 +23,7 @@
 const volatile __s32 __filter_scope_type = 1;
 // 范围具体值，例如pidnsID, pid, pgid，如果scope_type为1，表示范围为整个os
 const volatile __s64 __filter_scope_value = 0;
-const volatile __s64 __offcpu_min_duration_nanosecs = 1000000000;
+const volatile __s64 __offcpu_min_duration_nanosecs = 5000000000;
 const volatile __s64 __offcpu_max_duration_nanosecs =
     50000000000; // 从离开cpu到从新进入cpu的时间间隔，单位纳秒
 const volatile __s8 __offcpu_task_type = 0; // 0: all，1：user，2：kernel
@@ -165,7 +165,7 @@ static __s32 __process_return_to_cpu_task(struct task_struct *ts,
     }
 
     __s64 offcpu_duration = (__s64)(now_ns - *offcpu_ns);
-    if (offcpu_duration < 0) {
+    if (offcpu_duration <= 0) {
         goto cleanup;
     }
 
