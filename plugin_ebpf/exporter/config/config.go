@@ -205,8 +205,8 @@ func ProgramConfigByName(name string) *ProgramConfig {
 	return nil
 }
 
-// This function filters program communication based on included and excluded communication types
-// specified in the program configuration.
+// The function `ProgramCommFilter` filters a given command based on the program name and its
+// configuration.
 func ProgramCommFilter(progName, comm string) bool {
 	mu.RLock()
 	defer mu.RUnlock()
@@ -230,5 +230,6 @@ func ProgramCommFilter(progName, comm string) bool {
 			return true
 		}
 	}
-	return false
+	// 默认都是保留
+	return true
 }
