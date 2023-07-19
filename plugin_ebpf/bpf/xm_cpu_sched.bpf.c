@@ -195,7 +195,8 @@ cleanup:
 }
 
 // ** ebpf program
-// ts被唤醒
+// ts被唤醒, 当task被插入cpu的runqueue后，会触发该tracepoint
+// activate_task(rq, p, en_flags); ttwu_do_wakeup(rq, p, wake_flags, rf);
 SEC("tp_btf/sched_wakeup")
 __s32 BPF_PROG(btf_tracepoint__xm_sched_wakeup, struct task_struct *ts) {
     // bpf_printk("xm_ebpf_exporter runqlat sched_wakeup pid:%d", ts->pid);

@@ -211,10 +211,10 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		maps.Clear(latencyBuckets)
 
 		for i, slot := range bioInfoMapData.ReqLatencyIs2cSlots {
-			bucket := float64(__powerOfTwo[i])        // 桶的上限
-			sampleCount += uint64(slot)               // 统计本周期的样本总数
-			sampleSum += float64(slot) * bucket * 0.6 // 估算样本的总和
-			latencyBuckets[bucket] = sampleCount      // 每个桶的样本数，下层包括上层统计数量
+			bucket := float64(__powerOfTwo[i])   // 桶的上限
+			sampleCount += uint64(slot)          // 统计本周期的样本总数
+			sampleSum += float64(slot) * bucket  // * 0.6 // 估算样本的总和
+			latencyBuckets[bucket] = sampleCount // 每个桶的样本数，下层包括上层统计数量
 			glog.Infof("\tbioRequestIs2C usecs(%d -> %d) count: %d", func() int {
 				if i == 0 {
 					return 0
