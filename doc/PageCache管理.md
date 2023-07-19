@@ -30,3 +30,17 @@
 ### Page识别
 
 通过页的所有者和所有者数据中的索引（通常是一个索引节点和在相应文件中的偏移量）来识别PageCache中的Page。
+
+## address_space
+
+address_space是linux内核中的一个关键抽象，它是PageCache和外部设备中文件系统的桥梁，上层应用读、写数据会进入到该结构
+
+### 结构成员描述
+
+| field   | type                                  | desc                                                         |
+| ------- | ------------------------------------- | ------------------------------------------------------------ |
+| i_pages | struct radix_tree_root                | 指向了这个地址空间对应的页缓存的基数树。这样就可以通过 inode --> address_space -->i_pages 找到文件对应缓存页 |
+| a_ops   | const struct address_space_operations | 定义了抽象的文件系统交互接口，由具体文件系统负责实现。例如如果文件是存储在ext4文件系统之上，那么该结构便被初始化为***ext4_aops\*** （见fs/ext4/inode.c） |
+| host    | struct inode *                        | owner: inode, block_device                                   |
+
+![img](./img/address_space.webp)
