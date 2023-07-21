@@ -64,3 +64,4 @@ generate:
 
 clean:
 	-rm ../../bin/plugins.d/$(APP)
+	-cd collector/bpfmodule && ls | grep -v generate.go | xargs -I{} rm -f {} && cd -

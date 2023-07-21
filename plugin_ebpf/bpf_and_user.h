@@ -146,4 +146,5 @@ struct xm_bio_data {
     __u64 last_sector; // 该磁盘最后读取的扇区
     __u64 sequential_count; // 顺序操作次数
     __u64 random_count; // 随机操作次数
+    __u64 req_err_count; // 失败次数
 };

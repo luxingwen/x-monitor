@@ -180,6 +180,11 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
         // 计算last sector
         bio_info_p->last_sector = sector + nr_sector;
 
+        // 统计blk request错误次数
+        if (error < 0) {
+            __xm_update_u64(&bio_info_p->req_err_count, 1);
+        }
+
         // 计算延时槽位
         slot = __xm_log2l(delta_in2c);
         if (slot >= XM_BIO_REQ_LATENCY_MAX_SLOTS) {
@@ -209,6 +214,37 @@ __s32 BPF_KPROBE(kprobe__xm_blk_account_io_start, struct request *rq) {
 SEC("kprobe/blk_account_io_merge_bio")
 __s32 BPF_KPROBE(kprobe__xm_blk_account_io_merge_bio, struct request *rq) {
     return 0;
+}
+#endif
+
+// completed error code
+#if 0
+static const struct {
+    int errno;
+    const char *name;
+} blk_errors[] = {
+    [BLK_STS_OK] = { 0, "" },
+    [BLK_STS_NOTSUPP] = { -EOPNOTSUPP, "operation not supported" },
+    [BLK_STS_TIMEOUT] = { -ETIMEDOUT, "timeout" },
+    [BLK_STS_NOSPC] = { -ENOSPC, "critical space allocation" },
+    [BLK_STS_TRANSPORT] = { -ENOLINK, "recoverable transport" },
+    [BLK_STS_TARGET] = { -EREMOTEIO, "critical target" },
+    [BLK_STS_NEXUS] = { -EBADE, "critical nexus" },
+    [BLK_STS_MEDIUM] = { -ENODATA, "critical medium" },
+    [BLK_STS_PROTECTION] = { -EILSEQ, "protection" },
+    [BLK_STS_RESOURCE] = { -ENOMEM, "kernel resource" },
+    [BLK_STS_DEV_RESOURCE] = { -EBUSY, "device resource" },
+    [BLK_STS_AGAIN] = { -EAGAIN, "nonblocking retry" },
+
+    /* device mapper special case, should not leak out: */
+    [BLK_STS_DM_REQUEUE] = { -EREMCHG, "dm internal retry" },
+
+    /* zone device specific errors */
+    [BLK_STS_ZONE_OPEN_RESOURCE] = { -ETOOMANYREFS, "open zones exceeded" },
+    [BLK_STS_ZONE_ACTIVE_RESOURCE] = { -EOVERFLOW, "active zones exceeded" },
+
+    /* everything else not covered above: */
+    [BLK_STS_IOERR] = { -EIO, "I/O" },
 }
 #endif
 

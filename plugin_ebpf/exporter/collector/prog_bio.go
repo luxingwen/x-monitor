@@ -36,6 +36,7 @@ type bioProgram struct {
 	bioRequestSequentialRatioDesc *prometheus.Desc // bio request顺序完成的数量
 	bioRequestRandomizedRatioDesc *prometheus.Desc // bio request随机完成的数量
 	bioRequestBytesTotalDesc      *prometheus.Desc // bio request总的字节数，单位kB
+	bioRequestErrorCountDesc      *prometheus.Desc // bio reqeust失败数量
 	bioRequestIn2CLatencyDesc     *prometheus.Desc // bio request从insert到complete的时间，单位us
 	bioRequestIs2CLatencyDesc     *prometheus.Desc // bio request从issue到complete的时间，单位us
 }
@@ -118,7 +119,11 @@ func newBIOProgram(name string) (eBPFProgram, error) {
 		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
 	bioProg.bioRequestBytesTotalDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "total_kbytes"),
-		"Total KBytes in BIO Requests.",
+		"Number of KBytes in BIO Requests.",
+		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
+
+	bioProg.bioRequestErrorCountDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "error_count"),
+		"Number of failed bio Requests.",
 		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
 	bioProg.bioRequestIn2CLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "in2c_latency"),
@@ -190,6 +195,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestSequentialRatioDesc, prometheus.GaugeValue, float64(sequential_ratio), devName, opName)
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestRandomizedRatioDesc, prometheus.GaugeValue, float64(random_ratio), devName, opName)
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestBytesTotalDesc, prometheus.GaugeValue, float64(kBytes), devName, opName)
+		ch <- prometheus.MustNewConstMetric(bp.bioRequestBytesTotalDesc, prometheus.GaugeValue, float64(bioInfoMapData.ReqErrCount), devName, opName)
 
 		for i, slot := range bioInfoMapData.ReqLatencyIn2cSlots {
 			bucket := float64(__powerOfTwo[i])   // 桶的上限

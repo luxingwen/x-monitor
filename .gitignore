@@ -1,5 +1,9 @@
 .vscode/
 build/
+plugin_ebpf/bpf/.output
+plugin_ebpf/exporter/collector/bpfmodule/xm*.go
+plugin_ebpf/exporter/collector/bpfmodule/gen_*.go
+plugin_ebpf/exporter/collector/bpfmodule/*_string.go
 
 # Prerequisites
 #*.d
