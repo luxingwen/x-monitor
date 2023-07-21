@@ -195,7 +195,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestSequentialRatioDesc, prometheus.GaugeValue, float64(sequential_ratio), devName, opName)
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestRandomizedRatioDesc, prometheus.GaugeValue, float64(random_ratio), devName, opName)
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestBytesTotalDesc, prometheus.GaugeValue, float64(kBytes), devName, opName)
-		ch <- prometheus.MustNewConstMetric(bp.bioRequestBytesTotalDesc, prometheus.GaugeValue, float64(bioInfoMapData.ReqErrCount), devName, opName)
+		ch <- prometheus.MustNewConstMetric(bp.bioRequestErrorCountDesc, prometheus.GaugeValue, float64(bioInfoMapData.ReqErrCount), devName, opName)
 
 		for i, slot := range bioInfoMapData.ReqLatencyIn2cSlots {
 			bucket := float64(__powerOfTwo[i])   // 桶的上限
