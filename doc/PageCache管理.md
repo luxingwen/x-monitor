@@ -236,6 +236,7 @@ static ssize_t new_sync_read(struct file *filp, char __user *buf, size_t len,
 {
 	// 缓冲区和长度
 	struct iovec iov = { .iov_base = buf, .iov_len = len };
+	// kernel i/o control block缩写
 	struct kiocb kiocb;
 	struct iov_iter iter;
 	ssize_t ret;
@@ -321,11 +322,30 @@ static ssize_t generic_file_buffered_read(struct kiocb *iocb,
 		page = find_get_page(mapping, index);
 ```
 
+#### put_page
+
+```
+static inline void put_page(struct page *page)
+{
+	page = compound_head(page);
+
+	/*
+	 * For devmap managed pages we need to catch refcount transition from
+	 * 2 to 1, when refcount reach one it means the page is free and we
+	 * need to inform the device driver through callback. See
+	 * include/linux/memremap.h and HMM for details.
+	 */
+	if (page_is_devmap_managed(page)) {
+		put_devmap_managed_page(page);
+		return;
+	}
+
+	if (put_page_testzero(page))
+		__put_page(page);
+}
+```
 
 
-#### 文件的读取
-
-struct kiocb：kernel i/o control block缩写
 
 ### DAX模式
 
