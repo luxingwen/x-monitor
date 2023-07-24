@@ -554,6 +554,45 @@ static __always_inline bool need_resched(void)
 }
 ```
 
+#### cond_resched宏的作用
+
+```
+#ifndef CONFIG_PREEMPTION
+int __sched _cond_resched(void)
+{
+	if (should_resched(0)) {
+		preempt_schedule_common();
+		return 1;
+	}
+	rcu_all_qs();
+	return 0;
+}
+EXPORT_SYMBOL(_cond_resched);
+#endif
+
+#define cond_resched()                                                         \
+	({                                                                     \
+		___might_sleep(__FILE__, __LINE__, 0);                         \
+		_cond_resched();                                               \
+	})
+```
+
+该段代码是一个宏定义，它定义了一个名为`cond_resched()`的宏。宏的作用是在某些情况下允许内核调度器进行调度切换。这个宏在 Linux 内核中使用，用于确保在一些长时间运行的内核代码路径中，其他等待运行的任务也有机会得到执行，以避免系统出现长时间的“死锁”或“饥饿”状态。
+
+1. `___might_sleep(__FILE__, __LINE__, 0);`
+
+   `___might_sleep()` 是一个内核函数，用于检查当前上下文是否是可以睡眠的（sleepable context）。在 Linux 内核中，有一些上下文是不允许进入睡眠状态的，例如中断处理程序和一些原子上下文。如果在不允许睡眠的上下文中调用了可能导致当前任务睡眠的代码，那么可能会导致严重的问题。因此，`___might_sleep()` 用于检查并在出现问题时打印警告信息。`__FILE__` 和 `__LINE__` 是 C 预处理器内置的宏，用于获取当前文件名和行号，以便在警告信息中指示问题发生的位置。
+
+2. `_cond_resched();`
+
+   `_cond_resched()` 是另一个内核函数，它实际上用于检查是否需要进行调度切换。如果当前任务运行时间过长，内核会在适当的时机调用 `_cond_resched()`，从而允许其他等待运行的任务得到执行。这样可以防止长时间运行的任务占用 CPU 资源过多，导致其他任务无法得到运行的情况。
+
+3. `({ ___might_sleep(__FILE__, __LINE__, 0); _cond_resched(); })`
+
+   这是一个 C 语言的代码块，其中首先调用 `___might_sleep()` 进行睡眠上下文检查，然后调用 `_cond_resched()` 进行调度切换。最终，这个代码块作为整体在调用时会被替换为这两个函数的执行。
+
+总结起来，`cond_resched()` 宏的作用是在一些内核代码中，允许调度器进行调度切换，以确保其他等待运行的任务也有机会执行，从而避免系统出现长时间的“死锁”或“饥饿”状态。在调用该宏之前，会通过 `___might_sleep()` 检查当前上下文是否是允许睡眠的上下文，以避免在不允许睡眠的上下文中调用可能导致当前任务睡眠的代码。
+
 ## 资料
 
 1. [【原创】Kernel调试追踪技术之 Ftrace on ARM64 - HPYU - 博客园 (cnblogs.com)](https://www.cnblogs.com/hpyu/p/14348523.html)

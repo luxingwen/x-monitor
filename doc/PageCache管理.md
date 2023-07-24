@@ -64,23 +64,285 @@ address_space是linux内核中的一个关键抽象，它是PageCache和外部�
 
 ```
 /**
- * find_get_page - find and get a page reference
- * @mapping: the address_space to search
- * @offset: the page index
+ * pagecache_get_page - Find and get a reference to a page.
+ * @mapping: The address_space to search.
+ * @index: The page index.
+ * @fgp_flags: %FGP flags modify how the page is returned.
+ * @gfp_mask: Memory allocation flags to use if %FGP_CREAT is specified.
  *
- * Looks up the page cache slot at @mapping & @offset.  If there is a
- * page cache page, it is returned with an increased refcount.
+ * Looks up the page cache entry at @mapping & @index.
  *
- * Otherwise, %NULL is returned.
+ * @fgp_flags can be zero or more of these flags:
+ *
+ * * %FGP_ACCESSED - The page will be marked accessed.
+ * * %FGP_LOCK - The page is returned locked.
+ * * %FGP_CREAT - If no page is present then a new page is allocated using
+ *   @gfp_mask and added to the page cache and the VM's LRU list.
+ *   The page is returned locked and with an increased refcount.
+ * * %FGP_FOR_MMAP - The caller wants to do its own locking dance if the
+ *   page is already in cache.  If the page was allocated, unlock it before
+ *   returning so the caller can do the same dance.
+ * * %FGP_WRITE - The page will be written
+ * * %FGP_NOFS - __GFP_FS will get cleared in gfp mask
+ * * %FGP_NOWAIT - Don't get blocked by page lock
+ *
+ * If %FGP_LOCK or %FGP_CREAT are specified then the function may sleep even
+ * if the %GFP flags specified for %FGP_CREAT are atomic.
+ *
+ * If there is a page cache page, it is returned with an increased refcount.
+ *
+ * Return: The found page or %NULL otherwise.
  */
-static inline struct page *find_get_page(struct address_space *mapping,
-					pgoff_t offset)
+struct page *pagecache_get_page(struct address_space *mapping, pgoff_t index,
+				int fgp_flags, gfp_t gfp_mask)
 {
-	return pagecache_get_page(mapping, offset, 0, 0);
+	struct page *page;
+
+repeat:
+	page = find_get_entry(mapping, index);
+	if (xa_is_value(page))
+		page = NULL;
+	if (!page)
+		goto no_page;
+
+	if (fgp_flags & FGP_LOCK) {
+		if (fgp_flags & FGP_NOWAIT) {
+			if (!trylock_page(page)) {
+				put_page(page);
+				return NULL;
+			}
+		} else {
+			lock_page(page);
+		}
+
+		/* Has the page been truncated? */
+		if (unlikely(compound_head(page)->mapping != mapping)) {
+			unlock_page(page);
+			put_page(page);
+			goto repeat;
+		}
+		VM_BUG_ON_PAGE(page->index != index, page);
+	}
+
+	if (page && (fgp_flags & FGP_ACCESSED))
+		mark_page_accessed(page);
+	else if (fgp_flags & FGP_WRITE) {
+		/* Clear idle flag for buffer write */
+		if (page_is_idle(page))
+			clear_page_idle(page);
+	}
+
+no_page:
+	if (!page && (fgp_flags & FGP_CREAT)) {
+		int err;
+		if ((fgp_flags & FGP_WRITE) && mapping_can_writeback(mapping))
+			gfp_mask |= __GFP_WRITE;
+		if (fgp_flags & FGP_NOFS)
+			gfp_mask &= ~__GFP_FS;
+
+		page = __page_cache_alloc(gfp_mask);
+		if (!page)
+			return NULL;
+
+		if (WARN_ON_ONCE(!(fgp_flags & (FGP_LOCK | FGP_FOR_MMAP))))
+			fgp_flags |= FGP_LOCK;
+
+		/* Init accessed so avoid atomic mark_page_accessed later */
+		if (fgp_flags & FGP_ACCESSED)
+			__SetPageReferenced(page);
+
+		err = add_to_page_cache_lru(page, mapping, index, gfp_mask);
+		if (unlikely(err)) {
+			put_page(page);
+			page = NULL;
+			if (err == -EEXIST)
+				goto repeat;
+		}
+
+		/*
+		 * add_to_page_cache_lru locks the page, and for mmap we expect
+		 * an unlocked page.
+		 */
+		if (page && (fgp_flags & FGP_FOR_MMAP))
+			unlock_page(page);
+	}
+
+	return page;
 }
 ```
 
+### 从file的read到PageCache
 
+```
+struct file {
+	......
+	loff_t f_pos;
+	struct address_space *f_mapping;
+};
+```
+
+| field     | type                 | desc                 |
+| --------- | -------------------- | -------------------- |
+| f_pos     | loff_t               | 文件当前读写位置偏移 |
+| f_mapping | struct address_space | 对应的地址空间       |
+
+#### 系统API
+
+```
+ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count)
+{
+	struct fd f = fdget_pos(fd);
+	ssize_t ret = -EBADF;
+
+	if (f.file) {
+		// 文件读写偏移
+		loff_t pos = file_pos_read(f.file);
+		ret = vfs_read(f.file, buf, count, &pos);
+		if (ret >= 0)
+			// 读取成功，修改f_pos
+			file_pos_write(f.file, pos);
+		fdput_pos(f);
+	}
+	return ret;
+}
+
+SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
+{
+	return ksys_read(fd, buf, count);
+}
+```
+
+#### 通过vfs读取，文件系统是xfs，构造sync read
+
+```
+ssize_t __vfs_read(struct file *file, char __user *buf, size_t count,
+		   loff_t *pos)
+{
+	if (file->f_op->read)
+		return file->f_op->read(file, buf, count, pos);
+	else if (file->f_op->read_iter)
+		// 对于xfs，.read_iter	= xfs_file_read_iter,
+		return new_sync_read(file, buf, count, pos);
+	else
+		return -EINVAL;
+}
+```
+
+#### 构造散列读
+
+```
+static ssize_t new_sync_read(struct file *filp, char __user *buf, size_t len,
+			     loff_t *ppos)
+{
+	// 缓冲区和长度
+	struct iovec iov = { .iov_base = buf, .iov_len = len };
+	struct kiocb kiocb;
+	struct iov_iter iter;
+	ssize_t ret;
+
+	init_sync_kiocb(&kiocb, filp);
+	// 读写的位置
+	kiocb.ki_pos = *ppos;
+	iov_iter_init(&iter, READ, &iov, 1, len);
+	// file->f_op->read_iter(kio, iter);
+	ret = call_read_iter(filp, &kiocb, &iter);
+	BUG_ON(ret == -EIOCBQUEUED);
+	*ppos = kiocb.ki_pos;
+	return ret;
+}
+```
+
+#### xfs文件系统的read，涉及到pageCache的读取
+
+```
+/**
+ * generic_file_buffered_read - generic file read routine
+ * @iocb:	the iocb to read
+ * @iter:	data destination
+ * @written:	already copied
+ *
+ * This is a generic file read routine, and uses the
+ * mapping->a_ops->readpage() function for the actual low-level stuff.
+ *
+ * This is really ugly. But the goto's actually try to clarify some
+ * of the logic when it comes to error handling etc.
+ *
+ * Return:
+ * * total number of bytes copied, including those the were already @written
+ * * negative error code if nothing was copied
+ */
+static ssize_t generic_file_buffered_read(struct kiocb *iocb,
+					  struct iov_iter *iter,
+					  ssize_t written)
+{
+	// 文件对象
+	struct file *filp = iocb->ki_filp;
+	// 地址空间
+	struct address_space *mapping = filp->f_mapping;
+	// 文件的所有者
+	struct inode *inode = mapping->host;
+	struct file_ra_state *ra = &filp->f_ra;
+	// 文件的读写偏移
+	loff_t *ppos = &iocb->ki_pos;
+	pgoff_t index;
+	pgoff_t last_index;
+	pgoff_t prev_index;
+	unsigned long offset; /* offset into pagecache page */
+	unsigned int prev_offset;
+	int error = 0;
+
+	if (unlikely(*ppos >= inode->i_sb->s_maxbytes))
+		return 0;
+	iov_iter_truncate(iter, inode->i_sb->s_maxbytes);
+	// 根据读取位置计算索引，index = 4k的倍数 #define PAGE_SHIFT		12
+	index = *ppos >> PAGE_SHIFT;
+	// 最后一次读取的索引
+	prev_index = ra->prev_pos >> PAGE_SHIFT;
+	// 在page中的偏移位置
+	prev_offset = ra->prev_pos & (PAGE_SIZE - 1);
+	// 读取位置 + 缓冲区大小 + PAGE-1 / PAGE_SIZE，这次读的最后page的索引
+	last_index = (*ppos + iter->count + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	// 页开始的位置，去掉小于4k的部分，
+	offset = *ppos & ~PAGE_MASK;
+
+	for (;;) {
+		struct page *page;
+		pgoff_t end_index;
+		loff_t isize;
+		unsigned long nr, ret;
+
+		cond_resched();
+	find_page:
+		if (fatal_signal_pending(current)) {
+			error = -EINTR;
+			goto out;
+		}
+		// 根据索引在pagecache中查找
+		page = find_get_page(mapping, index);
+```
+
+
+
+#### 文件的读取
+
+struct kiocb：kernel i/o control block缩写
+
+### DAX模式
+
+在Linux内核中,IS_DAX宏是用来判断一个地址空间(address space)是否支持DAX(Direct Access)的。它检查两个条件
+
+- CONFIG_FS_DAX内核配置选项是否启用,也就是支持DAX的特性是否开启。
+- dax_mapping()函数对指定inode是否返回true。dax_mapping()函数检查该inode对应的地址空间是否启用了DAX模式。
+
+DAX模式允许进程直接对文件存储设备(如NVDIMM)进行内存映射,而不需要经过页面缓存。**通过DAX,可以 bypass 页面缓存**,降低读写延迟。
+
+所以,IS_DAX宏判断一个inode的地址空间是否支持DAX模式。如果支持,在访问该文件的页时可以直接访问设备,而不需要缓存。
+
+#### 判断内核是否支持或开启DAX模式
+
+- 检查内核配置选项CONFIG_FS_DAX是否被启用。该配置需要在内核编译时被显式地开启。
+- 检查/proc/filesystems文件,看是否包含"dax"。该文件列出了内核支持的文件系统类型。
+- 检查mount命令的help信息,是否包含"dax"。如果内核支持DAX,mount命令会有相关的挂载选项。
 
 ## radix tree
 
