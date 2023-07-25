@@ -58,6 +58,10 @@
 
    tools/bin/cg_pressure.sh
 
+4. **Pagecache命中率测试**
+
+   fio -filename=/dev/sdb -direct=0 -iodepth 1 -thread -rw=randread -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest，随机读会导致pagecache命中率降低
+
 ## 部署
 
 grafana环境：[ebpf - Dashboards - Grafana](http://159.27.191.120:3000/d/bd5cbc8d-760f-4cf3-b38a-a77808412920/ebpf?orgId=1)
