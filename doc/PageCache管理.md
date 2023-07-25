@@ -320,32 +320,116 @@ static ssize_t generic_file_buffered_read(struct kiocb *iocb,
 		}
 		// 根据索引在pagecache中查找
 		page = find_get_page(mapping, index);
+		if (!page) {
+			// 没有在pagecache中找到
+			if (iocb->ki_flags & (IOCB_NOWAIT | IOCB_NOIO))
+				goto would_block;
+			// 如果pagecache miss了，会触发一个bio
+			page_cache_sync_readahead(mapping, ra, filp, index,
+						  last_index - index);
+			page = find_get_page(mapping, index);
+			if (unlikely(page == NULL))
+				goto no_cached_page;
+		}	
+        ......
+		/*
+		 * Ok, we have the page, and it's up-to-date, so
+		 * now we can copy it to user space...
+		 */
+		// 这里将page的数据拷贝到缓冲中
+		ret = copy_page_to_iter(page, offset, nr, iter);        
 ```
+
+#### PageCache miss
+
+```
+/**
+ * page_cache_sync_readahead - generic file readahead
+ * @mapping: address_space which holds the pagecache and I/O vectors
+ * @ra: file_ra_state which holds the readahead state
+ * @filp: passed on to ->readpage() and ->readpages()
+ * @offset: start offset into @mapping, in pagecache page-sized units
+ * @req_size: hint: total size of the read which the caller is performing in
+ *            pagecache pages
+ *
+ * page_cache_sync_readahead() should be called when a cache miss happened:
+ * it will submit the read.  The readahead logic may decide to piggyback more
+ * pages onto the read request if access patterns suggest it will improve
+ * performance.
+ */
+void page_cache_sync_readahead(struct address_space *mapping,
+			       struct file_ra_state *ra, struct file *filp,
+			       pgoff_t offset, unsigned long req_size)
+```
+
+#### 预读取
+
+在Linux内核中,PageReadAhead函数是用来提前发起页面(page)预读的。
+
+该函数的主要作用是:
+
+- 对指定的文件,提前发起异步(async)的页面读请求。
+- 目的是将文件数据预先读取到页面缓存(page cache)中。
+- 这样后续的文件读取请求就可以直接从缓存中获取数据,提高I/O性能。
+
+PageReadAhead函数的典型用法:
+
+- 当检测到对文件顺序读取时,调用PageReadAhead。
+- 指定预读的起始页面(page offset)和长度。
+- 内核会提交异步读请求到块层,将指定范围的数据提前读取到page cache。
+
+PageReadAhead的实现机制:
+
+- 通过调用generic file read函数submit_page_readahead发起读请求。
+- 异步请求提交到blkdev_issue_flush后处理。
+- 请求完成后通过page cache满足后续的文件读取。
+
+使用PageReadahead可以减少文件实际读IO次数,是文件系统提高顺序读性能的重要手段之一。它利用了块层的预读能力,将随机IO转换为顺序IO,也称为顺序化(sequentialization)。
+
+#### Page的Update状态
+
+在Linux内核中,PageUptodate函数用于检查一个页面(page)的Uptodate状态。
+
+Uptodate表示页面内容是否与磁盘一致,是一个页面管理中的重要状态。
+
+PageUptodate函数的主要作用是:
+
+- 接收一个struct page指针作为参数。
+- 检查页面的Uptodate位,一般存储在flags字段中。
+- 如果Uptodate为1,表示页面数据与磁盘一致,则返回true。
+- 如果Uptodate为0,表示页面数据可能过期,需要从磁盘重新读取,则返回false。
+
+页面的Uptodate状态在不同场景下的意义:
+
+- 文件读取时,如果页面Uptodate,可以直接使用,否则需要发起磁盘IO获取最新数据。
+- 页面写入时,如果Uptodate,需要先写回磁盘,否则可以直接丢弃。
+- mmap操作时,如果Uptodate,表示映射内存与文件数据一致。
+
+PageUptodate封装了Uptodate状态的检查,提高代码复用性,是Linux内存管理中的基础函数之一。正确判断页面状态十分重要,它们决定了后续的页面处理流程。
 
 #### put_page
 
-```
-static inline void put_page(struct page *page)
-{
-	page = compound_head(page);
+put_page函数的主要执行流程如下:
 
-	/*
-	 * For devmap managed pages we need to catch refcount transition from
-	 * 2 to 1, when refcount reach one it means the page is free and we
-	 * need to inform the device driver through callback. See
-	 * include/linux/memremap.h and HMM for details.
-	 */
-	if (page_is_devmap_managed(page)) {
-		put_devmap_managed_page(page);
-		return;
-	}
+1. 减少页面page的引用计数。
 
-	if (put_page_testzero(page))
-		__put_page(page);
-}
-```
+2. 如果页面引用计数减为0,则调用__put_page函数释放页面。
 
+3. __put_page根据页面状态进行处理:
 
+   - 如果页面在swap cache中,则释放swap cache entry。
+
+   - 如果页面在page cache中,进行解锁并回写到磁盘。
+
+   - 如果是匿名页面,则直接释放物理内存页框。
+
+4. 如果页面引用计数不为0,表示还有其他用户在使用,则直接返回。
+
+所以put_page函数允许在对页面使用完成后释放引用,是页面生命周期管理的关键之一。
+
+它与get_page配对使用,通常在获取页面后,在不需要时调用put_page释放。
+
+这种开发模式可以防止内存泄露,保证内核内存页面的合理使用和回收。
 
 ### DAX模式
 
@@ -394,7 +478,7 @@ radix tree和xarray都是一种抽象数据类型，类似于一个非常大的�
 
 #### xarray条目类型判断
 
-internal entry判断逻，内部条目用于表示节点指针。在 XArray 中，节点可以有多个子节点，因此内部条目包含指向子节点的指针，内部条目通常用于xarray自身的管理,而不会存放实际的数据
+- internal entry，内部条目用于表示节点指针。在 XArray 中，节点可以有多个子节点，因此内部条目包含指向子节点的指针，内部条目通常用于xarray自身的管理,而不会存放实际的数据
 
 ```
 /*
@@ -411,8 +495,11 @@ static inline bool xa_is_internal(const void *entry)
 }
 ```
 
-
+- leaf entry，它是 `01`（二进制表示）
+- special entry，
+- null entry，它是 `00`（二进制表示），
 
 ## 资料
 
 1. [Linux内核页高速缓存 (feilengcui008.github.io)](https://feilengcui008.github.io/post/linux内核页高速缓存/)
+1. [内核基础设施——XArray - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/kernel/xarray/)
