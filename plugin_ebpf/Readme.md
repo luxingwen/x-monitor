@@ -38,8 +38,14 @@
    2. 顺序写，fio --iodepth=32 --numjobs 1 --size=10GB --norandommap --readwrite=write --bs=4M --runtime=30 --filename=iotest.fio --ioengine=libaio --direct=1 --name=seq_wirte
    3. 随机写，fio --iodepth=32 --numjobs 16 --size=2GB --norandommap --readwrite=randwrite --bs=4M --filename=iotest.test --ioengine=libaio --direct=1 --group_reporting --name=iops_write
    4. 随机读，fio --iodepth=32 --numjobs 16 --size=2GB --norandommap --readwrite=randread --bs=4K --runtime=30 --filename=iotest.test --ioengine=libaio --direct=1 --group_reporting --name=iops_read
+
 2. **cpu_runqlatency测试**
+
    1. stress-ng -c 8 --cpu-method all -t 10m
+
+3. **oom测试**
+
+   tools/bin/cg_pressure.sh
 
 ## 部署
 
