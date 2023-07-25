@@ -34,10 +34,21 @@
 外网地址：[Prometheus Time Series Collection and Processing Server](http://159.27.191.120:9090/graph?g0.expr=process_address_space_privanon_share_pages&g0.tab=0&g0.stacked=0&g0.show_exemplars=0&g0.range_input=12h&g1.expr=cpu_schedule_runq_latency_bucket&g1.tab=0&g1.stacked=0&g1.show_exemplars=0&g1.range_input=1h&g2.expr=filesystem_pagecache_ratio&g2.tab=0&g2.stacked=0&g2.show_exemplars=0&g2.range_input=1h)
 
 1. **bio_latency测试**
-   1. 顺序读，fio --iodepth=32 --numjobs 1 --size=10GB --norandommap --readwrite=read --bs=4M --runtime=30 --filename=iotest.fio --ioengine=libaio --direct=1 --name=seq_read
-   2. 顺序写，fio --iodepth=32 --numjobs 1 --size=10GB --norandommap --readwrite=write --bs=4M --runtime=30 --filename=iotest.fio --ioengine=libaio --direct=1 --name=seq_wirte
-   3. 随机写，fio --iodepth=32 --numjobs 16 --size=2GB --norandommap --readwrite=randwrite --bs=4M --filename=iotest.test --ioengine=libaio --direct=1 --group_reporting --name=iops_write
-   4. 随机读，fio --iodepth=32 --numjobs 16 --size=2GB --norandommap --readwrite=randread --bs=4K --runtime=30 --filename=iotest.test --ioengine=libaio --direct=1 --group_reporting --name=iops_read
+   1. 顺序读:
+
+      fio -filename=/dev/sdb -direct=1 -iodepth 1 -thread -rw=read -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+
+   2. 顺序写:
+
+      fio -filename=/dev/sdb -direct=1 -iodepth 1 -thread -rw=write -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+
+   3. 随机写:
+
+      fio -filename=/dev/sdb -direct=1 -iodepth 1 -thread -rw=randwrite -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+
+   4. 随机读:
+
+      fio -filename=/dev/sdb -direct=1 -iodepth 1 -thread -rw=randread -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
 
 2. **cpu_runqlatency测试**
 
