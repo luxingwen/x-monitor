@@ -31,9 +31,9 @@
 
 通过页的所有者和所有者数据中的索引（通常是一个索引节点和在相应文件中的偏移量）来识别PageCache中的Page。
 
-## address_space
+## struct address_space
 
-address_space是linux内核中的一个关键抽象，它是PageCache和外部设备中文件系统的桥梁，上层应用读、写数据会进入到该结构
+address_space是linux内核中的一个关键抽象，它是PageCache和外部设备中文件系统的桥梁，上层应用读、写数据会进入到该结构。
 
 ### 结构成员描述
 
@@ -171,7 +171,7 @@ no_page:
 }
 ```
 
-### 从file的read到PageCache
+## 文件read到PageCache
 
 ```
 struct file {
@@ -186,7 +186,7 @@ struct file {
 | f_pos     | loff_t               | 文件当前读写位置偏移 |
 | f_mapping | struct address_space | 对应的地址空间       |
 
-#### 系统API
+### 系统API
 
 ```
 ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count)
@@ -212,7 +212,7 @@ SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
 }
 ```
 
-#### 通过vfs读取，文件系统是xfs，构造sync read
+### 通过vfs读取，文件系统是xfs，构造sync read
 
 ```
 ssize_t __vfs_read(struct file *file, char __user *buf, size_t count,
@@ -228,7 +228,7 @@ ssize_t __vfs_read(struct file *file, char __user *buf, size_t count,
 }
 ```
 
-#### 构造散列读
+### 构造散列读
 
 ```
 static ssize_t new_sync_read(struct file *filp, char __user *buf, size_t len,
@@ -253,7 +253,7 @@ static ssize_t new_sync_read(struct file *filp, char __user *buf, size_t len,
 }
 ```
 
-#### xfs文件系统的read，涉及到pageCache的读取
+### xfs文件系统的read，涉及到pageCache的读取
 
 ```
 /**
@@ -340,7 +340,7 @@ static ssize_t generic_file_buffered_read(struct kiocb *iocb,
 		ret = copy_page_to_iter(page, offset, nr, iter);        
 ```
 
-#### PageCache miss
+### PageCache miss
 
 ```
 /**
@@ -362,7 +362,7 @@ void page_cache_sync_readahead(struct address_space *mapping,
 			       pgoff_t offset, unsigned long req_size)
 ```
 
-#### 预读取
+### 预读取
 
 在Linux内核中,PageReadAhead函数是用来提前发起页面(page)预读的。
 
@@ -386,7 +386,7 @@ PageReadAhead的实现机制:
 
 使用PageReadahead可以减少文件实际读IO次数,是文件系统提高顺序读性能的重要手段之一。它利用了块层的预读能力,将随机IO转换为顺序IO,也称为顺序化(sequentialization)。
 
-#### Page的Update状态
+### Page的Update状态
 
 在Linux内核中,PageUptodate函数用于检查一个页面(page)的Uptodate状态。
 
@@ -407,7 +407,7 @@ PageUptodate函数的主要作用是:
 
 PageUptodate封装了Uptodate状态的检查,提高代码复用性,是Linux内存管理中的基础函数之一。正确判断页面状态十分重要,它们决定了后续的页面处理流程。
 
-#### put_page
+### put_page
 
 put_page函数的主要执行流程如下:
 
@@ -456,27 +456,53 @@ linux支持给个T的文件。访问大文件时，PageCache中充满了太多�
 
 ![img](./img/radix_tree.jpg)
 
-### xarray
+## IOCB标志位
 
-radix tree和xarray都是一种抽象数据类型，类似于一个非常大的指针数组，可以高效地存储和查找页面对象12。它们都是基于位的多叉树，可以支持快速的插入、删除、查找和遍历操作3。它们都可以在每个条目上设置三个标记位，用于跟踪页面的状态或者属性。
+IOCB全称是I/O Control Block, 中文可以翻译为I/O控制块
 
-[但是xarray是radix tree的一个新API，它在radix tree的基础上增加了一些功能，例如](https://stackoverflow.com/questions/62447084/why-we-use-radix-treeor-xarray-for-storing-page-caches)[1](https://stackoverflow.com/questions/62447084/why-we-use-radix-treeor-xarray-for-storing-page-caches)[2](https://www.cnblogs.com/Linux-tech/p/12961281.html):
+| IOCB_EVENTFD | 1 << 0 | 当I/O操作完成时应触发一个eventfd通知                         |
+| ------------ | ------ | ------------------------------------------------------------ |
+| IOCB_APPEND  | 1 << 1 | 数据应该附加到文件末尾，而不是覆盖原有数据                   |
+| IOCB_DIRECT  | 1 << 2 | 进行直接I/O，绕过页面缓存，直接从存储设备读取/写入数据       |
+| IOCB_HIPRI   | 1 << 3 | I/O操作应当具有高优先级                                      |
+| IOCB_DSYNC   | 1 << 4 | 同步数据写入。表示数据将被同步到磁盘，但不需要同步元数据     |
+| IOCB_SYNC    | 1 << 5 | 同步写入，意味着写入操作会一直阻塞，直到数据被物理写入存储设备 |
+| IOCB_WRITE   | 1 << 6 | 写入操作                                                     |
+| IOCB_NOWAIT  | 1 << 7 | 表示I/O操作应该是非阻塞的，即它会立即返回而不会等待完成      |
+| IOCB_NOIO    | 1 << 9 | 这个标志用于表示不执行任何I/O操作。通常在preadv2/pwritev2系统调用中使用，其中I/O是单独处理的 |
 
-- 支持多索引条目，即一个条目可以占用一系列连续的索引，这样可以节省内存和提高性能。
-- 支持标记指针，即在指针中存储一些额外的信息，而不是使用单独的标记位。
-- 支持值条目，即可以直接存储一些整数值，而不是指针。
-- 支持RCU无锁查找，即可以在读取时不加锁，只在修改时加锁。
-- 支持更灵活的迭代器，即可以按照不同的顺序或者条件遍历条目。
+## xarray
 
-[xarray也解决了一些radix tree的缺陷，例如](https://stackoverflow.com/questions/62447084/why-we-use-radix-treeor-xarray-for-storing-page-caches)[1](https://stackoverflow.com/questions/62447084/why-we-use-radix-treeor-xarray-for-storing-page-caches)[2](https://www.cnblogs.com/Linux-tech/p/12961281.html):
+一个文件的缓存通过该数据结构进行管理，这里记录了文件数据与内存页之间的映射关系的数据结构就是xarray。当每次需要访问文件的数据时，都需要先查找这个缓存表，所以它最重要的需求就是查找速度快。如果把文件的偏移看做是虚拟地址，那么这个表其实做的事情就是“虚拟地址---->内存页”的映射。
 
-- radix tree的API设计不合理，导致很多内核子系统不愿意使用它，而是实现了自己的数据结构。
-- radix tree对于稀疏索引的效率不高，因为它会创建很多空节点。
-- radix tree对于异常情况的处理不完善，例如内存分配失败或者参数错误。
+xarray作为一个树形结构，树中每个节点的数据结构struct xa_node
 
-总之，xarray是radix tree的一个改进版本，它提供了更多的功能和更好的性能。
+```
+struct xa_node {
+	unsigned char shift; /* Bits remaining in each slot */
+	unsigned char offset; /* Slot offset in parent */
+	unsigned char count; /* Total entry count */
+	unsigned char nr_values; /* Value entry count */
+	struct xa_node __rcu *parent; /* NULL at top of tree */
+	struct xarray *array; /* The array we belong to */
+	union {
+		struct list_head private_list; /* For tree user */
+		struct rcu_head rcu_head; /* Used when freeing node */
+	};
+	void __rcu *slots[XA_CHUNK_SIZE];
+	union {
+		unsigned long tags[XA_MAX_MARKS][XA_MARK_LONGS];
+		unsigned long marks[XA_MAX_MARKS][XA_MARK_LONGS];
+	};
+	/* RHEL kABI: this structure can be appended to by RH_KABI_EXTEND */
+};
+```
 
-#### xarray条目类型判断
+### 一个插入过程
+
+![xarray.jpg](./img/xarray-insert.jpg)
+
+### xarray条目类型判断
 
 - internal entry，内部条目用于表示节点指针。在 XArray 中，节点可以有多个子节点，因此内部条目包含指向子节点的指针，内部条目通常用于xarray自身的管理,而不会存放实际的数据
 
@@ -502,4 +528,5 @@ static inline bool xa_is_internal(const void *entry)
 ## 资料
 
 1. [Linux内核页高速缓存 (feilengcui008.github.io)](https://feilengcui008.github.io/post/linux内核页高速缓存/)
-1. [内核基础设施——XArray - Notes about linux and my work (laoqinren.net)](http://linux.laoqinren.net/kernel/xarray/)
+1. [内核基础设施分析(一)：xarray - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/587184623)
+1. [Linux lib 之 xarray | linkthinking (wushifublog.com)](https://wushifublog.com/2021/04/16/Linux-lib-之-xarray/)
