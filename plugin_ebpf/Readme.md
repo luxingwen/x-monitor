@@ -36,19 +36,19 @@
 1. **bio_latency测试**
    1. 顺序读:
 
-      fio -filename=/dev/sdb -direct=1 -iodepth 1 -thread -rw=read -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=read -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
 
    2. 顺序写:
 
-      fio -filename=/dev/sdb -direct=1 -iodepth 1 -thread -rw=write -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=write -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
 
    3. 随机写:
 
-      fio -filename=/dev/sdb -direct=1 -iodepth 1 -thread -rw=randwrite -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=randwrite -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
 
    4. 随机读:
 
-      fio -filename=/dev/sdb -direct=1 -iodepth 1 -thread -rw=randread -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=randread -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
 
 2. **cpu_runqlatency测试**
 
@@ -60,7 +60,7 @@
 
 4. **Pagecache命中率测试**
 
-   fio -filename=/dev/sdb -direct=0 -iodepth 1 -thread -rw=randread -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest，随机读会导致pagecache命中率降低
+   fio -filename=fio_test -direct=0 -iodepth 1 -thread -rw=randread -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest，随机读会导致pagecache命中率降低
 
 ## 部署
 
