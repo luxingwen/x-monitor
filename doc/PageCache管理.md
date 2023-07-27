@@ -506,24 +506,43 @@ struct xa_node {
 
 - internal entry，内部条目用于表示节点指针。在 XArray 中，节点可以有多个子节点，因此内部条目包含指向子节点的指针，内部条目通常用于xarray自身的管理,而不会存放实际的数据
 
-```
-/*
- * xa_is_internal() - Is the entry an internal entry?
- * @entry: XArray entry.
- *
- * Context: Any context.
- * Return: %true if the entry is an internal entry.
- */
-static inline bool xa_is_internal(const void *entry)
-{
-	// 这个逻辑判断入口指针的低两位的值是否为2。
-	return ((unsigned long)entry & 3) == 2;
-}
-```
+  ```
+  /*
+   * xa_is_internal() - Is the entry an internal entry?
+   * @entry: XArray entry.
+   *
+   * Context: Any context.
+   * Return: %true if the entry is an internal entry.
+   */
+  static inline bool xa_is_internal(const void *entry)
+  {
+  	// 这个逻辑判断入口指针的低两位的值是否为2。
+  	return ((unsigned long)entry & 3) == 2;
+  }
+  ```
 
-- leaf entry，它是 `01`（二进制表示）
-- special entry，
-- null entry，它是 `00`（二进制表示），
+- entry flag的含义
+
+  ```
+  /*
+   * The bottom two bits of the entry determine how the XArray interprets
+   * the contents:
+   *
+   * 00: Pointer entry
+   * 10: Internal entry
+   * x1: Value entry or tagged pointer
+   *
+   * 0-62: Sibling entries
+   * 256: Retry entry
+   * 257: Zero entry
+   *
+   * Errors are also represented as internal entries, but use the negative
+   * space (-4094 to -2).  They're never stored in the slots array; only
+   * returned by the normal API.
+   */
+  ```
+
+  
 
 ## 资料
 
