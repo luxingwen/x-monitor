@@ -324,7 +324,7 @@ static ssize_t generic_file_buffered_read(struct kiocb *iocb,
 			// 没有在pagecache中找到
 			if (iocb->ki_flags & (IOCB_NOWAIT | IOCB_NOIO))
 				goto would_block;
-			// 如果pagecache miss了，会触发一个bio
+			// 如果pagecache miss了，会触发预读取，预读取的起始page是index，读取page数量是last_index-index
 			page_cache_sync_readahead(mapping, ra, filp, index,
 						  last_index - index);
 			page = find_get_page(mapping, index);
@@ -495,6 +495,15 @@ struct xa_node {
 		unsigned long marks[XA_MAX_MARKS][XA_MARK_LONGS];
 	};
 	/* RHEL kABI: this structure can be appended to by RH_KABI_EXTEND */
+};
+
+struct RH_KABI_RENAME(radix_tree_root, xarray) {
+	spinlock_t xa_lock;
+	/* private: The rest of the data structure is not to be used directly. */
+	gfp_t RH_KABI_RENAME(gfp_mask, xa_flags);
+	RH_KABI_RENAME(struct radix_tree_node __rcu *rnode,
+		       void __rcu *xa_head);
+	RH_KABI_AUX_EMBED(RH_KABI_RENAME(radix_tree_root, xarray));
 };
 ```
 
