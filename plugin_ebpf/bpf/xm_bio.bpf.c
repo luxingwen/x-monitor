@@ -268,18 +268,6 @@ cleanup:
     return 0;
 }
 
-#if 0
-SEC("kprobe/blk_account_io_start")
-__s32 BPF_KPROBE(kprobe__xm_blk_account_io_start, struct request *rq) {
-    return 0;
-}
-
-SEC("kprobe/blk_account_io_merge_bio")
-__s32 BPF_KPROBE(kprobe__xm_blk_account_io_merge_bio, struct request *rq) {
-    return 0;
-}
-#endif
-
 // completed error code
 #if 0
 static const struct {
