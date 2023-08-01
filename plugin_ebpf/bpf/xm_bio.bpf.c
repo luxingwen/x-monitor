@@ -20,16 +20,29 @@ extern int LINUX_KERNEL_VERSION __kconfig;
 
 // 是否按每个request的cmd_flags进行过滤
 const volatile bool __filter_per_cmd_flag = false;
+const volatile __s64 __request_latency_min_ns = 1000000; // 1ms
 
 struct bio_req_stage {
     __u64 insert;
     __u64 issue;
 };
 
+struct bio_pid_data {
+    pid_t tid; // 线程id
+    pid_t pid; // 进程id
+    char comm[TASK_COMM_LEN];
+};
+
+BPF_HASH(xm_bio_request_pid_data_map, struct request *, struct bio_pid_data,
+         10240);
 BPF_HASH(xm_bio_request_start_map, struct request *, struct bio_req_stage,
          10240);
 BPF_HASH(xm_bio_info_map, struct xm_bio_key, struct xm_bio_data,
          1024); // op枚举乘以8个分区
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 1 << 16); // 64k
+} xm_bio_req_latency_event_ringbuf_map SEC(".maps");
 
 // ** 类型标识，为了bpf2go程序生成golang类型
 static struct xm_bio_key __zero_bio_key __attribute__((unused)) = {
@@ -37,6 +50,9 @@ static struct xm_bio_key __zero_bio_key __attribute__((unused)) = {
     .first_minor = 0,
     .cmd_flags = 0,
 };
+
+const struct xm_bio_request_latency_evt_data *__unused_brl_evt
+    __attribute__((unused));
 
 static struct xm_bio_data __zero_bio_info = {
     .req_latency_in2c_slots = { 0 },
@@ -77,6 +93,26 @@ static __always_inline __s32 xm_trace_request(struct request *rq, bool insert) {
     return 0;
 }
 
+SEC("kprobe/blk_account_io_merge_bio")
+__s32 BPF_KPROBE(kprobe__blk_account_io_merge_bio, struct request *rq) {
+    struct bio_pid_data bpd;
+    bpd.pid = __xm_get_pid();
+    bpd.tid = __xm_get_tid();
+    bpf_get_current_comm(&bpd.comm, sizeof(bpd.comm));
+    bpf_map_update_elem(&xm_bio_request_pid_data_map, &rq, &bpd, 0);
+    return 0;
+}
+
+SEC("kprobe/blk_account_io_start")
+__s32 BPF_KPROBE(kprobe__blk_account_io_start, struct request *rq) {
+    struct bio_pid_data bpd;
+    bpd.pid = __xm_get_pid();
+    bpd.tid = __xm_get_tid();
+    bpf_get_current_comm(&bpd.comm, sizeof(bpd.comm));
+    bpf_map_update_elem(&xm_bio_request_pid_data_map, &rq, &bpd, 0);
+    return 0;
+}
+
 // 在插入io-scheduler的dispatch队列之前触发这个tracepoint
 // 因为在kernel 5.11.0之后，这个tracepoint的参数只有struct request了，
 // 所以这里没法用BPF_PROG宏，需直接使用ctx作为参数，根据内核版本来获取参数
@@ -111,7 +147,7 @@ __s32 xm_tp_btf__block_rq_issue(__u64 *ctx) {
 SEC("tp_btf/block_rq_complete")
 __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
                __u32 nr_bytes) {
-    __s64 delta_in2c, delta_is2c;
+    __s64 delta, delta_in2c, delta_is2c;
     struct xm_bio_key bio_key = { 0, 0, 0 };
     __u64 now_ns = bpf_ktime_get_ns();
     // 请求的扇区号
@@ -129,18 +165,18 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
     }
 
     // 计算延迟时间
-    delta_in2c = (__s64)(now_ns - stage_p->insert);
-    if (delta_in2c < 0) {
+    delta = (__s64)(now_ns - stage_p->insert);
+    if (delta < 0) {
         goto cleanup;
     }
     // 转换为微秒
-    delta_in2c /= 1000U;
+    delta_in2c = delta / 1000U;
 
-    delta_is2c = (__s64)(now_ns - stage_p->issue);
-    if (delta_is2c < 0) {
+    delta = (__s64)(now_ns - stage_p->issue);
+    if (delta < 0) {
         goto cleanup;
     }
-    delta_is2c /= 1000U;
+    delta_is2c = delta / 1000U;
 
     // 获得磁盘信息
     struct gendisk *disk = __xm_get_disk(rq);
@@ -197,10 +233,37 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
             slot = XM_BIO_REQ_LATENCY_MAX_SLOTS - 1;
         }
         __sync_fetch_and_add(&bio_info_p->req_latency_is2c_slots[slot], 1);
+
+        // 判断是否超过阈值
+        if (delta >= __request_latency_min_ns) {
+            struct xm_bio_request_latency_evt_data *evt = bpf_ringbuf_reserve(
+                &xm_bio_req_latency_event_ringbuf_map,
+                sizeof(struct xm_bio_request_latency_evt_data), 0);
+            if (evt) {
+                // 进程信息需要从xm_bio_request_pid_data_map来获取
+                struct bio_pid_data *bpd =
+                    bpf_map_lookup_elem(&xm_bio_request_pid_data_map, &rq);
+                if (!bpd) {
+                    evt->comm[0] = '?';
+                } else {
+                    evt->tid = bpd->tid;
+                    evt->pid = bpd->pid;
+                    __builtin_memcpy(evt->comm, bpd->comm, sizeof(evt->comm));
+                }
+                evt->major = bio_key.major;
+                evt->first_minor = bio_key.first_minor;
+                evt->cmd_flags = bio_key.cmd_flags;
+                evt->len = nr_bytes;
+                evt->in2c_micro_secs = delta_in2c;
+                evt->req_in_queue_micro_secs = delta_in2c - delta_is2c;
+                bpf_ringbuf_submit(evt, 0);
+            }
+        }
     }
 
 cleanup:
     bpf_map_delete_elem(&xm_bio_request_start_map, &rq);
+    bpf_map_delete_elem(&xm_bio_request_pid_data_map, &rq);
 
     return 0;
 }

@@ -148,3 +148,15 @@ struct xm_bio_data {
     __u64 random_count; // 随机操作次数
     __u64 req_err_count; // 失败次数
 };
+
+struct xm_bio_request_latency_evt_data {
+    __u64 len; // bio字节数
+    __u64 in2c_micro_secs; // request从插入到完成的延迟，微秒
+    __u64 req_in_queue_micro_secs; // request在队列中的延迟
+    __s32 major; /* major number of driver */
+    __s32 first_minor;
+    pid_t tid; // 线程id
+    pid_t pid; // 进程id
+    __u8 cmd_flags; /* op and common flags */
+    char comm[TASK_COMM_LEN];
+};
