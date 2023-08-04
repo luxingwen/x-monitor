@@ -136,12 +136,10 @@ struct xm_bio_key {
 #define XM_BIO_REQ_LATENCY_MAX_SLOTS 20
 
 struct xm_bio_data {
-    __u32 req_latency_in2c_slots
-        [XM_BIO_REQ_LATENCY_MAX_SLOTS]; // 延迟，request 从insert
-                                        // io-schedule.dispatch队列到complete执行完毕
-    __u32 req_latency_is2c_slots
-        [XM_BIO_REQ_LATENCY_MAX_SLOTS]; // 延迟，request 从
-                                        // io-schedule.dispatch队列取出到complete执行完毕
+    __u32 req_in_queue_latency_slots
+        [XM_BIO_REQ_LATENCY_MAX_SLOTS]; // request在队列中等待的时间，如果是direct，那么insert=0，该值为0
+    __u32 req_latency_slots
+        [XM_BIO_REQ_LATENCY_MAX_SLOTS]; // 延迟，requet从insert或直接issue，到complete的延迟
     __u64 bytes; // 总共的字节数
     __u64 last_sector; // 该磁盘最后读取的扇区
     __u64 sequential_count; // 顺序操作次数
@@ -151,8 +149,8 @@ struct xm_bio_data {
 
 struct xm_bio_request_latency_evt_data {
     __u64 len; // bio字节数
-    __u64 in2c_micro_secs; // request从插入到完成的延迟，微秒
-    __u64 req_in_queue_micro_secs; // request在队列中的延迟
+    __s64 req_in_queue_latency_us; // request在队列中的延迟
+    __s64 req_latency_us; // request完成的延迟
     __s32 major; /* major number of driver */
     __s32 first_minor;
     pid_t tid; // 线程id

@@ -69,4 +69,4 @@ eBPF:
       filter:
         prog_rodata:
           filter_per_cmd_flag: true
-          request_latency_min_millsecs: 1 # 单位：毫秒
+          request_min_latency_millsecs: 2 # 单位：毫秒

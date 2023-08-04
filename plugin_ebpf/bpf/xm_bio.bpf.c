@@ -20,7 +20,7 @@ extern int LINUX_KERNEL_VERSION __kconfig;
 
 // 是否按每个request的cmd_flags进行过滤
 const volatile bool __filter_per_cmd_flag = false;
-const volatile __s64 __request_latency_min_ns = 1000000; // 1ms
+const volatile __s64 __request_min_latency_ns = 1000000; // 1ms
 
 struct bio_req_stage {
     __u64 insert;
@@ -55,8 +55,8 @@ const struct xm_bio_request_latency_evt_data *__unused_brl_evt
     __attribute__((unused));
 
 static struct xm_bio_data __zero_bio_info = {
-    .req_latency_in2c_slots = { 0 },
-    .req_latency_is2c_slots = { 0 },
+    .req_in_queue_latency_slots = { 0 },
+    .req_latency_slots = { 0 },
     .bytes = 0,
     .sequential_count = 0,
     .random_count = 0,
@@ -72,9 +72,12 @@ static __always_inline __s32 xm_trace_request(struct request *rq, bool insert) {
         // request不存在
         stage_p = &init_stage;
     }
+
     if (insert) {
         // 记录request 插入dispatch队列的时间
+        // **实际过程有很多request直接issue，没有经过insert
         stage_p->insert = now_ns;
+        // bpf_printk("xm_ebpf_exporter bio insert request:0x%x", rq);
     } else {
         // 记录request 从dispatch队列出来放入驱动队列的事件，开始执行
         stage_p->issue = now_ns;
@@ -83,6 +86,7 @@ static __always_inline __s32 xm_trace_request(struct request *rq, bool insert) {
             bpf_map_delete_elem(&xm_bio_request_start_map, &rq);
             return 0;
         }
+        // bpf_printk("xm_ebpf_exporter bio issue request:0x%x", rq);
     }
 
     if (stage_p == &init_stage) {
@@ -103,6 +107,16 @@ __s32 BPF_KPROBE(kprobe__blk_account_io_merge_bio, struct request *rq) {
     return 0;
 }
 
+SEC("kprobe/__blk_account_io_start")
+__s32 BPF_KPROBE(kprobe__blk_account_io_start_new, struct request *rq) {
+    struct bio_pid_data bpd;
+    bpd.pid = __xm_get_pid();
+    bpd.tid = __xm_get_tid();
+    bpf_get_current_comm(&bpd.comm, sizeof(bpd.comm));
+    bpf_map_update_elem(&xm_bio_request_pid_data_map, &rq, &bpd, 0);
+    return 0;
+}
+
 SEC("kprobe/blk_account_io_start")
 __s32 BPF_KPROBE(kprobe__blk_account_io_start, struct request *rq) {
     struct bio_pid_data bpd;
@@ -113,19 +127,92 @@ __s32 BPF_KPROBE(kprobe__blk_account_io_start, struct request *rq) {
     return 0;
 }
 
+// SEC("kprobe/blk_mq_sched_insert_request")
+// __s32 BPF_KPROBE(kprobe__blk_mq_sched_insert_request, struct request *rq,
+//                  bool at_head, bool run_queue, bool async) {
+//     bpf_printk("xm_ebpf_exporter bio blk_mq_sched_insert_request
+//     request:0x%x, "
+//                "async:%d",
+//                rq, async);
+//     return 0;
+// }
+
+// SEC("kprobe/dd_insert_requests")
+// __s32 BPF_KPROBE(kprobe__dd_insert_requests) {
+//     bpf_printk("xm_ebpf_exporter bio dd_insert_requests");
+//     return 0;
+// }
+
+/*
+    kworker/0:1H-9       [000] d..3 1534879.271754: bpf_trace_printk:
+   xm_ebpf_exporter bio blk_mq_sched_insert_request request:0xa0fc4000, async:0
+    kworker/0:1H-9       [000] d..3 1534879.271755: bpf_trace_printk:
+   xm_ebpf_exporter bio blk_mq_request_bypass_insert request:0xa0fc4000
+    kworker/0:1H-9       [000] d..4 1534879.271758: bpf_trace_printk:
+   xm_ebpf_exporter bio issue request:0xa0fc4000
+*/
+// SEC("kprobe/blk_mq_request_bypass_insert")
+// __s32 BPF_KPROBE(kprobe__blk_mq_request_bypass_insert, struct request *rq) {
+//     bpf_printk("xm_ebpf_exporter bio blk_mq_request_bypass_insert
+//     request:0x%x",
+//                rq);
+//     return 0;
+// }
+
+/*
+    基本insert -- issue -- complete 基本完整
+    但也有bypass, 调用blk_mq_try_issue_list_directly, 直接issue -- complete的
+ */
+// SEC("kprobe/blk_mq_sched_insert_requests")
+// __s32 BPF_KPROBE(kprobe__blk_mq_sched_insert_requests,
+//                  struct blk_mq_hw_ctx *hctx, struct blk_mq_ctx *mq_ctx,
+//                  struct list_head *list, bool run_queue_async) {
+//     bpf_printk("xm_ebpf_exporter bio blk_mq_sched_insert_requests "
+//                "run_queue_async:%d",
+//                run_queue_async);
+//     return 0;
+// }
+
+// SEC("kprobe/blk_mq_try_issue_list_directly")
+// __s32 BPF_KPROBE(kprobe__blk_mq_try_issue_list_directly,
+//                  struct blk_mq_hw_ctx *hctx, struct list_head *list) {
+//     bpf_printk("xm_ebpf_exporter bio blk_mq_try_issue_list_directly");
+//     return 0;
+// }
+
 // 在插入io-scheduler的dispatch队列之前触发这个tracepoint
 // 因为在kernel 5.11.0之后，这个tracepoint的参数只有struct request了，
 // 所以这里没法用BPF_PROG宏，需直接使用ctx作为参数，根据内核版本来获取参数
+/*
+    看内核函数blk_mq_sched_insert_request，会发现如果request有三条路径
+    1：blk_mq_sched_bypass_insert
+
+    2：e->type->ops.insert_requests(hctx, &list, at_head);
+   --->如果有调度器/sys/block/sdc/queue/scheduler，就会走这条路
+   ，在有电梯算法的时候，例如mq_deadline，会做request的合并，那么就不会重新插入了
+   例如这个函数返回blk_mq_sched_try_insert_merge true。
+   所以要用kretprobe:blk_mq_sched_try_insert_merge，来做insert
+
+    3: __blk_mq_insert_request，实际中只有走这条路才会触发该tracepoint
+   --->没有调度器/sys/block/sdc/queue/scheduler，就会走这条路
+*/
 SEC("tp_btf/block_rq_insert") __s32 xm_tp_btf__block_rq_insert(__u64 *ctx) {
     if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0)) {
-        xm_trace_request((struct request *)ctx[1], true);
         // !! 这里这样写导致了bpf_load失败
         // rq = (struct request *)ctx[1];
+        xm_trace_request((struct request *)ctx[1], true);
     } else {
         xm_trace_request((struct request *)ctx[0], true);
     }
     return 0;
 }
+
+/*
+    在函数blk_mq_sched_insert_requests中，可能直接issue request
+    * try to issue requests directly if the hw queue isn't
+    * busy in case of 'none' scheduler, and this way may save
+    * us one extra enqueue & dequeue to sw queue.
+*/
 
 SEC("tp_btf/block_rq_issue")
 __s32 xm_tp_btf__block_rq_issue(__u64 *ctx) {
@@ -147,7 +234,7 @@ __s32 xm_tp_btf__block_rq_issue(__u64 *ctx) {
 SEC("tp_btf/block_rq_complete")
 __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
                __u32 nr_bytes) {
-    __s64 delta, delta_in2c, delta_is2c;
+    __s64 delta, in_queue_delta, complete_delta;
     struct xm_bio_key bio_key = { 0, 0, 0 };
     __u64 now_ns = bpf_ktime_get_ns();
     // 请求的扇区号
@@ -157,6 +244,12 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
     //
     __u64 slot;
 
+    // TODO: 读取rq_flags这个字段看看，是否是被merge的request
+    // req_flags_t rq_flags = BPF_CORE_READ(rq, rq_flags);
+    // bpf_printk("xm_ebpf_exporter bio complete request:0x%x, rq_flags:0x%x",
+    // rq,
+    //            rq_flags);
+
     struct bio_req_stage *stage_p =
         bpf_map_lookup_elem(&xm_bio_request_start_map, &rq);
     if (!stage_p) {
@@ -164,19 +257,31 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
         return 0;
     }
 
-    // 计算延迟时间
-    delta = (__s64)(now_ns - stage_p->insert);
-    if (delta < 0) {
-        goto cleanup;
-    }
-    // 转换为微秒
-    delta_in2c = delta / 1000U;
+    // req在队列中计算时间
+    in_queue_delta = 0;
+    if (stage_p->insert != 0) {
+        delta = (__s64)(stage_p->issue - stage_p->insert);
+        if (delta < 0) {
+            goto cleanup;
+        }
+        // 转换为us
+        in_queue_delta = delta / 1000U;
 
-    delta = (__s64)(now_ns - stage_p->issue);
-    if (delta < 0) {
-        goto cleanup;
+        delta = (__s64)(now_ns - stage_p->insert);
+        if (delta < 0) {
+            goto cleanup;
+        }
+        complete_delta = delta / 1000U;
+    } else {
+        delta = (__s64)(now_ns - stage_p->issue);
+        if (delta < 0) {
+            goto cleanup;
+        }
+        complete_delta = delta / 1000U;
     }
-    delta_is2c = delta / 1000U;
+    bpf_printk("xm_ebpf_exporter bio request:0x%x in_queue_delta:%lld us, "
+               "complete_delta:%lld us",
+               rq, in_queue_delta, complete_delta);
 
     // 获得磁盘信息
     struct gendisk *disk = __xm_get_disk(rq);
@@ -222,20 +327,20 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
         }
 
         // 计算延时槽位
-        slot = __xm_log2l(delta_in2c);
+        slot = __xm_log2l(in_queue_delta);
         if (slot >= XM_BIO_REQ_LATENCY_MAX_SLOTS) {
             slot = XM_BIO_REQ_LATENCY_MAX_SLOTS - 1;
         }
-        __sync_fetch_and_add(&bio_info_p->req_latency_in2c_slots[slot], 1);
+        __sync_fetch_and_add(&bio_info_p->req_in_queue_latency_slots[slot], 1);
 
-        slot = __xm_log2l(delta_is2c);
+        slot = __xm_log2l(complete_delta);
         if (slot >= XM_BIO_REQ_LATENCY_MAX_SLOTS) {
             slot = XM_BIO_REQ_LATENCY_MAX_SLOTS - 1;
         }
-        __sync_fetch_and_add(&bio_info_p->req_latency_is2c_slots[slot], 1);
+        __sync_fetch_and_add(&bio_info_p->req_latency_slots[slot], 1);
 
         // 判断是否超过阈值
-        if (delta >= __request_latency_min_ns) {
+        if (delta >= __request_min_latency_ns) {
             struct xm_bio_request_latency_evt_data *evt = bpf_ringbuf_reserve(
                 &xm_bio_req_latency_event_ringbuf_map,
                 sizeof(struct xm_bio_request_latency_evt_data), 0);
@@ -250,12 +355,24 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
                     evt->pid = bpd->pid;
                     __builtin_memcpy(evt->comm, bpd->comm, sizeof(evt->comm));
                 }
+
                 evt->major = bio_key.major;
                 evt->first_minor = bio_key.first_minor;
                 evt->cmd_flags = bio_key.cmd_flags;
                 evt->len = nr_bytes;
-                evt->in2c_micro_secs = delta_in2c;
-                evt->req_in_queue_micro_secs = delta_in2c - delta_is2c;
+                if (stage_p->insert == 0) {
+                    evt->req_in_queue_latency_us = -1;
+                } else {
+                    evt->req_in_queue_latency_us = in_queue_delta;
+                }
+                evt->req_latency_us = complete_delta;
+
+                bpf_printk("xm_ebpf_exporter bio request latency comm:'%s'"
+                           "req_in_queue_latency_us:%lld us, "
+                           "req_latency_us:%lld us",
+                           evt->comm, evt->req_in_queue_latency_us,
+                           evt->req_latency_us);
+
                 bpf_ringbuf_submit(evt, 0);
             }
         }

@@ -8,9 +8,13 @@
 package collector
 
 import (
+	"bytes"
+	"encoding/binary"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/ringbuf"
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -21,24 +25,32 @@ import (
 	"golang.org/x/sys/unix"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal"
+)
+
+const (
+	defaultReqLatencyEvtChanSize = ((1 << 2) << 10)
 )
 
 type bioProgRodata struct {
-	FilterPerCmdFlag bool `mapstructure:"filter_per_cmd_flag"`
+	FilterPerCmdFlag          bool `mapstructure:"filter_per_cmd_flag"`
+	RequestMinLatencyMillSecs int  `mapstructure:"request_min_latency_millsecs"`
 }
 
 type bioProgram struct {
 	*eBPFBaseProgram
-	objs  *bpfmodule.XMBioObjects
-	guard sync.Mutex
+	objs                  *bpfmodule.XMBioObjects
+	guard                 sync.Mutex
+	reqLatencyEvtRD       *ringbuf.Reader
+	reqLatencyEvtDataChan *bpfmodule.BioRequestLatencyEvtDataChannel
 
 	bioRequestCompletedCountDesc  *prometheus.Desc // bio request完成的数量
 	bioRequestSequentialRatioDesc *prometheus.Desc // bio request顺序完成的数量
 	bioRequestRandomizedRatioDesc *prometheus.Desc // bio request随机完成的数量
 	bioRequestBytesTotalDesc      *prometheus.Desc // bio request总的字节数，单位kB
 	bioRequestErrorCountDesc      *prometheus.Desc // bio reqeust失败数量
-	bioRequestIn2CLatencyDesc     *prometheus.Desc // bio request从insert到complete的时间，单位us
-	bioRequestIs2CLatencyDesc     *prometheus.Desc // bio request从issue到complete的时间，单位us
+	bioRequestInQueueLatencyDesc  *prometheus.Desc // bio request在队列的时间，单位us
+	bioRequestLatencyDesc         *prometheus.Desc // bio request执行延迟，单位us
 }
 
 const (
@@ -80,7 +92,8 @@ func loadToRunBIOProg(name string, prog *bioProgram) error {
 	prog.objs = new(bpfmodule.XMBioObjects)
 	prog.links, err = attatchToRun(name, prog.objs, bpfmodule.LoadXMBio, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_per_cmd_flag": bioRoData.FilterPerCmdFlag,
+			"__filter_per_cmd_flag":    bioRoData.FilterPerCmdFlag,
+			"__request_min_latency_ns": int64(time.Duration(bioRoData.RequestMinLatencyMillSecs) * time.Millisecond),
 		})
 
 		if err != nil {
@@ -95,6 +108,16 @@ func loadToRunBIOProg(name string, prog *bioProgram) error {
 		return err
 	}
 
+	prog.reqLatencyEvtRD, err = ringbuf.NewReader(prog.objs.XmBioReqLatencyEventRingbufMap)
+	if err != nil {
+		for _, link := range prog.links {
+			link.Close()
+		}
+		prog.links = nil
+		prog.objs.Close()
+		prog.objs = nil
+	}
+
 	return err
 }
 
@@ -104,6 +127,7 @@ func newBIOProgram(name string) (eBPFProgram, error) {
 			name:     name,
 			stopChan: make(chan struct{}),
 		},
+		reqLatencyEvtDataChan: bpfmodule.NewBioRequestLatencyEvtDataChannel(defaultReqLatencyEvtChanSize),
 	}
 
 	bioProg.bioRequestCompletedCountDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "completed_count"),
@@ -126,12 +150,12 @@ func newBIOProgram(name string) (eBPFProgram, error) {
 		"Number of failed bio Requests.",
 		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
-	bioProg.bioRequestIn2CLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "in2c_latency"),
-		"Latency from BIO Request Insert to Complete.",
+	bioProg.bioRequestInQueueLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "in_queue_latency"),
+		"Latency of bio request in queue, unit us.",
 		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
-	bioProg.bioRequestIs2CLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "is2c_latency"),
-		"Latency from BIO Request Issue to Complete.",
+	bioProg.bioRequestLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "latency"),
+		"Latency of bio request, unit us.",
 		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
 	mapstructure.Decode(config.ProgramConfigByName(name).Filter.ProgRodata, &bioRoData)
@@ -143,7 +167,36 @@ func newBIOProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 
+	bioProg.wg.Go(bioProg.tracingeBPFEvent)
+
 	return bioProg, nil
+}
+
+func (bp *bioProgram) tracingeBPFEvent() {
+	glog.Infof("eBPFProgram:'%s' start tracing eBPF Event...", bp.name)
+
+loop:
+	for {
+		record, err := bp.reqLatencyEvtRD.Read()
+		if err != nil {
+			if err != nil {
+				if errors.Is(err, ringbuf.ErrClosed) {
+					glog.Warningf("eBPFProgram:'%s' tracing eBPF Event goroutine receive stop notify", bp.name)
+					break loop
+				}
+				glog.Errorf("eBPFProgram:'%s' Read error. err:%s", bp.name, err.Error())
+				continue
+			}
+		}
+
+		reqLatencyEvtData := new(bpfmodule.XMBioXmBioRequestLatencyEvtData)
+		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, reqLatencyEvtData); err != nil {
+			glog.Errorf("failed to parse XMBioXmBioRequestLatencyEvtData, err: %v", err)
+			continue
+		}
+
+		bp.reqLatencyEvtDataChan.SafeSend(reqLatencyEvtData, false)
+	}
 }
 
 func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
@@ -156,6 +209,29 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 	latencyBuckets := make(map[float64]uint64, len(__powerOfTwo))
 
 	partitions, _ := calmutils.ProcPartitions()
+
+	pfnFindDevName := func(dev uint64) string {
+		// 查找设备名
+		devName := "unknown"
+		for _, p := range partitions {
+			if p.Dev == dev {
+				devName = p.DevName
+			}
+		}
+		return devName
+	}
+
+	pfnFindOpName := func(cmdFlags uint8) string {
+		opName := "all"
+		if bioRoData.FilterPerCmdFlag {
+			if s, ok := reqOpStrings[cmdFlags]; ok {
+				opName = s
+			} else {
+				opName = "unknown"
+			}
+		}
+		return opName
+	}
 	//glog.Infof("eBPFProgram:'%s' partitions:%#v", bp.name, partitions)
 
 	entries := bp.objs.XmBioInfoMap.Iterate()
@@ -164,21 +240,9 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		// 开始计算bio采集数据
 		dev = unix.Mkdev(uint32(bioInfoMapKey.Major), uint32(bioInfoMapKey.FirstMinor))
 		// 查找设备名
-		devName := "unknown"
-		for _, p := range partitions {
-			if p.Dev == dev {
-				devName = p.DevName
-			}
-		}
-
-		opName := "all"
-		if bioRoData.FilterPerCmdFlag {
-			if s, ok := reqOpStrings[bioInfoMapKey.CmdFlags]; ok {
-				opName = s
-			} else {
-				opName = "unknown"
-			}
-		}
+		devName := pfnFindDevName(dev)
+		// 操作名
+		opName := pfnFindOpName(bioInfoMapKey.CmdFlags)
 
 		total := bioInfoMapData.SequentialCount + bioInfoMapData.RandomCount
 		// 随机操作的百分比
@@ -188,7 +252,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		// 操作完成的字节数
 		kBytes := (bioInfoMapData.Bytes >> 10)
 
-		glog.Infof("eBPFProgram:'%s' dev:'%d', devName:'%s', opName:%s(%d) random:%d%%, sequential:%d%%, bytes:%dKB",
+		glog.Infof("eBPFProgram:'%s' dev:'%d', devName:'%s', opName:%s(%d), random:%d%%, sequential:%d%%, bytes:%dKB",
 			bp.name, dev, devName, opName, bioInfoMapKey.CmdFlags, random_ratio, sequential_ratio, kBytes)
 
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestCompletedCountDesc, prometheus.GaugeValue, float64(total), devName, opName)
@@ -197,12 +261,12 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestBytesTotalDesc, prometheus.GaugeValue, float64(kBytes), devName, opName)
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestErrorCountDesc, prometheus.GaugeValue, float64(bioInfoMapData.ReqErrCount), devName, opName)
 
-		for i, slot := range bioInfoMapData.ReqLatencyIn2cSlots {
+		for i, slot := range bioInfoMapData.ReqInQueueLatencySlots {
 			bucket := float64(__powerOfTwo[i])   // 桶的上限
 			sampleCount += uint64(slot)          // 统计本周期的样本总数
 			sampleSum += float64(slot) * bucket  // * 0.6 // 估算样本的总和
 			latencyBuckets[bucket] = sampleCount // 每个桶的样本数，下层包括上层统计数量
-			glog.Infof("\tbioRequestIn2C usecs(%d -> %d) count: %d", func() int {
+			glog.Infof("\tbio request in queue latency usecs(%d -> %d) count: %d", func() int {
 				if i == 0 {
 					return 0
 				} else {
@@ -211,17 +275,17 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 			}(), int(bucket), slot)
 		}
 
-		ch <- prometheus.MustNewConstHistogram(bp.bioRequestIn2CLatencyDesc,
+		ch <- prometheus.MustNewConstHistogram(bp.bioRequestInQueueLatencyDesc,
 			sampleCount, sampleSum, maps.Clone(latencyBuckets), devName, opName)
 
 		maps.Clear(latencyBuckets)
 
-		for i, slot := range bioInfoMapData.ReqLatencyIs2cSlots {
+		for i, slot := range bioInfoMapData.ReqLatencySlots {
 			bucket := float64(__powerOfTwo[i])   // 桶的上限
 			sampleCount += uint64(slot)          // 统计本周期的样本总数
 			sampleSum += float64(slot) * bucket  // * 0.6 // 估算样本的总和
 			latencyBuckets[bucket] = sampleCount // 每个桶的样本数，下层包括上层统计数量
-			glog.Infof("\tbioRequestIs2C usecs(%d -> %d) count: %d", func() int {
+			glog.Infof("\tbio request latency usecs(%d -> %d) count: %d", func() int {
 				if i == 0 {
 					return 0
 				} else {
@@ -230,7 +294,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 			}(), int(bucket), slot)
 		}
 
-		ch <- prometheus.MustNewConstHistogram(bp.bioRequestIs2CLatencyDesc,
+		ch <- prometheus.MustNewConstHistogram(bp.bioRequestLatencyDesc,
 			sampleCount, sampleSum, maps.Clone(latencyBuckets), devName, opName)
 
 		maps.Clear(latencyBuckets)
@@ -265,16 +329,39 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		}
 	}
 
+	// 读取req latency事件
+L:
+	for {
+		select {
+		case reqLatencyEvtData, ok := <-bp.reqLatencyEvtDataChan.C:
+			if ok {
+				glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d, tid:%d, devName:'%s', opName:%s, bytes:'%d', in_queue_latency_us:%d, latency:%d",
+					bp.name, internal.CommToString(reqLatencyEvtData.Comm[:]), reqLatencyEvtData.Pid, reqLatencyEvtData.Tid,
+					pfnFindDevName(unix.Mkdev(uint32(reqLatencyEvtData.Major), uint32(reqLatencyEvtData.FirstMinor))),
+					pfnFindOpName(reqLatencyEvtData.CmdFlags), reqLatencyEvtData.Len, reqLatencyEvtData.ReqInQueueLatencyUs,
+					reqLatencyEvtData.ReqLatencyUs)
+			}
+		default:
+			break L
+		}
+	}
+
 	return nil
 }
 
 // Stop stops the bioProgram and closes its objects.
 func (bp *bioProgram) Stop() {
+	if bp.reqLatencyEvtRD != nil {
+		bp.reqLatencyEvtRD.Close()
+	}
+
 	bp.stop()
 
 	if bp.objs != nil {
 		bp.objs.Close()
 		bp.objs = nil
 	}
+
+	bp.reqLatencyEvtDataChan.SafeClose()
 	glog.Infof("eBPFProgram:'%s' stopped", bp.name)
 }
