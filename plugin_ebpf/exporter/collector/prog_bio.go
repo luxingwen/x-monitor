@@ -81,6 +81,10 @@ var (
 		REQ_OP_DISCARD:      "discard",
 		REQ_OP_WRITE_SAME:   "write_same",
 		REQ_OP_WRITE_ZEROES: "write_zeroes",
+		REQ_OP_SCSI_IN:      "scsi_in",
+		REQ_OP_SCSI_OUT:     "scsi_out",
+		REQ_OP_DRV_IN:       "drv_in",
+		REQ_OP_DRV_OUT:      "drv_out",
 	}
 )
 
@@ -209,6 +213,8 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 	var bioInfoMapData bpfmodule.XMBioXmBioData
 	var dev, sampleCount uint64
 	sampleSum := 0.0
+
+	glog.Infof("eBPFProgram:'%s' start update...", bp.name)
 
 	keys := make([]bpfmodule.XMBioXmBioKey, 0)
 	latencyBuckets := make(map[float64]uint64, len(__powerOfTwo))
@@ -361,6 +367,8 @@ L:
 			break L
 		}
 	}
+
+	glog.Infof("eBPFProgram:'%s' update done.", bp.name)
 
 	return nil
 }
