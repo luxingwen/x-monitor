@@ -10,6 +10,7 @@ package collector
 import (
 	"bytes"
 	"encoding/binary"
+	"strconv"
 	"sync"
 	"time"
 
@@ -44,13 +45,14 @@ type bioProgram struct {
 	reqLatencyEvtRD       *ringbuf.Reader
 	reqLatencyEvtDataChan *bpfmodule.BioRequestLatencyEvtDataChannel
 
-	bioRequestCompletedCountDesc  *prometheus.Desc // bio request完成的数量
-	bioRequestSequentialRatioDesc *prometheus.Desc // bio request顺序完成的数量
-	bioRequestRandomizedRatioDesc *prometheus.Desc // bio request随机完成的数量
-	bioRequestBytesTotalDesc      *prometheus.Desc // bio request总的字节数，单位kB
-	bioRequestErrorCountDesc      *prometheus.Desc // bio reqeust失败数量
-	bioRequestInQueueLatencyDesc  *prometheus.Desc // bio request在队列的时间，单位us
-	bioRequestLatencyDesc         *prometheus.Desc // bio request执行延迟，单位us
+	bioRequestCompletedCountDesc       *prometheus.Desc // bio request完成的数量
+	bioRequestSequentialRatioDesc      *prometheus.Desc // bio request顺序完成的数量
+	bioRequestRandomizedRatioDesc      *prometheus.Desc // bio request随机完成的数量
+	bioRequestBytesTotalDesc           *prometheus.Desc // bio request总的字节数，单位kB
+	bioRequestErrorCountDesc           *prometheus.Desc // bio reqeust失败数量
+	bioRequestInQueueLatencyDesc       *prometheus.Desc // bio request在队列的时间，单位us
+	bioRequestLatencyDesc              *prometheus.Desc // bio request执行延迟，单位us
+	bioRequestLatencyOverThresholdDesc *prometheus.Desc // bio request操作超过了设定的阈值
 }
 
 const (
@@ -157,6 +159,9 @@ func newBIOProgram(name string) (eBPFProgram, error) {
 	bioProg.bioRequestLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "latency"),
 		"Latency of bio request, unit us.",
 		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
+
+	bioProg.bioRequestLatencyOverThresholdDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "latency_over_threshold"),
+		"Latency of bio request over threshold, unit us.", []string{"device", "comm", "pid", "operation", "bytes", "in_queue_latency_us"}, prometheus.Labels{"from": "xm_ebpf"})
 
 	mapstructure.Decode(config.ProgramConfigByName(name).Filter.ProgRodata, &bioRoData)
 	glog.Infof("eBPFProgram:'%s' bioRoData:%s", name, litter.Sdump(bioRoData))
@@ -335,11 +340,22 @@ L:
 		select {
 		case reqLatencyEvtData, ok := <-bp.reqLatencyEvtDataChan.C:
 			if ok {
-				glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d, tid:%d, devName:'%s', opName:%s, bytes:'%d', in_queue_latency_us:%d, latency:%d",
-					bp.name, internal.CommToString(reqLatencyEvtData.Comm[:]), reqLatencyEvtData.Pid, reqLatencyEvtData.Tid,
-					pfnFindDevName(unix.Mkdev(uint32(reqLatencyEvtData.Major), uint32(reqLatencyEvtData.FirstMinor))),
-					pfnFindOpName(reqLatencyEvtData.CmdFlags), reqLatencyEvtData.Len, reqLatencyEvtData.ReqInQueueLatencyUs,
+				comm := internal.CommToString(reqLatencyEvtData.Comm[:])
+				// 查找设备名
+				devName := pfnFindDevName(unix.Mkdev(uint32(reqLatencyEvtData.Major), uint32(reqLatencyEvtData.FirstMinor)))
+				// 操作名
+				opName := pfnFindOpName(reqLatencyEvtData.CmdFlags)
+
+				glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d, tid:%d, devName:'%s', opName:%s, bytes:'%d', in_queue_latency_us:%d, latency_us:%d",
+					bp.name, comm, reqLatencyEvtData.Pid, reqLatencyEvtData.Tid,
+					devName, opName, reqLatencyEvtData.Len, reqLatencyEvtData.ReqInQueueLatencyUs,
 					reqLatencyEvtData.ReqLatencyUs)
+				ch <- prometheus.MustNewConstMetric(bp.bioRequestLatencyOverThresholdDesc,
+					prometheus.GaugeValue, float64(reqLatencyEvtData.ReqLatencyUs),
+					devName, comm,
+					strconv.FormatInt(int64(reqLatencyEvtData.Pid), 10),
+					opName, strconv.FormatInt(int64(reqLatencyEvtData.Len), 10),
+					strconv.FormatInt(int64(reqLatencyEvtData.ReqInQueueLatencyUs), 10))
 			}
 		default:
 			break L

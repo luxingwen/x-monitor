@@ -279,9 +279,9 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
         }
         complete_delta = delta / 1000U;
     }
-    bpf_printk("xm_ebpf_exporter bio request:0x%x in_queue_delta:%lld us, "
-               "complete_delta:%lld us",
-               rq, in_queue_delta, complete_delta);
+    // bpf_printk("xm_ebpf_exporter bio request:0x%x in_queue_delta:%lld us, "
+    //            "complete_delta:%lld us",
+    //            rq, in_queue_delta, complete_delta);
 
     // 获得磁盘信息
     struct gendisk *disk = __xm_get_disk(rq);
