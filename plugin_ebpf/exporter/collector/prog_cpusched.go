@@ -154,6 +154,9 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 }
 
 func (csp *cpuSchedProgram) Update(ch chan<- prometheus.Metric) error {
+	glog.Infof("eBPFProgram:'%s' update start...", csp.name)
+	defer glog.Infof("eBPFProgram:'%s' update done.", csp.name)
+
 	csp.guard.Lock()
 	// avoid data race
 	buckets := make(map[float64]uint64)

@@ -211,6 +211,9 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 // associated with the cacheStateProgram to the provided channel.
 // It implements prometheus.Collector.
 func (csp *cacheStateProgram) Update(ch chan<- prometheus.Metric) error {
+	glog.Infof("eBPFProgram:'%s' update start...", csp.name)
+	defer glog.Infof("eBPFProgram:'%s' update done.", csp.name)
+
 	ch <- prometheus.MustNewConstMetric(
 		csp.hitsDesc, prometheus.CounterValue, float64(csp.hits.Load()))
 	ch <- prometheus.MustNewConstMetric(

@@ -281,6 +281,9 @@ loop:
 }
 
 func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
+	glog.Infof("eBPFProgram:'%s' update start...", pvp.name)
+	defer glog.Infof("eBPFProgram:'%s' update done.", pvp.name)
+
 	count := 0
 	maxExportCount := config.ProgramConfigByName(pvp.name).Filter.ObjectCount
 

@@ -10,12 +10,15 @@ package collector
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"
+	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -214,10 +217,17 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 	var dev, sampleCount uint64
 	sampleSum := 0.0
 
-	glog.Infof("eBPFProgram:'%s' start update...", bp.name)
+	glog.Infof("eBPFProgram:'%s' update start...", bp.name)
+	defer glog.Infof("eBPFProgram:'%s' update done.", bp.name)
 
 	keys := make([]bpfmodule.XMBioXmBioKey, 0)
 	latencyBuckets := make(map[float64]uint64, len(__powerOfTwo))
+
+	// memsetLatencyBuckets := func(buckets map[float64]uint64) {
+	// 	for k, _ := range buckets {
+	// 		buckets[k] = 0
+	// 	}
+	// }
 
 	partitions, _ := calmutils.ProcPartitions()
 
@@ -272,6 +282,9 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestBytesTotalDesc, prometheus.GaugeValue, float64(kBytes), devName, opName)
 		ch <- prometheus.MustNewConstMetric(bp.bioRequestErrorCountDesc, prometheus.GaugeValue, float64(bioInfoMapData.ReqErrCount), devName, opName)
 
+		//memsetLatencyBuckets(latencyBuckets)
+		sampleCount = 0
+
 		for i, slot := range bioInfoMapData.ReqInQueueLatencySlots {
 			bucket := float64(__powerOfTwo[i])   // 桶的上限
 			sampleCount += uint64(slot)          // 统计本周期的样本总数
@@ -289,7 +302,8 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		ch <- prometheus.MustNewConstHistogram(bp.bioRequestInQueueLatencyDesc,
 			sampleCount, sampleSum, maps.Clone(latencyBuckets), devName, opName)
 
-		maps.Clear(latencyBuckets)
+		//memsetLatencyBuckets(latencyBuckets)
+		sampleCount = 0
 
 		for i, slot := range bioInfoMapData.ReqLatencySlots {
 			bucket := float64(__powerOfTwo[i])   // 桶的上限
@@ -308,7 +322,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		ch <- prometheus.MustNewConstHistogram(bp.bioRequestLatencyDesc,
 			sampleCount, sampleSum, maps.Clone(latencyBuckets), devName, opName)
 
-		maps.Clear(latencyBuckets)
+		//maps.Clear(latencyBuckets)
 	}
 
 	if err := entries.Err(); err != nil {
@@ -341,6 +355,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 	}
 
 	// 读取req latency事件
+	overThresholdFilter := hashset.New()
 L:
 	for {
 		select {
@@ -352,23 +367,29 @@ L:
 				// 操作名
 				opName := pfnFindOpName(reqLatencyEvtData.CmdFlags)
 
-				glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d, tid:%d, devName:'%s', opName:%s, bytes:'%d', in_queue_latency_us:%d, latency_us:%d",
-					bp.name, comm, reqLatencyEvtData.Pid, reqLatencyEvtData.Tid,
-					devName, opName, reqLatencyEvtData.Len, reqLatencyEvtData.ReqInQueueLatencyUs,
-					reqLatencyEvtData.ReqLatencyUs)
-				ch <- prometheus.MustNewConstMetric(bp.bioRequestLatencyOverThresholdDesc,
-					prometheus.GaugeValue, float64(reqLatencyEvtData.ReqLatencyUs),
-					devName, comm,
-					strconv.FormatInt(int64(reqLatencyEvtData.Pid), 10),
-					opName, strconv.FormatInt(int64(reqLatencyEvtData.Len), 10),
-					strconv.FormatInt(int64(reqLatencyEvtData.ReqInQueueLatencyUs), 10))
+				tag := fmt.Sprintf("comm:'%s', pid:%d, tid:%d, devName:'%s', opName:%s, bytes:'%d', in_queue_latency_us:%d",
+					comm, reqLatencyEvtData.Pid, reqLatencyEvtData.Tid, devName, opName, reqLatencyEvtData.Len, reqLatencyEvtData.ReqInQueueLatencyUs)
+
+				hv := xxhash.Sum64String(tag)
+				if !overThresholdFilter.Contains(hv) {
+					glog.Infof("eBPFProgram:'%s', %s, latency_us:%d",
+						bp.name, tag, reqLatencyEvtData.ReqLatencyUs)
+
+					// !!这里在fio压测的时候，标签可能重复，导致Prometheus报内部错误
+					ch <- prometheus.MustNewConstMetric(bp.bioRequestLatencyOverThresholdDesc,
+						prometheus.GaugeValue, float64(reqLatencyEvtData.ReqLatencyUs),
+						devName, comm,
+						strconv.FormatInt(int64(reqLatencyEvtData.Pid), 10),
+						opName, strconv.FormatInt(int64(reqLatencyEvtData.Len), 10),
+						strconv.FormatInt(int64(reqLatencyEvtData.ReqInQueueLatencyUs), 10))
+
+					overThresholdFilter.Add(hv)
+				}
 			}
 		default:
 			break L
 		}
 	}
-
-	glog.Infof("eBPFProgram:'%s' update done.", bp.name)
 
 	return nil
 }
