@@ -17,18 +17,24 @@
 | x-monitor.eBPF.BioLatency | 1：按设备号进行分类统计<br />2：设备的随机读取的比例<br />3：设备顺序读取的比例<br />4：设备读取的次数<br />5：设备读取的字节kB数<br />6：request在request->blk_mq_ctx->rq_lists[type]等待耗时分布，2的指数分布<br />7：request执行的耗时分布，2的指数分布<br />8：超过阈值的request | 完成                                             |
 | x-monitor.eBPF.NAPI       | 1：NAPI机制在高速网络环境下的状态                            | 待实现                                           |
 
-## 工具
+## Tools
 
 | 名称           | 描述                                                         | 状态 |
 | -------------- | ------------------------------------------------------------ | ---- |
 | tools.parseelf | 1：解析elf文件，读取btf、section信息<br />2：方便对ob文件的解析 | 完成 |
 | tools.trace    | 1：在用户态实现eBPF指令，可复用kprobe逻辑<br />2：抓取指定系统调用参数的返回值，内核堆栈、用户态堆栈。<br />3：栈帧到代码的转换。 | 完成 |
 
+## Metrics
 
+### process_vm
 
-## 指标
+一次Prometheus的GC。
 
-## 测试
+![prometheus_gc](../doc/img/process_vm/prometheus_gc.png)
+
+![watch](../doc/img/process_vm/watch.png)
+
+## Test examples
 
 外网地址：[Prometheus Time Series Collection and Processing Server](http://159.27.191.120:9090/graph?g0.expr=process_address_space_privanon_share_pages&g0.tab=0&g0.stacked=0&g0.show_exemplars=0&g0.range_input=12h&g1.expr=cpu_schedule_runq_latency_bucket&g1.tab=0&g1.stacked=0&g1.show_exemplars=0&g1.range_input=1h&g2.expr=filesystem_pagecache_ratio&g2.tab=0&g2.stacked=0&g2.show_exemplars=0&g2.range_input=1h)
 
@@ -61,7 +67,7 @@
 
    fio -filename=fio_test -direct=0 -iodepth 1 -thread -rw=randread -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest，随机读会导致pagecache命中率降低
 
-## 部署
+## Dashboard
 
 grafana环境：[ebpf - Dashboards - Grafana](http://159.27.191.120:3000/d/bd5cbc8d-760f-4cf3-b38a-a77808412920/ebpf?orgId=1)
 

@@ -309,6 +309,7 @@ func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 		// glog.Infof("eBPFProgram:'%s' pid:%d, comm:'%s', mmapSize:%d, brkSize:%d",
 		// 	pvp.name, pvm.pid, pvm.comm, pvm.mmapSize, pvm.brkSize)
 		pidStr := strconv.FormatInt(int64(pvm.pid), 10)
+		// 指标值是page数量
 		ch <- prometheus.MustNewConstMetric(pvp.addressSpaceExpandDesc,
 			prometheus.GaugeValue, float64(pvm.mmapSize>>pageShift),
 			pidStr, pvm.comm, "mmap", roData.FilterScopeType.String(), strconv.Itoa(roData.FilterScopeValue))
