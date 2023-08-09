@@ -68,6 +68,18 @@ grafana环境：[ebpf - Dashboards - Grafana](http://159.27.191.120:3000/d/bd5cb
 
 用户名/账号：test/test1234
 
+![grafana-ebp1](../doc/img/grafana-ebpf1.png)
+
+![grafana-ebpf2](../doc/img/grafana-ebpf2.png)
+
+![grafana-ebpf3](../doc/img/grafana-ebpf3.png)
+
+![grafana-ebpf4](../doc/img/grafana-ebpf4.png)
+
+![grafana-ebpf5](../doc/img/grafana-ebpf5.png)
+
+![grafana-ebpf6](../doc/img/grafana-ebpf6.png)
+
 ## 资料
 
 1. process延迟太久，[tools/dslower: add dslower to trace process block time by curu · Pull Request #4392 · iovisor/bcc (github.com)](https://github.com/iovisor/bcc/pull/4392?notification_referrer_id=NT_kwDOAMWMprM1MDUzMzcwODE4OjEyOTQ2NTk4)。
