@@ -114,6 +114,9 @@ loop:
 }
 
 func (okp *oomKillProgram) Update(ch chan<- prometheus.Metric) error {
+	glog.Infof("eBPFProgram:'%s' update start...", okp.name)
+	defer glog.Infof("eBPFProgram:'%s' update done.", okp.name)
+
 loop:
 	for {
 		select {
