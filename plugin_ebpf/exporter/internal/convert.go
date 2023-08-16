@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-28 18:20:50
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-03-28 18:26:16
+ * @Last Modified time: 2023-08-16 15:47:43
  */
 
 package internal
@@ -22,3 +22,19 @@ func CommToString(commSlice []int8) string {
 	}
 	return calmutils.Bytes2String(byteSlice)
 }
+
+// func getComm(k *profileSampleKey) string {
+// 	res := ""
+// 	// todo remove unsafe
+
+// 	sh := (*reflect.StringHeader)(unsafe.Pointer(&res))
+// 	sh.Data = uintptr(unsafe.Pointer(&k.Comm[0]))
+// 	for _, c := range k.Comm {
+// 		if c != 0 {
+// 			sh.Len++
+// 		} else {
+// 			break
+// 		}
+// 	}
+// 	return res
+// }

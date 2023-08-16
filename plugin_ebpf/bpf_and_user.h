@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-15 14:06:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-07-10 15:08:47
+ * @Last Modified time: 2023-08-16 16:13:57
  */
 
 #pragma once
@@ -16,17 +16,35 @@
 #define XDP_ACTION_MAX (XDP_UNKNOWN + 1)
 #endif
 
+//
+enum xm_prog_filter_target_scope_type {
+    XM_PROG_FILTER_TARGET_SCOPE_TYPE_NONE = 0,
+    XM_PROG_FILTER_TARGET_SCOPE_TYPE_OS,
+    XM_PROG_FILTER_TARGET_SCOPE_TYPE_NS,
+    XM_PROG_FILTER_TARGET_SCOPE_TYPE_CG,
+    XM_PROG_FILTER_TARGET_SCOPE_TYPE_PID,
+    XM_PROG_FILTER_TARGET_SCOPE_TYPE_PGID,
+    XM_PROG_FILTER_TARGET_SCOPE_TYPE_MAX,
+};
+
+struct xm_prog_filter_arg {
+    enum xm_prog_filter_target_scope_type scope_type;
+    __u64 filter_cond_value;
+};
+
+//------------------------ xdp_stats_datarec
+
 struct xdp_stats_datarec {
     __u64 rx_packets;
     __u64 rx_bytes;
 };
 
-struct xm_ebpf_event {
-    pid_t pid;
-    pid_t ppid;
-    char comm[TASK_COMM_LEN];
-    __s32 err_code; // 0 means success, otherwise means failed
-};
+// struct xm_ebpf_event {
+//     pid_t pid;
+//     pid_t ppid;
+//     char comm[TASK_COMM_LEN];
+//     __s32 err_code; // 0 means success, otherwise means failed
+// };
 
 //------------------------ runqlatency
 #define XM_RUNQLAT_MAX_SLOTS 20 // 2 ^ 20 = 1秒
@@ -156,5 +174,13 @@ struct xm_bio_request_latency_evt_data {
     pid_t tid; // 线程id
     pid_t pid; // 进程id
     __u8 cmd_flags; /* op and common flags */
+    char comm[TASK_COMM_LEN];
+};
+
+//------------------------ profile
+struct xm_profile_sample {
+    pid_t pid; // 进程id
+    __u32 kernel_stack_id; // 调用堆栈
+    __u32 user_stack_id;
     char comm[TASK_COMM_LEN];
 };

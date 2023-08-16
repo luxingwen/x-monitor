@@ -448,6 +448,35 @@ DAX模式允许进程直接对文件存储设备(如NVDIMM)进行内存映射,�
 - 检查/proc/filesystems文件,看是否包含"dax"。该文件列出了内核支持的文件系统类型。
 - 检查mount命令的help信息,是否包含"dax"。如果内核支持DAX,mount命令会有相关的挂载选项。
 
+## DropCache
+
+执行dropcache操作后调用的函数
+
+```
+void delete_from_page_cache_batch(struct address_space *mapping,
+				  struct pagevec *pvec)
+{
+	int i;
+	unsigned long flags;
+
+	if (!pagevec_count(pvec))
+		return;
+
+	xa_lock_irqsave(&mapping->i_pages, flags);
+	for (i = 0; i < pagevec_count(pvec); i++) {
+		trace_mm_filemap_delete_from_page_cache(pvec->pages[i]);
+
+		unaccount_page_cache_page(mapping, pvec->pages[i]);
+	}
+	// 将page从xarray中删除
+	page_cache_delete_batch(mapping, pvec);
+	xa_unlock_irqrestore(&mapping->i_pages, flags);
+	// 释放page管理的内存
+	for (i = 0; i < pagevec_count(pvec); i++)
+		page_cache_free_page(mapping, pvec->pages[i]);
+}
+```
+
 ## radix tree
 
 linux支持给个T的文件。访问大文件时，PageCache中充满了太多的Page，如果顺序扫描这些页要消耗大量的时间。为了实现Page的高效查找，使用了radix tree。
