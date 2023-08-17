@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-08-16 15:15:40
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-16 16:32:31
+ * @Last Modified time: 2023-08-16 17:18:49
  */
 
 #include <vmlinux.h>
@@ -15,6 +15,7 @@
 
 // prog参数，过滤条件
 BPF_ARRAY(xm_profile_arg_map, struct xm_prog_filter_arg, 1);
+// 堆栈计数
 BPF_HASH(xm_profile_sample_count_map, struct xm_profile_sample, __u32,
          MAX_THREAD_COUNT);
 struct {
