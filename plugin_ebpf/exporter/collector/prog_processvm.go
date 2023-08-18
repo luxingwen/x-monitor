@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-04-27 14:10:51
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-07-10 15:04:37
+ * @Last Modified time: 2023-08-18 16:13:24
  */
 
 package collector
@@ -28,8 +28,9 @@ import (
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-	"xmonitor.calmwu/plugin_ebpf/exporter/internal"
+	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
+	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
 const (
@@ -73,7 +74,7 @@ func loadToRunProcessVMMProg(name string, prog *processVMProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMProcessVMObjects)
-	prog.links, err = attatchToRun(name, prog.objs, bpfmodule.LoadXMProcessVM, func(spec *ebpf.CollectionSpec) error {
+	prog.links, err = bpfprog.AttachToRun(name, prog.objs, bpfmodule.LoadXMProcessVM, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
 			"__filter_scope_type":  int32(pvmRoData.FilterScopeType),
 			"__filter_scope_value": int64(pvmRoData.FilterScopeValue),
@@ -191,7 +192,7 @@ loop:
 			}
 		case data, ok := <-pvp.processVMEvtDataChan.C:
 			if ok {
-				comm := internal.CommToString(data.Comm[:])
+				comm := bpfutils.CommToString(data.Comm[:])
 				if config.ProgramCommFilter(pvp.name, comm) {
 
 					pvp.processVMMapGuard.Lock()
@@ -330,7 +331,7 @@ func (pvp *processVMProgram) Stop() {
 		pvp.vmmEvtRD.Close()
 	}
 
-	pvp.stop()
+	pvp.finalizer()
 
 	if pvp.objs != nil {
 		pvp.objs.Close()

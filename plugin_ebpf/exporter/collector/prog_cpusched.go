@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-25 12:43:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-07-10 15:03:48
+ * @Last Modified time: 2023-08-18 16:13:37
  */
 
 package collector
@@ -25,8 +25,9 @@ import (
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-	"xmonitor.calmwu/plugin_ebpf/exporter/internal"
+	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
 type cpuSchedProgRodata struct {
@@ -69,7 +70,7 @@ func loadToRunCPUSchedEProg(name string, prog *cpuSchedProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMCpuScheduleObjects)
-	prog.links, err = attatchToRun(name, prog.objs, bpfmodule.LoadXMCpuSchedule, func(spec *ebpf.CollectionSpec) error {
+	prog.links, err = bpfprog.AttachToRun(name, prog.objs, bpfmodule.LoadXMCpuSchedule, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
 			"__filter_scope_type":            int32(roData.FilterScopeType),
 			"__filter_scope_value":           int64(roData.FilterScopeValue),
@@ -189,7 +190,7 @@ L:
 							prometheus.GaugeValue, float64(cpuSchedEvtData.OffcpuDurationMillsecs),
 							strconv.FormatInt(int64(cpuSchedEvtData.Pid), 10),
 							strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
-							internal.CommToString(cpuSchedEvtData.Comm[:]),
+							utils.CommToString(cpuSchedEvtData.Comm[:]),
 							roData.FilterScopeType.String(),
 							strconv.Itoa(roData.FilterScopeValue))
 						csp.metricsUpdateFilter.Add(cpuSchedEvtData.Pid)
@@ -199,7 +200,7 @@ L:
 					ch <- prometheus.MustNewConstMetric(csp.hangProcessDesc,
 						prometheus.GaugeValue, float64(cpuSchedEvtData.Pid),
 						strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
-						internal.CommToString(cpuSchedEvtData.Comm[:]),
+						utils.CommToString(cpuSchedEvtData.Comm[:]),
 						roData.FilterScopeType.String(),
 						strconv.Itoa(roData.FilterScopeValue))
 				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_PROCESS_EXIT {
@@ -208,7 +209,7 @@ L:
 					evtInfo.EvtData = &eventcenter.EBPFEventProcessExit{
 						Pid:  cpuSchedEvtData.Pid,
 						Tgid: cpuSchedEvtData.Tgid,
-						Comm: internal.CommToString(cpuSchedEvtData.Comm[:]),
+						Comm: utils.CommToString(cpuSchedEvtData.Comm[:]),
 					}
 					eventcenter.DefInstance.Publish(csp.name, evtInfo)
 				}
@@ -228,7 +229,7 @@ func (csp *cpuSchedProgram) Stop() {
 		csp.scEvtRD.Close()
 	}
 
-	csp.stop()
+	csp.finalizer()
 
 	if csp.objs != nil {
 		csp.objs.Close()
@@ -312,7 +313,7 @@ loop:
 			continue
 		}
 
-		comm := internal.CommToString(scEvtData.Comm[:])
+		comm := utils.CommToString(scEvtData.Comm[:])
 		if config.ProgramCommFilter(csp.name, comm) {
 			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', evtType:%d, offcpu_duration_millsecs:%d",
 				csp.name, scEvtData.Tgid, scEvtData.Pid, comm, scEvtData.EvtType, scEvtData.OffcpuDurationMillsecs)

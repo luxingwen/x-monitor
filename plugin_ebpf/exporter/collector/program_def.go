@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-27 11:20:44
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-17 14:47:53
+ * @Last Modified time: 2023-08-18 16:14:04
  */
 
 package collector
@@ -10,9 +10,6 @@ package collector
 import (
 	"time"
 
-	"github.com/cilium/ebpf/link"
-	"github.com/sourcegraph/conc"
-	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 )
 
@@ -23,6 +20,7 @@ const (
 	processVMMProgName  = "processvm"
 	oomKillProgName     = "oomkill"
 	bioProgName         = "bio"
+	profileProgName     = "profile"
 )
 
 type eBPFProgramFilterCfg struct {
@@ -35,16 +33,6 @@ type eBPFProgramFuncCfg struct {
 	MetricDesc     string        `mapstructure:"metric_desc"`
 	GatherInterval time.Duration `mapstructure:"gather_interval"`
 	ThresholdTime  time.Duration `mapstructure:"threshold_ms"`
-}
-
-type eBPFBaseProgram struct {
-	// module
-	name        string
-	stopChan    chan struct{}
-	wg          conc.WaitGroup
-	gatherTimer *calmutils.Timer
-	// ebpf
-	links []link.Link
 }
 
 var (

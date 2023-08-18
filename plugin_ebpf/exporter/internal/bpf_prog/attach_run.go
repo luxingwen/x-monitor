@@ -1,11 +1,11 @@
 /*
  * @Author: CALM.WU
- * @Date: 2023-02-24 10:56:54
+ * @Date: 2023-08-18 14:45:53
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-17 15:11:46
+ * @Last Modified time: 2023-08-18 14:48:04
  */
 
-package collector
+package bpfprog
 
 import (
 	"reflect"
@@ -17,6 +17,9 @@ import (
 	"github.com/pkg/errors"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 )
+
+type __load func() (*ebpf.CollectionSpec, error)
+type __rewriteConstVars func(*ebpf.CollectionSpec) error
 
 // AttachObjPrograms attaches the eBPF programs described by progSpecs to the
 // interfaces described by progs.
@@ -151,5 +154,49 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 		}
 	}
 
+	return links, nil
+}
+
+func AttachToRun(name string, objs interface{}, loadF __load, rewriteConstVarsF __rewriteConstVars) ([]link.Link, error) {
+	spec, err := loadF()
+	if err != nil {
+		err = errors.Wrapf(err, "eBPFProgram:'%s' load spec failed.", name)
+		glog.Error(err.Error())
+		return nil, err
+	}
+
+	if rewriteConstVarsF != nil {
+		if err := rewriteConstVarsF(spec); err != nil {
+			err = errors.Wrapf(err, "eBPFProgram:'%s' rewrite const variables failed.", name)
+			glog.Error(err.Error())
+			return nil, err
+		}
+	}
+
+	if err := spec.LoadAndAssign(objs, nil); err != nil {
+		err = errors.Wrapf(err, "eBPFProgram:'%s' assign objs failed.", name)
+		glog.Error(err.Error())
+		return nil, err
+	}
+
+	// 得到objs的xxxPrograms对象
+	objsV := reflect.Indirect(reflect.ValueOf(objs))
+	objsT := objsV.Type()
+	objsNumFields := objsV.NumField() //objsT.NumField()
+
+	var links []link.Link
+
+	for i := 0; i < objsNumFields; i++ {
+		field := objsT.Field(i)
+		if field.Type.Kind() == reflect.Struct && strings.Contains(field.Name, "Programs") {
+			links, err = AttachObjPrograms(objsV.Field(i).Interface(), spec.Programs)
+			if err != nil {
+				err = errors.Wrapf(err, "eBPFProgram:'%s' AttachObjPrograms failed.", name)
+				glog.Error(err.Error())
+				return nil, err
+			}
+		}
+	}
+	glog.Infof("eBPFProgram:'%s' start AttachToRun successfully.", name)
 	return links, nil
 }

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-06 11:39:12
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-02-17 14:22:20
+ * @Last Modified time: 2023-08-18 15:07:10
  */
 
 package cmd
@@ -26,7 +26,7 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
-	"xmonitor.calmwu/plugin_ebpf/exporter/internal/netutil"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/net"
 )
 
 var (
@@ -53,7 +53,7 @@ var (
 		Run: rootCmdRun,
 	}
 
-	_apiSrv        *netutil.WebSrv
+	_apiSrv        *net.WebSrv
 	_eBPFCollector *collector.EBPFCollector
 
 	_gf = singleflight.Group{}
@@ -143,7 +143,7 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 
 	// 启动web服务
 	bind, _ = config.APISrvBindAddr()
-	_apiSrv = netutil.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
+	_apiSrv = net.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
 
 	// 注册router
 	metricsPath := config.PromMetricsPath()

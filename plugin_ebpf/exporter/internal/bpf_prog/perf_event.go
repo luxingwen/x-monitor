@@ -1,0 +1,170 @@
+/*
+ * @Author: CALM.WU
+ * @Date: 2023-08-18 14:48:42
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2023-08-18 14:49:04
+ */
+
+package bpfprog
+
+import (
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
+	"github.com/golang/glog"
+	"github.com/grafana/pyroscope/ebpf/cpuonline"
+	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
+)
+
+// 1: invoke perf_event_open create fd for every cpu
+// 2: attach ebpf program to every cpu
+
+type peFDs []int
+
+type perfEventLink struct {
+	link *link.RawLink
+	peFD int
+}
+
+func newPerfEventLink(pid int, sampleRate int, cpu int, prog *ebpf.Program) (*perfEventLink, error) {
+	var err error
+
+	attr := unix.PerfEventAttr{
+		Type:   unix.PERF_TYPE_HARDWARE, //: 硬件事件，如CPU周期、缓存命中、分支错误等
+		Config: unix.PERF_COUNT_HW_CPU_CYCLES,
+		Sample: uint64(sampleRate), // 采样频率，每秒采样的次数
+		Bits:   unix.PerfBitFreq,   // 表示是否使用采样频率而不是采样周期，默认为0，即使用采样周期
+	}
+
+	pel := new(perfEventLink)
+	if err = pel.openPerfEvent(pid, cpu, &attr); err != nil {
+		return nil, errors.Wrap(err, "openPerfEvent failed")
+	} else {
+		if err = pel.attachPerfEventIoctl(prog); err != nil {
+			err = pel.attachPerfEvent(prog)
+		}
+	}
+
+	if err != nil {
+		pel = nil
+		err = errors.Wrap(err, "attachPerfEvent failed")
+		return nil, err
+	}
+
+	return pel, nil
+}
+
+func (pel *perfEventLink) openPerfEvent(pid int, cpu int, attr *unix.PerfEventAttr) error {
+
+	if fd, err := unix.PerfEventOpen(attr, pid, cpu, -1, unix.PERF_FLAG_FD_CLOEXEC); err != nil {
+		return errors.Wrapf(err, "unix.PerfEventOpen failed, pid:%d, cpu:%d", pid, cpu)
+	} else {
+		pel.peFD = fd
+		glog.Infof("open PerfEvent success, pid:%d, cpu:%d, fd:%d", pid, cpu, fd)
+	}
+
+	return nil
+}
+
+func (pel *perfEventLink) attachPerfEvent(prog *ebpf.Program) error {
+	// use raw link
+	var (
+		err error
+	)
+	opts := link.RawLinkOptions{
+		Target:  pel.peFD,
+		Program: prog,
+		Attach:  ebpf.AttachPerfEvent,
+	}
+
+	if pel.link, err = link.AttachRawLink(opts); err != nil {
+		err = errors.Wrap(err, "attach RawLink failed.")
+		return err
+	} else {
+		glog.Infof("attach RawLink success, fd:%d", pel.peFD)
+	}
+
+	return nil
+}
+
+func (pel *perfEventLink) attachPerfEventIoctl(prog *ebpf.Program) error {
+	// Assign the eBPF program to the perf event.
+	err := unix.IoctlSetInt(pel.peFD, unix.PERF_EVENT_IOC_SET_BPF, prog.FD())
+	if err != nil {
+		return errors.Wrap(err, "ioctl setting perf event bpf program failed")
+	}
+
+	// PERF_EVENT_IOC_ENABLE and _DISABLE ignore their given values.
+	if err := unix.IoctlSetInt(pel.peFD, unix.PERF_EVENT_IOC_ENABLE, 0); err != nil {
+		return errors.Wrap(err, "ioctl enable perf event failed")
+	}
+	glog.Infof("use ioctl assign ebpf.Program to perf event success, fd:%d", pel.peFD)
+
+	return nil
+}
+
+func (pel *perfEventLink) Close() {
+	_ = unix.Close(pel.peFD)
+	if pel.link != nil {
+		pel.link.Close()
+	}
+}
+
+//------------------------------------------------------------
+
+type PerfEventProgAttacher struct {
+	links      []*perfEventLink
+	pid        int
+	sampleRate int
+}
+
+func NewPerfEventProgAttacher(pid int, sampleRate int, prog *ebpf.Program) (*PerfEventProgAttacher, error) {
+	var (
+		onlineCPUs []uint
+		err        error
+		pel        *perfEventLink
+	)
+
+	if prog == nil {
+		return nil, errors.New("attach prog is nil!!")
+	}
+
+	if prog.FD() < 0 {
+		return nil, errors.Wrap(unix.EBADF, "attach prog is invalid!!!")
+	}
+
+	attacher := &PerfEventProgAttacher{
+		pid:        pid,
+		sampleRate: sampleRate,
+	}
+
+	if onlineCPUs, err = cpuonline.Get(); err != nil {
+		return nil, errors.Wrap(err, "get online cpus")
+	}
+
+	glog.Infof("onlineCpu: %#v", onlineCPUs)
+
+	for _, cpu := range onlineCPUs {
+		if pel, err = newPerfEventLink(pid, sampleRate, int(cpu), prog); err == nil {
+			attacher.links = append(attacher.links, pel)
+		} else {
+			err = errors.Wrapf(err, "newPerfEventLink failed on cpu:%d", cpu)
+			break
+		}
+	}
+
+	if err != nil {
+		attacher.Stop()
+		return nil, err
+	}
+
+	glog.Infof("NewPerfEventProgAttacher success, pid:%d, sampleRate:%d, useIoctl:%v", pid, sampleRate)
+
+	return attacher, nil
+}
+
+func (pepa *PerfEventProgAttacher) Stop() {
+	for _, pel := range pepa.links {
+		pel.Close()
+	}
+}

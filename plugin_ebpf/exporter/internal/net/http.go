@@ -2,10 +2,10 @@
  * @Author: CALM.WU
  * @Date: 2023-02-10 10:47:35
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-03-28 18:20:55
+ * @Last Modified time: 2023-08-18 14:58:01
  */
 
-package netutil
+package net
 
 import "github.com/gin-gonic/gin"
 

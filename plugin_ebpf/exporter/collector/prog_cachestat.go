@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-09 14:43:48
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-07-10 15:26:44
+ * @Last Modified time: 2023-08-18 14:51:58
  */
 
 package collector
@@ -20,6 +20,7 @@ import (
 	"go.uber.org/atomic"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
+	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
 )
 
 func init() {
@@ -75,7 +76,7 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 
-	if links, err := AttachObjPrograms(csp.objs.XMCacheStatPrograms, spec.Programs); err != nil {
+	if links, err := bpfprog.AttachObjPrograms(csp.objs.XMCacheStatPrograms, spec.Programs); err != nil {
 		err = errors.Wrapf(err, "eBPFProgram:'%s' AttachObjPrograms failed.", name)
 		glog.Error(err.Error())
 		return nil, err
@@ -83,7 +84,7 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 		csp.links = links
 	}
 
-	glog.Infof("eBPFProgram:'%s' start attatchToRun successfully.", name)
+	glog.Infof("eBPFProgram:'%s' start AttachToRun successfully.", name)
 
 	gatherInterval := config.ProgramConfigByName(csp.name).GatherInterval * time.Second
 

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-07-10 14:15:12
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-07-10 15:50:27
+ * @Last Modified time: 2023-08-18 16:16:55
  */
 
 package collector
@@ -29,7 +29,8 @@ import (
 	"golang.org/x/sys/unix"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-	"xmonitor.calmwu/plugin_ebpf/exporter/internal"
+	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
 const (
@@ -42,20 +43,19 @@ type bioProgRodata struct {
 }
 
 type bioProgram struct {
+	bioRequestSequentialRatioDesc *prometheus.Desc
+	objs                          *bpfmodule.XMBioObjects
+	reqLatencyEvtRD               *ringbuf.Reader
+	reqLatencyEvtDataChan         *bpfmodule.BioRequestLatencyEvtDataChannel
+	bioRequestCompletedCountDesc  *prometheus.Desc
 	*eBPFBaseProgram
-	objs                  *bpfmodule.XMBioObjects
-	guard                 sync.Mutex
-	reqLatencyEvtRD       *ringbuf.Reader
-	reqLatencyEvtDataChan *bpfmodule.BioRequestLatencyEvtDataChannel
-
-	bioRequestCompletedCountDesc       *prometheus.Desc // bio request完成的数量
-	bioRequestSequentialRatioDesc      *prometheus.Desc // bio request顺序完成的数量
-	bioRequestRandomizedRatioDesc      *prometheus.Desc // bio request随机完成的数量
-	bioRequestBytesTotalDesc           *prometheus.Desc // bio request总的字节数，单位kB
-	bioRequestErrorCountDesc           *prometheus.Desc // bio reqeust失败数量
-	bioRequestInQueueLatencyDesc       *prometheus.Desc // bio request在队列的时间，单位us
-	bioRequestLatencyDesc              *prometheus.Desc // bio request执行延迟，单位us
-	bioRequestLatencyOverThresholdDesc *prometheus.Desc // bio request操作超过了设定的阈值
+	bioRequestRandomizedRatioDesc      *prometheus.Desc
+	bioRequestBytesTotalDesc           *prometheus.Desc
+	bioRequestErrorCountDesc           *prometheus.Desc
+	bioRequestInQueueLatencyDesc       *prometheus.Desc
+	bioRequestLatencyDesc              *prometheus.Desc
+	bioRequestLatencyOverThresholdDesc *prometheus.Desc
+	guard                              sync.Mutex
 }
 
 const (
@@ -99,7 +99,7 @@ func loadToRunBIOProg(name string, prog *bioProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMBioObjects)
-	prog.links, err = attatchToRun(name, prog.objs, bpfmodule.LoadXMBio, func(spec *ebpf.CollectionSpec) error {
+	prog.links, err = bpfprog.AttachToRun(name, prog.objs, bpfmodule.LoadXMBio, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
 			"__filter_per_cmd_flag":    bioRoData.FilterPerCmdFlag,
 			"__request_min_latency_ns": int64(time.Duration(bioRoData.RequestMinLatencyMillSecs) * time.Millisecond),
@@ -361,7 +361,7 @@ L:
 		select {
 		case reqLatencyEvtData, ok := <-bp.reqLatencyEvtDataChan.C:
 			if ok {
-				comm := internal.CommToString(reqLatencyEvtData.Comm[:])
+				comm := utils.CommToString(reqLatencyEvtData.Comm[:])
 				// 查找设备名
 				devName := pfnFindDevName(unix.Mkdev(uint32(reqLatencyEvtData.Major), uint32(reqLatencyEvtData.FirstMinor)))
 				// 操作名
@@ -400,7 +400,7 @@ func (bp *bioProgram) Stop() {
 		bp.reqLatencyEvtRD.Close()
 	}
 
-	bp.stop()
+	bp.finalizer()
 
 	if bp.objs != nil {
 		bp.objs.Close()

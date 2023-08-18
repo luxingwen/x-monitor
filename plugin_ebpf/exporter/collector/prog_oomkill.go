@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2023-06-14 10:31:37
- * @Last Modified by:   CALM.WU
- * @Last Modified time: 2023-06-14 10:31:37
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2023-08-18 16:13:32
  */
 
 package collector
@@ -18,7 +18,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
-	"xmonitor.calmwu/plugin_ebpf/exporter/internal"
+	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
 const (
@@ -43,7 +44,7 @@ func loadToRunOomKillProg(name string, prog *oomKillProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMOomKillObjects)
-	prog.links, err = attatchToRun(name, prog.objs, bpfmodule.LoadXMOomKill, func(spec *ebpf.CollectionSpec) error {
+	prog.links, err = bpfprog.AttachToRun(name, prog.objs, bpfmodule.LoadXMOomKill, func(spec *ebpf.CollectionSpec) error {
 		return nil
 	})
 
@@ -122,8 +123,8 @@ loop:
 		select {
 		case data, ok := <-okp.oomKillEvtDataChan.C:
 			if ok {
-				comm := internal.CommToString(data.Comm[:])
-				oomMsg := internal.CommToString(data.Msg[:])
+				comm := utils.CommToString(data.Comm[:])
+				oomMsg := utils.CommToString(data.Msg[:])
 				fileRssKB := data.RssFilepages << 2
 				anonRssKB := data.RssAnonpages << 2
 				shmemRssKB := data.RssShmepages << 2
@@ -172,7 +173,7 @@ func (okp *oomKillProgram) Stop() {
 		okp.oomKillEvtRD.Close()
 	}
 
-	okp.stop()
+	okp.finalizer()
 
 	if okp.objs != nil {
 		okp.objs.Close()
