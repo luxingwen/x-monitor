@@ -29,19 +29,16 @@ type perfEventLink struct {
 func newPerfEventLink(pid int, sampleRate int, cpu int, prog *ebpf.Program) (*perfEventLink, error) {
 	var err error
 
-	attr := unix.PerfEventAttr{
-		Type:   unix.PERF_TYPE_HARDWARE, //: 硬件事件，如CPU周期、缓存命中、分支错误等
-		Config: unix.PERF_COUNT_HW_CPU_CYCLES,
-		Sample: uint64(sampleRate), // 采样频率，每秒采样的次数
-		Bits:   unix.PerfBitFreq,   // 表示是否使用采样频率而不是采样周期，默认为0，即使用采样周期
-	}
-
 	pel := new(perfEventLink)
-	if err = pel.openPerfEvent(pid, cpu, &attr); err != nil {
+	if err = pel.openPerfEvent(pid, cpu, uint64(sampleRate)); err != nil {
 		return nil, errors.Wrap(err, "openPerfEvent failed")
 	} else {
-		if err = pel.attachPerfEventIoctl(prog); err != nil {
-			err = pel.attachPerfEvent(prog)
+		if err = pel.attachPerfEvent(prog); err != nil {
+			glog.Warningf("attach perfEvent failed: %s, so change use ioctl", err)
+			err = pel.attachPerfEventIoctl(prog)
+			if err != nil {
+				glog.Errorf("attacc perfEvent Ioctl failed: %s", err)
+			}
 		}
 	}
 
@@ -54,13 +51,19 @@ func newPerfEventLink(pid int, sampleRate int, cpu int, prog *ebpf.Program) (*pe
 	return pel, nil
 }
 
-func (pel *perfEventLink) openPerfEvent(pid int, cpu int, attr *unix.PerfEventAttr) error {
+func (pel *perfEventLink) openPerfEvent(pid int, cpu int, sampleRate uint64) error {
+	attr := unix.PerfEventAttr{
+		Type:   unix.PERF_TYPE_SOFTWARE,
+		Config: unix.PERF_COUNT_SW_CPU_CLOCK,
+		Sample: sampleRate,       // 采样频率，每秒采样的次数
+		Bits:   unix.PerfBitFreq, // 表示是否使用采样频率而不是采样周期，默认为0，即使用采样周期
+	}
 
-	if fd, err := unix.PerfEventOpen(attr, pid, cpu, -1, unix.PERF_FLAG_FD_CLOEXEC); err != nil {
-		return errors.Wrapf(err, "unix.PerfEventOpen failed, pid:%d, cpu:%d", pid, cpu)
+	if fd, err := unix.PerfEventOpen(&attr, pid, cpu, -1, unix.PERF_FLAG_FD_CLOEXEC); err != nil {
+		return errors.Wrapf(err, "perf event open failed, pid:%d, cpu:%d", pid, cpu)
 	} else {
 		pel.peFD = fd
-		glog.Infof("open PerfEvent success, pid:%d, cpu:%d, fd:%d", pid, cpu, fd)
+		glog.Infof("perf event open successed, pid:%d, cpu:%d, fd:%d", pid, cpu, fd)
 	}
 
 	return nil
@@ -112,13 +115,13 @@ func (pel *perfEventLink) Close() {
 
 //------------------------------------------------------------
 
-type PerfEventProgAttacher struct {
+type PerfEventLinks struct {
 	links      []*perfEventLink
 	pid        int
 	sampleRate int
 }
 
-func NewPerfEventProgAttacher(pid int, sampleRate int, prog *ebpf.Program) (*PerfEventProgAttacher, error) {
+func AttachPerfEventProg(pid int, sampleRate int, prog *ebpf.Program) (*PerfEventLinks, error) {
 	var (
 		onlineCPUs []uint
 		err        error
@@ -133,7 +136,7 @@ func NewPerfEventProgAttacher(pid int, sampleRate int, prog *ebpf.Program) (*Per
 		return nil, errors.Wrap(unix.EBADF, "attach prog is invalid!!!")
 	}
 
-	attacher := &PerfEventProgAttacher{
+	links := &PerfEventLinks{
 		pid:        pid,
 		sampleRate: sampleRate,
 	}
@@ -146,7 +149,7 @@ func NewPerfEventProgAttacher(pid int, sampleRate int, prog *ebpf.Program) (*Per
 
 	for _, cpu := range onlineCPUs {
 		if pel, err = newPerfEventLink(pid, sampleRate, int(cpu), prog); err == nil {
-			attacher.links = append(attacher.links, pel)
+			links.links = append(links.links, pel)
 		} else {
 			err = errors.Wrapf(err, "newPerfEventLink failed on cpu:%d", cpu)
 			break
@@ -154,17 +157,17 @@ func NewPerfEventProgAttacher(pid int, sampleRate int, prog *ebpf.Program) (*Per
 	}
 
 	if err != nil {
-		attacher.Stop()
+		links.Detach()
 		return nil, err
 	}
 
-	glog.Infof("NewPerfEventProgAttacher success, pid:%d, sampleRate:%d, useIoctl:%v", pid, sampleRate)
+	glog.Infof("AttachPerfEventProg success, pid:%d, sampleRate:%d", pid, sampleRate)
 
-	return attacher, nil
+	return links, nil
 }
 
-func (pepa *PerfEventProgAttacher) Stop() {
-	for _, pel := range pepa.links {
+func (pels *PerfEventLinks) Detach() {
+	for _, pel := range pels.links {
 		pel.Close()
 	}
 }
