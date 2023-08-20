@@ -14,6 +14,10 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 )
 
+const (
+	mapKey uint32 = 0
+)
+
 // go test  -timeout 30s -run ^TestPerfEventProg$ xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog -v -logtostderr
 func TestPerfEventProg(t *testing.T) {
 	objs := bpfmodule.XMProfileObjects{}
@@ -29,7 +33,21 @@ func TestPerfEventProg(t *testing.T) {
 	if links, err := AttachPerfEventProg(-1, 99, objs.XmDoPerfEvent); err != nil {
 		t.Fatalf("attach PerfEvent Prog: %s", err)
 	} else {
-		time.Sleep(3 * time.Second)
+
+		for i := int(bpfmodule.XMProfileXmProgFilterTargetScopeTypeXM_PROG_FILTER_TARGET_SCOPE_TYPE_OS); i < int(bpfmodule.XMProfileXmProgFilterTargetScopeTypeXM_PROG_FILTER_TARGET_SCOPE_TYPE_MAX); i++ {
+
+			args := new(bpfmodule.XMProfileXmProgFilterArg)
+			args.ScopeType = bpfmodule.XMProfileXmProgFilterTargetScopeType(i)
+			args.FilterCondValue = uint64(i)
+
+			if err := objs.XmProfileArgMap.Update(mapKey, args, 0); err != nil {
+				t.Fatalf("update profile args map failed. err:%s", err)
+			} else {
+				t.Logf("udpate profiel args map.ScopeType: %d successed", args.ScopeType)
+			}
+
+			time.Sleep(1 * time.Second)
+		}
 
 		links.Detach()
 	}

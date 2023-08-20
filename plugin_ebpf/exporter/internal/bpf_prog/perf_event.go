@@ -53,6 +53,8 @@ func newPerfEventLink(pid int, sampleRate int, cpu int, prog *ebpf.Program) (*pe
 
 func (pel *perfEventLink) openPerfEvent(pid int, cpu int, sampleRate uint64) error {
 	attr := unix.PerfEventAttr{
+		// Type:   unix.PERF_TYPE_HARDWARE,       //,
+		// Config: unix.PERF_COUNT_HW_CPU_CYCLES, //,
 		Type:   unix.PERF_TYPE_SOFTWARE,
 		Config: unix.PERF_COUNT_SW_CPU_CLOCK,
 		Sample: sampleRate,       // 采样频率，每秒采样的次数
@@ -115,13 +117,13 @@ func (pel *perfEventLink) Close() {
 
 //------------------------------------------------------------
 
-type PerfEventLinks struct {
+type PerfEvent struct {
 	links      []*perfEventLink
 	pid        int
 	sampleRate int
 }
 
-func AttachPerfEventProg(pid int, sampleRate int, prog *ebpf.Program) (*PerfEventLinks, error) {
+func AttachPerfEventProg(pid int, sampleRate int, prog *ebpf.Program) (*PerfEvent, error) {
 	var (
 		onlineCPUs []uint
 		err        error
@@ -136,7 +138,7 @@ func AttachPerfEventProg(pid int, sampleRate int, prog *ebpf.Program) (*PerfEven
 		return nil, errors.Wrap(unix.EBADF, "attach prog is invalid!!!")
 	}
 
-	links := &PerfEventLinks{
+	pe := &PerfEvent{
 		pid:        pid,
 		sampleRate: sampleRate,
 	}
@@ -149,7 +151,7 @@ func AttachPerfEventProg(pid int, sampleRate int, prog *ebpf.Program) (*PerfEven
 
 	for _, cpu := range onlineCPUs {
 		if pel, err = newPerfEventLink(pid, sampleRate, int(cpu), prog); err == nil {
-			links.links = append(links.links, pel)
+			pe.links = append(pe.links, pel)
 		} else {
 			err = errors.Wrapf(err, "newPerfEventLink failed on cpu:%d", cpu)
 			break
@@ -157,17 +159,17 @@ func AttachPerfEventProg(pid int, sampleRate int, prog *ebpf.Program) (*PerfEven
 	}
 
 	if err != nil {
-		links.Detach()
+		pe.Detach()
 		return nil, err
 	}
 
 	glog.Infof("AttachPerfEventProg success, pid:%d, sampleRate:%d", pid, sampleRate)
 
-	return links, nil
+	return pe, nil
 }
 
-func (pels *PerfEventLinks) Detach() {
-	for _, pel := range pels.links {
+func (pe *PerfEvent) Detach() {
+	for _, pel := range pe.links {
 		pel.Close()
 	}
 }
