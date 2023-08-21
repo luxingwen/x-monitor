@@ -184,6 +184,10 @@ func (okp *oomKillProgram) Stop() {
 	glog.Infof("eBPFProgram:'%s' stopped", okp.name)
 }
 
+func (okp *oomKillProgram) Reload() error {
+	return nil
+}
+
 /*
 I0615 07:28:43.679520 1284119 prog_oomkill.go:126] eBPFProgram:'oomkill' Process pid:1284158, tid:1284158, comm:'stress-ng-vm' happens OOMKill, in MemCgroup:140451, MemCgroup pageCounter:262144, badness points:524271, file-rss:1372kB, anon-rss:1045532kB, shmem-rss:36kB, memoryLimit:1048576kB, Msg:Memory cgroup out of memory
 

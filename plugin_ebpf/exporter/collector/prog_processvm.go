@@ -135,7 +135,7 @@ func newProcessVMMProgram(name string) (eBPFProgram, error) {
 	}
 
 	prog.wg.Go(prog.tracingeBPFEvent)
-	prog.wg.Go(prog.handingeBPFData)
+	prog.wg.Go(prog.handlingeBPFData)
 
 	return prog, nil
 }
@@ -165,7 +165,7 @@ loop:
 	}
 }
 
-func (pvp *processVMProgram) handingeBPFData() {
+func (pvp *processVMProgram) handlingeBPFData() {
 	glog.Infof("eBPFProgram:'%s' start handling eBPF Data...", pvp.name)
 
 	eBPFEventReadChan := eventcenter.DefInstance.Subscribe(pvp.name, eventcenter.EBPF_EVENT_PROCESS_EXIT)
@@ -340,6 +340,10 @@ func (pvp *processVMProgram) Stop() {
 
 	pvp.processVMEvtDataChan.SafeClose()
 	glog.Infof("eBPFProgram:'%s' stopped", pvp.name)
+}
+
+func (pvp *processVMProgram) Reload() error {
+	return nil
 }
 
 // getEvtName takes in an XMProcessVMMXmVmmEvtType and returns the name of the event. If the event type is not found, "Unknown" is returned.

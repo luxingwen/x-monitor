@@ -70,3 +70,9 @@ eBPF:
         prog_rodata:
           filter_per_cmd_flag: true
           request_min_latency_millsecs: 10 # 单位：毫秒
+    - name: profile
+      enable: true
+      pyroscope_application_name: "x-monitor.ebpf"
+      pyroscope_server_addr: "http://127.0.0.1:4040/"
+      sample_rate: 100
+      gather_interval: 3 # 单位：秒，上报时间间隔

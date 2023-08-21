@@ -27,7 +27,7 @@ enum xm_prog_filter_target_scope_type {
     XM_PROG_FILTER_TARGET_SCOPE_TYPE_MAX,
 };
 
-struct xm_prog_filter_arg {
+struct xm_prog_filter_args {
     enum xm_prog_filter_target_scope_type scope_type;
     __u64 filter_cond_value;
 };

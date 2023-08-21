@@ -410,3 +410,7 @@ func (bp *bioProgram) Stop() {
 	bp.reqLatencyEvtDataChan.SafeClose()
 	glog.Infof("eBPFProgram:'%s' stopped", bp.name)
 }
+
+func (bp *bioProgram) Reload() error {
+	return nil
+}

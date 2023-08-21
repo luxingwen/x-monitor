@@ -19,7 +19,7 @@ type XMProfileXmProfileSample struct {
 	Comm          [16]int8
 }
 
-type XMProfileXmProgFilterArg struct {
+type XMProfileXmProgFilterArgs struct {
 	ScopeType       XMProfileXmProgFilterTargetScopeType
 	_               [4]byte
 	FilterCondValue uint64

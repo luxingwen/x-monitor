@@ -26,18 +26,18 @@ type perfEventLink struct {
 	peFD int
 }
 
-func newPerfEventLink(pid int, sampleRate int, cpu int, prog *ebpf.Program) (*perfEventLink, error) {
+func createPerfEventLink(pid int, sampleRate int, cpu int, prog *ebpf.Program) (*perfEventLink, error) {
 	var err error
 
 	pel := new(perfEventLink)
 	if err = pel.openPerfEvent(pid, cpu, uint64(sampleRate)); err != nil {
-		return nil, errors.Wrap(err, "openPerfEvent failed")
+		return nil, errors.Wrap(err, "openPerfEvent failed.")
 	} else {
 		if err = pel.attachPerfEvent(prog); err != nil {
-			glog.Warningf("attach perfEvent failed: %s, so change use ioctl", err)
+			glog.Warningf("attach perfEvent failed: %s. so change to use ioctl", err)
 			err = pel.attachPerfEventIoctl(prog)
 			if err != nil {
-				glog.Errorf("attacc perfEvent Ioctl failed: %s", err)
+				glog.Errorf("attach perfEvent use Ioctl failed: %s", err)
 			}
 		}
 	}
@@ -62,20 +62,18 @@ func (pel *perfEventLink) openPerfEvent(pid int, cpu int, sampleRate uint64) err
 	}
 
 	if fd, err := unix.PerfEventOpen(&attr, pid, cpu, -1, unix.PERF_FLAG_FD_CLOEXEC); err != nil {
-		return errors.Wrapf(err, "perf event open failed, pid:%d, cpu:%d", pid, cpu)
+		return errors.Wrapf(err, "open PerfEvent on pid:%d, cpu:%d failed.", pid, cpu)
 	} else {
 		pel.peFD = fd
-		glog.Infof("perf event open successed, pid:%d, cpu:%d, fd:%d", pid, cpu, fd)
+		glog.Infof("open PerfEvent on pid:%d, cpu:%d succeeded, get fd:%d", pid, cpu, fd)
 	}
 
 	return nil
 }
 
 func (pel *perfEventLink) attachPerfEvent(prog *ebpf.Program) error {
-	// use raw link
-	var (
-		err error
-	)
+	var err error
+
 	opts := link.RawLinkOptions{
 		Target:  pel.peFD,
 		Program: prog,
@@ -86,7 +84,8 @@ func (pel *perfEventLink) attachPerfEvent(prog *ebpf.Program) error {
 		err = errors.Wrap(err, "attach RawLink failed.")
 		return err
 	} else {
-		glog.Infof("attach RawLink success, fd:%d", pel.peFD)
+		pel.link = nil
+		glog.Infof("attach RawLink on fd:%d succeeded", pel.peFD)
 	}
 
 	return nil
@@ -96,14 +95,14 @@ func (pel *perfEventLink) attachPerfEventIoctl(prog *ebpf.Program) error {
 	// Assign the eBPF program to the perf event.
 	err := unix.IoctlSetInt(pel.peFD, unix.PERF_EVENT_IOC_SET_BPF, prog.FD())
 	if err != nil {
-		return errors.Wrap(err, "ioctl setting perf event bpf program failed")
+		return errors.Wrap(err, "ioctl setting PerfEvent program failed")
 	}
 
 	// PERF_EVENT_IOC_ENABLE and _DISABLE ignore their given values.
 	if err := unix.IoctlSetInt(pel.peFD, unix.PERF_EVENT_IOC_ENABLE, 0); err != nil {
-		return errors.Wrap(err, "ioctl enable perf event failed")
+		return errors.Wrap(err, "ioctl enable PerfEvent failed")
 	}
-	glog.Infof("use ioctl assign ebpf.Program to perf event success, fd:%d", pel.peFD)
+	glog.Infof("use ioctl assign ebpf.Program to PerfEvent succeeded, fd:%d", pel.peFD)
 
 	return nil
 }
@@ -150,10 +149,10 @@ func AttachPerfEventProg(pid int, sampleRate int, prog *ebpf.Program) (*PerfEven
 	glog.Infof("onlineCpu: %#v", onlineCPUs)
 
 	for _, cpu := range onlineCPUs {
-		if pel, err = newPerfEventLink(pid, sampleRate, int(cpu), prog); err == nil {
+		if pel, err = createPerfEventLink(pid, sampleRate, int(cpu), prog); err == nil {
 			pe.links = append(pe.links, pel)
 		} else {
-			err = errors.Wrapf(err, "newPerfEventLink failed on cpu:%d", cpu)
+			err = errors.Wrapf(err, "createPerfEventLink failed on cpu:%d", cpu)
 			break
 		}
 	}

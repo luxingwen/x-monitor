@@ -149,7 +149,7 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 	}
 
 	csProg.wg.Go(csProg.tracingeBPFEvent)
-	csProg.wg.Go(csProg.tracingRunQLayency)
+	csProg.wg.Go(csProg.handlingeBPFData)
 
 	return csProg, nil
 }
@@ -239,8 +239,12 @@ func (csp *cpuSchedProgram) Stop() {
 	glog.Infof("eBPFProgram:'%s' stopped.", csp.name)
 }
 
-func (csp *cpuSchedProgram) tracingRunQLayency() {
-	glog.Infof("eBPFProgram:'%s' start tracing runQueueLatency data...", csp.name)
+func (csp *cpuSchedProgram) Reload() error {
+	return nil
+}
+
+func (csp *cpuSchedProgram) handlingeBPFData() {
+	glog.Infof("eBPFProgram:'%s' start handling eBPF Data...", csp.name)
 	csp.gatherTimer.Reset(csp.gatherInterval)
 
 	var histogram bpfmodule.XMCpuScheduleXmRunqlatHist

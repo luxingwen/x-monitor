@@ -250,3 +250,7 @@ func (csp *cacheStateProgram) Stop() {
 
 	glog.Infof("eBPFProgram:'%s' stopped.", csp.name)
 }
+
+func (csp *cacheStateProgram) Reload() error {
+	return nil
+}

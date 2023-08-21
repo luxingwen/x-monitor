@@ -21,6 +21,7 @@ type eBPFProgram interface {
 	// Get new metrics and expose them via prometheus registry.
 	Update(ch chan<- prometheus.Metric) error
 	Stop()
+	Reload() error
 }
 
 type eBPFProgramFactory func(string) (eBPFProgram, error)

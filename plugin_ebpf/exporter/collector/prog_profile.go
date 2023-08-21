@@ -7,9 +7,17 @@
 
 package collector
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
+	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
+	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
+)
 
 type profileProgram struct {
+	*eBPFBaseProgram
+	objs *bpfmodule.XMProfileObjects
+	pe   *bpfprog.PerfEvent
 }
 
 func init() {
@@ -24,6 +32,14 @@ func (pp *profileProgram) Update(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
+func (pp *profileProgram) handlingeBPFData() {
+	glog.Infof("eBPFProgram:'%s' start handling eBPF Data...", pp.name)
+}
+
 func (pp *profileProgram) Stop() {
 
+}
+
+func (pp *profileProgram) Reload() error {
+	return nil
 }
