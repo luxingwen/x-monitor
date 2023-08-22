@@ -76,3 +76,4 @@ eBPF:
       pyroscope_server_addr: "http://127.0.0.1:4040/"
       sample_rate: 100
       gather_interval: 3 # 单位：秒，上报时间间隔
+      lru_size: 256 # 进程数量

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-06 11:39:12
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-18 15:07:10
+ * @Last Modified time: 2023-08-22 14:59:09
  */
 
 package cmd
@@ -15,6 +15,7 @@ import (
 	"os"
 
 	"github.com/cilium/ebpf/rlimit"
+	"github.com/fatih/color"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
@@ -68,7 +69,7 @@ func init() {
 // Main is the entry point for the application.
 func Main() {
 	if err := _rootCmd.Execute(); err != nil {
-		glog.Fatal(err.Error())
+		glog.Fatal("%s %v\n\n", color.RedString("Error:"), err)
 	}
 }
 

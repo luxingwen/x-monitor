@@ -33,6 +33,7 @@ const struct xm_profile_sample *__unused_ps __attribute__((unused));
 SEC("perf_event")
 __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
     uint32_t one = 1, *val;
+    pid_t tid;
     struct xm_profile_sample ps = {
         .pid = 0,
         .kernel_stack_id = -1,
@@ -42,15 +43,18 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
 
     // 过滤条件判断
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
+    // 读取线程id
+    BPF_CORE_READ_INTO(&tid, ts, pid);
+    if (tid == 0) {
+        return 0;
+    }
+    // 读取进程id，如果id=0，表明是内核线程
     BPF_CORE_READ_INTO(&ps.pid, ts, tgid);
 
     if (ps.pid == 0) {
-        return 0;
+        bpf_printk("xm_do_perf_event this kernel task_struct.tgid:%d, tid:%d",
+                   ps.pid, tid);
     }
-
-    // bpf_printk("xm_do_perf_event task_struct.tgid:%d, pid:%d, tid:%d",
-    // ps.pid,
-    //            __xm_get_pid(), __xm_get_tid());
 
     if (!filter_ts(&xm_profile_arg_map, ts, ps.pid)) {
         return 0;
