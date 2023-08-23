@@ -22,7 +22,7 @@ struct {
     __uint(type, BPF_MAP_TYPE_STACK_TRACE);
     __uint(key_size, sizeof(__u32));
     __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64));
-    __uint(max_entries, 1024);
+    __uint(max_entries, 10240);
 } xm_profile_stack_map SEC(".maps");
 
 const enum xm_prog_filter_target_scope_type __unused_filter_scope_type

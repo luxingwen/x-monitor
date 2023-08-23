@@ -30,11 +30,15 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
-type cpuSchedProgRodata struct {
-	config.ProgRodataBase
+type cpuSchedEBpfProgArgs struct {
+	config.EBpfProgBaseArgs
 	OffCPUMinDurationMillsecs int `mapstructure:"offcpu_min_millsecs"` // offcpu状态的持续时间阈值，毫秒
 	OffCPUMaxDurationMillsecs int `mapstructure:"offcpu_max_millsecs"` // offcpu状态的持续时间阈值，毫秒
 	OffCPUTaskType            int `mapstructure:"offcpu_task_type"`    // offcpu状态的任务类型
+}
+
+type cpuSchedPrivateArgs struct {
+	GatherInterval time.Duration `mapstructure:"gather_interval"`
 }
 
 type cpuSchedProgram struct {
@@ -49,7 +53,6 @@ type cpuSchedProgram struct {
 	runQLatencyBuckets map[int]uint64
 	sampleCount        uint64
 	sampleSum          float64
-	gatherInterval     time.Duration
 	guard              sync.Mutex
 }
 
@@ -59,7 +62,8 @@ const (
 )
 
 var (
-	roData cpuSchedProgRodata
+	__cpuSchedEBpfArgs    cpuSchedEBpfProgArgs
+	__cpuSchedPrivateArgs cpuSchedPrivateArgs
 )
 
 func init() {
@@ -72,11 +76,11 @@ func loadToRunCPUSchedEProg(name string, prog *cpuSchedProgram) error {
 	prog.objs = new(bpfmodule.XMCpuScheduleObjects)
 	prog.links, err = bpfprog.AttachToRun(name, prog.objs, bpfmodule.LoadXMCpuSchedule, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_scope_type":            int32(roData.FilterScopeType),
-			"__filter_scope_value":           int64(roData.FilterScopeValue),
-			"__offcpu_min_duration_nanosecs": int64(time.Duration(roData.OffCPUMinDurationMillsecs) * time.Millisecond),
-			"__offcpu_max_duration_nanosecs": int64(time.Duration(roData.OffCPUMaxDurationMillsecs) * time.Millisecond),
-			"__offcpu_task_type":             int8(roData.OffCPUTaskType),
+			"__filter_scope_type":            int32(__cpuSchedEBpfArgs.FilterScopeType),
+			"__filter_scope_value":           int64(__cpuSchedEBpfArgs.FilterScopeValue),
+			"__offcpu_min_duration_nanosecs": int64(time.Duration(__cpuSchedEBpfArgs.OffCPUMinDurationMillsecs) * time.Millisecond),
+			"__offcpu_max_duration_nanosecs": int64(time.Duration(__cpuSchedEBpfArgs.OffCPUMaxDurationMillsecs) * time.Millisecond),
+			"__offcpu_task_type":             int8(__cpuSchedEBpfArgs.OffCPUTaskType),
 		})
 
 		if err != nil {
@@ -104,22 +108,25 @@ func loadToRunCPUSchedEProg(name string, prog *cpuSchedProgram) error {
 }
 
 func newCpuSchedProgram(name string) (eBPFProgram, error) {
+	mapstructure.Decode(config.ProgramConfigByName(name).Args.EBpfProg, &__cpuSchedEBpfArgs)
+	mapstructure.Decode(config.ProgramConfigByName(name).Args.Private, &__cpuSchedPrivateArgs)
+	__cpuSchedPrivateArgs.GatherInterval = __cpuSchedPrivateArgs.GatherInterval * time.Second
+
+	glog.Infof("eBPFProgram:'%s' EbpfArgs:%s, PrivateArgs:%s", name, litter.Sdump(__cpuSchedEBpfArgs),
+		litter.Sdump(__cpuSchedPrivateArgs))
+
 	csProg := &cpuSchedProgram{
 		eBPFBaseProgram: &eBPFBaseProgram{
 			name:        name,
 			stopChan:    make(chan struct{}),
 			gatherTimer: calmutils.NewTimer(),
 		},
-		gatherInterval:      config.ProgramConfigByName(name).GatherInterval * time.Second,
 		metricsUpdateFilter: hashset.New(),
 		runQLatencyBuckets:  make(map[int]uint64, len(__powerOfTwo)),
 		cpuSchedEvtDataChan: bpfmodule.NewCpuSchedEvtDataChannel(defaultCpuSchedEvtChanSize),
 	}
 
-	mapstructure.Decode(config.ProgramConfigByName(name).Filter.ProgRodata, &roData)
-	glog.Infof("eBPFProgram:'%s' roData:%s", name, litter.Sdump(roData))
-
-	for _, metricDesc := range config.ProgramConfigByName(name).Metrics {
+	for _, metricDesc := range config.ProgramConfigByName(name).Args.Metrics {
 		switch metricDesc {
 		case "runq_latency":
 			csProg.runQueueLatencyDesc = prometheus.NewDesc(
@@ -168,10 +175,10 @@ func (csp *cpuSchedProgram) Update(ch chan<- prometheus.Metric) error {
 	ch <- prometheus.MustNewConstHistogram(csp.runQueueLatencyDesc,
 		csp.sampleCount, csp.sampleSum, buckets,
 		func() string {
-			return roData.FilterScopeType.String()
+			return __cpuSchedEBpfArgs.FilterScopeType.String()
 		}(),
 		func() string {
-			return strconv.Itoa(roData.FilterScopeValue)
+			return strconv.Itoa(__cpuSchedEBpfArgs.FilterScopeValue)
 		}(),
 	)
 	csp.guard.Unlock()
@@ -191,8 +198,8 @@ L:
 							strconv.FormatInt(int64(cpuSchedEvtData.Pid), 10),
 							strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
 							utils.CommToString(cpuSchedEvtData.Comm[:]),
-							roData.FilterScopeType.String(),
-							strconv.Itoa(roData.FilterScopeValue))
+							__cpuSchedEBpfArgs.FilterScopeType.String(),
+							strconv.Itoa(__cpuSchedEBpfArgs.FilterScopeValue))
 						csp.metricsUpdateFilter.Add(cpuSchedEvtData.Pid)
 					}
 				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HANG {
@@ -201,8 +208,8 @@ L:
 						prometheus.GaugeValue, float64(cpuSchedEvtData.Pid),
 						strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
 						utils.CommToString(cpuSchedEvtData.Comm[:]),
-						roData.FilterScopeType.String(),
-						strconv.Itoa(roData.FilterScopeValue))
+						__cpuSchedEBpfArgs.FilterScopeType.String(),
+						strconv.Itoa(__cpuSchedEBpfArgs.FilterScopeValue))
 				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_PROCESS_EXIT {
 					evtInfo := new(eventcenter.EBPFEventInfo)
 					evtInfo.EvtType = eventcenter.EBPF_EVENT_PROCESS_EXIT
@@ -245,7 +252,7 @@ func (csp *cpuSchedProgram) Reload() error {
 
 func (csp *cpuSchedProgram) handlingeBPFData() {
 	glog.Infof("eBPFProgram:'%s' start handling eBPF Data...", csp.name)
-	csp.gatherTimer.Reset(csp.gatherInterval)
+	csp.gatherTimer.Reset(__cpuSchedPrivateArgs.GatherInterval)
 
 	var histogram bpfmodule.XMCpuScheduleXmRunqlatHist
 
@@ -290,7 +297,7 @@ loop:
 				glog.Infof("eBPFProgram:'%s' tracing runQueueLatency <===", csp.name)
 			}
 
-			csp.gatherTimer.Reset(csp.gatherInterval)
+			csp.gatherTimer.Reset(__cpuSchedPrivateArgs.GatherInterval)
 		}
 	}
 }

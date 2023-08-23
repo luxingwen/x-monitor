@@ -37,7 +37,7 @@ const (
 	defaultReqLatencyEvtChanSize = ((1 << 2) << 10)
 )
 
-type bioProgRodata struct {
+type bioProgEBpfArgs struct {
 	FilterPerCmdFlag          bool `mapstructure:"filter_per_cmd_flag"`
 	RequestMinLatencyMillSecs int  `mapstructure:"request_min_latency_millsecs"`
 }
@@ -75,7 +75,7 @@ const (
 )
 
 var (
-	bioRoData            bioProgRodata
+	__bioEBpfArgs        bioProgEBpfArgs
 	__zeroBioInfoMapData = bpfmodule.XMBioXmBioData{}
 	reqOpStrings         = map[uint8]string{
 		REQ_OP_READ:         "read",
@@ -101,8 +101,8 @@ func loadToRunBIOProg(name string, prog *bioProgram) error {
 	prog.objs = new(bpfmodule.XMBioObjects)
 	prog.links, err = bpfprog.AttachToRun(name, prog.objs, bpfmodule.LoadXMBio, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_per_cmd_flag":    bioRoData.FilterPerCmdFlag,
-			"__request_min_latency_ns": int64(time.Duration(bioRoData.RequestMinLatencyMillSecs) * time.Millisecond),
+			"__filter_per_cmd_flag":    __bioEBpfArgs.FilterPerCmdFlag,
+			"__request_min_latency_ns": int64(time.Duration(__bioEBpfArgs.RequestMinLatencyMillSecs) * time.Millisecond),
 		})
 
 		if err != nil {
@@ -170,8 +170,8 @@ func newBIOProgram(name string) (eBPFProgram, error) {
 	bioProg.bioRequestLatencyOverThresholdDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "latency_over_threshold"),
 		"Latency of bio request over threshold, unit us.", []string{"device", "comm", "pid", "operation", "bytes", "in_queue_latency_us"}, prometheus.Labels{"from": "xm_ebpf"})
 
-	mapstructure.Decode(config.ProgramConfigByName(name).Filter.ProgRodata, &bioRoData)
-	glog.Infof("eBPFProgram:'%s' bioRoData:%s", name, litter.Sdump(bioRoData))
+	mapstructure.Decode(config.ProgramConfigByName(name).Args.EBpfProg, &__bioEBpfArgs)
+	glog.Infof("eBPFProgram:'%s' ebpfProgArgs:%s", name, litter.Sdump(__bioEBpfArgs))
 
 	if err := loadToRunBIOProg(name, bioProg); err != nil {
 		err = errors.Wrapf(err, "eBPFProgram:'%s' load and run failed.", name)
@@ -244,7 +244,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 
 	pfnFindOpName := func(cmdFlags uint8) string {
 		opName := "all"
-		if bioRoData.FilterPerCmdFlag {
+		if __bioEBpfArgs.FilterPerCmdFlag {
 			if s, ok := reqOpStrings[cmdFlags]; ok {
 				opName = s
 			} else {

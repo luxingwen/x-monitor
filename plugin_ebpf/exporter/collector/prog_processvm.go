@@ -25,7 +25,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sanity-io/litter"
-	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
@@ -38,10 +37,8 @@ const (
 	pageShift                   = 12
 )
 
-// processVMMProgRodata is used to filter the resources of the specified type
-// and value in the rodata section of the process vmmap
-type processVMMProgRodata struct {
-	config.ProgRodataBase
+type processVMMPrivateArgs struct {
+	ObjectCount int `mapstructure:"object_count"`
 }
 
 type processVM struct {
@@ -63,7 +60,8 @@ type processVMProgram struct {
 }
 
 var (
-	pvmRoData processVMMProgRodata
+	__pvmEBpfArgs    config.EBpfProgBaseArgs
+	__pvmPrivateArgs processVMMPrivateArgs
 )
 
 func init() {
@@ -76,8 +74,8 @@ func loadToRunProcessVMMProg(name string, prog *processVMProgram) error {
 	prog.objs = new(bpfmodule.XMProcessVMObjects)
 	prog.links, err = bpfprog.AttachToRun(name, prog.objs, bpfmodule.LoadXMProcessVM, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
-			"__filter_scope_type":  int32(pvmRoData.FilterScopeType),
-			"__filter_scope_value": int64(pvmRoData.FilterScopeValue),
+			"__filter_scope_type":  int32(__pvmEBpfArgs.FilterScopeType),
+			"__filter_scope_value": int64(__pvmEBpfArgs.FilterScopeValue),
 		})
 
 		if err != nil {
@@ -107,18 +105,17 @@ func loadToRunProcessVMMProg(name string, prog *processVMProgram) error {
 func newProcessVMMProgram(name string) (eBPFProgram, error) {
 	prog := &processVMProgram{
 		eBPFBaseProgram: &eBPFBaseProgram{
-			name:        name,
-			stopChan:    make(chan struct{}),
-			gatherTimer: calmutils.NewTimer(),
+			name:     name,
+			stopChan: make(chan struct{}),
 		},
 		processVMMap:         treemap.NewWith(utils.Int32Comparator),
 		processVMEvtDataChan: bpfmodule.NewProcessVMEvtDataChannel(defaultProcessVMEvtChanSize),
 	}
 
-	mapstructure.Decode(config.ProgramConfigByName(name).Filter.ProgRodata, &pvmRoData)
-	glog.Infof("eBPFProgram:'%s' roData:%s", name, litter.Sdump(pvmRoData))
+	mapstructure.Decode(config.ProgramConfigByName(name).Args.EBpfProg, &__pvmEBpfArgs)
+	glog.Infof("eBPFProgram:'%s' ebpfProgArgs:%s", name, litter.Sdump(__pvmEBpfArgs))
 
-	for _, metricDesc := range config.ProgramConfigByName(name).Metrics {
+	for _, metricDesc := range config.ProgramConfigByName(name).Args.Metrics {
 		switch metricDesc {
 		case "privanon_share_pages":
 			prog.addressSpaceExpandDesc = prometheus.NewDesc(
@@ -286,7 +283,7 @@ func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 	defer glog.Infof("eBPFProgram:'%s' update done.", pvp.name)
 
 	count := 0
-	maxExportCount := config.ProgramConfigByName(pvp.name).Filter.ObjectCount
+	mapstructure.Decode(config.ProgramConfigByName(pvp.name).Args.Private, &__pvmPrivateArgs)
 
 	pvp.processVMMapGuard.Lock()
 	processVMs := make([]*processVM, pvp.processVMMap.Size())
@@ -305,7 +302,7 @@ func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 		return (processVMs[i].brkSize + processVMs[i].mmapSize) > (processVMs[j].brkSize + processVMs[j].mmapSize)
 	})
 
-	for i := 0; i < count && i < maxExportCount; i++ {
+	for i := 0; i < count && i < __pvmPrivateArgs.ObjectCount; i++ {
 		pvm := processVMs[i]
 		// glog.Infof("eBPFProgram:'%s' pid:%d, comm:'%s', mmapSize:%d, brkSize:%d",
 		// 	pvp.name, pvm.pid, pvm.comm, pvm.mmapSize, pvm.brkSize)
@@ -313,10 +310,10 @@ func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 		// 指标值是page数量
 		ch <- prometheus.MustNewConstMetric(pvp.addressSpaceExpandDesc,
 			prometheus.GaugeValue, float64(pvm.mmapSize>>pageShift),
-			pidStr, pvm.comm, "mmap", roData.FilterScopeType.String(), strconv.Itoa(roData.FilterScopeValue))
+			pidStr, pvm.comm, "mmap", __pvmEBpfArgs.FilterScopeType.String(), strconv.Itoa(__pvmEBpfArgs.FilterScopeValue))
 		ch <- prometheus.MustNewConstMetric(pvp.addressSpaceExpandDesc,
 			prometheus.GaugeValue, float64(pvm.brkSize>>pageShift),
-			pidStr, pvm.comm, "brk", roData.FilterScopeType.String(), strconv.Itoa(roData.FilterScopeValue))
+			pidStr, pvm.comm, "brk", __pvmEBpfArgs.FilterScopeType.String(), strconv.Itoa(__pvmEBpfArgs.FilterScopeValue))
 	}
 
 	pvp.processVMMapGuard.Unlock()

@@ -44,24 +44,23 @@ func (v *viperDebugAdapterLog) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-type ProgRodataBase struct {
+type EBpfProgBaseArgs struct {
 	FilterScopeType  XMInternalResourceType `mapstructure:"filter_scope_type"`  // 过滤的资源类型
 	FilterScopeValue int                    `mapstructure:"filter_scope_value"` // 过滤资源的值
 }
 
-type ProgConfigFilter struct {
-	ProgRodata   interface{} `mapstructure:"prog_rodata"`
+type ProgConfigArgs struct {
+	Metrics      []string    `mapstructure:"metrcs"`
+	EBpfProg     interface{} `mapstructure:"ebpf_prog"`
 	IncludeComms []string    `mapstructure:"include_comms"`
 	ExcludeComms []string    `mapstructure:"exclude_comms"`
-	ObjectCount  int         `mapstructure:"object_count"`
+	Private      interface{} `mapstructure:"private"`
 }
 
 type ProgramConfig struct {
-	Name           string           `mapstructure:"name"`
-	Metrics        []string         `mapstructure:"metrcs"`
-	Filter         ProgConfigFilter `mapstructure:"filter"`
-	GatherInterval time.Duration    `mapstructure:"gather_interval"`
-	Enabled        bool             `mapstructure:"enabled"`
+	Name    string         `mapstructure:"name"`
+	Args    ProgConfigArgs `mapstructure:"args"`
+	Enabled bool           `mapstructure:"enabled"`
 }
 
 var (
@@ -213,16 +212,16 @@ func ProgramCommFilter(progName, comm string) bool {
 
 	if progCfg := ProgramConfigByName(progName); progCfg != nil {
 		// 只要存在include就不会处理exclude
-		if len(progCfg.Filter.IncludeComms) > 0 {
-			for _, includeComm := range progCfg.Filter.IncludeComms {
+		if len(progCfg.Args.IncludeComms) > 0 {
+			for _, includeComm := range progCfg.Args.IncludeComms {
 				if includeComm == comm {
 					// 保留
 					return true
 				}
 			}
 			return false
-		} else if len(progCfg.Filter.ExcludeComms) > 0 {
-			for _, excludeComm := range progCfg.Filter.ExcludeComms {
+		} else if len(progCfg.Args.ExcludeComms) > 0 {
+			for _, excludeComm := range progCfg.Args.ExcludeComms {
 				if excludeComm == comm {
 					return false
 				}

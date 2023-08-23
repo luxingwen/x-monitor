@@ -13,6 +13,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/golang/glog"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sourcegraph/conc"
@@ -25,6 +26,10 @@ import (
 
 func init() {
 	registerEBPFProgram(cacheStateProgName, newCacheStatProgram)
+}
+
+type cacheStatePrivateArgs struct {
+	GatherInterval time.Duration `mapstructure:"gather_interval"`
 }
 
 type cacheStateProgram struct {
@@ -42,7 +47,14 @@ type cacheStateProgram struct {
 	ratio       atomic.Float64
 }
 
+var (
+	__cacheStatePrivateArgs cacheStatePrivateArgs
+)
+
 func newCacheStatProgram(name string) (eBPFProgram, error) {
+	mapstructure.Decode(config.ProgramConfigByName(name).Args.Private, &__cacheStatePrivateArgs)
+	__cacheStatePrivateArgs.GatherInterval = __cacheStatePrivateArgs.GatherInterval * time.Second
+
 	csp := new(cacheStateProgram)
 	csp.name = name
 	csp.stopChan = make(chan struct{})
@@ -86,8 +98,6 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 
 	glog.Infof("eBPFProgram:'%s' start AttachToRun successfully.", name)
 
-	gatherInterval := config.ProgramConfigByName(csp.name).GatherInterval * time.Second
-
 	// Prometheus initialization area
 	csp.hitsDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("filesystem", "pagecache", "hits"),
@@ -108,7 +118,7 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 	cacheStatEventProcessor := func() {
 		glog.Infof("eBPFProgram:'%s' start gathering eBPF data...", csp.name)
 		// 启动定时器
-		csp.gatherTimer.Reset(gatherInterval)
+		csp.gatherTimer.Reset(__cacheStatePrivateArgs.GatherInterval)
 
 		var ip, count, atpcl, mpa, fad, apd, mbd uint64
 		ipSlice := make([]uint64, 0, csp.objs.XMCacheStatMaps.XmPageCacheOpsCount.MaxEntries())
@@ -198,7 +208,7 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 				}
 
 				// 重置定时器
-				csp.gatherTimer.Reset(gatherInterval)
+				csp.gatherTimer.Reset(__cacheStatePrivateArgs.GatherInterval)
 			}
 		}
 	}

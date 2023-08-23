@@ -14,16 +14,19 @@ eBPF:
   programs:
     - name: cachestat
       enabled: false
-      gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
+      args:
+        private:
+          gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
     - name: cpusched
       enabled: false
-      gather_interval: 3 # 单位：秒
-      metrcs:
-        - runq_latency
-        - offcpu_duration
-        - hang_process
-      filter:
-        prog_rodata:
+      args:
+        private:
+          gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
+        metrcs:
+          - runq_latency
+          - offcpu_duration
+          - hang_process
+        ebpf_prog:
           filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
           filter_scope_value: 0
           offcpu_min_millsecs: 5000 # 单位：毫秒
@@ -45,11 +48,12 @@ eBPF:
           - "dd"
     - name: processvm
       enabled: false
-      metrcs:
-        - privanon_share_pages
-      filter:
-        object_count: 10 # gather_interval时间内虚拟地址扩张最大的进程对象
-        prog_rodata:
+      args:
+        metrcs:
+          - privanon_share_pages
+        private:
+          object_count: 10 # gather_interval时间内虚拟地址扩张最大的进程对象
+        ebpf_prog:
           filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
           filter_scope_value: 0
         include_comms:
@@ -66,14 +70,19 @@ eBPF:
       enabled: true
     - name: bio
       enabled: true
-      filter:
-        prog_rodata:
+      args:
+        ebpf_prog:
           filter_per_cmd_flag: true
           request_min_latency_millsecs: 10 # 单位：毫秒
     - name: profile
       enable: true
-      pyroscope_application_name: "x-monitor.ebpf"
-      pyroscope_server_addr: "http://127.0.0.1:4040/"
-      sample_rate: 100
       gather_interval: 3 # 单位：秒，上报时间间隔
-      lru_size: 256 # 进程数量
+      args:
+        private:
+          gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
+          sample_rate: 100
+          pyroscope_application_name: "x-monitor.ebpf"
+          pyroscope_server_addr: "http://127.0.0.1:4040/"
+        ebpf_prog:
+          filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
+          filter_scope_value: 0

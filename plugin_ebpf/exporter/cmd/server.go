@@ -28,6 +28,7 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/net"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/symbols"
 )
 
 var (
@@ -119,14 +120,12 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	if err := rlimit.RemoveMemlock(); err != nil {
-		glog.Fatalf("failed to remove memlock limit: %v", err)
+		glog.Fatalf("failed to remove memlock limit: %v", err.Error())
 	}
 
-	// Load kernel symbols
-	if err := calmutils.LoadKallSyms(); err != nil {
-		glog.Fatal(err.Error())
-	} else {
-		glog.Info("Load kernel symbols success!")
+	// init symbols
+	if err := symbols.InitCache(256); err != nil {
+		glog.Fatalf("Init Symbols Cache failed. %s", err.Error())
 	}
 
 	// Signal

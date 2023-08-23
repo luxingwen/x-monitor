@@ -29,34 +29,57 @@ type SymCache struct {
 var (
 	__instance *SymCache
 	once       sync.Once
-	Size       int
 )
 
-func InitCache() error {
+func InitCache(size int) error {
 	var err error
 
 	once.Do(func() {
 		__instance = &SymCache{}
-		__instance.lc, err = lru.NewWithEvict[uint32, *calmutils.ProcSyms](Size, func(key uint32, value *calmutils.ProcSyms) {
+		__instance.lc, err = lru.NewWithEvict[uint32, *calmutils.ProcSyms](size, func(key uint32, _ *calmutils.ProcSyms) {
 			glog.Warningf("pid:%d syms evicted by lru", key)
 		})
 		if err != nil {
 			err = errors.Wrap(err, "new evict lru failed.")
+		}
+
+		if err = calmutils.LoadKallSyms(); err != nil {
+			err = errors.Wrap(err, "load /proc/kallsyms failed.")
+		} else {
+			glog.Info("Load kernel symbols success!")
 		}
 	})
 
 	return err
 }
 
-func GetSymbol(pid uint32, addr uint64) *Symbol {
+// Resolve resolves the symbol for a given process ID and address.
+// It returns a pointer to a Symbol struct containing the symbol name, offset, and module (if applicable).
+// If the process ID is greater than 0, it searches for user symbols. Otherwise, it searches for kernel symbols.
+// If the symbol cannot be found, it logs an error and returns an empty Symbol struct.
+func Resolve(pid uint32, addr uint64) *Symbol {
+	var err error
+	sym := new(Symbol)
+
 	if __instance != nil {
 		if pid > 0 {
 			// user
+			procSyms, ok := __instance.lc.Get(pid)
+			if ok && procSyms != nil {
+				sym.Name, sym.Offset, sym.Module, err = procSyms.FindPsym(addr)
+				if err != nil {
+					glog.Error(err.Error())
+				}
+			}
 		} else {
 			// kernel
+			sym.Name, sym.Offset, err = calmutils.FindKsym(addr)
+			if err != nil {
+				glog.Error(err.Error())
+			}
 		}
 	}
-	return nil
+	return sym
 }
 
 func RemovePidCache(pid uint32) {

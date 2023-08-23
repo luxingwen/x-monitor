@@ -52,7 +52,7 @@
 
 // max depth of each stack trace to track
 #ifndef PERF_MAX_STACK_DEPTH
-#define PERF_MAX_STACK_DEPTH 20
+#define PERF_MAX_STACK_DEPTH 127
 #endif
 
 #ifndef PF_KTHREAD
