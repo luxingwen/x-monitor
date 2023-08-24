@@ -16,6 +16,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
+	github.com/samber/lo v1.37.0
 	github.com/sanity-io/litter v1.5.5
 	github.com/sourcegraph/conc v0.3.0
 	github.com/spf13/cobra v1.7.0

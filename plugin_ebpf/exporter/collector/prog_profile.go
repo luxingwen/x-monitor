@@ -8,12 +8,17 @@
 package collector
 
 import (
+	"encoding/binary"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/samber/lo"
 	"github.com/sanity-io/litter"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
@@ -21,6 +26,13 @@ import (
 	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/symbols"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
+)
+
+const (
+	__mapKey               uint32 = 0
+	__perf_max_stack_depth        = 127
+	__stackFrameSize              = (strconv.IntSize / 8)
 )
 
 type profilePrivateArgs struct {
@@ -36,9 +48,13 @@ type profileProgram struct {
 	perfLink *bpfprog.PerfEvent
 }
 
-const (
-	__mapKey uint32 = 0
-)
+type procStackInfo struct {
+	pid    int32
+	kStack []byte
+	uStack []byte
+	count  uint32
+	comm   string
+}
 
 var (
 	__profileEBpfArgs    config.EBpfProgBaseArgs
@@ -66,10 +82,11 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 			stopChan:    make(chan struct{}),
 			gatherTimer: calmutils.NewTimer(),
 		},
+		objs: new(bpfmodule.XMProfileObjects),
 	}
 
 	// 加载eBPF对象
-	if err = bpfmodule.LoadXMProfileObjects(&profileProg.objs, nil); err != nil {
+	if err = bpfmodule.LoadXMProfileObjects(profileProg.objs, nil); err != nil {
 		profileProg.finalizer()
 		err = errors.Wrapf(err, "eBPFProgram:'%s' LoadXMProfileObjects failed.", name)
 		return nil, err
@@ -126,7 +143,7 @@ loop:
 				switch eBPFEvtInfo.EvtType {
 				case eventcenter.EBPF_EVENT_PROCESS_EXIT:
 					processExitEvt := eBPFEvtInfo.EvtData.(*eventcenter.EBPFEventProcessExit)
-					symbols.RemovePidCache(uint32(processExitEvt.Pid))
+					symbols.RemovePidCache(processExitEvt.Pid)
 				}
 				eBPFEvtInfo = nil
 			}
@@ -152,13 +169,17 @@ func (pp *profileProgram) Reload() error {
 
 func (pp *profileProgram) collectProfiles() {
 	glog.Infof("eBPFProgram:'%s' start collect Profiles", pp.name)
+	defer glog.Infof("eBPFProgram:'%s' collect Profiles completed", pp.name)
 
 	var (
 		profileSampleMap = pp.objs.XmProfileSampleCountMap
+		profileStackMap  = pp.objs.XmProfileStackMap
 		mapMaxSize       = profileSampleMap.MaxEntries()
 		nextKey          = bpfmodule.XMProfileXmProfileSample{}
 		keyCount         int
 		err              error
+		psis             []*procStackInfo
+		sym              *symbols.Symbol
 	)
 
 	// 收集xm_profile_sample_count_map数据
@@ -166,22 +187,113 @@ func (pp *profileProgram) collectProfiles() {
 	counts := make([]uint32, mapMaxSize)
 
 	// 批量获取数据
-	keyCount, err = profileSampleMap.BatchLookupAndDelete(nil, &nextKey, keys, counts, nil)
+	keyCount, err = profileSampleMap.BatchLookup(nil, &nextKey, keys, counts, nil)
 	if err != nil {
-		glog.Errorf("eBPFProgram:'%s' BatchLookupAndDelete failed, err:%s", pp.name, err.Error())
+		glog.Errorf("eBPFProgram:'%s' BatchLookup failed, err:%s", pp.name, err.Error())
 		return
 	}
 
-	glog.Infof("eBPFProgram:'%s' BatchLookupAndDelete keyCount:%d", pp.name, keyCount)
+	glog.Infof("eBPFProgram:'%s' BatchLookup keyCount:%d", pp.name, keyCount)
 
 	keys = keys[:keyCount]
 	counts = counts[:keyCount]
 
+	stackIDSet := map[uint32]struct{}{}
+
+	pfnGetStackBytes := func(stackID uint32) []byte {
+		stackBytes, err := profileStackMap.LookupBytes(stackID)
+		if err != nil {
+			glog.Errorf("eBPFProgram:'%s' stackMap.LookupBytes('stackID=%d)' failed, err:%s", pp.name, stackID, err.Error())
+			return nil
+		}
+		return stackBytes
+	}
+
+	// 获取堆栈
 	for i := range keys {
 		// XMProfileXmProfileSample
 		sampleInfo := keys[i]
 		sampleCount := counts[i]
 
-		glog.Infof("sampleInfo:%s, sampleCount:%d", litter.Sdump(sampleInfo), sampleCount)
+		stackIDSet[sampleInfo.UserStackId] = struct{}{}
+		stackIDSet[sampleInfo.KernelStackId] = struct{}{}
+
+		psi := &procStackInfo{
+			pid:    sampleInfo.Pid,
+			count:  sampleCount,
+			comm:   utils.CommToString(sampleInfo.Comm[:]),
+			uStack: pfnGetStackBytes(sampleInfo.UserStackId),
+			kStack: pfnGetStackBytes(sampleInfo.KernelStackId),
+		}
+
+		psis = append(psis, psi)
 	}
+
+	pfnWalkStack := func(stack []byte, pid int32, sb *stackBuilder) {
+		if len(stack) == 0 {
+			return
+		}
+
+		var frames []string
+		for i := 0; i < len(stack); i += __stackFrameSize {
+			ip := binary.LittleEndian.Uint64(stack[i : i+__stackFrameSize])
+			if ip == 0 {
+				break
+			}
+			// 解析ip
+			sym, err = symbols.Resolve(pid, ip)
+			if err == nil {
+				if pid > 0 {
+					frames = append(frames, fmt.Sprintf("%s+0x%x [%s]", sym.Name, sym.Offset, sym.Module))
+				} else {
+					frames = append(frames, fmt.Sprintf("%s+0x%x", sym.Name, sym.Offset))
+				}
+			} else {
+				frames = append(frames, "[unknown]")
+			}
+		}
+		// 将堆栈反转
+		lo.Reverse(frames)
+		for _, f := range frames {
+			sb.append(f)
+		}
+	}
+
+	// 解析堆栈
+	sb := stackBuilder{}
+	for _, psi := range psis {
+		sb.rest()
+		sb.append(psi.comm)
+		pfnWalkStack(psi.uStack, psi.pid, &sb)
+		pfnWalkStack(psi.kStack, 0, &sb)
+
+		if len(sb.stack) == 0 {
+			continue
+		}
+		lo.Reverse(sb.stack)
+
+		glog.Info("eBPFProgram:'%s' comm:'%s', pid:%d, count:%d, stacks:%s",
+			pp.name, psi.comm, psi.pid, psi.count, strings.Join(sb.stack, ";"))
+	}
+
+	// 清理stack map
+	for stackID := range stackIDSet {
+		if err = profileStackMap.Delete(stackID); err != nil {
+			glog.Errorf("eBPFProgram:'%s' stackMap.Delete('stackID=%d)' failed, err:%s", pp.name, stackID, err.Error())
+		}
+	}
+
+	// TODO: 清理sample map
+}
+
+type stackBuilder struct {
+	stack []string
+}
+
+func (s *stackBuilder) rest() {
+	s.stack = s.stack[:0]
+}
+
+func (s *stackBuilder) append(sym string) {
+	s.stack = append(s.stack, sym)
 }

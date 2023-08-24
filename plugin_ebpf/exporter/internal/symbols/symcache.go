@@ -23,7 +23,7 @@ type Symbol struct {
 }
 
 type SymCache struct {
-	lc *lru.Cache[uint32, *calmutils.ProcSyms]
+	lc *lru.Cache[int32, *calmutils.ProcSyms]
 }
 
 var (
@@ -36,7 +36,7 @@ func InitCache(size int) error {
 
 	once.Do(func() {
 		__instance = &SymCache{}
-		__instance.lc, err = lru.NewWithEvict[uint32, *calmutils.ProcSyms](size, func(key uint32, _ *calmutils.ProcSyms) {
+		__instance.lc, err = lru.NewWithEvict[int32, *calmutils.ProcSyms](size, func(key int32, _ *calmutils.ProcSyms) {
 			glog.Warningf("pid:%d syms evicted by lru", key)
 		})
 		if err != nil {
@@ -57,7 +57,7 @@ func InitCache(size int) error {
 // It returns a pointer to a Symbol struct containing the symbol name, offset, and module (if applicable).
 // If the process ID is greater than 0, it searches for user symbols. Otherwise, it searches for kernel symbols.
 // If the symbol cannot be found, it logs an error and returns an empty Symbol struct.
-func Resolve(pid uint32, addr uint64) *Symbol {
+func Resolve(pid int32, addr uint64) (*Symbol, error) {
 	var err error
 	sym := new(Symbol)
 
@@ -69,6 +69,7 @@ func Resolve(pid uint32, addr uint64) *Symbol {
 				sym.Name, sym.Offset, sym.Module, err = procSyms.FindPsym(addr)
 				if err != nil {
 					glog.Error(err.Error())
+					return nil, err
 				}
 			}
 		} else {
@@ -76,13 +77,14 @@ func Resolve(pid uint32, addr uint64) *Symbol {
 			sym.Name, sym.Offset, err = calmutils.FindKsym(addr)
 			if err != nil {
 				glog.Error(err.Error())
+				return nil, err
 			}
 		}
 	}
-	return sym
+	return sym, nil
 }
 
-func RemovePidCache(pid uint32) {
+func RemovePidCache(pid int32) {
 	if __instance != nil && pid > 0 {
 		__instance.lc.Remove(pid)
 	}
