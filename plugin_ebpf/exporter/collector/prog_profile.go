@@ -49,11 +49,11 @@ type profileProgram struct {
 }
 
 type procStackInfo struct {
-	pid    int32
-	kStack []byte
-	uStack []byte
-	count  uint32
-	comm   string
+	pid         int32
+	kStackBytes []byte
+	uStackBytes []byte
+	count       uint32
+	comm        string
 }
 
 var (
@@ -142,8 +142,9 @@ loop:
 			if ok {
 				switch eBPFEvtInfo.EvtType {
 				case eventcenter.EBPF_EVENT_PROCESS_EXIT:
+					glog.Infof("eBPFProgram:'%s', receive eBPF Event'%s'", pp.name, litter.Sdump(eBPFEvtInfo))
 					processExitEvt := eBPFEvtInfo.EvtData.(*eventcenter.EBPFEventProcessExit)
-					symbols.RemovePidCache(processExitEvt.Pid)
+					symbols.RemoveByPId(processExitEvt.Pid)
 				}
 				eBPFEvtInfo = nil
 			}
@@ -172,41 +173,47 @@ func (pp *profileProgram) collectProfiles() {
 	defer glog.Infof("eBPFProgram:'%s' collect Profiles completed", pp.name)
 
 	var (
-		profileSampleMap = pp.objs.XmProfileSampleCountMap
-		profileStackMap  = pp.objs.XmProfileStackMap
-		mapMaxSize       = profileSampleMap.MaxEntries()
-		nextKey          = bpfmodule.XMProfileXmProfileSample{}
-		keyCount         int
-		err              error
-		psis             []*procStackInfo
-		sym              *symbols.Symbol
+		profileSampleMap    = pp.objs.XmProfileSampleCountMap
+		profileSampleMapKey = bpfmodule.XMProfileXmProfileSample{}
+		profileSampleMapVal = uint32(0)
+		profileSampleCount  int
+		profileStackMap     = pp.objs.XmProfileStackMap
+		err                 error
+		psis                []*procStackInfo
+		sym                 *symbols.Symbol
 	)
 
 	// 收集xm_profile_sample_count_map数据
-	keys := make([]bpfmodule.XMProfileXmProfileSample, mapMaxSize)
-	counts := make([]uint32, mapMaxSize)
+	keys := make([]bpfmodule.XMProfileXmProfileSample, 0)
+	counts := make([]uint32, 0)
 
 	// 批量获取数据
-	keyCount, err = profileSampleMap.BatchLookup(nil, &nextKey, keys, counts, nil)
-	if err != nil {
-		glog.Errorf("eBPFProgram:'%s' BatchLookup failed, err:%s", pp.name, err.Error())
+	it := profileSampleMap.Iterate()
+	for it.Next(&profileSampleMapKey, &profileSampleMapVal) {
+		keys = append(keys, profileSampleMapKey)
+		counts = append(counts, profileSampleMapVal)
+		profileSampleCount++
+	}
+
+	if err = it.Err(); err != nil {
+		glog.Errorf("eBPFProgram:'%s' get profileSampleMap iterator failed, err:%s", pp.name, err.Error())
 		return
 	}
 
-	glog.Infof("eBPFProgram:'%s' BatchLookup keyCount:%d", pp.name, keyCount)
+	glog.Infof("eBPFProgram:'%s' get profileSampleMap iterator succeeded, keyCount:%d", pp.name, profileSampleCount)
 
-	keys = keys[:keyCount]
-	counts = counts[:keyCount]
+	stackIDSet := map[int32]struct{}{}
 
-	stackIDSet := map[uint32]struct{}{}
-
-	pfnGetStackBytes := func(stackID uint32) []byte {
-		stackBytes, err := profileStackMap.LookupBytes(stackID)
-		if err != nil {
-			glog.Errorf("eBPFProgram:'%s' stackMap.LookupBytes('stackID=%d)' failed, err:%s", pp.name, stackID, err.Error())
-			return nil
+	pfnGetStackBytes := func(stackID int32) []byte {
+		if stackID > 0 {
+			stackBytes, err := profileStackMap.LookupBytes(stackID)
+			if err != nil {
+				glog.Errorf("eBPFProgram:'%s' stackMap.LookupBytes('stackID=%d)' failed, err:%s", pp.name, stackID, err.Error())
+				return nil
+			}
+			return stackBytes
 		}
-		return stackBytes
+		return nil
 	}
 
 	// 获取堆栈
@@ -219,11 +226,11 @@ func (pp *profileProgram) collectProfiles() {
 		stackIDSet[sampleInfo.KernelStackId] = struct{}{}
 
 		psi := &procStackInfo{
-			pid:    sampleInfo.Pid,
-			count:  sampleCount,
-			comm:   utils.CommToString(sampleInfo.Comm[:]),
-			uStack: pfnGetStackBytes(sampleInfo.UserStackId),
-			kStack: pfnGetStackBytes(sampleInfo.KernelStackId),
+			pid:         sampleInfo.Pid,
+			count:       sampleCount,
+			comm:        utils.CommToString(sampleInfo.Comm[:]),
+			uStackBytes: pfnGetStackBytes(sampleInfo.UserStackId),
+			kStackBytes: pfnGetStackBytes(sampleInfo.KernelStackId),
 		}
 
 		psis = append(psis, psi)
@@ -264,26 +271,35 @@ func (pp *profileProgram) collectProfiles() {
 	for _, psi := range psis {
 		sb.rest()
 		sb.append(psi.comm)
-		pfnWalkStack(psi.uStack, psi.pid, &sb)
-		pfnWalkStack(psi.kStack, 0, &sb)
+		pfnWalkStack(psi.uStackBytes, psi.pid, &sb)
+		pfnWalkStack(psi.kStackBytes, 0, &sb)
 
 		if len(sb.stack) == 0 {
 			continue
 		}
 		lo.Reverse(sb.stack)
 
-		glog.Info("eBPFProgram:'%s' comm:'%s', pid:%d, count:%d, stacks:%s",
-			pp.name, psi.comm, psi.pid, psi.count, strings.Join(sb.stack, ";"))
+		glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d, count:%d stacks:\n\t%s",
+			pp.name, psi.comm, psi.pid, psi.count, strings.Join(sb.stack, "\n\t"))
+	}
+
+	// 清理profileSample map
+	for i := range keys {
+		if err = profileSampleMap.Delete(keys[i]); err != nil {
+			glog.Infof("eBPFProgram:'%s' sampleMap.Delete('key=%#v)' failed, err:%s", pp.name, keys[i], err.Error())
+		}
 	}
 
 	// 清理stack map
 	for stackID := range stackIDSet {
-		if err = profileStackMap.Delete(stackID); err != nil {
-			glog.Errorf("eBPFProgram:'%s' stackMap.Delete('stackID=%d)' failed, err:%s", pp.name, stackID, err.Error())
+		if stackID > 0 {
+			if err = profileStackMap.Delete(stackID); err != nil {
+				glog.Errorf("eBPFProgram:'%s' stackMap.Delete('stackID=%d)' failed, err:%s", pp.name, stackID, err.Error())
+			}
 		}
 	}
 
-	// TODO: 清理sample map
+	glog.Infof("eBPFProgram:'%s' symCache size:%d", symbols.Size())
 }
 
 type stackBuilder struct {

@@ -14,8 +14,8 @@ import (
 
 type XMProfileXmProfileSample struct {
 	Pid           int32
-	KernelStackId uint32
-	UserStackId   uint32
+	KernelStackId int32
+	UserStackId   int32
 	Comm          [16]int8
 }
 

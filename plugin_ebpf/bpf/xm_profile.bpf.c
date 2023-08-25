@@ -76,9 +76,9 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
         __sync_fetch_and_add(val, 1);
     }
 
-    bpf_printk("xm_do_perf_event pid:%d, kernel_stack_id:%d, "
-               "user_stack_id:%d",
-               ps.pid, ps.kernel_stack_id, ps.user_stack_id);
+    // bpf_printk("xm_do_perf_event pid:%d, kernel_stack_id:%d, "
+    //            "user_stack_id:%d",
+    //            ps.pid, ps.kernel_stack_id, ps.user_stack_id);
     return 0;
 }
 

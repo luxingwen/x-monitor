@@ -58,18 +58,39 @@ func InitCache(size int) error {
 // If the process ID is greater than 0, it searches for user symbols. Otherwise, it searches for kernel symbols.
 // If the symbol cannot be found, it logs an error and returns an empty Symbol struct.
 func Resolve(pid int32, addr uint64) (*Symbol, error) {
-	var err error
-	sym := new(Symbol)
+	var (
+		err      error
+		ok       bool
+		sym      = new(Symbol)
+		procSyms *calmutils.ProcSyms
+	)
 
 	if __instance != nil {
 		if pid > 0 {
 			// user
-			procSyms, ok := __instance.lc.Get(pid)
+			procSyms, ok = __instance.lc.Get(pid)
 			if ok && procSyms != nil {
 				sym.Name, sym.Offset, sym.Module, err = procSyms.FindPsym(addr)
 				if err != nil {
+					err = errors.Wrapf(err, "FindPsym(pid:%d, addr:%#x) failed", pid, addr)
 					glog.Error(err.Error())
 					return nil, err
+				}
+			} else {
+				// add
+				procSyms, err = calmutils.NewProcSyms(int(pid))
+				if err != nil {
+					err = errors.Wrapf(err, "NewProcSyms(pid:%d) failed", pid)
+					glog.Error(err.Error())
+					return nil, err
+				} else {
+					__instance.lc.Add(pid, procSyms)
+					sym.Name, sym.Offset, sym.Module, err = procSyms.FindPsym(addr)
+					if err != nil {
+						err = errors.Wrapf(err, "FindPsym(pid:%d, addr:%#x) failed", pid, addr)
+						glog.Error(err.Error())
+						return nil, err
+					}
 				}
 			}
 		} else {
@@ -84,8 +105,15 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 	return sym, nil
 }
 
-func RemovePidCache(pid int32) {
+func RemoveByPId(pid int32) {
 	if __instance != nil && pid > 0 {
 		__instance.lc.Remove(pid)
 	}
+}
+
+func Size() int {
+	if __instance != nil {
+		return __instance.lc.Len()
+	}
+	return -1
 }

@@ -68,10 +68,10 @@ func DropInPlace(slice, function interface{}) error {
 
 //--------------------Reduce，汇聚，
 
-//  Reduce ...
-//	func multiply(a, b int) int { return a*b }
-//	a := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-//	factorial := Reduce(a, multiply, 1).(int)
+//	 Reduce ...
+//		func multiply(a, b int) int { return a*b }
+//		a := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+//		factorial := Reduce(a, multiply, 1).(int)
 func Reduce(slice, pairFunction, zero interface{}) (interface{}, error) {
 	in := reflect.ValueOf(slice)
 	if in.Kind() != reflect.Slice {

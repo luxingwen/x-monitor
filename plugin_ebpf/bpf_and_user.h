@@ -180,7 +180,7 @@ struct xm_bio_request_latency_evt_data {
 //------------------------ profile
 struct xm_profile_sample {
     pid_t pid; // 进程id
-    __u32 kernel_stack_id; // 调用堆栈
-    __u32 user_stack_id;
+    int kernel_stack_id; // 调用堆栈
+    int user_stack_id;
     char comm[TASK_COMM_LEN];
 };
