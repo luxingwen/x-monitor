@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-08-18 15:34:32
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-18 16:17:38
+ * @Last Modified time: 2023-09-04 16:59:58
  */
 
 package collector
@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/grafana/agent/component/pyroscope"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -44,8 +45,9 @@ type profilePrivateArgs struct {
 
 type profileProgram struct {
 	*eBPFBaseProgram
-	objs     *bpfmodule.XMProfileObjects
-	perfLink *bpfprog.PerfEvent
+	objs           *bpfmodule.XMProfileObjects
+	perfLink       *bpfprog.PerfEvent
+	pyroAppendable pyroscope.Appendable
 }
 
 type procStackInfo struct {
