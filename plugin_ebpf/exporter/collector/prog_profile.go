@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-08-18 15:34:32
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-09-04 16:59:58
+ * @Last Modified time: 2023-09-04 17:36:32
  */
 
 package collector
@@ -45,9 +45,9 @@ type profilePrivateArgs struct {
 
 type profileProgram struct {
 	*eBPFBaseProgram
-	objs           *bpfmodule.XMProfileObjects
-	perfLink       *bpfprog.PerfEvent
-	pyroAppendable pyroscope.Appendable
+	objs     *bpfmodule.XMProfileObjects
+	perfLink *bpfprog.PerfEvent
+	pyroStub *pyroscope.Appendable
 }
 
 type procStackInfo struct {
