@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-08-18 15:34:32
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-09-04 17:36:32
+ * @Last Modified time: 2023-09-06 16:13:28
  */
 
 package collector
@@ -26,6 +26,7 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/pyrostub"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/symbols"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
@@ -38,7 +39,6 @@ const (
 
 type profilePrivateArgs struct {
 	SampleRate       int           `mapstructure:"sample_rate"`
-	PyroscopeAppName string        `mapstructure:"pyroscope_application_name"`
 	PyroscopeSvrAddr string        `mapstructure:"pyroscope_server_addr"`
 	GatherInterval   time.Duration `mapstructure:"gather_interval"`
 }
@@ -47,7 +47,7 @@ type profileProgram struct {
 	*eBPFBaseProgram
 	objs     *bpfmodule.XMProfileObjects
 	perfLink *bpfprog.PerfEvent
-	pyroStub *pyroscope.Appendable
+	pyroStub pyroscope.Appendable
 }
 
 type procStackInfo struct {
@@ -85,6 +85,13 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 			gatherTimer: calmutils.NewTimer(),
 		},
 		objs: new(bpfmodule.XMProfileObjects),
+	}
+
+	if profileProg.pyroStub, err = pyrostub.NewPyroscopeExporter(__profilePrivateArgs.PyroscopeSvrAddr,
+		prometheus.DefaultRegisterer); err != nil {
+		profileProg.finalizer()
+		err = errors.Wrapf(err, "eBPFProgram:'%s' NewPyroscopeExporter failed.", name)
+		return nil, err
 	}
 
 	// 加载eBPF对象

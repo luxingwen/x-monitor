@@ -80,7 +80,6 @@ eBPF:
         private:
           gather_interval: 5 # 收集kernel prog数据时间间隔，单位秒
           sample_rate: 100
-          pyroscope_application_name: "x-monitor.ebpf"
           pyroscope_server_addr: "http://127.0.0.1:4040/"
         ebpf_prog:
           filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
