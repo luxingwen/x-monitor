@@ -81,6 +81,20 @@ eBPF:
           gather_interval: 5 # 收集kernel prog数据时间间隔，单位秒
           sample_rate: 100
           pyroscope_server_addr: "http://127.0.0.1:4040/"
+          targets:
+            - name: "host_cpu" #default target, must exist
+            - name: "xmonitor_cpu"
+              match: "TargetMatchComm" # 匹配应用程序名
+              val: "x-monitor"
+              labels: #自定义label
+                - l_name: "service_name"
+                  l_val: "xmonitor_calmwu"
+            - name: "grafana_server_cpu"
+              match: "TargetMatchPidNS" # 匹配pid namespace
+              val: "4026532197"
+              labels:
+                - l_name: "service_name"
+                  l_val: "grafana_server_calmwu"
         ebpf_prog:
           filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
-          filter_scope_value: 936158
+          filter_scope_value: 0

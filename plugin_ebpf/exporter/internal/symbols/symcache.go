@@ -105,7 +105,7 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 	return sym, nil
 }
 
-func RemoveByPId(pid int32) {
+func RemoveByPid(pid int32) {
 	if __instance != nil && pid > 0 {
 		__instance.lc.Remove(pid)
 	}

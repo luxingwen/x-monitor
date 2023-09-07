@@ -184,3 +184,9 @@ struct xm_profile_sample {
     int user_stack_id;
     char comm[TASK_COMM_LEN];
 };
+
+struct xm_profile_sample_data {
+    __u32 count; // sample数量
+    __u32 pid_ns; // 归属的pid namespace
+    pid_t pgid; // 归属的进程组
+};

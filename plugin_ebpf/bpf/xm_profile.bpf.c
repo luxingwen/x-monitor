@@ -16,8 +16,8 @@
 // prog参数，过滤条件
 BPF_ARRAY(xm_profile_arg_map, struct xm_prog_filter_args, 1);
 // 堆栈计数
-BPF_HASH(xm_profile_sample_count_map, struct xm_profile_sample, __u32,
-         MAX_THREAD_COUNT);
+BPF_HASH(xm_profile_sample_count_map, struct xm_profile_sample,
+         struct xm_profile_sample_data, MAX_THREAD_COUNT);
 struct {
     __uint(type, BPF_MAP_TYPE_STACK_TRACE);
     __uint(key_size, sizeof(__u32));
@@ -29,10 +29,10 @@ const enum xm_prog_filter_target_scope_type __unused_filter_scope_type
     __attribute__((unused)) = XM_PROG_FILTER_TARGET_SCOPE_TYPE_NONE;
 
 const struct xm_profile_sample *__unused_ps __attribute__((unused));
+const struct xm_profile_sample_data *__unused_psd __attribute__((unused));
 
 SEC("perf_event")
 __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
-    uint32_t one = 1, *val;
     pid_t tid;
     struct xm_profile_sample ps = {
         .pid = 0,
@@ -40,6 +40,11 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
         .user_stack_id = -1,
         .comm[0] = '\0',
     };
+    struct xm_profile_sample_data init_psd = {
+        .count = 1,
+        .pid_ns = 0,
+        .pgid = 0,
+    }, *val;
 
     // 过滤条件判断
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
@@ -69,11 +74,14 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
     ps.user_stack_id =
         bpf_get_stackid(ctx, &xm_profile_stack_map, USER_STACKID_FLAGS);
 
+    init_psd.pid_ns = __xm_get_task_pidns(ts);
+    init_psd.pgid = __xm_get_task_pgid(ts);
+
     val = __xm_bpf_map_lookup_or_try_init((void *)&xm_profile_sample_count_map,
-                                          &ps, &one);
+                                          &ps, &init_psd);
     if (val) {
         // 进程堆栈计数递增
-        __sync_fetch_and_add(val, 1);
+        __sync_fetch_and_add(&(val->count), 1);
     }
 
     // bpf_printk("xm_do_perf_event pid:%d, kernel_stack_id:%d, "

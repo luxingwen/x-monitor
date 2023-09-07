@@ -19,6 +19,12 @@ type XMProfileXmProfileSample struct {
 	Comm          [16]int8
 }
 
+type XMProfileXmProfileSampleData struct {
+	Count uint32
+	PidNs uint32
+	Pgid  int32
+}
+
 type XMProfileXmProgFilterArgs struct {
 	ScopeType       XMProfileXmProgFilterTargetScopeType
 	_               [4]byte

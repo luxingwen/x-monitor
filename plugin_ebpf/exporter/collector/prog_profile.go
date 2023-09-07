@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -19,6 +20,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/samber/lo"
 	"github.com/sanity-io/litter"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
@@ -35,19 +37,136 @@ const (
 	__mapKey               uint32 = 0
 	__perf_max_stack_depth        = 127
 	__stackFrameSize              = (strconv.IntSize / 8)
+	MetricName                    = "__name__"
+	labelServiceName              = "service_name"
 )
 
+type profileTargetMatchType uint32
+
+const (
+	TargetMatchNone profileTargetMatchType = iota
+	TargetMatchComm
+	TargetMatchPgID
+	TargetMatchPidNS
+)
+
+// profileTargetLabelsConf represents the configuration for a target label in a profile.
+type profileTargetLabelsConf struct {
+	LabelName string `mapstructure:"l_name"` // The name of the label.
+	LabelVal  string `mapstructure:"l_val"`  // The value of the label.
+}
+
+// profileTargetConf represents the configuration for a profile target.
+type profileTargetConf struct {
+	Name   string                    `mapstructure:"name"`   // Name of the profile target.
+	Match  string                    `mapstructure:"match"`  // Match condition for the profile target.
+	Val    string                    `mapstructure:"val"`    // Value for the profile target.
+	Labels []profileTargetLabelsConf `mapstructure:"labels"` // Labels for the profile target.
+}
+
+type profileTarget struct {
+	name      string
+	labels    labels.Labels
+	matchType profileTargetMatchType
+	matchVal  string
+}
+
+// Compare compares the given process information with the target's match value based on the match type.
+// It returns true if the match is successful, otherwise false.
+// The match type can be TargetMatchComm, TargetMatchPgID, or TargetMatchPidNS.
+// If the match type is TargetMatchComm, it compares the process name with the target's match value.
+// If the match type is TargetMatchPgID, it compares the process group ID with the target's match value.
+// If the match type is TargetMatchPidNS, it compares the process namespace ID with the target's match value.
+func (pt *profileTarget) Compare(comm string, pgid int32, pidNS uint32) bool {
+	switch pt.matchType {
+	case TargetMatchComm:
+		return pt.matchVal == comm
+	case TargetMatchPgID:
+		return pt.matchVal == fmt.Sprintf("%d", pgid)
+	case TargetMatchPidNS:
+		return pt.matchVal == fmt.Sprintf("%d", pidNS)
+	default:
+		return false
+	}
+}
+
+func newProfileTarget(targetConf *profileTargetConf) *profileTarget {
+	return nil
+}
+
+type profileTargetFinderItf interface {
+	FindTarget(comm string, pgid int32, pidNS uint32) *profileTarget
+	UpdateTargets(targetConfs []profileTargetConf) error
+}
+
+type profileTargetFinder struct {
+	targets       []*profileTarget
+	lock          sync.RWMutex
+	defaultTarget *profileTarget
+}
+
+func NewProfileTargetFinder(targets []profileTargetConf) (profileTargetFinderItf, error) {
+	ptf := &profileTargetFinder{}
+	if err := ptf.UpdateTargets(targets); err != nil {
+		return nil, errors.Wrap(err, "update targets failed.")
+	}
+	return ptf, nil
+}
+
+func (ptf *profileTargetFinder) FindTarget(comm string, pgid int32, pidNS uint32) *profileTarget {
+	ptf.lock.RLock()
+	defer ptf.lock.RUnlock()
+
+	for _, target := range ptf.targets {
+		if target.Compare(comm, pgid, pidNS) {
+			return target
+		}
+	}
+	return ptf.defaultTarget
+}
+
+func (ptf *profileTargetFinder) UpdateTargets(targetConfs []profileTargetConf) error {
+	ptf.lock.Lock()
+	defer ptf.lock.Unlock()
+
+	targets := make([]*profileTarget, 0)
+	var defaultTarget *profileTarget
+
+	for i := range targetConfs {
+		targetConf := &targetConfs[i]
+		if targetConf.Name == "host_cpu" {
+			// default target
+			defaultTarget = newProfileTarget(targetConf)
+		} else {
+			targets = append(targets, newProfileTarget(targetConf))
+		}
+	}
+
+	if defaultTarget == nil {
+		return ErrProfileDefaultTargetNotFound
+	}
+
+	ptf.targets = nil
+	ptf.defaultTarget = nil
+
+	ptf.targets = targets
+	ptf.defaultTarget = defaultTarget
+	return nil
+}
+
 type profilePrivateArgs struct {
-	SampleRate       int           `mapstructure:"sample_rate"`
-	PyroscopeSvrAddr string        `mapstructure:"pyroscope_server_addr"`
-	GatherInterval   time.Duration `mapstructure:"gather_interval"`
+	SampleRate       int                 `mapstructure:"sample_rate"`
+	PyroscopeSvrAddr string              `mapstructure:"pyroscope_server_addr"`
+	GatherInterval   time.Duration       `mapstructure:"gather_interval"`
+	Targets          []profileTargetConf `mapstructure:"targets"`
 }
 
 type profileProgram struct {
 	*eBPFBaseProgram
-	objs     *bpfmodule.XMProfileObjects
-	perfLink *bpfprog.PerfEvent
-	pyroStub pyroscope.Appendable
+	objs         *bpfmodule.XMProfileObjects
+	perfLink     *bpfprog.PerfEvent
+	pyroExporter pyroscope.Appendable
+	tf           profileTargetFinderItf
 }
 
 type procStackInfo struct {
@@ -56,11 +175,22 @@ type procStackInfo struct {
 	uStackBytes []byte
 	count       uint32
 	comm        string
+	PidNs       uint32
+	Pgid        int32
 }
 
 var (
 	__profileEBpfArgs    config.EBpfProgBaseArgs
 	__profilePrivateArgs profilePrivateArgs
+
+	__targetMatchTypeMap = map[string]profileTargetMatchType{
+		"TargetMatchNone": TargetMatchNone,
+		"TargetMatchComm": TargetMatchComm,
+		"TargetMatchPgID": TargetMatchPgID,
+	}
+	_ profileTargetFinderItf = &profileTargetFinder{}
+
+	ErrProfileDefaultTargetNotFound = errors.New("profile default target not found")
 )
 
 func init() {
@@ -87,7 +217,13 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 		objs: new(bpfmodule.XMProfileObjects),
 	}
 
-	if profileProg.pyroStub, err = pyrostub.NewPyroscopeExporter(__profilePrivateArgs.PyroscopeSvrAddr,
+	if profileProg.tf, err = NewProfileTargetFinder(__profilePrivateArgs.Targets); err != nil {
+		profileProg.finalizer()
+		err = errors.Wrapf(err, "eBPFProgram:'%s' NewProfileTargetFinder failed.", name)
+		return nil, err
+	}
+
+	if profileProg.pyroExporter, err = pyrostub.NewPyroscopeExporter(__profilePrivateArgs.PyroscopeSvrAddr,
 		prometheus.DefaultRegisterer); err != nil {
 		profileProg.finalizer()
 		err = errors.Wrapf(err, "eBPFProgram:'%s' NewPyroscopeExporter failed.", name)
@@ -153,7 +289,7 @@ loop:
 				case eventcenter.EBPF_EVENT_PROCESS_EXIT:
 					glog.Infof("eBPFProgram:'%s', receive eBPF Event'%s'", pp.name, litter.Sdump(eBPFEvtInfo))
 					processExitEvt := eBPFEvtInfo.EvtData.(*eventcenter.EBPFEventProcessExit)
-					symbols.RemoveByPId(processExitEvt.Pid)
+					symbols.RemoveByPid(processExitEvt.Pid)
 				}
 				eBPFEvtInfo = nil
 			}
@@ -184,7 +320,7 @@ func (pp *profileProgram) collectProfiles() {
 	var (
 		profileSampleMap    = pp.objs.XmProfileSampleCountMap
 		profileSampleMapKey = bpfmodule.XMProfileXmProfileSample{}
-		profileSampleMapVal = uint32(0)
+		profileSampleMapVal = bpfmodule.XMProfileXmProfileSampleData{}
 		profileSampleCount  int
 		profileStackMap     = pp.objs.XmProfileStackMap
 		err                 error
@@ -194,13 +330,13 @@ func (pp *profileProgram) collectProfiles() {
 
 	// 收集xm_profile_sample_count_map数据
 	keys := make([]bpfmodule.XMProfileXmProfileSample, 0)
-	counts := make([]uint32, 0)
+	vals := make([]bpfmodule.XMProfileXmProfileSampleData, 0)
 
 	// 批量获取数据
 	it := profileSampleMap.Iterate()
 	for it.Next(&profileSampleMapKey, &profileSampleMapVal) {
 		keys = append(keys, profileSampleMapKey)
-		counts = append(counts, profileSampleMapVal)
+		vals = append(vals, profileSampleMapVal)
 		profileSampleCount++
 	}
 
@@ -228,15 +364,17 @@ func (pp *profileProgram) collectProfiles() {
 	// 获取堆栈
 	for i := range keys {
 		// XMProfileXmProfileSample
-		sampleInfo := keys[i]
-		sampleCount := counts[i]
+		sampleInfo := &keys[i]
+		sampleData := &vals[i]
 
 		stackIDSet[sampleInfo.UserStackId] = struct{}{}
 		stackIDSet[sampleInfo.KernelStackId] = struct{}{}
 
 		psi := &procStackInfo{
 			pid:         sampleInfo.Pid,
-			count:       sampleCount,
+			count:       sampleData.Count,
+			PidNs:       sampleData.PidNs,
+			Pgid:        sampleData.Pgid,
 			comm:        utils.CommToString(sampleInfo.Comm[:]),
 			uStackBytes: pfnGetStackBytes(sampleInfo.UserStackId),
 			kStackBytes: pfnGetStackBytes(sampleInfo.KernelStackId),
