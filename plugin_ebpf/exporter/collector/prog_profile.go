@@ -17,6 +17,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/grafana/agent/component/pyroscope"
+	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -37,18 +38,34 @@ const (
 	__mapKey               uint32 = 0
 	__perf_max_stack_depth        = 127
 	__stackFrameSize              = (strconv.IntSize / 8)
-	MetricName                    = "__name__"
+	__defaultMetricName           = "__name__"
 	labelServiceName              = "service_name"
+	__defaultMatricValue          = "xm_host_cpu"
 )
 
-type profileTargetMatchType uint32
+type profileMatchTargetType uint32
 
 const (
-	TargetMatchNone profileTargetMatchType = iota
-	TargetMatchComm
-	TargetMatchPgID
-	TargetMatchPidNS
+	MatchTargetNone profileMatchTargetType = iota
+	MatchTargetComm
+	MatchTargetPgID
+	MatchTargetPidNS
+	MatchTargetUnknown
 )
+
+func matchStr2Type(match string) profileMatchTargetType {
+	switch match {
+	case "MatchTargetComm":
+		return MatchTargetComm
+	case "MatchTargetPgID":
+		return MatchTargetPgID
+	case "MatchTargetPidNS":
+		return MatchTargetPidNS
+	case "MatchTargetNone":
+		return MatchTargetNone
+	}
+	return MatchTargetUnknown
+}
 
 // profileTargetLabelsConf represents the configuration for a target label in a profile.
 type profileTargetLabelsConf struct {
@@ -64,45 +81,96 @@ type profileTargetConf struct {
 	Labels []profileTargetLabelsConf `mapstructure:"labels"` // Labels for the profile target.
 }
 
-type profileTarget struct {
-	name      string
-	labels    labels.Labels
-	matchType profileTargetMatchType
-	matchVal  string
+type ProfileTarget struct {
+	Name                  string
+	Labels                labels.Labels
+	MatchType             profileMatchTargetType
+	MatchVal              string
+	fingerprintCalculated bool
+	fingerprint           uint64
 }
 
 // Compare compares the given process information with the target's match value based on the match type.
 // It returns true if the match is successful, otherwise false.
-// The match type can be TargetMatchComm, TargetMatchPgID, or TargetMatchPidNS.
-// If the match type is TargetMatchComm, it compares the process name with the target's match value.
-// If the match type is TargetMatchPgID, it compares the process group ID with the target's match value.
-// If the match type is TargetMatchPidNS, it compares the process namespace ID with the target's match value.
-func (pt *profileTarget) Compare(comm string, pgid int32, pidNS uint32) bool {
-	switch pt.matchType {
-	case TargetMatchComm:
-		return pt.matchVal == comm
-	case TargetMatchPgID:
-		return pt.matchVal == fmt.Sprintf("%d", pgid)
-	case TargetMatchPidNS:
-		return pt.matchVal == fmt.Sprintf("%d", pidNS)
+// The match type can be MatchTargetComm, MatchTargetPgID, or MatchTargetPidNS.
+// If the match type is MatchTargetComm, it compares the process Name with the target's match value.
+// If the match type is MatchTargetPgID, it compares the process group ID with the target's match value.
+// If the match type is MatchTargetPidNS, it compares the process namespace ID with the target's match value.
+func (pt *ProfileTarget) Compare(comm string, pgid int32, pidNS uint32) bool {
+	switch pt.MatchType {
+	case MatchTargetComm:
+		return pt.MatchVal == comm
+	case MatchTargetPgID:
+		return pt.MatchVal == fmt.Sprintf("%d", pgid)
+	case MatchTargetPidNS:
+		return pt.MatchVal == fmt.Sprintf("%d", pidNS)
 	default:
 		return false
 	}
 }
 
-func newProfileTarget(targetConf *profileTargetConf) *profileTarget {
-	return nil
+func (pt *ProfileTarget) LSet() (uint64, labels.Labels) {
+	if !pt.fingerprintCalculated {
+		pt.fingerprint = pt.Labels.Hash()
+		pt.fingerprintCalculated = true
+	}
+
+	return pt.fingerprint, pt.Labels
+}
+
+func newProfileTarget(targetConf *profileTargetConf) *ProfileTarget {
+	MatchType := matchStr2Type(targetConf.Match)
+	if MatchType == MatchTargetUnknown {
+		glog.Errorf("Profile target'%s' match type:'%s' invalid.", targetConf.Name, targetConf.Match)
+		return nil
+	}
+
+	labelSet := make(map[string]string, len(targetConf.Labels))
+
+	// 指标名称
+	labelSet[__defaultMetricName] = fmt.Sprintf("%s_cpu", targetConf.Name)
+
+	// 自定义标签
+	for i := range targetConf.Labels {
+		labelConf := &targetConf.Labels[i]
+		labelSet[labelConf.LabelName] = labelConf.LabelVal
+	}
+	// service_name标签
+	// 构造
+	if targetConf.Name == __defaultMatricValue {
+		labelSet[labelServiceName] = fmt.Sprintf("xm_host_%s", func() string {
+			ip, _ := config.APISrvBindAddr()
+			return ip
+		}())
+	} else {
+		switch MatchType {
+		case MatchTargetComm:
+			labelSet[labelServiceName] = fmt.Sprintf("%s", targetConf.Name)
+		case MatchTargetPgID:
+			labelSet[labelServiceName] = fmt.Sprintf("%s_pgid_%s", targetConf.Name, targetConf.Val)
+		case MatchTargetPidNS:
+			labelSet[labelServiceName] = fmt.Sprintf("%s_pidns_%s", targetConf.Name, targetConf.Val)
+		}
+	}
+
+	return &ProfileTarget{
+		Name:      targetConf.Name,
+		Labels:    labels.FromMap(labelSet),
+		MatchType: matchStr2Type(targetConf.Match),
+		MatchVal:  targetConf.Val,
+	}
 }
 
 type profileTargetFinderItf interface {
-	FindTarget(comm string, pgid int32, pidNS uint32) *profileTarget
+	FindTarget(comm string, pgid int32, pidNS uint32) *ProfileTarget
 	UpdateTargets(targetConfs []profileTargetConf) error
+	TargetCount() int
 }
 
 type profileTargetFinder struct {
-	targets       []*profileTarget
+	targets       []*ProfileTarget
 	lock          sync.RWMutex
-	defaultTarget *profileTarget
+	defaultTarget *ProfileTarget
 }
 
 func NewProfileTargetFinder(targets []profileTargetConf) (profileTargetFinderItf, error) {
@@ -113,7 +181,7 @@ func NewProfileTargetFinder(targets []profileTargetConf) (profileTargetFinderItf
 	return ptf, nil
 }
 
-func (ptf *profileTargetFinder) FindTarget(comm string, pgid int32, pidNS uint32) *profileTarget {
+func (ptf *profileTargetFinder) FindTarget(comm string, pgid int32, pidNS uint32) *ProfileTarget {
 	ptf.lock.RLock()
 	defer ptf.lock.RUnlock()
 
@@ -129,29 +197,35 @@ func (ptf *profileTargetFinder) UpdateTargets(targetConfs []profileTargetConf) e
 	ptf.lock.Lock()
 	defer ptf.lock.Unlock()
 
-	targets := make([]*profileTarget, 0)
-	var defaultTarget *profileTarget
+	targets := make([]*ProfileTarget, 0)
 
 	for i := range targetConfs {
 		targetConf := &targetConfs[i]
-		if targetConf.Name == "host_cpu" {
-			// default target
-			defaultTarget = newProfileTarget(targetConf)
-		} else {
-			targets = append(targets, newProfileTarget(targetConf))
+		target := newProfileTarget(targetConf)
+		if target != nil {
+			glog.Infof("add a new target:'%s'", litter.Sdump(*target))
+			targets = append(targets, target)
 		}
 	}
 
-	if defaultTarget == nil {
-		return ErrProfileDefaultTargetNotFound
+	if ptf.defaultTarget == nil {
+		ptf.defaultTarget = newProfileTarget(&profileTargetConf{
+			Name:  __defaultMatricValue,
+			Match: "MatchTargetNone",
+		})
+		glog.Infof("init default target:'%s'", litter.Sdump(*(ptf.defaultTarget)))
 	}
 
 	ptf.targets = nil
-	ptf.defaultTarget = nil
-
 	ptf.targets = targets
-	ptf.defaultTarget = defaultTarget
 	return nil
+}
+
+func (ptf *profileTargetFinder) TargetCount() int {
+	ptf.lock.RLock()
+	defer ptf.lock.RUnlock()
+
+	return len(ptf.targets)
 }
 
 type profilePrivateArgs struct {
@@ -177,16 +251,17 @@ type procStackInfo struct {
 	comm        string
 	PidNs       uint32
 	Pgid        int32
+	target      *ProfileTarget
 }
 
 var (
 	__profileEBpfArgs    config.EBpfProgBaseArgs
 	__profilePrivateArgs profilePrivateArgs
 
-	__targetMatchTypeMap = map[string]profileTargetMatchType{
-		"TargetMatchNone": TargetMatchNone,
-		"TargetMatchComm": TargetMatchComm,
-		"TargetMatchPgID": TargetMatchPgID,
+	__targetMatchTypeMap = map[string]profileMatchTargetType{
+		"MatchTargetNone": MatchTargetNone,
+		"MatchTargetComm": MatchTargetComm,
+		"MatchTargetPgID": MatchTargetPgID,
 	}
 	_ profileTargetFinderItf = &profileTargetFinder{}
 
@@ -222,6 +297,7 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 		err = errors.Wrapf(err, "eBPFProgram:'%s' NewProfileTargetFinder failed.", name)
 		return nil, err
 	}
+	glog.Infof("eBPFProgram:'%s' profileTarget count:%d", name, profileProg.tf.TargetCount())
 
 	if profileProg.pyroExporter, err = pyrostub.NewPyroscopeExporter(__profilePrivateArgs.PyroscopeSvrAddr,
 		prometheus.DefaultRegisterer); err != nil {
@@ -378,6 +454,7 @@ func (pp *profileProgram) collectProfiles() {
 			comm:        utils.CommToString(sampleInfo.Comm[:]),
 			uStackBytes: pfnGetStackBytes(sampleInfo.UserStackId),
 			kStackBytes: pfnGetStackBytes(sampleInfo.KernelStackId),
+			target:      pp.tf.FindTarget(utils.CommToString(sampleInfo.Comm[:]), sampleData.Pgid, sampleData.PidNs),
 		}
 
 		psis = append(psis, psi)
@@ -413,6 +490,7 @@ func (pp *profileProgram) collectProfiles() {
 		}
 	}
 
+	builders := pprof.NewProfileBuilders(__profilePrivateArgs.SampleRate)
 	// 解析堆栈
 	sb := stackBuilder{}
 	for _, psi := range psis {
@@ -421,14 +499,20 @@ func (pp *profileProgram) collectProfiles() {
 		pfnWalkStack(psi.uStackBytes, psi.pid, &sb)
 		pfnWalkStack(psi.kStackBytes, 0, &sb)
 
-		if len(sb.stack) == 0 {
+		if len(sb.stack) == 1 {
 			continue
 		}
 		lo.Reverse(sb.stack)
 
+		lablesHash, labels := psi.target.LSet()
+		builder := builders.BuilderForTarget(lablesHash, labels)
+		builder.AddSample(sb.stack, uint64(psi.count))
+
 		glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d, count:%d stacks:\n\t%s",
 			pp.name, psi.comm, psi.pid, psi.count, strings.Join(sb.stack, "\n\t"))
 	}
+
+	pp.reportToPyroscope(builders)
 
 	// 清理profileSample map
 	for i := range keys {
@@ -447,6 +531,10 @@ func (pp *profileProgram) collectProfiles() {
 	}
 
 	glog.Infof("eBPFProgram:'%s' symCache size:%d", symbols.Size())
+}
+
+func (pp *profileProgram) reportToPyroscope(builders *pprof.ProfileBuilders) {
+	glog.Infof("eBPFProgram:'%s' start reportToPyroscope, profiles count:%d", pp.name, len(builders.Builders))
 }
 
 type stackBuilder struct {

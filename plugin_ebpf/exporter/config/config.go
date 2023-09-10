@@ -76,7 +76,7 @@ func InitConfig(cfgFile string) error {
 		return err
 	}
 
-	viper.DebugTo(&viperDebugAdapterLog{})
+	//viper.DebugTo(&viperDebugAdapterLog{})
 
 	if err := viper.UnmarshalKey("ebpf.programs", &programConfigs); err != nil {
 		err = errors.Wrapf(err, "unmarshal key ebpf.programs")
