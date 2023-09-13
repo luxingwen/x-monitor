@@ -8,10 +8,11 @@
 package collector
 
 import (
+	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -40,7 +41,7 @@ const (
 	__stackFrameSize              = (strconv.IntSize / 8)
 	__defaultMetricName           = "__name__"
 	labelServiceName              = "service_name"
-	__defaultMatricValue          = "xm_host_cpu"
+	__defaultMatricValue          = "host_cpu"
 )
 
 type profileMatchTargetType uint32
@@ -128,7 +129,7 @@ func newProfileTarget(targetConf *profileTargetConf) *ProfileTarget {
 	labelSet := make(map[string]string, len(targetConf.Labels))
 
 	// 指标名称
-	labelSet[__defaultMetricName] = fmt.Sprintf("%s_cpu", targetConf.Name)
+	labelSet[__defaultMetricName] = fmt.Sprintf("xm_%s_cpu", targetConf.Name)
 
 	// 自定义标签
 	for i := range targetConf.Labels {
@@ -136,7 +137,6 @@ func newProfileTarget(targetConf *profileTargetConf) *ProfileTarget {
 		labelSet[labelConf.LabelName] = labelConf.LabelVal
 	}
 	// service_name标签
-	// 构造
 	if targetConf.Name == __defaultMatricValue {
 		labelSet[labelServiceName] = fmt.Sprintf("xm_host_%s", func() string {
 			ip, _ := config.APISrvBindAddr()
@@ -145,10 +145,13 @@ func newProfileTarget(targetConf *profileTargetConf) *ProfileTarget {
 	} else {
 		switch MatchType {
 		case MatchTargetComm:
-			labelSet[labelServiceName] = fmt.Sprintf("%s", targetConf.Name)
+			// 固定标签，service_name = comm
+			labelSet[labelServiceName] = targetConf.Name
 		case MatchTargetPgID:
+			// 固定标签，service_name = comm_pgid_xxx
 			labelSet[labelServiceName] = fmt.Sprintf("%s_pgid_%s", targetConf.Name, targetConf.Val)
 		case MatchTargetPidNS:
+			// 固定标签，service_name = comm_pidns_xxx
 			labelSet[labelServiceName] = fmt.Sprintf("%s_pidns_%s", targetConf.Name, targetConf.Val)
 		}
 	}
@@ -508,11 +511,11 @@ func (pp *profileProgram) collectProfiles() {
 		builder := builders.BuilderForTarget(lablesHash, labels)
 		builder.AddSample(sb.stack, uint64(psi.count))
 
-		glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d, count:%d stacks:\n\t%s",
-			pp.name, psi.comm, psi.pid, psi.count, strings.Join(sb.stack, "\n\t"))
+		// glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d, count:%d stacks:\n\t%s",
+		// 	pp.name, psi.comm, psi.pid, psi.count, strings.Join(sb.stack, "\n\t"))
 	}
-
-	pp.reportToPyroscope(builders)
+	// 上报ebpf profile结果到pyroscope
+	pp.submitEBPFProfile(builders)
 
 	// 清理profileSample map
 	for i := range keys {
@@ -530,11 +533,31 @@ func (pp *profileProgram) collectProfiles() {
 		}
 	}
 
-	glog.Infof("eBPFProgram:'%s' symCache size:%d", symbols.Size())
+	glog.Infof("eBPFProgram:'%s' symCache size:%d", pp.name, symbols.Size())
 }
 
-func (pp *profileProgram) reportToPyroscope(builders *pprof.ProfileBuilders) {
-	glog.Infof("eBPFProgram:'%s' start reportToPyroscope, profiles count:%d", pp.name, len(builders.Builders))
+func (pp *profileProgram) submitEBPFProfile(builders *pprof.ProfileBuilders) {
+	glog.Infof("eBPFProgram:'%s' start submitEBPFProfile, profiles count:%d", pp.name, len(builders.Builders))
+
+	bytesSend := 0
+	for _, builder := range builders.Builders {
+		buf := bytes.NewBuffer(nil)
+		// 写入缓冲区
+		if _, err := builder.Write(buf); err != nil {
+			glog.Errorf("eBPFProgram:'%s' ebpf profile encode failed. err:%s", pp.name, err.Error())
+			continue
+		}
+
+		rawProfile := buf.Bytes()
+		bytesSend += len(rawProfile)
+		samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
+		err := pp.pyroExporter.Appender().Append(context.Background(), builder.Labels, samples)
+		if err != nil {
+			glog.Errorf("eBPFProgram:'%s' ebpf profile append failed. err:%s", err.Error())
+			continue
+		}
+	}
+	glog.Infof("eBPFProgram:'%s' submit epbf profiles done, send '%d' bytes", pp.name, bytesSend)
 }
 
 type stackBuilder struct {

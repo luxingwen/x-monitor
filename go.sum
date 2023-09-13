@@ -363,6 +363,16 @@ github.com/weaveworks/common v0.0.0-20230511094633-334485600903 h1:ph7R2CS/0o1gB
 github.com/weaveworks/promrus v1.2.0 h1:jOLf6pe6/vss4qGHjXmGz4oDJQA+AOCqEL3FvvZGz7M=
 github.com/wubo0067/calmwu-go v0.0.0-20230711061739-8c797f8d4326 h1:E6oD50NsVyhRbsDvn3eDSlodKUGwlmH6orsmhXfxKIM=
 github.com/wubo0067/calmwu-go v0.0.0-20230711061739-8c797f8d4326/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20230911065629-2d3610afead2 h1:QfyhAw1d7DYgVDC+Qd+Sh+BUrPN8UtmjxGBFZyQvbwA=
+github.com/wubo0067/calmwu-go v0.0.0-20230911065629-2d3610afead2/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20230911083710-75320fc02233 h1:8C1M3hKY/Zro40ANNwpYzwtz455UntAyog4C1fm9TTA=
+github.com/wubo0067/calmwu-go v0.0.0-20230911083710-75320fc02233/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20230911092504-4b5cc3c9b968 h1:qjyEsbeodmFduC0EOfvxZ3/n2PvIbKSkmbwv5akpgZk=
+github.com/wubo0067/calmwu-go v0.0.0-20230911092504-4b5cc3c9b968/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20230913085903-c21bcabfa7da h1:wCwHKjjVHiVfGpx8E0id6xX0/x/QPpnma+feqwmp7SI=
+github.com/wubo0067/calmwu-go v0.0.0-20230913085903-c21bcabfa7da/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20230913094218-38049a7b9492 h1:VUQ+CQcLDleM1yNas41AQb6b3IPJw7o85V/6FFvvyAY=
+github.com/wubo0067/calmwu-go v0.0.0-20230913094218-38049a7b9492/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

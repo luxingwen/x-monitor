@@ -82,7 +82,7 @@ eBPF:
           sample_rate: 100
           pyroscope_server_addr: "http://127.0.0.1:4040/"
           targets:
-            - name: "x-monitor" # 指标名称
+            - name: "xmonitor" # 指标名称
               match: "MatchTargetComm" # 匹配应用程序名
               val: "x-monitor"
               labels: #自定义label

@@ -37,7 +37,7 @@ func InitCache(size int) error {
 	once.Do(func() {
 		__instance = &SymCache{}
 		__instance.lc, err = lru.NewWithEvict[int32, *calmutils.ProcSyms](size, func(key int32, _ *calmutils.ProcSyms) {
-			glog.Warningf("pid:%d syms evicted by lru", key)
+			glog.Warningf("pid:%d symbols cache object evicted by lru", key)
 		})
 		if err != nil {
 			err = errors.Wrap(err, "new evict lru failed.")
@@ -70,9 +70,9 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 			// user
 			procSyms, ok = __instance.lc.Get(pid)
 			if ok && procSyms != nil {
-				sym.Name, sym.Offset, sym.Module, err = procSyms.FindPsym(addr)
+				sym.Name, sym.Offset, sym.Module, err = procSyms.ResolvePC(addr)
 				if err != nil {
-					err = errors.Wrapf(err, "FindPsym(pid:%d, addr:%#x) failed", pid, addr)
+					err = errors.Wrapf(err, "ResolvePC(pid:%d, pc:%#x) failed", pid, addr)
 					glog.Error(err.Error())
 					return nil, err
 				}
@@ -85,9 +85,11 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 					return nil, err
 				} else {
 					__instance.lc.Add(pid, procSyms)
-					sym.Name, sym.Offset, sym.Module, err = procSyms.FindPsym(addr)
+					glog.Infof("add pid:'%d' symbols cache object to lru, module count:'%d'", procSyms.Pid, len(procSyms.Modules))
+
+					sym.Name, sym.Offset, sym.Module, err = procSyms.ResolvePC(addr)
 					if err != nil {
-						err = errors.Wrapf(err, "FindPsym(pid:%d, addr:%#x) failed", pid, addr)
+						err = errors.Wrapf(err, "ResolvePC(pid:%d, pc:%#x) failed", pid, addr)
 						glog.Error(err.Error())
 						return nil, err
 					}
