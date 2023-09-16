@@ -279,19 +279,19 @@ loop:
 				csp.guard.Lock()
 				csp.sampleCount = 0
 				csp.sampleSum = 0.0
-				glog.Infof("eBPFProgram:'%s' tracing runQueueLatency ===>", csp.name)
+				//glog.Infof("eBPFProgram:'%s' tracing runQueueLatency ===>", csp.name)
 				for i, slot := range histogram.Slots {
 					bucket := __powerOfTwo[i]                              // 桶的上限
 					csp.sampleCount += uint64(slot)                        // 统计本周期的样本总数
 					csp.sampleSum += float64(slot) * float64(bucket) * 0.6 // 估算样本的总和
 					csp.runQLatencyBuckets[bucket] = csp.sampleCount       // 每个桶的样本数，下层包括上层统计数量
-					glog.Infof("\tusecs(%d -> %d) count: %d", func() int {
-						if i == 0 {
-							return 0
-						} else {
-							return int(__powerOfTwo[i-1]) + 1
-						}
-					}(), int(bucket), slot)
+					// glog.Infof("\tusecs(%d -> %d) count: %d", func() int {
+					// 	if i == 0 {
+					// 		return 0
+					// 	} else {
+					// 		return int(__powerOfTwo[i-1]) + 1
+					// 	}
+					// }(), int(bucket), slot)
 				}
 				csp.guard.Unlock()
 				glog.Infof("eBPFProgram:'%s' tracing runQueueLatency <===", csp.name)

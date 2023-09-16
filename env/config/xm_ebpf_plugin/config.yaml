@@ -79,7 +79,7 @@ eBPF:
       args:
         private:
           gather_interval: 5 # 收集kernel prog数据时间间隔，单位秒
-          sample_rate: 100
+          sample_rate: 97
           pyroscope_server_addr: "http://127.0.0.1:4040/"
           targets:
             - name: "xmonitor" # 指标名称

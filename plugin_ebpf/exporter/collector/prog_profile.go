@@ -511,8 +511,7 @@ func (pp *profileProgram) collectProfiles() {
 		builder := builders.BuilderForTarget(lablesHash, labels)
 		builder.AddSample(sb.stack, uint64(psi.count))
 
-		// glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d, count:%d stacks:\n\t%s",
-		// 	pp.name, psi.comm, psi.pid, psi.count, strings.Join(sb.stack, "\n\t"))
+		glog.Infof("eBPFProgram:'%s' build stack for comm:'%s', pid:%d", pp.name, psi.comm, psi.pid)
 	}
 	// 上报ebpf profile结果到pyroscope
 	pp.submitEBPFProfile(builders)

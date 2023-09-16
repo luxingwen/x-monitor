@@ -28,7 +28,6 @@ static __always_inline bool filter_ts(void *arg_map, struct task_struct *ts,
     //            filter_args->scope_type, filter_args->filter_cond_value);
 
     if (filter_args->scope_type == XM_PROG_FILTER_TARGET_SCOPE_TYPE_OS) {
-        // 全系统范围，都保留
         return true;
     } else if (filter_args->scope_type == XM_PROG_FILTER_TARGET_SCOPE_TYPE_NS) {
         // 判断namespace是否匹配

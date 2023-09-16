@@ -124,7 +124,7 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	// init symbols
-	if err := symbols.InitCache(256); err != nil {
+	if err := symbols.InitCache(32); err != nil {
 		glog.Fatalf("Init Symbols Cache failed. %s", err.Error())
 	}
 

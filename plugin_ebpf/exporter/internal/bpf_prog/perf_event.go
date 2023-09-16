@@ -84,7 +84,6 @@ func (pel *perfEventLink) attachPerfEvent(prog *ebpf.Program) error {
 		err = errors.Wrap(err, "attach RawLink failed.")
 		return err
 	} else {
-		pel.link = nil
 		glog.Infof("attach RawLink on fd:%d succeeded", pel.peFD)
 	}
 

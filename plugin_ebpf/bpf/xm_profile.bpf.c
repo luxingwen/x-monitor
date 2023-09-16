@@ -33,7 +33,8 @@ const struct xm_profile_sample_data *__unused_psd __attribute__((unused));
 
 SEC("perf_event")
 __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
-    pid_t tid;
+    pid_t tid, pid;
+
     struct xm_profile_sample ps = {
         .pid = 0,
         .kernel_stack_id = -1,
@@ -46,27 +47,29 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
         .pgid = 0,
     }, *val;
 
-    // 过滤条件判断
-    struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
-    // 读取线程id
-    BPF_CORE_READ_INTO(&tid, ts, pid);
+    // bpf_printk("--->xm_do_perf_event enter<---");
+
+    // 得到线程id
+    tid = __xm_get_tid();
+    // 得到进程id
+    pid = __xm_get_pid();
+
     if (tid == 0) {
-        return 0;
-    }
-    // 读取进程id，如果id=0，表明是内核线程
-    BPF_CORE_READ_INTO(&ps.pid, ts, tgid);
-
-    if (ps.pid == 0) {
-        bpf_printk("xm_do_perf_event this kernel task_struct.tgid:%d, tid:%d",
-                   ps.pid, tid);
-    }
-
-    if (!filter_ts(&xm_profile_arg_map, ts, ps.pid)) {
+        // perf的快照没有catch到执行线程
         return 0;
     }
 
-    BPF_CORE_READ_INTO(&ps.pid, ts, tgid);
-    // 获取comm
+    if (pid == 0) {
+        bpf_printk("xm_do_perf_event this kernel thread:%d", tid);
+    }
+
+    // 判断过滤条件
+    struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
+    if (!filter_ts(&xm_profile_arg_map, ts, pid)) {
+        return 0;
+    }
+
+    ps.pid = pid;
     BPF_CORE_READ_STR_INTO(&ps.comm, ts, group_leader, comm);
     //  获取内核、用户堆栈
     ps.kernel_stack_id =
@@ -74,19 +77,19 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
     ps.user_stack_id =
         bpf_get_stackid(ctx, &xm_profile_stack_map, USER_STACKID_FLAGS);
 
-    init_psd.pid_ns = __xm_get_task_pidns(ts);
-    init_psd.pgid = __xm_get_task_pgid(ts);
-
     val = __xm_bpf_map_lookup_or_try_init((void *)&xm_profile_sample_count_map,
                                           &ps, &init_psd);
     if (val) {
         // 进程堆栈计数递增
         __sync_fetch_and_add(&(val->count), 1);
+        val->pid_ns = __xm_get_task_pidns(ts);
+        val->pgid = __xm_get_task_pgid(ts);
     }
 
     // bpf_printk("xm_do_perf_event pid:%d, kernel_stack_id:%d, "
     //            "user_stack_id:%d",
     //            ps.pid, ps.kernel_stack_id, ps.user_stack_id);
+
     return 0;
 }
 
