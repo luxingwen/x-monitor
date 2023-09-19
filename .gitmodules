@@ -28,3 +28,6 @@
 [submodule "extra/vendor/curl"]
 	path = extra/vendor/curl
 	url = https://github.com/curl/curl.git
+[submodule "extra/vendor/blazesym"]
+	path = extra/vendor/blazesym
+	url = https://github.com/libbpf/blazesym.git
