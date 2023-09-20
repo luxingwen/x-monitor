@@ -485,7 +485,9 @@ func (pp *profileProgram) collectProfiles() {
 			sym, err = symbols.Resolve(pid, ip)
 			if err == nil {
 				if pid > 0 {
-					frames = append(frames, fmt.Sprintf("%s+0x%x [%s]", sym.Name, sym.Offset, sym.Module))
+					symStr := fmt.Sprintf("%s+0x%x [%s]", sym.Name, sym.Offset, sym.Module)
+					//glog.Infof("eBPFProgram:'%s' comm:'%s' ip:0x%x ==> '%s'", pp.name, comm, ip, symStr)
+					frames = append(frames, symStr)
 				} else {
 					frames = append(frames, sym.Name) //fmt.Sprintf("%s+0x%x", sym.Name, sym.Offset))
 				}
@@ -519,7 +521,7 @@ func (pp *profileProgram) collectProfiles() {
 		builder := builders.BuilderForTarget(lablesHash, labels)
 		builder.AddSample(sb.stack, uint64(psi.count))
 
-		glog.Infof("eBPFProgram:'%s' build stack for comm:'%s', pid:%d", pp.name, psi.comm, psi.pid)
+		glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d build depth:%d stack", pp.name, psi.comm, psi.pid, len(sb.stack))
 	}
 	// 上报ebpf profile结果到pyroscope
 	pp.submitEBPFProfile(builders)
@@ -544,7 +546,7 @@ func (pp *profileProgram) collectProfiles() {
 }
 
 func (pp *profileProgram) submitEBPFProfile(builders *pprof.ProfileBuilders) {
-	glog.Infof("eBPFProgram:'%s' start submitEBPFProfile, profiles count:%d", pp.name, len(builders.Builders))
+	//glog.Infof("eBPFProgram:'%s' start submitEBPFProfile, profiles count:%d", pp.name, len(builders.Builders))
 
 	bytesSend := 0
 	for _, builder := range builders.Builders {
