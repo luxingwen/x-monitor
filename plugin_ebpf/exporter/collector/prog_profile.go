@@ -41,7 +41,7 @@ const (
 	__stackFrameSize              = (strconv.IntSize / 8)
 	__defaultMetricName           = "__name__"
 	labelServiceName              = "service_name"
-	__defaultMatricValue          = "host_cpu"
+	__defaultMatricValue          = "host"
 )
 
 type profileMatchTargetType uint32
@@ -348,6 +348,13 @@ func (pp *profileProgram) Update(ch chan<- prometheus.Metric) error {
 func (pp *profileProgram) handlingeBPFData() {
 	glog.Infof("eBPFProgram:'%s' start handling eBPF Data...", pp.name)
 
+	defer func() {
+		if err := recover(); err != nil {
+			panicStack := calmutils.CallStack(3)
+			glog.Errorf("Panic. err:%v, stack:%s", err, panicStack)
+		}
+	}()
+
 	// 上报定时器
 	pp.gatherTimer.Reset(__profilePrivateArgs.GatherInterval)
 	eBPFEventReadChan := eventcenter.DefInstance.Subscribe(pp.name, eventcenter.EBPF_EVENT_PROCESS_EXIT)
@@ -463,7 +470,7 @@ func (pp *profileProgram) collectProfiles() {
 		psis = append(psis, psi)
 	}
 
-	pfnWalkStack := func(stack []byte, pid int32, sb *stackBuilder) {
+	pfnWalkStack := func(stack []byte, pid int32, comm string, sb *stackBuilder) {
 		if len(stack) == 0 {
 			return
 		}
@@ -480,10 +487,11 @@ func (pp *profileProgram) collectProfiles() {
 				if pid > 0 {
 					frames = append(frames, fmt.Sprintf("%s+0x%x [%s]", sym.Name, sym.Offset, sym.Module))
 				} else {
-					frames = append(frames, fmt.Sprintf("%s+0x%x", sym.Name, sym.Offset))
+					frames = append(frames, sym.Name) //fmt.Sprintf("%s+0x%x", sym.Name, sym.Offset))
 				}
 			} else {
 				frames = append(frames, "[unknown]")
+				glog.Errorf("eBPFProgram:'%s' comm:'%s' err:%s", pp.name, comm, err.Error())
 			}
 		}
 		// 将堆栈反转
@@ -499,8 +507,8 @@ func (pp *profileProgram) collectProfiles() {
 	for _, psi := range psis {
 		sb.rest()
 		sb.append(psi.comm)
-		pfnWalkStack(psi.uStackBytes, psi.pid, &sb)
-		pfnWalkStack(psi.kStackBytes, 0, &sb)
+		pfnWalkStack(psi.uStackBytes, psi.pid, psi.comm, &sb)
+		pfnWalkStack(psi.kStackBytes, 0, "kernel", &sb)
 
 		if len(sb.stack) == 1 {
 			continue

@@ -177,8 +177,8 @@ static __s32 __process_return_to_cpu_task(struct task_struct *ts,
         //__builtin_memset(evt, 0, sizeof(*evt));
         if (evt) {
             evt->evt_type = XM_CS_EVT_TYPE_OFFCPU;
-            evt->pid = pid;
-            evt->tgid = tgid;
+            evt->tid = pid;
+            evt->pid = tgid;
             evt->offcpu_duration_millsecs = offcpu_duration / 1000000U;
             bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
             // 进程如果sleep后重新执行，这里会显示offcpu duration睡眠时间
@@ -264,8 +264,8 @@ __s32 BPF_PROG(btf_tracepoint__xm_sched_process_hang, struct task_struct *ts) {
                    pid, tgid);
     } else {
         evt->evt_type = XM_CS_EVT_TYPE_HANG;
-        evt->pid = pid;
-        evt->tgid = tgid;
+        evt->tid = pid;
+        evt->pid = tgid;
         bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
         evt->kernel_stack_id =
             bpf_get_stackid(ctx, &xm_cs_stack_map, KERN_STACKID_FLAGS);
@@ -291,8 +291,8 @@ __s32 BPF_PROG(btf_tracepoint__xm_sched_process_exit, struct task_struct *ts) {
                    pid, tgid);
     } else {
         evt->evt_type = XM_CS_EVT_TYPE_PROCESS_EXIT;
-        evt->pid = pid;
-        evt->tgid = tgid;
+        evt->tid = pid;
+        evt->pid = tgid;
         bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
         bpf_ringbuf_submit(evt, 0);
     }

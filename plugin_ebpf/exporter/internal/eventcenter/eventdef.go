@@ -21,6 +21,6 @@ type EBPFEventInfo struct {
 
 type EBPFEventProcessExit struct {
 	Comm string
+	Tid  int32
 	Pid  int32
-	Tgid int32
 }

@@ -32,6 +32,14 @@
 
 5. 配置
 
+   - 查看容器ip
+
+     ```
+     docker exec -it 7738b5e2ee19 ip addr
+     ```
+
+     
+
 ## 安装x-monitor.eBPF
 
 1. 配置

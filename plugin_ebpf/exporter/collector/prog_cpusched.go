@@ -138,13 +138,13 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 			csProg.offCPUDurationDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("cpu", "schedule", metricDesc),
 				"The duration of the Task's off-CPU state, in milliseconds.",
-				[]string{"pid", "tgid", "comm", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
+				[]string{"tid", "pid", "comm", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
 			)
 		case "hang_process":
 			csProg.hangProcessDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("cpu", "schedule", metricDesc),
 				"pid of the process that is hung",
-				[]string{"tgid", "comm", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
+				[]string{"pid", "comm", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
 			)
 		}
 	}
@@ -192,21 +192,24 @@ L:
 				//glog.Infof("eBPFProgram:'%s' cpuSchedEvtData:%s", csp.name, litter.Sdump(cpuSchedEvtData))
 				if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_OFFCPU {
 					// 输出进程offcpu的时间
-					if !csp.metricsUpdateFilter.Contains(cpuSchedEvtData.Pid) {
-						ch <- prometheus.MustNewConstMetric(csp.offCPUDurationDesc,
-							prometheus.GaugeValue, float64(cpuSchedEvtData.OffcpuDurationMillsecs),
-							strconv.FormatInt(int64(cpuSchedEvtData.Pid), 10),
-							strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
-							utils.CommToString(cpuSchedEvtData.Comm[:]),
-							__cpuSchedEBpfArgs.FilterScopeType.String(),
-							strconv.Itoa(__cpuSchedEBpfArgs.FilterScopeValue))
-						csp.metricsUpdateFilter.Add(cpuSchedEvtData.Pid)
+					comm := utils.CommToString(cpuSchedEvtData.Comm[:])
+					if config.ProgramCommFilter(csp.name, comm) {
+						if !csp.metricsUpdateFilter.Contains(cpuSchedEvtData.Pid) {
+							ch <- prometheus.MustNewConstMetric(csp.offCPUDurationDesc,
+								prometheus.GaugeValue, float64(cpuSchedEvtData.OffcpuDurationMillsecs),
+								strconv.FormatInt(int64(cpuSchedEvtData.Tid), 10),
+								strconv.FormatInt(int64(cpuSchedEvtData.Pid), 10),
+								comm,
+								__cpuSchedEBpfArgs.FilterScopeType.String(),
+								strconv.Itoa(__cpuSchedEBpfArgs.FilterScopeValue))
+							csp.metricsUpdateFilter.Add(cpuSchedEvtData.Pid)
+						}
 					}
 				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HANG {
 					// 输出hang的进程pid
 					ch <- prometheus.MustNewConstMetric(csp.hangProcessDesc,
 						prometheus.GaugeValue, float64(cpuSchedEvtData.Pid),
-						strconv.FormatInt(int64(cpuSchedEvtData.Tgid), 10),
+						strconv.FormatInt(int64(cpuSchedEvtData.Pid), 10),
 						utils.CommToString(cpuSchedEvtData.Comm[:]),
 						__cpuSchedEBpfArgs.FilterScopeType.String(),
 						strconv.Itoa(__cpuSchedEBpfArgs.FilterScopeValue))
@@ -214,8 +217,8 @@ L:
 					evtInfo := new(eventcenter.EBPFEventInfo)
 					evtInfo.EvtType = eventcenter.EBPF_EVENT_PROCESS_EXIT
 					evtInfo.EvtData = &eventcenter.EBPFEventProcessExit{
+						Tid:  cpuSchedEvtData.Tid,
 						Pid:  cpuSchedEvtData.Pid,
-						Tgid: cpuSchedEvtData.Tgid,
 						Comm: utils.CommToString(cpuSchedEvtData.Comm[:]),
 					}
 					eventcenter.DefInstance.Publish(csp.name, evtInfo)
@@ -324,11 +327,6 @@ loop:
 			continue
 		}
 
-		comm := utils.CommToString(scEvtData.Comm[:])
-		if config.ProgramCommFilter(csp.name, comm) {
-			glog.Infof("eBPFProgram:'%s' tgid:%d, pid:%d, comm:'%s', evtType:%d, offcpu_duration_millsecs:%d",
-				csp.name, scEvtData.Tgid, scEvtData.Pid, comm, scEvtData.EvtType, scEvtData.OffcpuDurationMillsecs)
-			csp.cpuSchedEvtDataChan.SafeSend(scEvtData, false)
-		}
+		csp.cpuSchedEvtDataChan.SafeSend(scEvtData, false)
 	}
 }

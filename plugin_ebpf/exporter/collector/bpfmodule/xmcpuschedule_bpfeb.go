@@ -17,8 +17,8 @@ type XMCpuScheduleXmCpuSchedEvtData struct {
 	KernelStackId          uint32
 	UserStackId            uint32
 	EvtType                XMCpuScheduleXmCpuSchedEvtType
+	Tid                    int32
 	Pid                    int32
-	Tgid                   int32
 	Comm                   [16]int8
 	_                      [4]byte
 }

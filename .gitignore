@@ -1,6 +1,7 @@
 .vscode/
 build/
 plugin_ebpf/bpf/.output
+vendor/github.com/golang/glog/glog_file.go
 
 # Prerequisites
 #*.d

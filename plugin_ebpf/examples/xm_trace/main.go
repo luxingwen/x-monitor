@@ -502,7 +502,7 @@ func main() {
 					if stackAddr == 0 {
 						continue
 					}
-					sym, offset, moduleName, err := procSyms.FindPsym(stackAddr)
+					sym, offset, moduleName, err := procSyms.ResolvePC(stackAddr)
 					if err != nil {
 						sym = "?"
 					}

@@ -68,8 +68,8 @@ struct xm_cpu_sched_evt_data {
     __u32 kernel_stack_id; // 调用堆栈
     __u32 user_stack_id;
     enum xm_cpu_sched_evt_type evt_type;
-    pid_t pid; // 线程id
-    pid_t tgid; // 进程id
+    pid_t tid; // 线程id
+    pid_t pid; // 进程id
     char comm[TASK_COMM_LEN];
 };
 

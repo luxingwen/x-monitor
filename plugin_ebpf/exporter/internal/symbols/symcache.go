@@ -72,16 +72,14 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 			if ok && procSyms != nil {
 				sym.Name, sym.Offset, sym.Module, err = procSyms.ResolvePC(addr)
 				if err != nil {
-					err = errors.Wrapf(err, "ResolvePC(pid:%d, pc:%#x) failed", pid, addr)
-					glog.Error(err.Error())
+					err = errors.Wrapf(err, "ResolvePC pid:%d.", pid)
 					return nil, err
 				}
 			} else {
 				// add
 				procSyms, err = calmutils.NewProcSyms(int(pid))
 				if err != nil {
-					err = errors.Wrapf(err, "NewProcSyms(pid:%d) failed", pid)
-					glog.Error(err.Error())
+					err = errors.Wrapf(err, "NewProcSyms pid:%d.", pid)
 					return nil, err
 				} else {
 					__instance.lc.Add(pid, procSyms)
@@ -89,8 +87,7 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 
 					sym.Name, sym.Offset, sym.Module, err = procSyms.ResolvePC(addr)
 					if err != nil {
-						err = errors.Wrapf(err, "ResolvePC(pid:%d, pc:%#x) failed", pid, addr)
-						glog.Error(err.Error())
+						err = errors.Wrapf(err, "ResolvePC pid:%d.", pid)
 						return nil, err
 					}
 				}
