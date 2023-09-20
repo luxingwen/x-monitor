@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -521,7 +522,7 @@ func (pp *profileProgram) collectProfiles() {
 		builder := builders.BuilderForTarget(lablesHash, labels)
 		builder.AddSample(sb.stack, uint64(psi.count))
 
-		glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d build depth:%d stack", pp.name, psi.comm, psi.pid, len(sb.stack))
+		glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d count:%d build depth:%d stacks:\n\t%s", pp.name, psi.comm, psi.pid, psi.count, len(sb.stack), strings.Join(sb.stack, "\n\t"))
 	}
 	// 上报ebpf profile结果到pyroscope
 	pp.submitEBPFProfile(builders)
