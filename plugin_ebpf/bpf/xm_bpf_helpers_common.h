@@ -50,19 +50,9 @@
 #define KPROBE_REGS_IP_FIX(ip) ip
 #endif
 
-// max depth of each stack trace to track
-#ifndef PERF_MAX_STACK_DEPTH
-#define PERF_MAX_STACK_DEPTH 127
-#endif
-
 #ifndef PF_KTHREAD
 #define PF_KTHREAD 0x00200000 /* I am a kernel thread */
 #endif
-
-// stack traces: the value is 1 big byte array of the stack addresses
-typedef __u64 stack_trace_t[PERF_MAX_STACK_DEPTH];
-#define BPF_STACK_TRACE(_name, _max_entries) \
-    BPF_MAP(_name, BPF_MAP_TYPE_STACK_TRACE, u32, stack_trace_t, _max_entries)
 
 #define KERN_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP)
 #define USER_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK)

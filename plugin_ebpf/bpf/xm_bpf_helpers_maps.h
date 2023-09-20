@@ -36,6 +36,19 @@
 #define BPF_PERF_OUTPUT(_name, _max_entries) \
     BPF_MAP(_name, BPF_MAP_TYPE_PERF_EVENT_ARRAY, int, __u32, _max_entries)
 
+// Stack Traces are slightly different
+// in that the value is 1 big byte array
+// of the stack addresses
+// max depth of each stack trace to track
+#ifndef PERF_MAX_STACK_DEPTH
+#define PERF_MAX_STACK_DEPTH 127
+#endif
+
+typedef __u64 stack_trace_type[PERF_MAX_STACK_DEPTH];
+#define BPF_STACK_TRACE(_name, _max_entries)                        \
+    BPF_MAP(_name, BPF_MAP_TYPE_STACK_TRACE, u32, stack_trace_type, \
+            _max_entries);
+
 /**
  * Looks up a value in a map and initializes it if it doesn't exist.
  *

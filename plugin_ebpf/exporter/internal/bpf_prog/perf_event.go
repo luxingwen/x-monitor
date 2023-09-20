@@ -8,6 +8,8 @@
 package bpfprog
 
 import (
+	"unsafe"
+
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/golang/glog"
@@ -57,11 +59,12 @@ func (pel *perfEventLink) openPerfEvent(pid int, cpu int, sampleRate uint64) err
 		// Config: unix.PERF_COUNT_HW_CPU_CYCLES, //,
 		Type:   unix.PERF_TYPE_SOFTWARE,
 		Config: unix.PERF_COUNT_SW_CPU_CLOCK,
-		Sample: sampleRate,       // 采样频率，每秒采样的次数
-		Bits:   unix.PerfBitFreq, // 表示是否使用采样频率而不是采样周期，默认为0，即使用采样周期
+		Sample: sampleRate, // 采样频率，每秒采样的次数
+		Size:   uint32(unsafe.Sizeof(unix.PerfEventAttr{})),
+		Bits:   unix.PerfBitDisabled | unix.PerfBitFreq, // 表示是否使用采样频率而不是采样周期，默认为0，即使用采样周期
 	}
 
-	if fd, err := unix.PerfEventOpen(&attr, pid, cpu, -1, unix.PERF_FLAG_FD_CLOEXEC); err != nil {
+	if fd, err := unix.PerfEventOpen(&attr, pid /* pid */, cpu /* cpu id */, -1 /* group */, unix.PERF_FLAG_FD_CLOEXEC); err != nil {
 		return errors.Wrapf(err, "open PerfEvent on pid:%d, cpu:%d failed.", pid, cpu)
 	} else {
 		pel.peFD = fd

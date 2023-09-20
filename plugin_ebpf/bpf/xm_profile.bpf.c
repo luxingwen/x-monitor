@@ -18,12 +18,13 @@ BPF_ARRAY(xm_profile_arg_map, struct xm_prog_filter_args, 1);
 // 堆栈计数
 BPF_HASH(xm_profile_sample_count_map, struct xm_profile_sample,
          struct xm_profile_sample_data, MAX_THREAD_COUNT);
-struct {
-    __uint(type, BPF_MAP_TYPE_STACK_TRACE);
-    __uint(key_size, sizeof(__u32));
-    __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64));
-    __uint(max_entries, 10240);
-} xm_profile_stack_map SEC(".maps");
+BPF_STACK_TRACE(xm_profile_stack_map, 1024);
+// struct {
+//     __uint(type, BPF_MAP_TYPE_STACK_TRACE);
+//     __uint(key_size, sizeof(__u32));
+//     __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64));
+//     __uint(max_entries, 1024);
+// } xm_profile_stack_map SEC(".maps");
 
 const enum xm_prog_filter_target_scope_type __unused_filter_scope_type
     __attribute__((unused)) = XM_PROG_FILTER_TARGET_SCOPE_TYPE_NONE;
@@ -75,7 +76,7 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
     ps.kernel_stack_id =
         bpf_get_stackid(ctx, &xm_profile_stack_map, KERN_STACKID_FLAGS);
     ps.user_stack_id =
-        bpf_get_stackid(ctx, &xm_profile_stack_map, USER_STACKID_FLAGS);
+        bpf_get_stackid(ctx, &xm_profile_stack_map, BPF_F_USER_STACK);
 
     val = __xm_bpf_map_lookup_or_try_init((void *)&xm_profile_sample_count_map,
                                           &ps, &init_psd);
