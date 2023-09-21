@@ -265,7 +265,7 @@ func (psm *ProcSymsModule) resolvePC(pc uint64) (string, uint32, string, error) 
 
 	// addr小于所有symbol的最小地址
 	if index == 0 {
-		return "", 0, "", errors.Errorf("pc:0x%x not in symtab{0x%x---0x%0x} with module:'%s'",
+		return "", 0, "", errors.Errorf("pc:0x%x is outside the mapping range{0x%x---0x%0x} with module:'%s'",
 			pc, psm.procSymTable[0].pc, psm.procSymTable[psm.SymCount-1].pc, psm.Pathname)
 	}
 

@@ -46,6 +46,7 @@ const (
 )
 
 type profileMatchTargetType uint32
+type Stacks [__perf_max_stack_depth]uint64
 
 const (
 	MatchTargetNone profileMatchTargetType = iota
@@ -476,9 +477,13 @@ func (pp *profileProgram) collectProfiles() {
 			return
 		}
 
+		var stacks Stacks
+		binary.Read(bytes.NewBuffer(stack), binary.LittleEndian, stacks[:__perf_max_stack_depth])
+
 		var frames []string
-		for i := 0; i < len(stack); i += __stackFrameSize {
-			ip := binary.LittleEndian.Uint64(stack[i : i+__stackFrameSize])
+		// for i := 0; i < len(stack); i += __stackFrameSize {
+		// 	ip := binary.LittleEndian.Uint64(stack[i : i+__stackFrameSize])
+		for _, ip := range stacks {
 			if ip == 0 {
 				break
 			}

@@ -6,6 +6,21 @@
  */
 #pragma once
 
+static __always_inline bool is_kthread() {
+    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+    if (task == NULL) {
+        return false;
+    }
+
+    void *mm;
+    int err = bpf_probe_read_kernel(&mm, 8, &task->mm);
+    if (err) {
+        return false;
+    }
+
+    return mm == NULL;
+}
+
 // false: 过滤掉
 // true: 保留
 static __always_inline bool filter_ts(void *arg_map, struct task_struct *ts,

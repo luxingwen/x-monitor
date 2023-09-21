@@ -60,9 +60,13 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
         return 0;
     }
 
-    if (pid == 0) {
-        bpf_printk("xm_do_perf_event this kernel thread:%d", tid);
+    if (is_kthread()) {
+        return 0;
     }
+
+    // if (pid == 0) {
+    //     bpf_printk("xm_do_perf_event this kernel thread:%d", tid);
+    // }
 
     // 判断过滤条件
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
@@ -72,11 +76,18 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
 
     ps.pid = pid;
     BPF_CORE_READ_STR_INTO(&ps.comm, ts, group_leader, comm);
-    //  获取内核、用户堆栈
-    ps.kernel_stack_id =
-        bpf_get_stackid(ctx, &xm_profile_stack_map, KERN_STACKID_FLAGS);
-    ps.user_stack_id =
+
+    int stack_id =
         bpf_get_stackid(ctx, &xm_profile_stack_map, BPF_F_USER_STACK);
+    if (stack_id >= 0) {
+        ps.user_stack_id = stack_id;
+    }
+
+    //  获取内核、用户堆栈
+    stack_id = bpf_get_stackid(ctx, &xm_profile_stack_map, KERN_STACKID_FLAGS);
+    if (stack_id >= 0) {
+        ps.kernel_stack_id = stack_id;
+    }
 
     val = __xm_bpf_map_lookup_or_try_init((void *)&xm_profile_sample_count_map,
                                           &ps, &init_psd);

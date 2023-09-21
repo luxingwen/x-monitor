@@ -25,9 +25,9 @@ build:
 	gofmt -s -w $(GOFILES)
 	goimports -v -w $(GOFILES)
 	go generate -v -x ./...
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -mod=vendor -pgo=auto  -v -x \
-		-ldflags "-extldflags \"-static\" -X xmonitor.calmwu/plugin_ebpf/collector/cmd.VersionMajor=$(VersionMajor) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.VersionMinor=$(VersionMinor) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.CommitHash=$(GIT_COMMIT_HASH) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.BranchName=$(GIT_BRANCH_NAME) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.BuildTime=$(BUILD_TIME) -linkmode external" \
-		-gcflags 'all=-N -l'  \
+	GOOS=linux GOARCH=amd64 go build -mod=vendor -pgo=auto  -v -x \
+		-ldflags "-extldflags \"-static\" -X xmonitor.calmwu/plugin_ebpf/collector/cmd.VersionMajor=$(VersionMajor) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.VersionMinor=$(VersionMinor) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.CommitHash=$(GIT_COMMIT_HASH) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.BranchName=$(GIT_BRANCH_NAME) -X xmonitor.calmwu/plugin_ebpf/collector/cmd.BuildTime=$(BUILD_TIME)" \
+		-gcflags 'all=-N -l' -race \
 		-o ../../bin/plugins.d/$(APP) main.go
 
 test:

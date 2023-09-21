@@ -103,6 +103,14 @@
         return 0;                                                             \
     }
 
+#define IN_USERSPACE(err) (err == -EFAULT)
+
+// Kernel addresses have the top bits set.
+// example: if (in_kernel(PT_REGS_IP(regs))) {
+static __always_inline bool in_kernel(u64 ip) {
+    return ip & (1UL << 63);
+}
+
 static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
     __sync_fetch_and_add(res, value);
     if ((0xFFFFFFFFFFFFFFFF - *res) <= value) {
