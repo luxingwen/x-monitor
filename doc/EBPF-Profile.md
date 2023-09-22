@@ -90,7 +90,7 @@
 
 ### frame pointer(fp)
 
-地址计算
+#### 地址计算
 
 ```
 (gdb) p td_io_queue
@@ -107,13 +107,17 @@ $1 = {enum fio_q_status (struct thread_data *, struct io_u *)} 0x55555557dbc0 <t
    611: 0000000000029bc0  1692 FUNC    GLOBAL DEFAULT   15 td_io_queue
 ```
 
-编译依赖
+#### 编译依赖
 
 ```
 -fno-omit-frame-pointer
     push $rbp # 在进入下一个函数(callee)时，会保存调用函数（caller）的栈帧
     mov $rbp, $rsp # 进入下一个函数(callee)后，会将新的帧地址（rsp）赋值给rbp
 ```
+
+#### 乱码
+
+Linus [is not a great lover of DWARF](https://lkml.org/lkml/2012/2/10/356), so there is not and probably will not be in-kernel DWARF support. This is why [`bpf_get_stackid()`](https://github.com/torvalds/linux/blob/0d18c12b288a177906e31fecfab58ca2243ffc02/include/uapi/linux/bpf.h#L2064) and [`bpf_get_stack()`](https://github.com/torvalds/linux/blob/0d18c12b288a177906e31fecfab58ca2243ffc02/include/uapi/linux/bpf.h#L2932) will often return gibberish if frame pointers are not built into the userspace application. 
 
 ### eh_frame进行unwind
 
@@ -123,4 +127,5 @@ $1 = {enum fio_q_status (struct thread_data *, struct io_u *)} 0x55555557dbc0 <t
 1. [基于ebpf的parca-agent profiling方案探究_ebpf_jupiter_InfoQ写作社区](https://xie.infoq.cn/article/739629c2c64a16d99cf370f00)
 1. [Unwind 栈回溯详解 - pwl999 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pwl999/p/15534946.html)
 1. [linux 栈回溯(x86_64 ) - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/302726082)
+1. [DWARF-based Stack Walking Using eBPF (polarsignals.com)](https://www.polarsignals.com/blog/posts/2022/11/29/dwarf-based-stack-walking-using-ebpf/)
 

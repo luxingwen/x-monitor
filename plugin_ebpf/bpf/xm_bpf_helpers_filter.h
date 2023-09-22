@@ -8,7 +8,7 @@
 
 static __always_inline bool is_kthread() {
     struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-    if (task == NULL) {
+    if (!task) {
         return false;
     }
 

@@ -48,7 +48,7 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
         .pgid = 0,
     }, *val;
 
-    // bpf_printk("--->xm_do_perf_event enter<---");
+    bpf_printk("--->xm_do_perf_event enter<---");
 
     // 得到线程id
     tid = __xm_get_tid();
@@ -59,6 +59,8 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
         // perf的快照没有catch到执行线程
         return 0;
     }
+
+    bpf_printk("***>xm_do_perf_event enter<***");
 
     if (is_kthread()) {
         return 0;
@@ -73,6 +75,7 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
     if (!filter_ts(&xm_profile_arg_map, ts, pid)) {
         return 0;
     }
+    bpf_printk("+++>xm_do_perf_event enter<+++");
 
     ps.pid = pid;
     BPF_CORE_READ_STR_INTO(&ps.comm, ts, group_leader, comm);
