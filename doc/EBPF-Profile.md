@@ -159,9 +159,24 @@ $1 = {enum fio_q_status (struct thread_data *, struct io_u *)} 0x55555557dbc0 <t
 1. 没有源语言信息
 2. 不支持在程序加载是同时加载调试信息
 
+DWARF’s Call Frame Information 是一种在EFL文件的.debug_frame section中保存unwind信息的规范。**通过解析这些信息，可以unwind stack**。
+
+<u>在编译的二进制不支持 stack frame pointer（gcc 开启优化有就关闭 FP，故各大发行版提供的软件包一般都不支持 FP）时， gdb/perf 使用 debuginfo（DWARF 格式，一般使用 GNU libunwind 包，或 elfutils 提供的 libdw ）来进行 stack unwinding/单步调试/内存地址和源文件对应关系。</u>
+
+每个.eh_frame section 包含一个或多个**CFI**(Call Frame Information)记录，记录的条目数量由.eh_frame 段大小决定。每条CFI记录包含一个**CIE**(Common Information Entry Record)记录，每个CIE包含一个或者多个**FDE**(Frame Description Entry)记录。
+
+通常情况下，**CIE对应一个文件，FDE对应一个函数**。
+
+**CFA (Canonical Frame Address, which is the address of %rsp in the caller frame)，CFA就是上一级调用者的堆栈指针**。
+
 #### EH_FRAME
 
-LSB(Linux Standard Base)标准中定义了一个.eh_frame section来解决上面的问题。这个section和.debug_frame非常类似，但是它编码紧凑，可以随程序一起加载。
+LSB(Linux Standard Base)标准中定义了一个.eh_frame section来解决上面的问题， [exception handler framework(.eh_frame)](https://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/ehframechpt.html)用来解决各种语言的结构对 reliable unwinding 的需求。 `.eh_frame` 是 .debug_frame 的子集，遵从 DWARF CFI Extensions 规范， `是 unwinding stack 专用的特性`。
+
+这个section和.debug_frame非常类似，但是它编码紧凑，可以随程序一起加载。
+
+- <u>`.eh_frame 会被 gcc 默认生成` ，不会被 strip，会被加载到内存（而 .debug_frame 等是会被 strip，默认不会被加载到内存）。</u>
+- 使用 readelf -Wwf XX 来查看 .eh_frame section 的内容；
 
 这个段中存储着跟函数入栈相关的关键数据。当函数执行入栈指令后，在该段会保存跟入栈指令一一对应的编码数据，根据这些编码数据，就能计算出当前函数栈大小和cpu的那些寄存器入栈了，在栈中什么位置。
 
@@ -169,14 +184,6 @@ LSB(Linux Standard Base)标准中定义了一个.eh_frame section来解决上面
 
 1. 拥有源语言信息
 2. 编码紧凑，并随程序一起加载。
-
-#### DWARF’s Call Frame Information
-
-每个.eh_frame section 包含一个或多个**CFI**(Call Frame Information)记录，记录的条目数量由.eh_frame 段大小决定。每条CFI记录包含一个**CIE**(Common Information Entry Record)记录，每个CIE包含一个或者多个**FDE**(Frame Description Entry)记录。
-
-通常情况下，**CIE对应一个文件，FDE对应一个函数**。
-
-**CFA (Canonical Frame Address, which is the address of %rsp in the caller frame)，CFA就是上一级调用者的堆栈指针**。
 
 ### eh_frame进行unwind
 
@@ -194,13 +201,120 @@ LSB(Linux Standard Base)标准中定义了一个.eh_frame section来解决上面
 4. 返回地址ra的栈位置计算。ra = CFA-8。
 5. 根据ra的值，重复步骤1到4，就形成了完整的栈回溯。
 
-## EBPF获取堆栈
+## eBPF获取用户堆栈
 
 Linus [is not a great lover of DWARF](https://lkml.org/lkml/2012/2/10/356), so there is not and probably will not be in-kernel DWARF support. This is why [`bpf_get_stackid()`](https://github.com/torvalds/linux/blob/0d18c12b288a177906e31fecfab58ca2243ffc02/include/uapi/linux/bpf.h#L2064) and [`bpf_get_stack()`](https://github.com/torvalds/linux/blob/0d18c12b288a177906e31fecfab58ca2243ffc02/include/uapi/linux/bpf.h#L2932) will often return gibberish if frame pointers are not built into the userspace application. 
 
 BFP 提供了 bpf_get_stackid()/bpf_get_stack() help func 来获取 userspace stack，但是它依赖于 userspace program 编译时开启了 frame pointer 的支持。
 
 ![image-20230924110034316](img/ebpf-with_fp)
+
+### 使用elfutils库
+
+1. 安装、编译elfutils
+
+   ```
+   git clone git://sourceware.org/git/elfutils.git
+   autoreconf -i -f &&\n./configure --enable-maintainer-mode --disable-libdebuginfod --disable-debuginfod
+   ```
+
+2. 使用stack来获取fio的运行堆栈，fio被取出了debuginfo
+
+   ```
+   ❯ sudo file /bin/fio   
+   /bin/fio: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=0c8a9a6540d4d4a8247e07553d72cde921c4379b, stripped
+   pingan in 🌐 Redhat8-01 in elfutils/src on  master [!?] via C v8.5.0-gcc 
+   ❯ sudo ./nm -A /bin/fio
+   ./nm: /bin/fio: no symbols
+   ```
+
+3. 获得堆栈
+
+   ```
+   pingan in 🌐 Redhat8-01 in elfutils/src on  master [!?] via C v8.5.0-gcc 
+   ❯ sudo cat /proc/1007004/maps
+   558c21f6a000-558c22022000 r-xp 00000000 08:02 585918                     /usr/bin/fio
+   558c22222000-558c22224000 r--p 000b8000 08:02 585918                     /usr/bin/fio
+   558c22224000-558c22304000 rw-p 000ba000 08:02 585918                     /usr/bin/fio
+   
+   ❯ sudo ./stack -i -m -s -p 1009871
+   PID 1009871 - process
+   TID 1009871:
+   #0  0x00007f1c323f2d98 __nanosleep - /usr/lib64/libc-2.28.so
+   #1  0x00007f1c3241eb28 usleep - /usr/lib64/libc-2.28.so
+   #2  0x0000555bccb14010 do_usleep - /usr/bin/fio
+       /usr/src/debug/fio-3.19-3.el8.x86_64/backend.c:2141:2
+   #3  0x0000555bccb14010 run_threads - /usr/bin/fio
+       /usr/src/debug/fio-3.19-3.el8.x86_64/backend.c:2460:3
+   #4  0x0000555bccb14662 fio_backend - /usr/bin/fio
+       /usr/src/debug/fio-3.19-3.el8.x86_64/backend.c:2513:2
+   #5  0x0000555bccac3605 main - /usr/bin/fio
+       /usr/src/debug/fio-3.19-3.el8.x86_64/fio.c:60:9
+   #6  0x00007f1c3234d493 __libc_start_main - /usr/lib64/libc-2.28.so
+   #7  0x0000555bccac365e _start - /usr/bin/fio
+   TID 1009872:
+   #0  0x00007f1c3241e29f __select - /usr/lib64/libc-2.28.so
+   #1  0x0000555bccb1c074 helper_thread_main - /usr/bin/fio
+       /usr/src/debug/fio-3.19-3.el8.x86_64/helper_thread.c:179:10
+   #2  0x00007f1c32c7d17a start_thread - /usr/lib64/libpthread-2.28.so
+   #3  0x00007f1c32426dc3 __clone - /usr/lib64/libc-2.28.so
+   TID 1009873:
+   #0  0x00007f1c3242152d syscall - /usr/lib64/libc-2.28.so
+   #1  0x00007f1c330acc15 io_submit - /usr/lib64/libaio.so.1.0.1
+   #2  0x0000555bccb1d8cf fio_libaio_commit - /usr/bin/fio
+       engines/libaio.c:307:9
+   #3  0x0000555bccad0a99 td_io_commit - /usr/bin/fio
+       /usr/src/debug/fio-3.19-3.el8.x86_64/ioengines.c:442:9
+   #4  0x0000555bccad0fb6 td_io_queue - /usr/bin/fio
+       /usr/src/debug/fio-3.19-3.el8.x86_64/ioengines.c:390:4
+   #5  0x0000555bccb104eb do_io - /usr/bin/fio
+       /usr/src/debug/fio-3.19-3.el8.x86_64/backend.c:1066:10
+   #6  0x0000555bccb12881 thread_main - /usr/bin/fio
+       /usr/src/debug/fio-3.19-3.el8.x86_64/backend.c:1791:4
+   #7  0x00007f1c32c7d17a start_thread - /usr/lib64/libpthread-2.28.so
+   #8  0x00007f1c32426dc3 __clone - /usr/lib64/libc-2.28.so
+   ```
+
+4. 对比符号地址
+
+   通过计算maps地址，得到堆栈fio_backend的pc等于6D662，通过nm查看fio_backend地址范围，说明地址是在函数范围内的。
+
+   ```
+   000000000006d805 t .annobin_fio_backend.end
+   000000000006d56e t .annobin_fio_backend.start
+   ```
+
+### 使用bpftrace
+
+1. 通过pc获得sym
+
+   ```
+   ➜  bin git:(feature-xm-ebpf-collector) ✗ bpftrace -e 'uprobe:/bin/fio:fio_libaio_commit {printf("%s\n", usym(reg("ip"))); }'
+   Attaching 1 probe...
+   fio_libaio_commit
+   fio_libaio_commit
+   fio_libaio_commit
+   ```
+
+2. bpftrace无法获得正确的堆栈，看来bpftrace是依赖frame-point
+
+   ```
+   ➜  bin git:(feature-xm-ebpf-collector) ✗ bpftrace -e 'uprobe:/bin/fio:td_io_commit {printf("%s\n", ustack(perf)); }'
+           5597dbd19eb0 0x5597dbd19eb0 ([unknown])
+           7f9961e3b000 0x7f9961e3b000 ([unknown])
+           5597dbd19eb0 0x5597dbd19eb0 ([unknown])
+           7f9961e3b000 0x7f9961e3b000 ([unknown])
+   ```
+
+   这些地址明显不对，超过了/proc/pid/maps范围
+
+   ```
+   5597db17b000-5597db233000 r-xp 00000000 08:02 585918                     /usr/bin/fio
+   5597db433000-5597db435000 r--p 000b8000 08:02 585918                     /usr/bin/fio
+   5597db435000-5597db515000 rw-p 000ba000 08:02 585918                     /usr/bin/fio
+   ```
+
+   
 
 ## 资料
 

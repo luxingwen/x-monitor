@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-06-28 14:19:24
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-06-28 18:16:19
+ * @Last Modified time: 2023-09-25 10:15:48
  */
 
 #include "utils/common.h"
@@ -48,12 +48,12 @@ static void btf_dump_printf(void *ctx, const char *fmt, va_list args) {
 }
 
 int32_t main(int32_t argc, char **argv) {
-    int32_t          err = 0;
-    int32_t          opt = 0;
-    int32_t          type_id = 0;
+    int32_t err = 0;
+    int32_t opt = 0;
+    int32_t type_id = 0;
     struct btf_dump *dump = NULL;
-    struct btf      *vmlinux_btf = NULL, *module_btf = NULL, *target_btf = NULL;
-    char            *module_name = NULL, *symbol_name = NULL;
+    struct btf *vmlinux_btf = NULL, *module_btf = NULL, *target_btf = NULL;
+    char *module_name = NULL, *symbol_name = NULL;
 
     while ((opt = getopt_long(argc, argv, __optstr, __opts, NULL)) != -1) {
         switch (opt) {
@@ -112,11 +112,13 @@ int32_t main(int32_t argc, char **argv) {
     type_id = btf__find_by_name(target_btf, symbol_name);
     if (unlikely(type_id < 0)) {
         err = type_id;
-        error("btf__load_vmlinux_btf() symbol_name: '%s' failed! ERROR(%d)", symbol_name, err);
+        error("btf__load_vmlinux_btf() symbol_name: '%s' failed! ERROR(%d)",
+              symbol_name, err);
         goto cleanup;
     }
 
-    info("Module: '%s' Symbol: %s have BTF id:%d", module_name, symbol_name, type_id);
+    info("Module: '%s' Symbol: %s have BTF id:%d", module_name, symbol_name,
+         type_id);
 
     dump = btf_dump__new(target_btf, NULL, NULL, btf_dump_printf);
 

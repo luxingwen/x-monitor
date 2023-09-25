@@ -207,6 +207,7 @@ add_subdirectory(examples/ebpf/xdp_libbpf_test)
 add_subdirectory(examples/ebpf/bootstrap_cli)
 add_subdirectory(examples/ebpf/readbtf_cli)
 add_subdirectory(examples/ebpf/deny_ptrace_cli)
+add_subdirectory(examples/ebpf/stack_unwind_cli)
 
 add_subdirectory(examples/kernel_dev/mmap_dev_module/user)
 
