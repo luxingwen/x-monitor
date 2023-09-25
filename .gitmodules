@@ -31,3 +31,6 @@
 [submodule "extra/vendor/blazesym"]
 	path = extra/vendor/blazesym
 	url = https://github.com/libbpf/blazesym.git
+[submodule "extra/vendor/elfutils"]
+	path = extra/vendor/elfutils
+	url = git://sourceware.org/git/elfutils.git
