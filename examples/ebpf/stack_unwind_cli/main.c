@@ -13,22 +13,9 @@
 #include "utils/strings.h"
 #include "utils/x_ebpf.h"
 
-void func_d() {
-    int msec = 1;
-    debug("%s", "Hello world from D");
-    usleep(10000 * msec);
-}
-void func_c() {
-    debug("%s", "Hello from C");
-    func_d();
-}
-void func_b() {
-    debug("%s", "Hello from B");
-    func_c();
-}
-void func_a() {
-    debug("%s", "Hello from A");
-    func_b();
+int test(int x) {
+    int c = 10;
+    return x * c;
 }
 
 int32_t main(int32_t argc, char *argv[]) {
@@ -39,7 +26,13 @@ int32_t main(int32_t argc, char *argv[]) {
 
     debug("start unwind example");
 
-    func_a();
+    int a, b;
+
+    a = 10;
+    b = 11;
+    debug("hello test~, %d", a + b);
+    a = test(a + b);
+    debug("hello test(a + b) = %d", a);
 
     log_fini();
 

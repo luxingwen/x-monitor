@@ -123,49 +123,107 @@
 
 6. 读取func_d的FDE信息，可以对比下面objdump -S输出的pc范围，是对应的。
 
-   每个FDE对应一个函数。
+   **每个FDE对应一个函数**，这就是函数func_d的FDE。<u>注意栈空间是从高地址向低地址扩展，因此 CFA 相对于 RSP 都是高地址。</u>
+
+   下面输出的使一个FDE的组成，
+
+   00000068：fde的offset，
+
+   000000000000001c：fde的长度，
+
+   FDE cie=00000000：fde所属的cie，
+
+   pc=0000000000401b76..0000000000401b8d：对应函数的起始pc和结束pc。
 
    ```
-   ➜  bin git:(feature-xm-ebpf-collector) ✗ readelf  -Wwf ./stack_unwind_cli                               
+   ➜  bin git:(feature-xm-ebpf-collector) ✗ readelf  -wF ./stack_unwind_cli                              
    Contents of the .eh_frame section:
    
-   00000068 000000000000001c 0000006c FDE cie=00000000 pc=0000000000401c60..0000000000401cba
-      LOC           CFA      ra    
-   0000000000401c60 rsp+8    c-8   
-   0000000000401c70 rsp+24   c-8   
-   0000000000401c81 rsp+32   c-8   
-   0000000000401c97 rsp+40   c-8   
-   0000000000401c99 rsp+48   c-8   
-   0000000000401ca7 rsp+8    c-8
+   00000068 000000000000001c 0000006c FDE cie=00000000 pc=0000000000401b76..0000000000401b8d
+      LOC           CFA      rbp   ra
+   0000000000401b76 rsp+8    u     c-8
+   0000000000401b77 rsp+16   c-16  c-8
+   0000000000401b7a rbp+16   c-16  c-8
+   0000000000401b8c rsp+8    c-16  c-8
    ```
 
-7. 反汇编func_d函数
+   可以根据pc，也就是ip寄存器，得到当前条目。
+
+   CFA：上一级的caller，这要获得rsp寄存器的值。
+
+   保存在堆栈中的通用寄存器：保存过的寄存器都可以从CFA中获取，c = CFA，例如第二行这里就是CFA-16，也就是rsp + 16 - 16
+
+   ra：上一级函数，ra = CFA-8
+
+7. golang生成unwind table结果
 
    ```
-   ➜  bin git:(feature-xm-ebpf-collector) ✗ objdump -S ./stack_unwind_cli
+   ➜  utils git:(master) ✗ GO111MODULE=off go test -v -run=TestUnwindTable|grep 401b
+       proc_sym_module_test.go:307: 9: &unwind.CompactUnwindTableRow{pc:0x401b76, lrOffset:0, cfaType:0x2, rbpType:0x0, cfaOffset:8, rbpOffset:0}
+       proc_sym_module_test.go:307: 10: &unwind.CompactUnwindTableRow{pc:0x401b77, lrOffset:0, cfaType:0x2, rbpType:0x1, cfaOffset:16, rbpOffset:-16}
+       proc_sym_module_test.go:307: 11: &unwind.CompactUnwindTableRow{pc:0x401b7a, lrOffset:0, cfaType:0x1, rbpType:0x1, cfaOffset:16, rbpOffset:-16}
+       proc_sym_module_test.go:307: 12: &unwind.CompactUnwindTableRow{pc:0x401b8c, lrOffset:0, cfaType:0x2, rbpType:0x1, cfaOffset:8, rbpOffset:-16}
+       proc_sym_module_test.go:307: 13: &unwind.CompactUnwindTableRow{pc:0x401b8d, lrOffset:0, cfaType:0x4, rbpType:0x0, cfaOffset:0, rbpOffset:0}
+       proc_sym_module_test.go:307: 14: &unwind.CompactUnwindTableRow{pc:0x401b8d, lrOffset:0, cfaType:0x2, rbpType:0x0, cfaOffset:8, rbpOffset:0}
+       proc_sym_module_test.go:307: 15: &unwind.CompactUnwindTableRow{pc:0x401b8e, lrOffset:0, cfaType:0x2, rbpType:0x1, cfaOffset:16, rbpOffset:-16}
+       proc_sym_module_test.go:307: 16: &unwind.CompactUnwindTableRow{pc:0x401b91, lrOffset:0, cfaType:0x1, rbpType:0x1, cfaOffset:16, rbpOffset:-16}
    
-   0000000000401c60 <func_d>:
-     401c60:       48 8b 3d 19 46 21 00    mov    0x214619(%rip),%rdi        # 616280 <g_log_cat>
-     401c67:       48 85 ff                test   %rdi,%rdi
-     401c6a:       74 44                   je     401cb0 <func_d+0x50>
-     401c6c:       48 83 ec 10             sub    $0x10,%rsp
-     401c70:       b9 67 fc 40 00          mov    $0x40fc67,%ecx
-     401c75:       ba 44 00 00 00          mov    $0x44,%edx
-     401c7a:       31 c0                   xor    %eax,%eax
-     401c7c:       68 c5 fb 40 00          pushq  $0x40fbc5
-     401c81:       41 b9 12 00 00 00       mov    $0x12,%r9d
-     401c87:       41 b8 06 00 00 00       mov    $0x6,%r8d
-     401c8d:       be 80 fb 40 00          mov    $0x40fb80,%esi
-     401c92:       68 62 14 41 00          pushq  $0x411462
-     401c97:       6a 14                   pushq  $0x14
-     401c99:       e8 e2 24 00 00          callq  404180 <zlog>
-     401c9e:       bf 10 27 00 00          mov    $0x2710,%edi
-     401ca3:       48 83 c4 28             add    $0x28,%rsp
-     401ca7:       e9 24 fe ff ff          jmpq   401ad0 <usleep@plt>
-     401cac:       0f 1f 40 00             nopl   0x0(%rax)
-     401cb0:       bf 10 27 00 00          mov    $0x2710,%edi
-     401cb5:       e9 16 fe ff ff          jmpq   401ad0 <usleep@plt>
-     401cba:       66 0f 1f 44 00 00       nopw   0x0(%rax,%rax,1)
+   ```
+
+8. 反汇编test函数，debug版本，objdump -d -S ./stack_unwind_cli
+
+   ```
+   0000000000401b76 <test>:
+   #include "utils/os.h"
+   #include "utils/consts.h"
+   #include "utils/strings.h"
+   #include "utils/x_ebpf.h"
+   
+   int test(int x) {
+     401b76:       55                      push   %rbp             ---------> 将上一个frame的stack起始地址入栈
+     401b77:       48 89 e5                mov    %rsp,%rbp        ---------> 将rsp赋值给rbp，rbp指向了当前frame的stack的起始地址
+     401b7a:       89 7d ec                mov    %edi,-0x14(%rbp) ---------> 获取参数，放入-0x14(%rbp) 
+       int c = 10;
+     401b7d:       c7 45 fc 0a 00 00 00    movl   $0xa,-0x4(%rbp)
+       return x * c;
+     401b84:       8b 45 ec                mov    -0x14(%rbp),%eax
+     401b87:       0f af 45 fc             imul   -0x4(%rbp),%eax
+   }
+     401b8b:       5d                      pop    %rbp
+     401b8c:       c3                      retq
+   ```
+
+9. test函数调用方main的汇编
+
+   ```
+     401c2f:       48 83 c4 10             add    $0x10,%rsp  ------> 扩大rsp将堆栈向下推，这样，a，b就可以用rbp的偏移来表示，其实还有2字节空余
+   	int a, b;
+   
+       a = 10;
+     401c33:       c7 45 f8 0a 00 00 00    movl   $0xa,-0x8(%rbp)
+       b = 11;
+     401c3a:       c7 45 fc 0b 00 00 00    movl   $0xb,-0x4(%rbp)
+     
+     
+     401c98:       e8 e3 22 00 00          callq  403f80 <zlog>
+     401c9d:       48 83 c4 20             add    $0x20,%rsp     ------> 扩展rsp，将堆栈向下推，扩大堆栈，这样
+       a = test(a + b);
+     401ca1:       8b 55 f8                mov    -0x8(%rbp),%edx
+     401ca4:       8b 45 fc                mov    -0x4(%rbp),%eax
+     401ca7:       01 d0                   add    %edx,%eax    ---------> +的结果放在%edx
+     401ca9:       89 c7                   mov    %eax,%edi    ---------> %edi参数1
+     401cab:       e8 c6 fe ff ff          callq  401b76 <test>
+     401cb0:       89 45 f8                mov    %eax,-0x8(%rbp) --------> %eax是返回值，a这个变量的地址是-0x8(%rbp)
+       debug("hello test(a + b) = %d", a);
+     401cb3:       48 c7 c0 80 62 61 00    mov    $0x616280,%rax
+     401cba:       48 8b 00                mov    (%rax),%rax
+     401cbd:       48 85 c0                test   %rax,%rax
+     401cc0:       74 4c                   je     401d0e <main+0x181>
+     401cc2:       48 c7 c0 80 62 61 00    mov    $0x616280,%rax
+     401cc9:       48 8b 00                mov    (%rax),%rax
+     401ccc:       48 83 ec 08             sub    $0x8,%rsp
+     401cd0:       8b 55 f8                mov    -0x8(%rbp),%edx
+   
    ```
 
    
