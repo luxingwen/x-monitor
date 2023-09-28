@@ -18,9 +18,26 @@
 #define TASK_WAKEKILL 0x0100
 #define __TASK_STOPPED 0x0004
 
+// 查询clang预定义宏，clang -dM -E - </dev/null > macro.txt
+#ifdef __TARGET_ARCH_x86
+
 #define PAGE_SIZE 4096
 #define PAGE_MASK (~(PAGE_SIZE - 1))
 #define PAGE_ALIGN(x) ((x + PAGE_SIZE - 1) & PAGE_MASK)
+
+#define THREAD_SIZE_ORDER 2
+#define THREAD_SIZE (PAGE_SIZE << THREAD_SIZE_ORDER)
+#define TOP_OF_KERNEL_STACK_PADDING 0
+
+// pgtable_64_types.h 内核地址空间
+#define __VMALLOC_BASE_L4 0xffffc90000000000UL
+#define VMALLOC_SIZE_TB_L4 32UL
+#define VMALLOC_START __VMALLOC_BASE_L4
+#define VMALLOC_SIZE_TB VMALLOC_SIZE_TB_L4
+#define VMALLOC_END (VMALLOC_START + (VMALLOC_SIZE_TB << 40) - 1)
+#define PAGE_OFFSET 0xffff880000000000
+
+#endif
 
 #define MAX_ERRNO 4095
 #define IS_ERR_VALUE(x) \
@@ -206,14 +223,14 @@ __xm_get_task_dflcgrp_assoc_kernfs(struct task_struct *task) {
 
 union kernfs_node_id___old {
     struct {
-        u32 ino;
-        u32 generation;
+        __u32 ino;
+        __u32 generation;
     };
-    u64 id;
+    __u64 id;
 } __attribute__((preserve_access_index));
 struct kernfs_node___418 {
     union {
-        u64 id;
+        __u64 id;
         struct {
             union kernfs_node_id___old id;
         } rh_kabi_hidden_172;
@@ -226,7 +243,7 @@ struct kernfs_node___54x {
 } __attribute__((preserve_access_index));
 
 struct kernfs_node___514x {
-    u64 id;
+    __u64 id;
 } __attribute__((preserve_access_index));
 
 static __always_inline __u64 __xm_get_cgroup_id(struct cgroup *cg) {
@@ -347,7 +364,7 @@ struct request___new {
     struct request_queue___x *q;
 } __attribute__((preserve_access_index));
 
-static struct gendisk *__xm_get_disk(void *rq) {
+static __always_inline struct gendisk *__xm_get_disk(void *rq) {
     struct request___old *o_rq = (struct request___old *)rq;
     if (bpf_core_field_exists(o_rq->rq_disk)) {
         return BPF_CORE_READ(o_rq, rq_disk);
@@ -355,4 +372,13 @@ static struct gendisk *__xm_get_disk(void *rq) {
         struct request___new *n_rq = (struct request___new *)rq;
         return BPF_CORE_READ(n_rq, q, disk);
     }
+}
+
+static __always_inline bool in_kernel_space(__u64 ip) {
+    /* Make sure we are in vmalloc area: */
+    // if (ip >= VMALLOC_START && ip < VMALLOC_END)
+    // PAGE_OFFSET代表的是内核空间和用户空间对虚拟地址空间的划分
+    if (ip > PAGE_OFFSET)
+        return true;
+    return false;
 }

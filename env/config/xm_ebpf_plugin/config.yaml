@@ -95,7 +95,6 @@ eBPF:
               labels:
                 - l_name: "app"
                   l_val: "grafana_server"
-
         ebpf_prog:
           filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
           filter_scope_value: 0

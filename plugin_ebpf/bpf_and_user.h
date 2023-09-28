@@ -178,6 +178,12 @@ struct xm_bio_request_latency_evt_data {
 };
 
 //------------------------ profile
+struct xm_task_userspace_regs {
+    __u64 rip;
+    __u64 rsp;
+    __u64 rbp;
+};
+
 struct xm_profile_sample {
     pid_t pid; // 进程id
     int kernel_stack_id; // 调用堆栈

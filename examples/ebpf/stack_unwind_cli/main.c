@@ -13,6 +13,8 @@
 #include "utils/strings.h"
 #include "utils/x_ebpf.h"
 
+static const int32_t __crycle_counts = 1000;
+
 int test(int x) {
     int c = 10;
     return x * c;
@@ -24,15 +26,21 @@ int32_t main(int32_t argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    debug("start unwind example");
+    debug("stack_unwind_cli pid:%d", getpid());
 
-    int a, b;
-
+    int a, b, c, d;
     a = 10;
     b = 11;
     debug("hello test~, %d", a + b);
-    a = test(a + b);
-    debug("hello test(a + b) = %d", a);
+
+    while (1) {
+        d = __crycle_counts;
+        do {
+            c = test(a + b);
+        } while (d--);
+        usleep(50 * 1000);
+        // debug("hello test(a + b) = %d", c);
+    }
 
     log_fini();
 

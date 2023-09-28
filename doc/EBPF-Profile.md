@@ -314,7 +314,74 @@ BFP 提供了 bpf_get_stackid()/bpf_get_stack() help func 来获取 userspace st
    5597db435000-5597db515000 rw-p 000ba000 08:02 585918                     /usr/bin/fio
    ```
 
+
+### eBPF Prog程序中怎么获取用户态的寄存器信息
+
+1. 内核中是通过如下函数来获取的，X86
+
+   ```
+   static inline void *task_stack_page(const struct task_struct *task)
+   {
+   	return task->stack;
+   }
    
+   #define task_pt_regs(task) \
+   ({									\
+   	unsigned long __ptr = (unsigned long)task_stack_page(task);	\
+   	__ptr += THREAD_SIZE - TOP_OF_KERNEL_STACK_PADDING;		\
+   	((struct pt_regs *)__ptr) - 1;					\
+   })
+   
+   static inline long get_user_reg(struct task_struct *task, int offset)
+   {
+   	return task_pt_regs(task)->uregs[offset];
+   }
+   ```
+
+   查看那elfutils代码，找到uregs每个成员对应的具体寄存器，参与CFA计算的PC寄存器是16，rsp寄存器是7，rbp寄存器是6
+
+   ```
+   bool
+   x86_64_set_initial_registers_tid (pid_t tid __attribute__ ((unused)),
+   			  ebl_tid_registers_t *setfunc __attribute__ ((unused)),
+   				  void *arg __attribute__ ((unused)))
+   {
+   #if !defined(__x86_64__) || !defined(__linux__)
+     return false;
+   #else /* __x86_64__ */
+     struct user_regs_struct user_regs;
+     if (ptrace (PTRACE_GETREGS, tid, NULL, &user_regs) != 0)
+       return false;
+     Dwarf_Word dwarf_regs[17];
+     dwarf_regs[0] = user_regs.rax;
+     dwarf_regs[1] = user_regs.rdx;
+     dwarf_regs[2] = user_regs.rcx;
+     dwarf_regs[3] = user_regs.rbx;
+     dwarf_regs[4] = user_regs.rsi;
+     dwarf_regs[5] = user_regs.rdi;
+     dwarf_regs[6] = user_regs.rbp;
+     dwarf_regs[7] = user_regs.rsp;
+     dwarf_regs[8] = user_regs.r8;
+     dwarf_regs[9] = user_regs.r9;
+     dwarf_regs[10] = user_regs.r10;
+     dwarf_regs[11] = user_regs.r11;
+     dwarf_regs[12] = user_regs.r12;
+     dwarf_regs[13] = user_regs.r13;
+     dwarf_regs[14] = user_regs.r14;
+     dwarf_regs[15] = user_regs.r15;
+     dwarf_regs[16] = user_regs.rip;
+     return setfunc (0, 17, dwarf_regs, arg);
+   #endif /* __x86_64__ */
+   }
+   ```
+
+   
+
+2. struct task_struct.stack成员的含义
+
+   struct task_struct结构中的stack成员是一个指针，它指向进程的内核栈的地址。内核栈是当进程从用户空间进入内核空间时，特权级发生变化，需要切换堆栈，那么内核空间中使用的就是这个内核栈。12 内核栈的大小是固定的，通常是8KB或16KB，它是由一个union thread_union结构体或一个struct thread_info结构体来表示的。32 stack成员可以通过宏task_stack_page(task)来访问，它返回一个void *类型的指针，指向内核栈的底部。
+
+   当进程从用户态切换到内核态（例如，在执行系统调用时）或从内核态切换回用户态时，内核会使用这个内核栈来保存和恢复进程的上下文信息。这包括寄存器的值、栈指针等。
 
 ## 资料
 
