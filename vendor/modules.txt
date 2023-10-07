@@ -86,6 +86,11 @@ github.com/gin-gonic/gin/binding
 github.com/gin-gonic/gin/internal/bytesconv
 github.com/gin-gonic/gin/internal/json
 github.com/gin-gonic/gin/render
+# github.com/go-delve/delve v1.21.0
+## explicit; go 1.16
+github.com/go-delve/delve/pkg/dwarf
+github.com/go-delve/delve/pkg/dwarf/frame
+github.com/go-delve/delve/pkg/dwarf/leb128
 # github.com/go-kit/log v0.2.1
 ## explicit; go 1.17
 github.com/go-kit/log
@@ -370,7 +375,7 @@ github.com/vishvananda/netlink/nl
 ## explicit; go 1.17
 github.com/vishvananda/netns
 # github.com/wubo0067/calmwu-go v0.0.0-20230922070835-f4f95321b575
-## explicit; go 1.18
+## explicit
 github.com/wubo0067/calmwu-go/utils
 # go.opentelemetry.io/otel v1.18.0
 ## explicit; go 1.20

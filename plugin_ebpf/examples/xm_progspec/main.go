@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-01-16 11:06:19
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-01-16 11:14:16
+ * @Last Modified time: 2023-10-07 16:13:27
  */
 
 package main
@@ -199,7 +199,7 @@ func main() {
 	}
 
 	for key, progSpec := range spec.Programs {
-		glog.Infof(`progSpec key:'%s', Name:'%s', ProgramType:%d, AttachType:%d, AttachTo:'%s', 
+		glog.Infof(`progSpec key:'%s', Name:'%s', ProgramType:%d, AttachType:%d, AttachTo:'%s',
 		SectionName:'%s', AttachTarget:%p, Instructions len:%d`,
 			key, progSpec.Name, progSpec.Type, progSpec.AttachType,
 			progSpec.AttachTo, progSpec.SectionName, progSpec.AttachTarget, len(progSpec.Instructions))
