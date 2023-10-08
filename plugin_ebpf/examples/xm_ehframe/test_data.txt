@@ -1,0 +1,393 @@
+
+
+
+555deaa21000-555deaad9000 r-xp 00000000 08:02 585918                     /usr/bin/fio
+555deacd9000-555deacdb000 r--p 000b8000 08:02 585918                     /usr/bin/fio
+555deacdb000-555deadbb000 rw-p 000ba000 08:02 585918                     /usr/bin/fio
+555deadbb000-555deae4a000 rw-p 00000000 00:00 0
+555dec9de000-555deca6d000 rw-p 00000000 00:00 0                          [heap]
+7f6af0000000-7f6af0021000 rw-p 00000000 00:00 0
+7f6af0021000-7f6af4000000 ---p 00000000 00:00 0
+7f6af8000000-7f6af8021000 rw-p 00000000 00:00 0
+7f6af8021000-7f6afc000000 ---p 00000000 00:00 0
+7f6afe35d000-7f6afe35e000 ---p 00000000 00:00 0
+7f6afe35e000-7f6afeb5e000 rw-p 00000000 00:00 0
+7f6afeb5e000-7f6afeb5f000 ---p 00000000 00:00 0
+7f6afeb5f000-7f6aff35f000 rw-p 00000000 00:00 0
+7f6aff35f000-7f6b43d78000 rw-s 00000000 00:01 44                         /SYSV00000000 (deleted)
+7f6b43d78000-7f6b50d2d000 r--p 00000000 08:02 988867                     /usr/lib/locale/locale-archive
+7f6b50d2d000-7f6b50f2e000 rw-p 00000000 00:00 0
+7f6b50f2e000-7f6b51f3f000 rw-s 00000000 00:01 31136180                   /dev/zero (deleted)
+7f6b51f3f000-7f6b52f50000 rw-s 00000000 00:01 31136178                   /dev/zero (deleted)
+7f6b52f50000-7f6b53f61000 rw-s 00000000 00:01 31136176                   /dev/zero (deleted)
+7f6b53f61000-7f6b54f72000 rw-s 00000000 00:01 31136174                   /dev/zero (deleted)
+7f6b54f72000-7f6b55f83000 rw-s 00000000 00:01 31136172                   /dev/zero (deleted)
+7f6b55f83000-7f6b56f94000 rw-s 00000000 00:01 31136170                   /dev/zero (deleted)
+7f6b56f94000-7f6b57fa5000 rw-s 00000000 00:01 31136168                   /dev/zero (deleted)
+7f6b57fa5000-7f6b58fb6000 rw-s 00000000 00:01 31136166                   /dev/zero (deleted)
+7f6b58fb6000-7f6b59039000 r-xp 00000000 08:02 16908709                   /usr/lib64/libpcre2-8.so.0.7.1
+7f6b59039000-7f6b59238000 ---p 00083000 08:02 16908709                   /usr/lib64/libpcre2-8.so.0.7.1
+7f6b59238000-7f6b59239000 r--p 00082000 08:02 16908709                   /usr/lib64/libpcre2-8.so.0.7.1
+7f6b59239000-7f6b5923a000 rw-p 00083000 08:02 16908709                   /usr/lib64/libpcre2-8.so.0.7.1
+7f6b5923a000-7f6b59261000 r-xp 00000000 08:02 16908712                   /usr/lib64/libselinux.so.1
+7f6b59261000-7f6b59460000 ---p 00027000 08:02 16908712                   /usr/lib64/libselinux.so.1
+7f6b59460000-7f6b59461000 r--p 00026000 08:02 16908712                   /usr/lib64/libselinux.so.1
+7f6b59461000-7f6b59462000 rw-p 00027000 08:02 16908712                   /usr/lib64/libselinux.so.1
+7f6b59462000-7f6b59464000 rw-p 00000000 00:00 0
+7f6b59464000-7f6b59718000 r-xp 00000000 08:02 17314674                   /usr/lib64/libcrypto.so.1.1.1k
+7f6b59718000-7f6b59918000 ---p 002b4000 08:02 17314674                   /usr/lib64/libcrypto.so.1.1.1k
+7f6b59918000-7f6b59944000 r--p 002b4000 08:02 17314674                   /usr/lib64/libcrypto.so.1.1.1k
+7f6b59944000-7f6b59948000 rw-p 002e0000 08:02 17314674                   /usr/lib64/libcrypto.so.1.1.1k
+7f6b59948000-7f6b5994d000 rw-p 00000000 00:00 0
+7f6b5994d000-7f6b599d4000 r-xp 00000000 08:02 17314676                   /usr/lib64/libssl.so.1.1.1k
+7f6b599d4000-7f6b59bd3000 ---p 00087000 08:02 17314676                   /usr/lib64/libssl.so.1.1.1k
+7f6b59bd3000-7f6b59bdc000 r--p 00086000 08:02 17314676                   /usr/lib64/libssl.so.1.1.1k
+7f6b59bdc000-7f6b59be0000 rw-p 0008f000 08:02 17314676                   /usr/lib64/libssl.so.1.1.1k
+7f6b59be0000-7f6b59be1000 rw-p 00000000 00:00 0
+7f6b59be1000-7f6b59c06000 r-xp 00000000 08:02 17077790                   /usr/lib64/liblzma.so.5.2.4
+7f6b59c06000-7f6b59e06000 ---p 00025000 08:02 17077790                   /usr/lib64/liblzma.so.5.2.4
+7f6b59e06000-7f6b59e07000 r--p 00025000 08:02 17077790                   /usr/lib64/liblzma.so.5.2.4
+7f6b59e07000-7f6b59e08000 rw-p 00000000 00:00 0
+7f6b59e08000-7f6b59fb6000 r-xp 00000000 08:02 17078631                   /usr/lib64/libicuuc.so.60.3
+7f6b59fb6000-7f6b5a1b5000 ---p 001ae000 08:02 17078631                   /usr/lib64/libicuuc.so.60.3
+7f6b5a1b5000-7f6b5a1c8000 r--p 001ad000 08:02 17078631                   /usr/lib64/libicuuc.so.60.3
+7f6b5a1c8000-7f6b5a1c9000 rw-p 001c0000 08:02 17078631                   /usr/lib64/libicuuc.so.60.3
+7f6b5a1c9000-7f6b5a1ca000 rw-p 00000000 00:00 0
+7f6b5a1ca000-7f6b5a47c000 r-xp 00000000 08:02 17078623                   /usr/lib64/libicui18n.so.60.3
+7f6b5a47c000-7f6b5a67b000 ---p 002b2000 08:02 17078623                   /usr/lib64/libicui18n.so.60.3
+7f6b5a67b000-7f6b5a68a000 r--p 002b1000 08:02 17078623                   /usr/lib64/libicui18n.so.60.3
+7f6b5a68a000-7f6b5a68b000 rw-p 002c0000 08:02 17078623                   /usr/lib64/libicui18n.so.60.3
+7f6b5a68b000-7f6b5c034000 r-xp 00000000 08:02 17078621                   /usr/lib64/libicudata.so.60.3
+7f6b5c034000-7f6b5c233000 ---p 019a9000 08:02 17078621                   /usr/lib64/libicudata.so.60.3
+7f6b5c233000-7f6b5c234000 r--p 019a8000 08:02 17078621                   /usr/lib64/libicudata.so.60.3
+7f6b5c234000-7f6b5c235000 rw-p 00000000 00:00 0
+7f6b5c235000-7f6b5c245000 r-xp 00000000 08:02 17077798                   /usr/lib64/libbz2.so.1.0.6
+7f6b5c245000-7f6b5c444000 ---p 00010000 08:02 17077798                   /usr/lib64/libbz2.so.1.0.6
+7f6b5c444000-7f6b5c445000 r--p 0000f000 08:02 17077798                   /usr/lib64/libbz2.so.1.0.6
+7f6b5c445000-7f6b5c446000 rw-p 00010000 08:02 17077798                   /usr/lib64/libbz2.so.1.0.6
+7f6b5c446000-7f6b5c49b000 r-xp 00000000 08:02 17314156                   /usr/lib64/libmount.so.1.1.0
+7f6b5c49b000-7f6b5c69b000 ---p 00055000 08:02 17314156                   /usr/lib64/libmount.so.1.1.0
+7f6b5c69b000-7f6b5c69e000 r--p 00055000 08:02 17314156                   /usr/lib64/libmount.so.1.1.0
+7f6b5c69e000-7f6b5c69f000 rw-p 00058000 08:02 17314156                   /usr/lib64/libmount.so.1.1.0
+7f6b5c69f000-7f6b5c6a0000 rw-p 00000000 00:00 0
+7f6b5c6a0000-7f6b5c6b7000 r-xp 00000000 08:02 17314438                   /usr/lib64/libkmod.so.2.3.3
+7f6b5c6b7000-7f6b5c8b6000 ---p 00017000 08:02 17314438                   /usr/lib64/libkmod.so.2.3.3
+7f6b5c8b6000-7f6b5c8b7000 r--p 00016000 08:02 17314438                   /usr/lib64/libkmod.so.2.3.3
+7f6b5c8b7000-7f6b5c8b8000 rw-p 00017000 08:02 17314438                   /usr/lib64/libkmod.so.2.3.3
+7f6b5c8b8000-7f6b5c8be000 r-xp 00000000 08:02 17077807                   /usr/lib64/libuuid.so.1.3.0
+7f6b5c8be000-7f6b5cabe000 ---p 00006000 08:02 17077807                   /usr/lib64/libuuid.so.1.3.0
+7f6b5cabe000-7f6b5cabf000 r--p 00006000 08:02 17077807                   /usr/lib64/libuuid.so.1.3.0
+7f6b5cabf000-7f6b5cac0000 rw-p 00000000 00:00 0
+7f6b5cac0000-7f6b5cb3b000 r-xp 00000000 08:02 17078040                   /usr/lib64/libnl-route-3.so.200.26.0
+7f6b5cb3b000-7f6b5cd3b000 ---p 0007b000 08:02 17078040                   /usr/lib64/libnl-route-3.so.200.26.0
+7f6b5cd3b000-7f6b5cd3f000 r--p 0007b000 08:02 17078040                   /usr/lib64/libnl-route-3.so.200.26.0
+7f6b5cd3f000-7f6b5cd44000 rw-p 0007f000 08:02 17078040                   /usr/lib64/libnl-route-3.so.200.26.0
+7f6b5cd44000-7f6b5cd46000 rw-p 00000000 00:00 0
+7f6b5cd46000-7f6b5cd67000 r-xp 00000000 08:02 17078032                   /usr/lib64/libnl-3.so.200.26.0
+7f6b5cd67000-7f6b5cf66000 ---p 00021000 08:02 17078032                   /usr/lib64/libnl-3.so.200.26.0
+7f6b5cf66000-7f6b5cf68000 r--p 00020000 08:02 17078032                   /usr/lib64/libnl-3.so.200.26.0
+7f6b5cf68000-7f6b5cf69000 rw-p 00022000 08:02 17078032                   /usr/lib64/libnl-3.so.200.26.0
+7f6b5cf69000-7f6b5cf80000 r-xp 00000000 08:02 16777360                   /usr/lib64/libgcc_s-8-20210514.so.1
+7f6b5cf80000-7f6b5d17f000 ---p 00017000 08:02 16777360                   /usr/lib64/libgcc_s-8-20210514.so.1
+7f6b5d17f000-7f6b5d180000 r--p 00016000 08:02 16777360                   /usr/lib64/libgcc_s-8-20210514.so.1
+7f6b5d180000-7f6b5d181000 rw-p 00017000 08:02 16777360                   /usr/lib64/libgcc_s-8-20210514.so.1
+7f6b5d181000-7f6b5d307000 r-xp 00000000 08:02 17077792                   /usr/lib64/libstdc++.so.6.0.25
+7f6b5d307000-7f6b5d506000 ---p 00186000 08:02 17077792                   /usr/lib64/libstdc++.so.6.0.25
+7f6b5d506000-7f6b5d512000 r--p 00185000 08:02 17077792                   /usr/lib64/libstdc++.so.6.0.25
+7f6b5d512000-7f6b5d513000 rw-p 00191000 08:02 17077792                   /usr/lib64/libstdc++.so.6.0.25
+7f6b5d513000-7f6b5d516000 rw-p 00000000 00:00 0
+7f6b5d516000-7f6b5d552000 r-xp 00000000 08:02 17078111                   /usr/lib64/libnspr4.so
+7f6b5d552000-7f6b5d751000 ---p 0003c000 08:02 17078111                   /usr/lib64/libnspr4.so
+7f6b5d751000-7f6b5d753000 r--p 0003b000 08:02 17078111                   /usr/lib64/libnspr4.so
+7f6b5d753000-7f6b5d754000 rw-p 0003d000 08:02 17078111                   /usr/lib64/libnspr4.so
+7f6b5d754000-7f6b5d757000 rw-p 00000000 00:00 0
+7f6b5d757000-7f6b5d75b000 r-xp 00000000 08:02 17078208                   /usr/lib64/libplc4.so
+7f6b5d75b000-7f6b5d95a000 ---p 00004000 08:02 17078208                   /usr/lib64/libplc4.so
+7f6b5d95a000-7f6b5d95b000 r--p 00003000 08:02 17078208                   /usr/lib64/libplc4.so
+7f6b5d95b000-7f6b5d95c000 rw-p 00004000 08:02 17078208                   /usr/lib64/libplc4.so
+7f6b5d95c000-7f6b5d95f000 r-xp 00000000 08:02 17078209                   /usr/lib64/libplds4.so
+7f6b5d95f000-7f6b5db5e000 ---p 00003000 08:02 17078209                   /usr/lib64/libplds4.so
+7f6b5db5e000-7f6b5db5f000 r--p 00002000 08:02 17078209                   /usr/lib64/libplds4.so
+7f6b5db5f000-7f6b5db60000 rw-p 00003000 08:02 17078209                   /usr/lib64/libplds4.so
+7f6b5db60000-7f6b5db8a000 r-xp 00000000 08:02 17078213                   /usr/lib64/libnssutil3.so
+7f6b5db8a000-7f6b5dd8a000 ---p 0002a000 08:02 17078213                   /usr/lib64/libnssutil3.so
+7f6b5dd8a000-7f6b5dd91000 r--p 0002a000 08:02 17078213                   /usr/lib64/libnssutil3.so
+7f6b5dd91000-7f6b5dd92000 rw-p 00031000 08:02 17078213                   /usr/lib64/libnssutil3.so
+7f6b5dd92000-7f6b5dec4000 r-xp 00000000 08:02 17617794                   /usr/lib64/libnss3.so
+7f6b5dec4000-7f6b5e0c3000 ---p 00132000 08:02 17617794                   /usr/lib64/libnss3.so
+7f6b5e0c3000-7f6b5e0ca000 r--p 00131000 08:02 17617794                   /usr/lib64/libnss3.so
+7f6b5e0ca000-7f6b5e0cb000 rw-p 00138000 08:02 17617794                   /usr/lib64/libnss3.so
+7f6b5e0cb000-7f6b5e0cd000 rw-p 00000000 00:00 0
+7f6b5e0cd000-7f6b5e0f3000 r-xp 00000000 08:02 17617795                   /usr/lib64/libsmime3.so
+7f6b5e0f3000-7f6b5e2f3000 ---p 00026000 08:02 17617795                   /usr/lib64/libsmime3.so
+7f6b5e2f3000-7f6b5e2f6000 r--p 00026000 08:02 17617795                   /usr/lib64/libsmime3.so
+7f6b5e2f6000-7f6b5e2f7000 rw-p 00029000 08:02 17617795                   /usr/lib64/libsmime3.so
+7f6b5e2f7000-7f6b5e356000 r-xp 00000000 08:02 17617796                   /usr/lib64/libssl3.so
+7f6b5e356000-7f6b5e556000 ---p 0005f000 08:02 17617796                   /usr/lib64/libssl3.so
+7f6b5e556000-7f6b5e55a000 r--p 0005f000 08:02 17617796                   /usr/lib64/libssl3.so
+7f6b5e55a000-7f6b5e55b000 rw-p 00063000 08:02 17617796                   /usr/lib64/libssl3.so
+7f6b5e55b000-7f6b5e5a7000 r-xp 00000000 08:02 17314648                   /usr/lib64/libblkid.so.1.1.0
+7f6b5e5a7000-7f6b5e7a7000 ---p 0004c000 08:02 17314648                   /usr/lib64/libblkid.so.1.1.0
+7f6b5e7a7000-7f6b5e7ac000 r--p 0004c000 08:02 17314648                   /usr/lib64/libblkid.so.1.1.0
+7f6b5e7ac000-7f6b5e7ad000 rw-p 00051000 08:02 17314648                   /usr/lib64/libblkid.so.1.1.0
+7f6b5e7ad000-7f6b5e7ae000 rw-p 00000000 00:00 0
+7f6b5e7ae000-7f6b5e8c6000 r-xp 00000000 08:02 18206690                   /usr/lib64/libboost_regex.so.1.66.0
+7f6b5e8c6000-7f6b5eac6000 ---p 00118000 08:02 18206690                   /usr/lib64/libboost_regex.so.1.66.0
+7f6b5eac6000-7f6b5eacc000 r--p 00118000 08:02 18206690                   /usr/lib64/libboost_regex.so.1.66.0
+7f6b5eacc000-7f6b5eacd000 rw-p 0011e000 08:02 18206690                   /usr/lib64/libboost_regex.so.1.66.0
+7f6b5eacd000-7f6b5eae8000 r-xp 00000000 08:02 17911545                   /usr/lib64/libboost_iostreams.so.1.66.0
+7f6b5eae8000-7f6b5ece7000 ---p 0001b000 08:02 17911545                   /usr/lib64/libboost_iostreams.so.1.66.0
+7f6b5ece7000-7f6b5ece9000 r--p 0001a000 08:02 17911545                   /usr/lib64/libboost_iostreams.so.1.66.0
+7f6b5ece9000-7f6b5ecea000 rw-p 0001c000 08:02 17911545                   /usr/lib64/libboost_iostreams.so.1.66.0
+7f6b5ecea000-7f6b5ecfb000 r-xp 00000000 08:02 18206707                   /usr/lib64/libboost_date_time.so.1.66.0
+7f6b5ecfb000-7f6b5eefb000 ---p 00011000 08:02 18206707                   /usr/lib64/libboost_date_time.so.1.66.0
+7f6b5eefb000-7f6b5eefc000 r--p 00011000 08:02 18206707                   /usr/lib64/libboost_date_time.so.1.66.0
+7f6b5eefc000-7f6b5eefd000 rw-p 00012000 08:02 18206707                   /usr/lib64/libboost_date_time.so.1.66.0
+7f6b5eefd000-7f6b5ef7b000 r-xp 00000000 08:02 17911544                   /usr/lib64/libboost_program_options.so.1.66.0
+7f6b5ef7b000-7f6b5f17a000 ---p 0007e000 08:02 17911544                   /usr/lib64/libboost_program_options.so.1.66.0
+7f6b5f17a000-7f6b5f17e000 r--p 0007d000 08:02 17911544                   /usr/lib64/libboost_program_options.so.1.66.0
+7f6b5f17e000-7f6b5f17f000 rw-p 00081000 08:02 17911544                   /usr/lib64/libboost_program_options.so.1.66.0
+7f6b5f17f000-7f6b5f186000 r-xp 00000000 08:02 17911539                   /usr/lib64/libboost_random.so.1.66.0
+7f6b5f186000-7f6b5f386000 ---p 00007000 08:02 17911539                   /usr/lib64/libboost_random.so.1.66.0
+7f6b5f386000-7f6b5f387000 r--p 00007000 08:02 17911539                   /usr/lib64/libboost_random.so.1.66.0
+7f6b5f387000-7f6b5f388000 rw-p 00008000 08:02 17911539                   /usr/lib64/libboost_random.so.1.66.0
+7f6b5f388000-7f6b5f389000 r-xp 00000000 08:02 18206706                   /usr/lib64/libboost_atomic.so.1.66.0
+7f6b5f389000-7f6b5f588000 ---p 00001000 08:02 18206706                   /usr/lib64/libboost_atomic.so.1.66.0
+7f6b5f588000-7f6b5f589000 r--p 00000000 08:02 18206706                   /usr/lib64/libboost_atomic.so.1.66.0
+7f6b5f589000-7f6b5f58a000 rw-p 00000000 00:00 0
+7f6b5f58a000-7f6b5f592000 r-xp 00000000 08:02 18167486                   /usr/lib64/libboost_chrono.so.1.66.0
+7f6b5f592000-7f6b5f791000 ---p 00008000 08:02 18167486                   /usr/lib64/libboost_chrono.so.1.66.0
+7f6b5f791000-7f6b5f792000 r--p 00007000 08:02 18167486                   /usr/lib64/libboost_chrono.so.1.66.0
+7f6b5f792000-7f6b5f793000 rw-p 00008000 08:02 18167486                   /usr/lib64/libboost_chrono.so.1.66.0
+7f6b5f793000-7f6b5f797000 r-xp 00000000 08:02 18156357                   /usr/lib64/libboost_system.so.1.66.0
+7f6b5f797000-7f6b5f996000 ---p 00004000 08:02 18156357                   /usr/lib64/libboost_system.so.1.66.0
+7f6b5f996000-7f6b5f997000 r--p 00003000 08:02 18156357                   /usr/lib64/libboost_system.so.1.66.0
+7f6b5f997000-7f6b5f998000 rw-p 00004000 08:02 18156357                   /usr/lib64/libboost_system.so.1.66.0
+7f6b5f998000-7f6b5f9c1000 r-xp 00000000 08:02 18171574                   /usr/lib64/libboost_thread.so.1.66.0
+7f6b5f9c1000-7f6b5fbc1000 ---p 00029000 08:02 18171574                   /usr/lib64/libboost_thread.so.1.66.0
+7f6b5fbc1000-7f6b5fbc3000 r--p 00029000 08:02 18171574                   /usr/lib64/libboost_thread.so.1.66.0
+7f6b5fbc3000-7f6b5fbc4000 rw-p 0002b000 08:02 18171574                   /usr/lib64/libboost_thread.so.1.66.0
+7f6b5fbc4000-7f6b5fc56000 r-xp 00000000 08:02 17314531                   /usr/lib64/libudev.so.1.6.11
+7f6b5fc56000-7f6b5fe56000 ---p 00092000 08:02 17314531                   /usr/lib64/libudev.so.1.6.11
+7f6b5fe56000-7f6b5fe5a000 r--p 00092000 08:02 17314531                   /usr/lib64/libudev.so.1.6.11
+7f6b5fe5a000-7f6b5fe5b000 rw-p 00096000 08:02 17314531                   /usr/lib64/libudev.so.1.6.11
+7f6b5fe5b000-7f6b5fe6f000 r-xp 00000000 08:02 16908777                   /usr/lib64/libresolv-2.28.so
+7f6b5fe6f000-7f6b6006e000 ---p 00014000 08:02 16908777                   /usr/lib64/libresolv-2.28.so
+7f6b6006e000-7f6b6006f000 r--p 00013000 08:02 16908777                   /usr/lib64/libresolv-2.28.so
+7f6b6006f000-7f6b60070000 rw-p 00014000 08:02 16908777                   /usr/lib64/libresolv-2.28.so
+7f6b60070000-7f6b60072000 rw-p 00000000 00:00 0
+7f6b60072000-7f6b6093a000 r-xp 00000000 08:02 33596982                   /usr/lib64/ceph/libceph-common.so.0
+7f6b6093a000-7f6b60b3a000 ---p 008c8000 08:02 33596982                   /usr/lib64/ceph/libceph-common.so.0
+7f6b60b3a000-7f6b60b56000 r--p 008c8000 08:02 33596982                   /usr/lib64/ceph/libceph-common.so.0
+7f6b60b56000-7f6b60b5d000 rw-p 008e4000 08:02 33596982                   /usr/lib64/ceph/libceph-common.so.0
+7f6b60b5d000-7f6b68d7b000 rw-p 00000000 00:00 0
+7f6b68d7b000-7f6b68d84000 r-xp 00000000 08:02 17911538                   /usr/lib64/libdaxctl.so.1.5.0
+7f6b68d84000-7f6b68f83000 ---p 00009000 08:02 17911538                   /usr/lib64/libdaxctl.so.1.5.0
+7f6b68f83000-7f6b68f84000 r--p 00008000 08:02 17911538                   /usr/lib64/libdaxctl.so.1.5.0
+7f6b68f84000-7f6b68f85000 rw-p 00000000 00:00 0
+7f6b68f85000-7f6b68faa000 r-xp 00000000 08:02 17916720                   /usr/lib64/libndctl.so.6.19.1
+7f6b68faa000-7f6b691aa000 ---p 00025000 08:02 17916720                   /usr/lib64/libndctl.so.6.19.1
+7f6b691aa000-7f6b691ab000 r--p 00025000 08:02 17916720                   /usr/lib64/libndctl.so.6.19.1
+7f6b691ab000-7f6b691ac000 rw-p 00026000 08:02 17916720                   /usr/lib64/libndctl.so.6.19.1
+7f6b691ac000-7f6b69368000 r-xp 00000000 08:02 16908761                   /usr/lib64/libc-2.28.so
+7f6b69368000-7f6b69567000 ---p 001bc000 08:02 16908761                   /usr/lib64/libc-2.28.so
+7f6b69567000-7f6b6956b000 r--p 001bb000 08:02 16908761                   /usr/lib64/libc-2.28.so
+7f6b6956b000-7f6b6956d000 rw-p 001bf000 08:02 16908761                   /usr/lib64/libc-2.28.so
+7f6b6956d000-7f6b69571000 rw-p 00000000 00:00 0
+7f6b69571000-7f6b69574000 r-xp 00000000 08:02 16908763                   /usr/lib64/libdl-2.28.so
+7f6b69574000-7f6b69773000 ---p 00003000 08:02 16908763                   /usr/lib64/libdl-2.28.so
+7f6b69773000-7f6b69774000 r--p 00002000 08:02 16908763                   /usr/lib64/libdl-2.28.so
+7f6b69774000-7f6b69775000 rw-p 00003000 08:02 16908763                   /usr/lib64/libdl-2.28.so
+7f6b69775000-7f6b698f6000 r-xp 00000000 08:02 16908765                   /usr/lib64/libm-2.28.so
+7f6b698f6000-7f6b69af5000 ---p 00181000 08:02 16908765                   /usr/lib64/libm-2.28.so
+7f6b69af5000-7f6b69af6000 r--p 00180000 08:02 16908765                   /usr/lib64/libm-2.28.so
+7f6b69af6000-7f6b69af7000 rw-p 00181000 08:02 16908765                   /usr/lib64/libm-2.28.so
+7f6b69af7000-7f6b69b12000 r-xp 00000000 08:02 16908775                   /usr/lib64/libpthread-2.28.so
+7f6b69b12000-7f6b69d11000 ---p 0001b000 08:02 16908775                   /usr/lib64/libpthread-2.28.so
+7f6b69d11000-7f6b69d12000 r--p 0001a000 08:02 16908775                   /usr/lib64/libpthread-2.28.so
+7f6b69d12000-7f6b69d13000 rw-p 0001b000 08:02 16908775                   /usr/lib64/libpthread-2.28.so
+7f6b69d13000-7f6b69d17000 rw-p 00000000 00:00 0
+7f6b69d17000-7f6b69d2d000 r-xp 00000000 08:02 17077877                   /usr/lib64/libz.so.1.2.11
+7f6b69d2d000-7f6b69f2c000 ---p 00016000 08:02 17077877                   /usr/lib64/libz.so.1.2.11
+7f6b69f2c000-7f6b69f2d000 r--p 00015000 08:02 17077877                   /usr/lib64/libz.so.1.2.11
+7f6b69f2d000-7f6b69f2e000 rw-p 00000000 00:00 0
+7f6b69f2e000-7f6b69f30000 r-xp 00000000 08:02 17078244                   /usr/lib64/libaio.so.1.0.1
+7f6b69f30000-7f6b6a12f000 ---p 00002000 08:02 17078244                   /usr/lib64/libaio.so.1.0.1
+7f6b6a12f000-7f6b6a130000 r--p 00001000 08:02 17078244                   /usr/lib64/libaio.so.1.0.1
+7f6b6a130000-7f6b6a131000 rw-p 00000000 00:00 0
+7f6b6a131000-7f6b6a138000 r-xp 00000000 08:02 16908779                   /usr/lib64/librt-2.28.so
+7f6b6a138000-7f6b6a337000 ---p 00007000 08:02 16908779                   /usr/lib64/librt-2.28.so
+7f6b6a337000-7f6b6a338000 r--p 00006000 08:02 16908779                   /usr/lib64/librt-2.28.so
+7f6b6a338000-7f6b6a339000 rw-p 00007000 08:02 16908779                   /usr/lib64/librt-2.28.so
+7f6b6a339000-7f6b6a357000 r-xp 00000000 08:02 17617420                   /usr/lib64/libibverbs.so.1.13.35.0
+7f6b6a357000-7f6b6a557000 ---p 0001e000 08:02 17617420                   /usr/lib64/libibverbs.so.1.13.35.0
+7f6b6a557000-7f6b6a558000 r--p 0001e000 08:02 17617420                   /usr/lib64/libibverbs.so.1.13.35.0
+7f6b6a558000-7f6b6a559000 rw-p 0001f000 08:02 17617420                   /usr/lib64/libibverbs.so.1.13.35.0
+7f6b6a559000-7f6b6a572000 r-xp 00000000 08:02 17916729                   /usr/lib64/librdmacm.so.1.3.35.0
+7f6b6a572000-7f6b6a771000 ---p 00019000 08:02 17916729                   /usr/lib64/librdmacm.so.1.3.35.0
+7f6b6a771000-7f6b6a772000 r--p 00018000 08:02 17916729                   /usr/lib64/librdmacm.so.1.3.35.0
+7f6b6a772000-7f6b6a773000 rw-p 00019000 08:02 17916729                   /usr/lib64/librdmacm.so.1.3.35.0
+7f6b6a773000-7f6b6a774000 rw-p 00000000 00:00 0
+7f6b6a774000-7f6b6a77f000 r-xp 00000000 08:02 17078390                   /usr/lib64/libnuma.so.1.0.0
+7f6b6a77f000-7f6b6a97e000 ---p 0000b000 08:02 17078390                   /usr/lib64/libnuma.so.1.0.0
+7f6b6a97e000-7f6b6a97f000 r--p 0000a000 08:02 17078390                   /usr/lib64/libnuma.so.1.0.0
+7f6b6a97f000-7f6b6a980000 rw-p 0000b000 08:02 17078390                   /usr/lib64/libnuma.so.1.0.0
+7f6b6a980000-7f6b6aabc000 r-xp 00000000 08:02 17911551                   /usr/lib64/librados.so.2.0.0
+7f6b6aabc000-7f6b6acbb000 ---p 0013c000 08:02 17911551                   /usr/lib64/librados.so.2.0.0
+7f6b6acbb000-7f6b6acc1000 r--p 0013b000 08:02 17911551                   /usr/lib64/librados.so.2.0.0
+7f6b6acc1000-7f6b6acc2000 rw-p 00141000 08:02 17911551                   /usr/lib64/librados.so.2.0.0
+7f6b6acc2000-7f6b6afdd000 r-xp 00000000 08:02 17916718                   /usr/lib64/librbd.so.1.12.0
+7f6b6afdd000-7f6b6b1dc000 ---p 0031b000 08:02 17916718                   /usr/lib64/librbd.so.1.12.0
+7f6b6b1dc000-7f6b6b1e7000 r--p 0031a000 08:02 17916718                   /usr/lib64/librbd.so.1.12.0
+7f6b6b1e7000-7f6b6b1ec000 rw-p 00325000 08:02 17916718                   /usr/lib64/librbd.so.1.12.0
+7f6b6b1ec000-7f6b6b1ee000 rw-p 00000000 00:00 0
+7f6b6b1ee000-7f6b6b21f000 r-xp 00000000 08:02 17911541                   /usr/lib64/libpmem.so.1.0.0
+7f6b6b21f000-7f6b6b41e000 ---p 00031000 08:02 17911541                   /usr/lib64/libpmem.so.1.0.0
+7f6b6b41e000-7f6b6b41f000 r--p 00030000 08:02 17911541                   /usr/lib64/libpmem.so.1.0.0
+7f6b6b41f000-7f6b6b420000 rw-p 00031000 08:02 17911541                   /usr/lib64/libpmem.so.1.0.0
+7f6b6b420000-7f6b6b441000 r-xp 00000000 08:02 17916722                   /usr/lib64/libpmemblk.so.1.0.0
+7f6b6b441000-7f6b6b641000 ---p 00021000 08:02 17916722                   /usr/lib64/libpmemblk.so.1.0.0
+7f6b6b641000-7f6b6b642000 r--p 00021000 08:02 17916722                   /usr/lib64/libpmemblk.so.1.0.0
+7f6b6b642000-7f6b6b643000 rw-p 00022000 08:02 17916722                   /usr/lib64/libpmemblk.so.1.0.0
+7f6b6b643000-7f6b6b644000 rw-p 00000000 00:00 0
+7f6b6b644000-7f6b6b670000 r-xp 00000000 08:02 16908754                   /usr/lib64/ld-2.28.so
+7f6b6b713000-7f6b6b7d5000 rw-p 00000000 00:00 0
+7f6b6b82a000-7f6b6b82b000 rw-s 00000000 00:12 31133560                   /[aio] (deleted)
+7f6b6b82b000-7f6b6b82c000 rw-s 00000000 00:01 31137336                   /dev/zero (deleted)
+7f6b6b82c000-7f6b6b82d000 rw-s 00000000 00:01 31137335                   /dev/zero (deleted)
+7f6b6b82d000-7f6b6b82e000 rw-s 00000000 00:01 31136188                   /dev/zero (deleted)
+7f6b6b82e000-7f6b6b82f000 rw-s 00000000 00:01 31136187                   /dev/zero (deleted)
+7f6b6b82f000-7f6b6b830000 rw-s 00000000 00:01 31136186                   /dev/zero (deleted)
+7f6b6b830000-7f6b6b831000 rw-s 00000000 00:01 31136185                   /dev/zero (deleted)
+7f6b6b831000-7f6b6b832000 rw-s 00000000 00:01 31136184                   /dev/zero (deleted)
+7f6b6b832000-7f6b6b833000 rw-s 00000000 00:01 31136182                   /dev/zero (deleted)
+7f6b6b833000-7f6b6b834000 rw-s 00000000 00:01 31136181                   /dev/zero (deleted)
+7f6b6b834000-7f6b6b835000 rw-s 00000000 00:01 31136179                   /dev/zero (deleted)
+7f6b6b835000-7f6b6b836000 rw-s 00000000 00:01 31136177                   /dev/zero (deleted)
+7f6b6b836000-7f6b6b866000 rw-p 00000000 00:00 0
+7f6b6b866000-7f6b6b867000 rw-s 00000000 00:01 31136175                   /dev/zero (deleted)
+7f6b6b867000-7f6b6b868000 rw-s 00000000 00:01 31136173                   /dev/zero (deleted)
+7f6b6b868000-7f6b6b869000 rw-s 00000000 00:01 31136171                   /dev/zero (deleted)
+7f6b6b869000-7f6b6b86a000 rw-s 00000000 00:01 31136169                   /dev/zero (deleted)
+7f6b6b86a000-7f6b6b86b000 rw-s 00000000 00:01 31136167                   /dev/zero (deleted)
+7f6b6b86b000-7f6b6b86c000 rw-s 00000000 00:01 31136165                   /dev/zero (deleted)
+7f6b6b86c000-7f6b6b86d000 rw-s 00000000 00:01 31136164                   /dev/zero (deleted)
+7f6b6b86d000-7f6b6b86e000 rw-s 00000000 00:01 31136163                   /dev/zero (deleted)
+7f6b6b86e000-7f6b6b870000 rw-p 00000000 00:00 0
+7f6b6b870000-7f6b6b871000 r--p 0002c000 08:02 16908754                   /usr/lib64/ld-2.28.so
+7f6b6b871000-7f6b6b873000 rw-p 0002d000 08:02 16908754                   /usr/lib64/ld-2.28.so
+7ffc66b39000-7ffc66c0a000 rw-p 00000000 00:00 0                          [stack]
+7ffc66d4d000-7ffc66d51000 r--p 00000000 00:00 0                          [vvar]
+7ffc66d51000-7ffc66d53000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
+
+           <...>-1638181 [003] d.h. 2851857.310884: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [001] d.h. 2851858.466911: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [003] d.h. 2851862.682018: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [001] d.h. 2851864.343186: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [002] d.h. 2851871.803468: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [002] d.h. 2851873.700349: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [000] d.h. 2851882.173763: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [002] d.h. 2851885.834392: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [002] d.h. 2851886.525094: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [001] d.h. 2851889.580312: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [002] d.h. 2851892.999354: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [001] d.h. 2851896.961750: bpf_trace_printk: xm_do_perf_event rip:0x7f6b691fbfae, rsp:0x7ffc66bfc870, rbp:0x66bfcde0 <---
+           <...>-1638181 [001] d.h. 2851903.198891: bpf_trace_printk: xm_do_perf_event rip:0x555deaa8e014, rsp:0x7ffc66bfe140, rbp:0x66bfe188 <---
+           <...>-1638181 [001] d.h. 2851903.209198: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [001] d.h. 2851905.106106: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274da6, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [001] d.h. 2851910.899900: bpf_trace_printk: xm_do_perf_event rip:0x555deaa8e014, rsp:0x7ffc66bfe140, rbp:0x66bfe188 <---
+           <...>-1638181 [003] d.h. 2851915.836690: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [003] d.h. 2851915.847007: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [001] d.h. 2851919.868975: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [001] d.h. 2851922.796801: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [002] d.h. 2851936.143644: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [003] d.h. 2851937.960386: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [003] d.h. 2851942.197491: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [003] d.h. 2851951.939757: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [003] d.h. 2851952.620171: bpf_trace_printk: xm_do_perf_event rip:0x7f6b691e51f0, rsp:0x7ffc66bfd020, rbp:0x66c07480 <---
+           <...>-1638181 [001] d.h. 2851957.250433: bpf_trace_printk: xm_do_perf_event rip:0x7f6b691e5198, rsp:0x7ffc66bfd020, rbp:0x66c073d0 <---
+           <...>-1638181 [001] d.h. 2851967.405052: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [002] d.h. 2851968.257044: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [000] d.h. 2851974.988197: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [002] d.h. 2851985.586973: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [003] d.h. 2851993.156265: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [002] d.h. 2851993.916879: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [002] d.h. 2851993.927145: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [002] d.h. 2852001.061187: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274da0, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [001] d.h. 2852001.466902: bpf_trace_printk: xm_do_perf_event rip:0x7f6b692a0b36, rsp:0x7ffc66bfe110, rbp:0x66bfe188 <---
+           <...>-1638181 [002] d.h. 2852015.659108: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69298a79, rsp:0x7ffc66bfd048, rbp:0x66bfd100 <---
+           <...>-1638181 [001] d.h. 2852029.848345: bpf_trace_printk: xm_do_perf_event rip:0x555deaa88945, rsp:0x7ffc66bfe0c0, rbp:0x66bfe188 <---
+           <...>-1638181 [002] d.h. 2852040.411685: bpf_trace_printk: xm_do_perf_event rip:0x7f6b69274d98, rsp:0x7ffc66bfe0e0, rbp:0x0 <---
+           <...>-1638181 [002] d.h. 2852042.246736: bpf_trace_printk: xm_do_perf_event rip:0x7f6b691fbfae, rsp:0x7ffc66bfc870, rbp:0x66bfcde0 <---
+
+
+I1008 06:39:19.791120 1639084 main.go:52] read .eh_frame section from file:'/bin/fio'.
+I1008 06:39:19.797022 1639084 main.go:79] rip:0x555deaa8e014 ===> fde{begin:0x6c8b0, end:0x6d56e, length:0x50, cie_id:0x0, cie.Length:0x10}
+I1008 06:39:19.797097 1639084 main.go:52] read .eh_frame section from file:'/bin/fio'.
+I1008 06:39:19.801584 1639084 main.go:79] rip:0x555deaa88945 ===> fde{begin:0x67930, end:0x67c82, length:0x48, cie_id:0x0, cie.Length:0x10}
+I1008 06:39:19.801657 1639084 main.go:52] read .eh_frame section from file:'/usr/lib64/libc-2.28.so'.
+I1008 06:39:19.813812 1639084 main.go:77] rip:0x7f6b69274d98 ===> could not find FDE for PC 0xc8d98
+I1008 06:39:19.813870 1639084 main.go:52] read .eh_frame section from file:'/usr/lib64/libc-2.28.so'.
+I1008 06:39:19.826383 1639084 main.go:79] rip:0x7f6b69298a79 ===> fde{begin:0xeca60, end:0xecab4, length:0xc, cie_id:0x0, cie.Length:0x10}
+
+
+➜  src git:(master) ✗ readelf -wF /bin/fio|grep 6c8b0
+0000a138 0000000000000054 0000a13c FDE cie=00000000 pc=000000000006c8b0..000000000006d56e
+000000000006c8b0 rsp+8    u     u     u     u     u     u     c-8
+
+c8d98 - c8d50 = 48
+c8de5 - c8d50 = 95
+length = 0x30
+0000fb04 0000000000000030 0000fb08 FDE cie=00000000 pc=00000000000c8d50..00000000000c8de5
+   LOC           CFA      rbx   rbp   ra
+00000000000c8d50 rsp+8    u     u     c-8
+00000000000c8d79 rsp+16   u     c-16  c-8
+00000000000c8d7d rsp+24   c-24  c-16  c-8
+00000000000c8d84 rsp+48   c-24  c-16  c-8
+00000000000c8db3 rsp+24   c-24  c-16  c-8
+00000000000c8db4 rsp+16   c-24  c-16  c-8
+00000000000c8db5 rsp+8    c-24  c-16  c-8
+00000000000c8dc0 rsp+8    u     u     c-8
+00000000000c8dd2 rsp+48   c-24  c-16  c-8
+
+
+I1008 07:27:30.813568 1640796 main.go:80] rip:0x555deaa8e014 ===> fde{begin:0x6c8b0, end:0x6d56e, length:0x50, cie_id:0x0, cie.Length:0x10}
+I1008 07:27:30.813665 1640796 main.go:85] rip:0x555deaa8e014 ===> frameCtx:&frame.FrameContext{
+
+    loc:0x792db, order:binary.bigEndian{}, address:0x6d014,
+    CFA:frame.DWRule{Rule:0x8, Offset:37056, Reg:0x7, Expression:[]uint8(nil)},
+    Regs:map[uint64]frame.DWRule{
+        0x3:frame.DWRule{Rule:0x2, Offset:-56, Reg:0x0, Expression:[]uint8(nil)},
+        0x6:frame.DWRule{Rule:0x2, Offset:-48, Reg:0x0, Expression:[]uint8(nil)},
+        0xc:frame.DWRule{Rule:0x2, Offset:-40, Reg:0x0, Expression:[]uint8(nil)},
+        0xd:frame.DWRule{Rule:0x2, Offset:-32, Reg:0x0, Expression:[]uint8(nil)},
+        0xe:frame.DWRule{Rule:0x2, Offset:-24, Reg:0x0, Expression:[]uint8(nil)},
+        0xf:frame.DWRule{Rule:0x2, Offset:-16, Reg:0x0, Expression:[]uint8(nil)},
+        0x10:frame.DWRule{Rule:0x2, Offset:-8, Reg:0x0, Expression:[]uint8(nil)}},
+    initialRegs:map[uint64]frame.DWRule{},
+    prevRegs:map[uint64]frame.DWRule{},
+    buf:(*bytes.Buffer)(0xc000208720), cie:(*frame.CommonInformationEntry)(0xc00011c6c0), RetAddrReg:0x10, codeAlignment:0x1, dataAlignment:-8
+
+0000a138 0000000000000054 0000a13c FDE cie=00000000 pc=000000000006c8b0..000000000006d56e
+   LOC           CFA      rbx   rbp   r12   r13   r14   r15   ra
+000000000006c8b0 rsp+8    u     u     u     u     u     u     c-8
+000000000006c8b2 rsp+16   u     u     u     u     u     c-16  c-8
+000000000006c8b4 rsp+24   u     u     u     u     c-24  c-16  c-8
+000000000006c8b6 rsp+32   u     u     u     c-32  c-24  c-16  c-8
+000000000006c8b8 rsp+40   u     u     c-40  c-32  c-24  c-16  c-8
+000000000006c8b9 rsp+48   u     c-48  c-40  c-32  c-24  c-16  c-8
+000000000006c8ba rsp+56   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006c8c2 r11+36920 c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006c8d3 rsp+36920 c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006c8da rsp+37056 c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caa4 rsp+56   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caa5 rsp+48   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caa6 rsp+40   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caa8 rsp+32   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caaa rsp+24   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caac rsp+16   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caae rsp+8    c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006cab0 rsp+37056 c-56  c-48  c-40  c-32  c-24  c-16  c-8
+
+rsp:0x7ffc66bfe140 + 37056 = 7FFC66C07200
