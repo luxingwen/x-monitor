@@ -137,7 +137,7 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 				for entries.Next(&ip, &count) {
 					// 解析ip，判断对应的内核函数
 					// glog.Infof("ip:0x%08x, count:%d", ip, count)
-					if funcName, _, err := calmutils.FindKsym(ip); err == nil {
+					if funcName, err := calmutils.FindKsym(ip); err == nil {
 						switch {
 						case funcName == "add_to_page_cache_lru":
 							atpcl = count

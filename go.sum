@@ -529,6 +529,10 @@ github.com/weaveworks/promrus v1.2.0 h1:jOLf6pe6/vss4qGHjXmGz4oDJQA+AOCqEL3FvvZG
 github.com/weaveworks/promrus v1.2.0/go.mod h1:SaE82+OJ91yqjrE1rsvBWVzNZKcHYFtMUyS1+Ogs/KA=
 github.com/wubo0067/calmwu-go v0.0.0-20230922070835-f4f95321b575 h1:ECSOOvIMOrfQBaBcopRp1K52sCgeMvqGgzy7hUVN63c=
 github.com/wubo0067/calmwu-go v0.0.0-20230922070835-f4f95321b575/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20231009083832-2e07d852d1ce h1:hhFInkbk7eX5WWxlcUVEDd3Cohdm2qeNX5gbd9Xz0Wc=
+github.com/wubo0067/calmwu-go v0.0.0-20231009083832-2e07d852d1ce/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20231010041034-cb036296e591 h1:E2s1fl4iCpPzN72CjZehg/ISILiKRXGlhdfDWfxK8yg=
+github.com/wubo0067/calmwu-go v0.0.0-20231010041034-cb036296e591/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

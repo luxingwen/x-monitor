@@ -34,7 +34,7 @@ elif [[ "$cgroup_version" == "cgroup V2" ]]; then
     # 限制cpu的使用为1core
     cgxset -2 -r cpu.max='100000 100000' /user.slice/x-monitor.ebpf
     # 限制memory上限，1G
-    cgxset -2 -r memory.max=1073741824 /user.slice/x-monitor.ebpf
+    cgxset -2 -r memory.max=2147483648 /user.slice/x-monitor.ebpf
     # 不使用swap
     cgxset -2 -r memory.swap.max=0 /user.slice/x-monitor.ebpf
     cgxget -g memory,cpu:/user.slice/x-monitor.ebpf

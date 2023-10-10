@@ -11,31 +11,35 @@
 2. 创建网络namespace
 
    ```
-   docker network create xm-pyroscope 
+   docker network create xm-calmwu
    ```
 
 3. 安装grafana
 
    ```
    docker pull grafana/grafana:main
-   docker run --rm --name=grafana -d -p 3000:3000 -e "GF_FEATURE_TOGGLES_ENABLE=flameGraph" --network=xm-pyroscope  grafana/grafana:main
+   docker run --rm --name=grafana -d -p 3000:3000 -e "GF_FEATURE_TOGGLES_ENABLE=flameGraph" --network=xm-calmwu  grafana/grafana:main
    ```
 
 4. 安装pyroscope
 
    ```
    docker pull grafana/pyroscope:1.0.0
-   docker run --rm --name pyroscope -d --network=xm-pyroscope -p 4040:4040 --network=xm-pyroscope grafana/pyroscope:1.0.0
+   docker run --rm --name pyroscope -d --network=xm-calmwu -p 4040:4040 grafana/pyroscope:1.0.0
    ```
 
-   二进制启动
+   验证
+
+   ```
+   curl localhost:4040/ready
+   ```
 
 5. 配置
 
    - 查看容器ip
 
      ```
-     docker exec -it 7738b5e2ee19 ip addr
+     docker exec -it <container-id> ip addr
      ```
 
      

@@ -76,8 +76,8 @@ endif()
 
 # 设置c编译参数
 # Position-Independent Code
-# set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -Wpedantic")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wno-unknown-pragmas -Wextra -fno-omit-frame-pointer -fstack-protector -fno-delete-null-pointer-checks")
+# set(CMAKE_C_FLAGS "-fPIE -Wno-unknown-pragmas -Wextra -Wpedantic")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas -Wextra -fno-omit-frame-pointer -fstack-protector -fno-delete-null-pointer-checks")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpointer-arith -Werror-implicit-function-declaration -Wno-trigraphs -Wno-format-security")
 
 # -Wredundant-decls 如果在同一个可见域某定义多次声明,编译器就发出警告,即使这些重复声明有效并且毫无差别.

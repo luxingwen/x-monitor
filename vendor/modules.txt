@@ -393,8 +393,8 @@ github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.4
 ## explicit; go 1.17
 github.com/vishvananda/netns
-# github.com/wubo0067/calmwu-go v0.0.0-20230922070835-f4f95321b575
-## explicit
+# github.com/wubo0067/calmwu-go v0.0.0-20231010041034-cb036296e591
+## explicit; go 1.18
 github.com/wubo0067/calmwu-go/utils
 # go.opentelemetry.io/otel v1.18.0
 ## explicit; go 1.20

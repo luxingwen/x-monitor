@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-08-22 14:18:10
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-22 17:20:58
+ * @Last Modified time: 2023-10-09 16:50:06
  */
 
 package symbols
@@ -94,7 +94,7 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 			}
 		} else {
 			// kernel
-			sym.Name, sym.Offset, err = calmutils.FindKsym(addr)
+			sym.Name, err = calmutils.FindKsym(addr)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil, err

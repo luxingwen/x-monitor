@@ -41,19 +41,19 @@
 1. **bio_latency测试**
    1. 顺序读:
 
-      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=read -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=read -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest -time_based
 
    2. 顺序写:
 
-      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=write -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=write -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest -time_based
 
    3. 随机写:
 
-      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=randwrite -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=randwrite -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest -time_based
 
    4. 随机读:
 
-      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=randread -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest
+      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=randread -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest -time_based
 
 2. **cpu_runqlatency测试**
 

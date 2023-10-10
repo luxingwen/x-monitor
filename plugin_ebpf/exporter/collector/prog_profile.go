@@ -568,7 +568,7 @@ func (pp *profileProgram) submitEBPFProfile(builders *pprof.ProfileBuilders) {
 		samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
 		err := pp.pyroExporter.Appender().Append(context.Background(), builder.Labels, samples)
 		if err != nil {
-			glog.Errorf("eBPFProgram:'%s' ebpf profile append failed. err:%s", err.Error())
+			glog.Errorf("eBPFProgram:'%s' ebpf profile append failed. err:%s", pp.name, err.Error())
 			continue
 		}
 	}

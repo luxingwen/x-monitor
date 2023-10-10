@@ -391,3 +391,10 @@ I1008 07:27:30.813665 1640796 main.go:85] rip:0x555deaa8e014 ===> frameCtx:&fram
 000000000006cab0 rsp+37056 c-56  c-48  c-40  c-32  c-24  c-16  c-8
 
 rsp:0x7ffc66bfe140 + 37056 = 7FFC66C07200
+
+合并符号表和调试信息后，可以找到fde对应的函数
+➜  bin git:(feature-xm-ebpf-collector) ✗ eu-unstrip -f /usr/bin/fio /usr/lib/debug/.build-id/0c/8a9a6540d4d4a8247e07553d72cde921c4379b.debug -o /bin/fio
+➜  bin git:(feature-xm-ebpf-collector) ✗ file /bin/fio
+/bin/fio: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=0c8a9a6540d4d4a8247e07553d72cde921c4379b, with debug_info, not stripped
+➜  bin git:(feature-xm-ebpf-collector) ✗ readelf -s /bin/fio|grep 6c8b0
+  2919: 000000000006c8b0  3262 FUNC    LOCAL  DEFAULT   15 run_threads

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-07-10 14:15:12
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-18 16:16:55
+ * @Last Modified time: 2023-10-09 17:27:20
  */
 
 package collector
@@ -310,13 +310,13 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 			sampleCount += uint64(slot)          // 统计本周期的样本总数
 			sampleSum += float64(slot) * bucket  // * 0.6 // 估算样本的总和
 			latencyBuckets[bucket] = sampleCount // 每个桶的样本数，下层包括上层统计数量
-			glog.Infof("\tbio request latency usecs(%d -> %d) count: %d", func() int {
-				if i == 0 {
-					return 0
-				} else {
-					return int(__powerOfTwo[i-1]) + 1
-				}
-			}(), int(bucket), slot)
+			// glog.Infof("\tbio request latency usecs(%d -> %d) count: %d", func() int {
+			// 	if i == 0 {
+			// 		return 0
+			// 	} else {
+			// 		return int(__powerOfTwo[i-1]) + 1
+			// 	}
+			// }(), int(bucket), slot)
 		}
 
 		ch <- prometheus.MustNewConstHistogram(bp.bioRequestLatencyDesc,

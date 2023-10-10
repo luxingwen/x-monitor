@@ -25,7 +25,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
-	github.com/wubo0067/calmwu-go v0.0.0-20230922070835-f4f95321b575
+	github.com/wubo0067/calmwu-go v0.0.0-20231010041034-cb036296e591
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.5.3
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
