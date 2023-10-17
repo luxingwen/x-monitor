@@ -38,7 +38,7 @@ build:
 	GOOS=linux GOARCH=amd64 go build -mod=vendor \
 		-ldflags '-extldflags \"-static\" -X main.Release=$(VERSION) -X main.Commit=$(GIT_COMMIT_HASH) -X main.BuildTime=$(BUILD_TIME)' \
 		-gcflags 'all=-N -l' -race  \
-		-o ../../../bin/$(TARGET) main.go
+		-o ../../../bin/$(TARGET) main.go table.go
 
 clean:
 	-rm ../../../bin/$(TARGET)

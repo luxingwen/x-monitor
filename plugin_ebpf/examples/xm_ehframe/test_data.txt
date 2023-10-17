@@ -398,3 +398,41 @@ rsp:0x7ffc66bfe140 + 37056 = 7FFC66C07200
 /bin/fio: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=0c8a9a6540d4d4a8247e07553d72cde921c4379b, with debug_info, not stripped
 ➜  bin git:(feature-xm-ebpf-collector) ✗ readelf -s /bin/fio|grep 6c8b0
   2919: 000000000006c8b0  3262 FUNC    LOCAL  DEFAULT   15 run_threads
+
+000000000006c8b0 rsp+8    u     u     u     u     u     u     c-8
+000000000006c8b2 rsp+16   u     u     u     u     u     c-16  c-8
+000000000006c8b4 rsp+24   u     u     u     u     c-24  c-16  c-8
+000000000006c8b6 rsp+32   u     u     u     c-32  c-24  c-16  c-8
+000000000006c8b8 rsp+40   u     u     c-40  c-32  c-24  c-16  c-8
+000000000006c8b9 rsp+48   u     c-48  c-40  c-32  c-24  c-16  c-8
+000000000006c8ba rsp+56   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006c8c2 r11+36920 c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006c8d3 rsp+36920 c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006c8da rsp+37056 c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caa4 rsp+56   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caa5 rsp+48   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caa6 rsp+40   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caa8 rsp+32   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caaa rsp+24   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caac rsp+16   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006caae rsp+8    c-56  c-48  c-40  c-32  c-24  c-16  c-8
+000000000006cab0 rsp+37056 c-56  c-48  c-40  c-32  c-24  c-16  c-8
+
+I1017 09:03:43.884705 2103658 table.go:134] fde row:0, loc:0x6c8b0, CFA:frame.DWRule{Rule:0x8, Offset:8, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.884787 2103658 table.go:134] fde row:1, loc:0x6c8b2, CFA:frame.DWRule{Rule:0x8, Offset:16, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.884831 2103658 table.go:134] fde row:2, loc:0x6c8b4, CFA:frame.DWRule{Rule:0x8, Offset:24, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.884894 2103658 table.go:134] fde row:3, loc:0x6c8b6, CFA:frame.DWRule{Rule:0x8, Offset:32, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.884943 2103658 table.go:134] fde row:4, loc:0x6c8b8, CFA:frame.DWRule{Rule:0x8, Offset:40, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.884979 2103658 table.go:134] fde row:5, loc:0x6c8b9, CFA:frame.DWRule{Rule:0x8, Offset:48, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885020 2103658 table.go:134] fde row:6, loc:0x6c8ba, CFA:frame.DWRule{Rule:0x8, Offset:56, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885064 2103658 table.go:134] fde row:7, loc:0x6c8c2, CFA:frame.DWRule{Rule:0x8, Offset:36920, Reg:0xb, Expression:[]uint8(nil)}
+I1017 09:03:43.885104 2103658 table.go:134] fde row:8, loc:0x6c8d3, CFA:frame.DWRule{Rule:0x8, Offset:36920, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885178 2103658 table.go:134] fde row:9, loc:0x6c8da, CFA:frame.DWRule{Rule:0x8, Offset:37056, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885222 2103658 table.go:134] fde row:10, loc:0x6caa4, CFA:frame.DWRule{Rule:0x8, Offset:56, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885259 2103658 table.go:134] fde row:11, loc:0x6caa5, CFA:frame.DWRule{Rule:0x8, Offset:48, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885302 2103658 table.go:134] fde row:12, loc:0x6caa6, CFA:frame.DWRule{Rule:0x8, Offset:40, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885336 2103658 table.go:134] fde row:13, loc:0x6caa8, CFA:frame.DWRule{Rule:0x8, Offset:32, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885377 2103658 table.go:134] fde row:14, loc:0x6caaa, CFA:frame.DWRule{Rule:0x8, Offset:24, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885421 2103658 table.go:134] fde row:15, loc:0x6caac, CFA:frame.DWRule{Rule:0x8, Offset:16, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885462 2103658 table.go:134] fde row:16, loc:0x6caae, CFA:frame.DWRule{Rule:0x8, Offset:8, Reg:0x7, Expression:[]uint8(nil)}
+I1017 09:03:43.885517 2103658 table.go:139] fde row:17, loc:0x6cab0, CFA:frame.DWRule{Rule:0x8, Offset:37056, Reg:0x7, Expression:[]uint8(nil)}

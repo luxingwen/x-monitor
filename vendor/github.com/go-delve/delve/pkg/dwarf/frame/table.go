@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/go-delve/delve/pkg/dwarf/leb128"
+	"github.com/golang/glog"
 )
 
 // DWRule wrapper of rule defined for register values.
@@ -221,6 +222,7 @@ func advanceloc(frame *FrameContext) {
 
 	delta := b & low_6_offset
 	frame.loc += uint64(delta) * frame.codeAlignment
+	glog.Infof("advanceloc loc:0x%x", frame.loc)
 }
 
 func advanceloc1(frame *FrameContext) {
@@ -230,13 +232,18 @@ func advanceloc1(frame *FrameContext) {
 	}
 
 	frame.loc += uint64(delta) * frame.codeAlignment
+	glog.Infof("advanceloc1 loc:0x%x", frame.loc)
 }
 
 func advanceloc2(frame *FrameContext) {
 	var delta uint16
 	binary.Read(frame.buf, frame.order, &delta)
 
+	glog.Infof("advanceloc2 frame.loc:0x%x, delta:%d, codeAlignment:%d",
+		frame.loc, delta, frame.codeAlignment)
+
 	frame.loc += uint64(delta) * frame.codeAlignment
+	glog.Infof("advanceloc2 loc:0x%x", frame.loc)
 }
 
 func advanceloc4(frame *FrameContext) {
@@ -244,6 +251,7 @@ func advanceloc4(frame *FrameContext) {
 	binary.Read(frame.buf, frame.order, &delta)
 
 	frame.loc += uint64(delta) * frame.codeAlignment
+	glog.Infof("advanceloc4 loc:0x%x", frame.loc)
 }
 
 func offset(frame *FrameContext) {
@@ -280,6 +288,7 @@ func setloc(frame *FrameContext) {
 	binary.Read(frame.buf, frame.order, &loc)
 
 	frame.loc = loc + frame.cie.staticBase
+	glog.Infof("setloc loc:0x%x", frame.loc)
 }
 
 func offsetextended(frame *FrameContext) {
