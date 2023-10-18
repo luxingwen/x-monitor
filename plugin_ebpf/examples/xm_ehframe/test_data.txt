@@ -418,21 +418,45 @@ rsp:0x7ffc66bfe140 + 37056 = 7FFC66C07200
 000000000006caae rsp+8    c-56  c-48  c-40  c-32  c-24  c-16  c-8
 000000000006cab0 rsp+37056 c-56  c-48  c-40  c-32  c-24  c-16  c-8
 
-I1017 09:03:43.884705 2103658 table.go:134] fde row:0, loc:0x6c8b0, CFA:frame.DWRule{Rule:0x8, Offset:8, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.884787 2103658 table.go:134] fde row:1, loc:0x6c8b2, CFA:frame.DWRule{Rule:0x8, Offset:16, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.884831 2103658 table.go:134] fde row:2, loc:0x6c8b4, CFA:frame.DWRule{Rule:0x8, Offset:24, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.884894 2103658 table.go:134] fde row:3, loc:0x6c8b6, CFA:frame.DWRule{Rule:0x8, Offset:32, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.884943 2103658 table.go:134] fde row:4, loc:0x6c8b8, CFA:frame.DWRule{Rule:0x8, Offset:40, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.884979 2103658 table.go:134] fde row:5, loc:0x6c8b9, CFA:frame.DWRule{Rule:0x8, Offset:48, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885020 2103658 table.go:134] fde row:6, loc:0x6c8ba, CFA:frame.DWRule{Rule:0x8, Offset:56, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885064 2103658 table.go:134] fde row:7, loc:0x6c8c2, CFA:frame.DWRule{Rule:0x8, Offset:36920, Reg:0xb, Expression:[]uint8(nil)}
-I1017 09:03:43.885104 2103658 table.go:134] fde row:8, loc:0x6c8d3, CFA:frame.DWRule{Rule:0x8, Offset:36920, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885178 2103658 table.go:134] fde row:9, loc:0x6c8da, CFA:frame.DWRule{Rule:0x8, Offset:37056, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885222 2103658 table.go:134] fde row:10, loc:0x6caa4, CFA:frame.DWRule{Rule:0x8, Offset:56, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885259 2103658 table.go:134] fde row:11, loc:0x6caa5, CFA:frame.DWRule{Rule:0x8, Offset:48, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885302 2103658 table.go:134] fde row:12, loc:0x6caa6, CFA:frame.DWRule{Rule:0x8, Offset:40, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885336 2103658 table.go:134] fde row:13, loc:0x6caa8, CFA:frame.DWRule{Rule:0x8, Offset:32, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885377 2103658 table.go:134] fde row:14, loc:0x6caaa, CFA:frame.DWRule{Rule:0x8, Offset:24, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885421 2103658 table.go:134] fde row:15, loc:0x6caac, CFA:frame.DWRule{Rule:0x8, Offset:16, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885462 2103658 table.go:134] fde row:16, loc:0x6caae, CFA:frame.DWRule{Rule:0x8, Offset:8, Reg:0x7, Expression:[]uint8(nil)}
-I1017 09:03:43.885517 2103658 table.go:139] fde row:17, loc:0x6cab0, CFA:frame.DWRule{Rule:0x8, Offset:37056, Reg:0x7, Expression:[]uint8(nil)}
+I1018 07:16:01.905797 2146137 main.go:101] ------read .eh_frame section from file:'/bin/fio'.
+I1018 07:16:01.911755 2146137 main.go:59] FDE cie=0000 pc=0006c8b0..0006d56e
+I1018 07:16:01.911869 2146137 main.go:93] LOC: 000000000006c8b0  CFA: Rsp+8     RBP:[u]    RA:c-8
+I1018 07:16:01.911924 2146137 main.go:93] LOC: 000000000006c8b2  CFA: Rsp+16    RBP:[u]    RA:c-8
+I1018 07:16:01.911976 2146137 main.go:93] LOC: 000000000006c8b4  CFA: Rsp+24    RBP:[u]    RA:c-8
+I1018 07:16:01.912025 2146137 main.go:93] LOC: 000000000006c8b6  CFA: Rsp+32    RBP:[u]    RA:c-8
+I1018 07:16:01.912091 2146137 main.go:93] LOC: 000000000006c8b8  CFA: Rsp+40    RBP:[u]    RA:c-8
+I1018 07:16:01.912140 2146137 main.go:93] LOC: 000000000006c8b9  CFA: Rsp+48    RBP:c-48   RA:c-8
+I1018 07:16:01.912180 2146137 main.go:93] LOC: 000000000006c8ba  CFA: Rsp+56    RBP:c-48   RA:c-8
+I1018 07:16:01.912228 2146137 main.go:93] LOC: 000000000006c8c2  CFA: R11+36920 RBP:c-48   RA:c-8
+I1018 07:16:01.912271 2146137 main.go:93] LOC: 000000000006c8d3  CFA: Rsp+36920 RBP:c-48   RA:c-8
+I1018 07:16:01.912319 2146137 main.go:93] LOC: 000000000006c8da  CFA: Rsp+37056 RBP:c-48   RA:c-8
+I1018 07:16:01.912365 2146137 main.go:93] LOC: 000000000006caa4  CFA: Rsp+56    RBP:c-48   RA:c-8
+I1018 07:16:01.912403 2146137 main.go:93] LOC: 000000000006caa5  CFA: Rsp+48    RBP:c-48   RA:c-8
+I1018 07:16:01.912447 2146137 main.go:93] LOC: 000000000006caa6  CFA: Rsp+40    RBP:c-48   RA:c-8
+I1018 07:16:01.912501 2146137 main.go:93] LOC: 000000000006caa8  CFA: Rsp+32    RBP:c-48   RA:c-8
+I1018 07:16:01.912542 2146137 main.go:93] LOC: 000000000006caaa  CFA: Rsp+24    RBP:c-48   RA:c-8
+I1018 07:16:01.912592 2146137 main.go:93] LOC: 000000000006caac  CFA: Rsp+16    RBP:c-48   RA:c-8
+I1018 07:16:01.912634 2146137 main.go:93] LOC: 000000000006caae  CFA: Rsp+8     RBP:c-48   RA:c-8
+I1018 07:16:01.912683 2146137 main.go:93] LOC: 000000000006cab0  CFA: Rsp+37056 RBP:c-48   RA:c-8
+I1018 07:16:01.912725 2146137 main.go:59] FDE cie=0000 pc=00080190..000803d1
+I1018 07:16:01.912793 2146137 main.go:93] LOC: 0000000000080190  CFA: Rsp+8     RBP:[u]    RA:c-8
+I1018 07:16:01.912844 2146137 main.go:93] LOC: 0000000000080196  CFA: Rsp+16    RBP:[u]    RA:c-8
+I1018 07:16:01.912896 2146137 main.go:93] LOC: 0000000000080198  CFA: Rsp+24    RBP:[u]    RA:c-8
+I1018 07:16:01.912940 2146137 main.go:93] LOC: 000000000008019d  CFA: Rsp+32    RBP:[u]    RA:c-8
+I1018 07:16:01.912978 2146137 main.go:93] LOC: 00000000000801a1  CFA: Rsp+40    RBP:c-40   RA:c-8
+I1018 07:16:01.913022 2146137 main.go:93] LOC: 00000000000801a5  CFA: Rsp+48    RBP:c-40   RA:c-8
+I1018 07:16:01.913063 2146137 main.go:93] LOC: 00000000000801ab  CFA: Rsp+96    RBP:c-40   RA:c-8
+I1018 07:16:01.913126 2146137 main.go:93] LOC: 0000000000080241  CFA: Rsp+48    RBP:c-40   RA:c-8
+I1018 07:16:01.913168 2146137 main.go:93] LOC: 0000000000080242  CFA: Rsp+40    RBP:c-40   RA:c-8
+I1018 07:16:01.913209 2146137 main.go:93] LOC: 0000000000080243  CFA: Rsp+32    RBP:c-40   RA:c-8
+I1018 07:16:01.913256 2146137 main.go:93] LOC: 0000000000080245  CFA: Rsp+24    RBP:c-40   RA:c-8
+I1018 07:16:01.913297 2146137 main.go:93] LOC: 0000000000080247  CFA: Rsp+16    RBP:c-40   RA:c-8
+I1018 07:16:01.913341 2146137 main.go:93] LOC: 0000000000080249  CFA: Rsp+8     RBP:c-40   RA:c-8
+I1018 07:16:01.913382 2146137 main.go:93] LOC: 0000000000080250  CFA: Rsp+96    RBP:c-40   RA:c-8
+I1018 07:16:01.913418 2146137 main.go:93] LOC: 00000000000802b1  CFA: Rsp+104   RBP:c-40   RA:c-8
+I1018 07:16:01.913461 2146137 main.go:93] LOC: 00000000000802dc  CFA: Rsp+112   RBP:c-40   RA:c-8
+I1018 07:16:01.913524 2146137 main.go:93] LOC: 0000000000080319  CFA: Rsp+104   RBP:c-40   RA:c-8
+I1018 07:16:01.913564 2146137 main.go:93] LOC: 000000000008031f  CFA: Rsp+96    RBP:c-40   RA:c-8
+I1018 07:16:01.913611 2146137 main.go:93] LOC: 000000000008032f  CFA: Rsp+104   RBP:c-40   RA:c-8
+I1018 07:16:01.913656 2146137 main.go:93] LOC: 000000000008034d  CFA: Rsp+112   RBP:c-40   RA:c-8
+I1018 07:16:01.913703 2146137 main.go:93] LOC: 0000000000080370  CFA: Rsp+96    RBP:c-40   RA:c-8

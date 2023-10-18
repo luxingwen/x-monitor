@@ -9,11 +9,15 @@ package main
 
 import (
 	"debug/elf"
+	"encoding/binary"
 	goflag "flag"
+	"fmt"
 	"os"
+	"strings"
 	"unsafe"
 
-	"github.com/go-delve/delve/pkg/dwarf/frame"
+	dlvFrame "github.com/go-delve/delve/pkg/dwarf/frame"
+	"github.com/go-delve/delve/pkg/dwarf/regnum"
 	"github.com/golang/glog"
 )
 
@@ -49,6 +53,50 @@ func pointerSize(arch elf.Machine) int {
 	}
 }
 
+func printFDETable(fde *dlvFrame.FrameDescriptionEntry, order binary.ByteOrder) {
+	var strBuilder strings.Builder
+
+	glog.Infof("FDE cie=%04x pc=%08x..%08x", fde.CIE.CIE_id, fde.Begin(), fde.End())
+
+	addFDERowFunc := func(loc uint64, cfa dlvFrame.DWRule, regs map[uint64]dlvFrame.DWRule, retAddrReg uint64) {
+		// loc
+		strBuilder.WriteString(fmt.Sprintf("LOC: %016x ", loc))
+		strBuilder.WriteByte(' ')
+
+		// cfa
+		switch cfa.Rule {
+		case dlvFrame.RuleCFA:
+			strBuilder.WriteString(fmt.Sprintf("CFA: %s+%-5d ", regnum.AMD64ToName(cfa.Reg), cfa.Offset))
+		case dlvFrame.RuleExpression:
+			fallthrough
+		default:
+			strBuilder.WriteString(fmt.Sprintf("[CFA:%d] ", cfa.Rule))
+		}
+
+		// rbp
+		rbp := regs[regnum.AMD64_Rbp]
+		switch rbp.Rule {
+		case dlvFrame.RuleOffset:
+			strBuilder.WriteString(fmt.Sprintf("RBP:c%-5d ", rbp.Offset))
+		default:
+			strBuilder.WriteString(fmt.Sprintf("%-10s ", "RBP:[u]"))
+		}
+
+		// ra
+		ra := regs[retAddrReg]
+		switch ra.Rule {
+		case dlvFrame.RuleOffset:
+			strBuilder.WriteString(fmt.Sprintf("RA:c%-5d", ra.Offset))
+		default:
+			strBuilder.WriteString("RA:[u]")
+		}
+		glog.Info(strBuilder.String())
+		strBuilder.Reset()
+	}
+
+	ExecuteDwarfProgram(fde, order, addFDERowFunc)
+}
+
 func unwindStack(entry *procMapEntry) {
 	glog.Infof("------read .eh_frame section from file:'%s'.", entry.module)
 
@@ -76,16 +124,15 @@ func unwindStack(entry *procMapEntry) {
 
 	// 得到所有的fde
 
-	fdes, err := frame.Parse(data, f.ByteOrder, 0, pointerSize(f.Machine), section.Addr)
+	fdes, err := dlvFrame.Parse(data, f.ByteOrder, 0, pointerSize(f.Machine), section.Addr)
 	if err != nil {
 		glog.Error(err.Error())
 	} else {
 		for _, fde := range fdes {
-			if fde.Begin() == 0x6c8b0 && fde.End() == 0x6d56e {
-				glog.Infof("fde{begin:0x%x, end:0x%x, length:0x%x, cie_id:0x%x, cie.Length:0x%x}",
-					fde.Begin(), fde.End(), fde.Length, fde.CIE.CIE_id, fde.CIE.Length)
-
-				ExecuteDwarfProgram(fde, f.ByteOrder)
+			if (fde.Begin() == 0x6c8b0 && fde.End() == 0x6d56e) ||
+				(fde.Begin() == 0x80190 && fde.End() == 0x803d1) ||
+				(fde.Begin() == 0x7e760 && fde.End() == 0x7e86b) {
+				printFDETable(fde, f.ByteOrder)
 			}
 
 		}

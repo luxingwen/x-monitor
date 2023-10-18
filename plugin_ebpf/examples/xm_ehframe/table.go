@@ -14,7 +14,6 @@ import (
 
 	dlvFrame "github.com/go-delve/delve/pkg/dwarf/frame"
 	"github.com/go-delve/delve/pkg/dwarf/leb128"
-	"github.com/golang/glog"
 )
 
 type FrameContext struct {
@@ -112,14 +111,16 @@ func executeCIEInstructions(cie *dlvFrame.CommonInformationEntry) *FrameContext 
 	return frame
 }
 
-func ExecuteDwarfProgram(fde *dlvFrame.FrameDescriptionEntry, order binary.ByteOrder) {
+type FDERowFunc func(loc uint64, cfa dlvFrame.DWRule, regs map[uint64]dlvFrame.DWRule, retAddrReg uint64)
+
+func ExecuteDwarfProgram(fde *dlvFrame.FrameDescriptionEntry, order binary.ByteOrder, rowFunc FDERowFunc) {
 	frame := executeCIEInstructions(fde.CIE)
 	frame.order = order
 	frame.loc = fde.Begin()
-	frame.buildFDETables(fde.Instructions)
+	frame.buildFDETables(fde.Instructions, rowFunc)
 }
 
-func (frame *FrameContext) buildFDETables(instructions []byte) {
+func (frame *FrameContext) buildFDETables(instructions []byte, rowFunc FDERowFunc) {
 	frame.buf.Truncate(0)
 	frame.buf.Write(instructions)
 
@@ -131,12 +132,18 @@ func (frame *FrameContext) buildFDETables(instructions []byte) {
 
 		if frame.loc != prevLoc {
 			// start a new frame
-			glog.Infof("fde row:%d, loc:0x%x, CFA:%#v, Regs:%#v, RetAddrReg:%#v", rowID, prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
+			//glog.Infof("fde row:%d, loc:0x%x, CFA:%#v, Regs:%#v, RetAddrReg:%#v", rowID, prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
+			if rowFunc != nil {
+				rowFunc(prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
+			}
 			rowID += 1
 			prevLoc = frame.loc
 		}
 	}
-	glog.Infof("fde row:%d, loc:0x%x, CFA:%#v, Regs:%#v, RetAddrReg:%#v", rowID, prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
+	//glog.Infof("fde row:%d, loc:0x%x, CFA:%#v, Regs:%#v, RetAddrReg:%#v", rowID, prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
+	if rowFunc != nil {
+		rowFunc(prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
+	}
 }
 
 func (frame *FrameContext) executeDwarfProgram() {
