@@ -1,0 +1,163 @@
+00400000-00416000 r-xp 00000000 08:21 805307332                          /mnt/Program/x-monitor/bin/stack_unwind_cli
+00615000-00616000 r--p 00015000 08:21 805307332                          /mnt/Program/x-monitor/bin/stack_unwind_cli
+00616000-00617000 rw-p 00016000 08:21 805307332                          /mnt/Program/x-monitor/bin/stack_unwind_cli
+00617000-00638000 rw-p 00000000 00:00 0                                  [heap]
+7ffff7039000-7ffff71f5000 r-xp 00000000 08:02 16908761                   /usr/lib64/libc-2.28.so
+7ffff71f5000-7ffff73f4000 ---p 001bc000 08:02 16908761                   /usr/lib64/libc-2.28.so
+7ffff73f4000-7ffff73f8000 r--p 001bb000 08:02 16908761                   /usr/lib64/libc-2.28.so
+7ffff73f8000-7ffff73fa000 rw-p 001bf000 08:02 16908761                   /usr/lib64/libc-2.28.so
+7ffff73fa000-7ffff73fe000 rw-p 00000000 00:00 0 
+7ffff73fe000-7ffff757f000 r-xp 00000000 08:02 16908765                   /usr/lib64/libm-2.28.so
+7ffff757f000-7ffff777e000 ---p 00181000 08:02 16908765                   /usr/lib64/libm-2.28.so
+7ffff777e000-7ffff777f000 r--p 00180000 08:02 16908765                   /usr/lib64/libm-2.28.so
+7ffff777f000-7ffff7780000 rw-p 00181000 08:02 16908765                   /usr/lib64/libm-2.28.so
+7ffff7780000-7ffff7796000 r-xp 00000000 08:02 17077877                   /usr/lib64/libz.so.1.2.11
+7ffff7796000-7ffff7995000 ---p 00016000 08:02 17077877                   /usr/lib64/libz.so.1.2.11
+7ffff7995000-7ffff7996000 r--p 00015000 08:02 17077877                   /usr/lib64/libz.so.1.2.11
+7ffff7996000-7ffff7997000 rw-p 00000000 00:00 0 
+7ffff7997000-7ffff79b2000 r-xp 00000000 08:02 16908775                   /usr/lib64/libpthread-2.28.so
+7ffff79b2000-7ffff7bb1000 ---p 0001b000 08:02 16908775                   /usr/lib64/libpthread-2.28.so
+7ffff7bb1000-7ffff7bb2000 r--p 0001a000 08:02 16908775                   /usr/lib64/libpthread-2.28.so
+7ffff7bb2000-7ffff7bb3000 rw-p 0001b000 08:02 16908775                   /usr/lib64/libpthread-2.28.so
+7ffff7bb3000-7ffff7bb7000 rw-p 00000000 00:00 0 
+7ffff7bb7000-7ffff7bce000 r-xp 00000000 08:02 17077821                   /usr/lib64/libelf-0.185.so
+7ffff7bce000-7ffff7dce000 ---p 00017000 08:02 17077821                   /usr/lib64/libelf-0.185.so
+7ffff7dce000-7ffff7dcf000 r--p 00017000 08:02 17077821                   /usr/lib64/libelf-0.185.so
+7ffff7dcf000-7ffff7dd0000 rw-p 00000000 00:00 0 
+7ffff7dd0000-7ffff7dfc000 r-xp 00000000 08:02 16908754                   /usr/lib64/ld-2.28.so
+7ffff7f67000-7ffff7fec000 rw-p 00000000 00:00 0 
+7ffff7ff4000-7ffff7ff6000 rw-p 00000000 00:00 0 
+7ffff7ff6000-7ffff7ffa000 r--p 00000000 00:00 0                          [vvar]
+7ffff7ffa000-7ffff7ffc000 r-xp 00000000 00:00 0                          [vdso]
+7ffff7ffc000-7ffff7ffd000 r--p 0002c000 08:02 16908754                   /usr/lib64/ld-2.28.so
+7ffff7ffd000-7ffff7fff000 rw-p 0002d000 08:02 16908754                   /usr/lib64/ld-2.28.so
+7ffffffde000-7ffffffff000 rw-p 00000000 00:00 0                          [stack]
+ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
+
+查看寄存器
+(gdb) info reg
+rax            0x216484f0          560235760
+rbx            0x0                 0
+rcx            0x7ffff73f81e8      140737341522408
+rdx            0x216484e5          560235749
+rsi            0x7fffffffddb4      140737488346548
+rdi            0x216484f0          560235760
+rbp            0x7fffffffdda8      0x7fffffffdda8
+rsp            0x7fffffffdda8      0x7fffffffdda8
+r8             0x7ffff73f81f4      140737341522420
+r9             0x7ffff73f8260      140737341522528
+r10            0x7                 7
+r11            0x7ffff7073cb0      140737337834672
+r12            0x401bd0            4201424
+r13            0x7fffffffdee0      140737488346848
+r14            0x0                 0
+r15            0x0                 0
+rip            0x401ccb            0x401ccb <test_1+21>
+eflags         0x216               [ PF AF IF ]
+
+
+rip = 0x401ccb
+rsp = 0x7fffffffdda8
+rbp = 0x7fffffffdda8
+
+ra = rbp+16-8 = rbp+8, 读取这个地址的内容
+					  
+ra = rsp+8, 读取这个地址的内容	
+(gdb) x/1xg 0x7fffffffddb0
+0x7fffffffddb0: 0x0000000000401d07  ----> 这就对了	
+
+rbp = 		  
+
+0000000000401cb6    36 FUNC    GLOBAL DEFAULT   13 test_1
+00000068 000000000000001c 0000006c FDE cie=00000000 pc=0000000000401cb6..0000000000401cda
+   LOC           CFA      rbp   ra    
+0000000000401cb6 rsp+8    u     c-8   
+0000000000401cb7 rsp+16   c-16  c-8   
+0000000000401cba rbp+16   c-16  c-8  -----------> 根据计算的pc找到该条目 
+0000000000401cd9 rsp+8    c-16  c-8   
+
+rbp            0x7fffffffddd0      0x7fffffffddd0
+rsp            0x7fffffffddb8      0x7fffffffddb8
+rip            0x401d07            0x401d07 <test+45>
+
+开始计算上一frame的
+
+test帧的cfa = rbp+16 = 0x7fffffffdda8 + 16 = 0x7FFFFFFFDDB8
+test帧的rsp = cfa = 0x7FFFFFFFDDB8
+test帧的rbp = cfa - 16 = 0x7fffffffdda8 -----> 要读取这个栈地址的内容，获取test帧的rbp 0x7fffffffddd0
+test帧的pc = 0x0000000000401d07
+
+(gdb) x 0x7fffffffdda8
+0x7fffffffdda8: 0x00007fffffffddd0
+
+0000000000401cda    47 FUNC    GLOBAL DEFAULT   13 test
+00000088 000000000000001c 0000008c FDE cie=00000000 pc=0000000000401cda..0000000000401d09
+   LOC           CFA      rbp   ra    
+0000000000401cda rsp+8    u     c-8   
+0000000000401cdb rsp+16   c-16  c-8   
+0000000000401cde rbp+16   c-16  c-8  ------------------> 根据计算的pc找到该条目  
+0000000000401d08 rsp+8    c-16  c-8 
+
+开始计算上一frame的
+
+main帧的cfa = 0x7fffffffddd0 + 16 = 0x7FFFFFFFDDE0
+main帧的rsp = cfa = 0x7FFFFFFFDDE0
+main帧的rbp = cfa - 16 = 0x7FFFFFFFDDE0 - 10 = 0x7fffffffddd0 ----> 读取这个栈地址内容，获取main的rbp 0x7fffffffde00
+main帧的pc = cfa - 8 = 0x7FFFFFFFDDE0 - 8 = 0x7FFFFFFFDDD8  -----> 读取这个地址，获取返回地址，也是就main的pc 0x0000000000401d76
+
+开始计算上一frame的
+
+main函数的fde
+000000a8 000000000000001c 000000ac FDE cie=00000000 pc=0000000000401d09..0000000000401dd8
+   LOC           CFA      rbp   ra    
+0000000000401d09 rsp+8    u     c-8   
+0000000000401d0a rsp+16   c-16  c-8   
+0000000000401d0d rbp+16   c-16  c-8   ------------------> 根据计算的pc找到该条目
+0000000000401dd7 rsp+8    c-16  c-8 
+
+rbp            0x7fffffffde00      0x7fffffffde00
+rsp            0x7fffffffdde0      0x7fffffffdde0
+rip            0x401d79            0x401d79 <main+112>
+
+cfa = 0x7fffffffde00 + 16 = 0x7FFFFFFFDE10
+rsp = cfa = 0x7FFFFFFFDE10
+rbp = 0x7FFFFFFFDE10 - 16 = 0x7fffffffde00 ---> 读取这个栈地址内容 0x000000000040fef0
+ra = 0x7FFFFFFFDE10 - 8 = 0x7FFFFFFFDE08 ---> 读取这个地址的内容 0x00007ffff705c493 ----> /usr/lib64/libc-2.28.so
+
+
+开始计算上一frame的
+0x7ffff705c493 - 0x7ffff7039000 = 0x23493
+
+根据地址找到对应的simple
+➜  bin git:(feature-xm-ebpf-collector) ✗ readelf -s /usr/lib64/libc-2.28.so|grep 000233
+  2238: 00000000000233a0   446 FUNC    GLOBAL DEFAULT   14 __libc_start_main@@GLIBC_2.2.5
+    85: 0000000000023394     0 NOTYPE  LOCAL  HIDDEN    14 .annobin_init_first.c_end
+    97: 0000000000023394     0 NOTYPE  LOCAL  HIDDEN    14 .annobin__init.end
+   102: 00000000000233a0     0 NOTYPE  LOCAL  HIDDEN    14 .annobin_libc_start.c
+   112: 00000000000233a0     0 NOTYPE  LOCAL  HIDDEN    14 .annobin___libc_start_mai
+ 26553: 00000000000233a0   446 FUNC    GLOBAL DEFAULT   14 __libc_start_main
+ 
+__libc_start_main
+ 000000c4 000000000000002c 000000c8 FDE cie=00000000 pc=00000000000233a0..000000000002355e
+   LOC           CFA      rbx   rbp   r12   r13   r14   ra
+00000000000233a0 rsp+8    u     u     u     u     u     c-8
+00000000000233a6 rsp+16   u     u     u     u     c-16  c-8
+00000000000233aa rsp+24   u     u     u     c-24  c-16  c-8
+00000000000233ac rsp+32   u     u     c-32  c-24  c-16  c-8
+00000000000233ad rsp+40   u     c-40  c-32  c-24  c-16  c-8
+00000000000233b1 rsp+48   c-48  c-40  c-32  c-24  c-16  c-8
+00000000000233b8 rsp+192  c-48  c-40  c-32  c-24  c-16  c-8   ------------> 根据计算的pc找到该条目
+
+cfa = 0x7FFFFFFFDE10 + 192 = 0x7FFFFFFFDED0
+rbx = cfa - 48 = 0x7FFFFFFFDEA0   ---> 读取这个栈地址内容 0x0000000000000000
+(gdb) x 0x7FFFFFFFDEA0
+0x7fffffffdea0: 0x0000000000000000
+
+rbp = cfa - 40 = 0x7FFFFFFFDEA8   ---> 读取这个栈地址内容 0x0000000000000000
+(gdb) x 0x7FFFFFFFDEA8
+0x7fffffffdea8: 0x0000000000000000
+
+ra = cfa - 8 = 0x7FFFFFFFDEC8  ---> 读取这个栈地址内容 0x0000000000401bfe
+
+
+

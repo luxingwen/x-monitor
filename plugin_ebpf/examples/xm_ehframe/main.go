@@ -21,19 +21,22 @@ import (
 	"github.com/golang/glog"
 )
 
+type fdeInfo struct {
+	begin uint64
+	end   uint64
+}
+
 type procMapEntry struct {
-	module     string
-	rip        uint64
-	baseAddr   uint64
-	debugPaths []string
+	module   string
+	rip      uint64
+	baseAddr uint64
+	fdeInfos []fdeInfo
 }
 
 var (
 	__entries = []procMapEntry{
-		{"/bin/fio", 0x555deaa8e014, 0x555deaa21000, []string{"/usr/lib/debug/.build-id/0c/8a9a6540d4d4a8247e07553d72cde921c4379b.debug"}},
-		// {"/bin/fio", 0x555deaa88945, 0x555deaa21000, []string{"/usr/lib/debug/.build-id/0c/8a9a6540d4d4a8247e07553d72cde921c4379b.debug"}},
-		// {"/usr/lib64/libc-2.28.so", 0x7f6b69274d98, 0x7f6b691ac000, nil},
-		// {"/usr/lib64/libc-2.28.so", 0x7f6b69298a79, 0x7f6b691ac000, nil},
+		{"/bin/fio", 0x555deaa8e014, 0x555deaa21000, []fdeInfo{{0x6c8b0, 0x6d56e}, {0x80190, 0x803d1}, {0x7e760, 0x7e86b}}},
+		{module: "./stack_unwind_cli", rip: 0x401cc4, baseAddr: 0x400000},
 	}
 )
 
@@ -56,7 +59,7 @@ func pointerSize(arch elf.Machine) int {
 func printFDETable(fde *dlvFrame.FrameDescriptionEntry, order binary.ByteOrder) {
 	var strBuilder strings.Builder
 
-	glog.Infof("FDE cie=%04x pc=%08x..%08x", fde.CIE.CIE_id, fde.Begin(), fde.End())
+	glog.Infof("FDE cie=%04x pc=%08x...%08x", fde.CIE.CIE_id, fde.Begin(), fde.End())
 
 	addFDERowFunc := func(loc uint64, cfa dlvFrame.DWRule, regs map[uint64]dlvFrame.DWRule, retAddrReg uint64) {
 		// loc
@@ -97,20 +100,14 @@ func printFDETable(fde *dlvFrame.FrameDescriptionEntry, order binary.ByteOrder) 
 	ExecuteDwarfProgram(fde, order, addFDERowFunc)
 }
 
-func unwindStack(entry *procMapEntry) {
+func printFDETables(entry *procMapEntry) {
 	glog.Infof("------read .eh_frame section from file:'%s'.", entry.module)
 
 	if _, err := os.Stat(entry.module); err != nil {
 		glog.Fatal(err.Error())
 	}
 
-	// bi := proc.NewBinaryInfo(runtime.GOOS, runtime.GOARCH)
-	// if err := bi.LoadBinaryInfo(entry.module, entry.baseAddr, entry.debugPaths); err != nil {
-	// 	glog.Errorf(err.Error())
-	// }
-
 	f, err := elf.Open(entry.module)
-	//f, err := os.Open(__binFile)
 	if err != nil {
 		glog.Fatal(err.Error())
 	}
@@ -129,15 +126,24 @@ func unwindStack(entry *procMapEntry) {
 		glog.Error(err.Error())
 	} else {
 		for _, fde := range fdes {
-			if (fde.Begin() == 0x6c8b0 && fde.End() == 0x6d56e) ||
-				(fde.Begin() == 0x80190 && fde.End() == 0x803d1) ||
-				(fde.Begin() == 0x7e760 && fde.End() == 0x7e86b) {
+			if len(entry.fdeInfos) > 0 {
+				for _, fi := range entry.fdeInfos {
+					if fde.Begin() == fi.begin && fde.End() == fi.end {
+						printFDETable(fde, f.ByteOrder)
+					}
+				}
+			} else {
 				printFDETable(fde, f.ByteOrder)
 			}
-
 		}
 
-		// pc := entry.rip - entry.baseAddr
+		pc := entry.rip - entry.baseAddr
+		for _, fde := range fdes {
+			if pc >= fde.Begin() && pc < fde.End() {
+				glog.Infof("++++++++pc:0x%08x in fde.", pc)
+				printFDETable(fde, f.ByteOrder)
+			}
+		}
 
 		// // procFunc := bi.PCToFunc(pc)
 		// // if procFunc != nil {
@@ -167,6 +173,6 @@ func main() {
 	goflag.Parse()
 
 	for _, e := range __entries {
-		unwindStack(&e)
+		printFDETables(&e)
 	}
 }

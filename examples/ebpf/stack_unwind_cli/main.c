@@ -11,13 +11,21 @@
 #include "utils/os.h"
 #include "utils/consts.h"
 #include "utils/strings.h"
+#include "utils/clocks.h"
 #include "utils/x_ebpf.h"
 
 static const int32_t __crycle_counts = 1000;
 
-int test(int x) {
-    int c = 10;
-    return x * c;
+int32_t test_1(int32_t x) {
+    int32_t c = 12;
+    int32_t d = 13;
+    return x + c + d;
+}
+
+int32_t test(int32_t x) {
+    int32_t a = 10;
+    int32_t b = 11;
+    return test_1(x + a + b);
 }
 
 int32_t main(int32_t argc, char *argv[]) {
@@ -26,21 +34,11 @@ int32_t main(int32_t argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    debug("stack_unwind_cli pid:%d", getpid());
+    srand(now_realtime_sec());
 
-    int a, b, c, d;
-    a = 10;
-    b = 11;
-    debug("hello test~, %d", a + b);
-
-    while (1) {
-        d = __crycle_counts;
-        do {
-            c = test(a + b);
-        } while (d--);
-        usleep(50 * 1000);
-        // debug("hello test(a + b) = %d", c);
-    }
+    int32_t r = rand();
+    int32_t result = test(r);
+    debug("test(%d)=%d", r, result);
 
     log_fini();
 
