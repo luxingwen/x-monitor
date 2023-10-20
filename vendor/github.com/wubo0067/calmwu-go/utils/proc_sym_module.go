@@ -277,7 +277,7 @@ func (psm *ProcSymsModule) resolvePC(pc uint64) (string, uint32, string, error) 
 			pc, psm.procSymTable[0].pc, psm.procSymTable[psm.SymCount-1].pc, psm.Pathname)
 	}
 
-	// 找到了
+	// 找到比pc小，但是最接近pc的symbol
 	ps := psm.procSymTable[index-1]
 	return ps.name, uint32(pc - ps.pc), psm.Pathname, nil
 }

@@ -31,12 +31,13 @@ type procMapEntry struct {
 	rip      uint64
 	baseAddr uint64
 	fdeInfos []fdeInfo
+	elfType  elf.Type
 }
 
 var (
 	__entries = []procMapEntry{
-		{"/bin/fio", 0x555deaa8e014, 0x555deaa21000, []fdeInfo{{0x6c8b0, 0x6d56e}, {0x80190, 0x803d1}, {0x7e760, 0x7e86b}}},
-		{module: "./stack_unwind_cli", rip: 0x401cc4, baseAddr: 0x400000},
+		{"/bin/fio", 0x555deaa8e014, 0x555deaa21000, []fdeInfo{{0x6c8b0, 0x6d56e}, {0x80190, 0x803d1}, {0x7e760, 0x7e86b}}, elf.ET_DYN},
+		{module: "./stack_unwind_cli", rip: 0x401ccb, baseAddr: 0x400000, elfType: elf.ET_EXEC},
 	}
 )
 
@@ -133,14 +134,21 @@ func printFDETables(entry *procMapEntry) {
 					}
 				}
 			} else {
+				// 打印全部的fde table
 				printFDETable(fde, f.ByteOrder)
 			}
 		}
 
-		pc := entry.rip - entry.baseAddr
+		// 打印指定rip的fde table
+		var pc uint64
+		if entry.elfType == elf.ET_EXEC {
+			pc = entry.rip
+		} else if entry.elfType == elf.ET_DYN {
+			pc = entry.rip - entry.baseAddr
+		}
 		for _, fde := range fdes {
 			if pc >= fde.Begin() && pc < fde.End() {
-				glog.Infof("++++++++pc:0x%08x in fde.", pc)
+				glog.Infof("++++++++rip:0x%08x, pc:0x%08x in fde:", entry.rip, pc)
 				printFDETable(fde, f.ByteOrder)
 			}
 		}

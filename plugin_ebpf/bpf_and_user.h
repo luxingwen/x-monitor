@@ -196,3 +196,30 @@ struct xm_profile_sample_data {
     __u32 pid_ns; // 归属的pid namespace
     pid_t pgid; // 归属的进程组
 };
+
+enum xm_profile_dw_rule_type {
+    XM_RULE_UNDEFINED = 0,
+    XM_RULE_OFFSET,
+    XM_RULE_CFA,
+};
+
+struct xm_profile_dw_rule {
+    enum xm_profile_dw_rule_type rule;
+    __s64 offset;
+    __u64 reg; // 寄存器序号
+};
+
+struct xm_profile_fde_row {
+    __u64 loc;
+    struct xm_profile_dw_rule cfa;
+    struct xm_profile_dw_rule rbp;
+    struct xm_profile_dw_rule ra;
+    struct xm_profile_dw_rule additional;
+};
+
+struct xm_profile_fde_table {
+    __u64 start;
+    __u64 end;
+    struct xm_profile_fde_row rows[PERF_MAX_STACK_DEPTH];
+    __u32 row_count;
+};

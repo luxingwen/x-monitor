@@ -12,6 +12,31 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type XMProfileStackTraceType [127]uint64
+
+type XMProfileXmProfileDwRule struct {
+	Rule   uint32
+	_      [4]byte
+	Offset int64
+	Reg    uint64
+}
+
+type XMProfileXmProfileFdeRow struct {
+	Loc        uint64
+	Cfa        XMProfileXmProfileDwRule
+	Rbp        XMProfileXmProfileDwRule
+	Ra         XMProfileXmProfileDwRule
+	Additional XMProfileXmProfileDwRule
+}
+
+type XMProfileXmProfileFdeTable struct {
+	Start    uint64
+	End      uint64
+	Rows     [127]XMProfileXmProfileFdeRow
+	RowCount uint32
+	_        [4]byte
+}
+
 type XMProfileXmProfileSample struct {
 	Pid           int32
 	KernelStackId int32

@@ -149,6 +149,7 @@ __libc_start_main
 00000000000233b8 rsp+192  c-48  c-40  c-32  c-24  c-16  c-8   ------------> 根据计算的pc找到该条目
 
 cfa = 0x7FFFFFFFDE10 + 192 = 0x7FFFFFFFDED0
+rsp = cfa = 0x7FFFFFFFDED0
 rbx = cfa - 48 = 0x7FFFFFFFDEA0   ---> 读取这个栈地址内容 0x0000000000000000
 (gdb) x 0x7FFFFFFFDEA0
 0x7fffffffdea0: 0x0000000000000000
@@ -158,6 +159,18 @@ rbp = cfa - 40 = 0x7FFFFFFFDEA8   ---> 读取这个栈地址内容 0x00000000000
 0x7fffffffdea8: 0x0000000000000000
 
 ra = cfa - 8 = 0x7FFFFFFFDEC8  ---> 读取这个栈地址内容 0x0000000000401bfe
+
+开始计算上一frame的
+pc = 401bfe
+
+340: 0000000000401bd0    47 FUNC    GLOBAL DEFAULT   13 _start
+00000018 0000000000000010 0000001c FDE cie=00000000 pc=0000000000401bd0..0000000000401bff
+   LOC           CFA      ra    
+0000000000401bd0 rsp+8    u     
+0000000000401bd4 rsp+8    u
+
+cfa = rsp + 8 = 0x7FFFFFFFDED0 + 8 
+当ra = u的时候就是到top了
 
 
 

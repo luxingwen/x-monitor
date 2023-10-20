@@ -6,11 +6,10 @@
  */
 
 #include <vmlinux.h>
-#include "../bpf_and_user.h"
 #include "xm_bpf_helpers_common.h"
 #include "xm_bpf_helpers_maps.h"
 #include "xm_bpf_helpers_math.h"
-
+#include "../bpf_and_user.h"
 #include "xm_bpf_helpers_filter.h"
 
 // prog参数，过滤条件
@@ -31,6 +30,9 @@ const enum xm_prog_filter_target_scope_type __unused_filter_scope_type
 
 const struct xm_profile_sample *__unused_ps __attribute__((unused));
 const struct xm_profile_sample_data *__unused_psd __attribute__((unused));
+const struct xm_profile_dw_rule *__unused_pdr __attribute__((unused));
+const struct xm_profile_fde_row *__unused_pfr __attribute__((unused));
+const struct xm_profile_fde_table *__unused_pft __attribute__((unused));
 
 // 获取用户task_struct用户空间的寄存器，为了使用eh_frame的信息做stack unwind
 static __always_inline void
@@ -54,6 +56,33 @@ __xm_get_task_userspace_regs(struct task_struct *task,
         tu_regs->rsp = PT_REGS_SP(user_regs);
         tu_regs->rbp = PT_REGS_FP(user_regs);
     }
+}
+
+// int element = sortedArray[index];
+static __always_inline __s32 __bsearch_fde_table(
+    const struct xm_profile_fde_row *rows, __u32 row_count, __u64 pc) {
+    if (!rows || 0 == row_count || row_count > PERF_MAX_STACK_DEPTH) {
+        return -1;
+    }
+
+    __s32 left = 0;
+    __s32 right = row_count - 1;
+    __s32 result = -1;
+    __s32 mid = 0;
+    // 堆栈深度是127，二分查找最多7次
+    for (__s32 i = 0; i < MAX_BIN_SEARCH_DEPTH; i++) {
+        if (left > right) {
+            break;
+        }
+        mid = left + (right - left) / 2;
+        if (rows[mid].loc <= pc) {
+            result = mid;
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+    return result;
 }
 
 SEC("perf_event")

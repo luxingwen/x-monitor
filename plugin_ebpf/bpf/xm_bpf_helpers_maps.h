@@ -42,6 +42,7 @@
 // max depth of each stack trace to track
 #ifndef PERF_MAX_STACK_DEPTH
 #define PERF_MAX_STACK_DEPTH 127
+#define MAX_BIN_SEARCH_DEPTH 7
 #endif
 
 typedef __u64 stack_trace_type[PERF_MAX_STACK_DEPTH];
