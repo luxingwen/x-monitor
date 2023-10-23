@@ -6,6 +6,7 @@
  */
 
 #include <vmlinux.h>
+#include "../bpf_and_user.h"
 #include "xm_bpf_helpers_common.h"
 #include "xm_bpf_helpers_maps.h"
 #include "xm_bpf_helpers_net.h"

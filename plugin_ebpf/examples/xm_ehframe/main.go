@@ -27,17 +27,18 @@ type fdeInfo struct {
 }
 
 type procMapEntry struct {
-	module   string
-	rip      uint64
-	baseAddr uint64
-	fdeInfos []fdeInfo
-	elfType  elf.Type
+	module       string
+	rip          uint64
+	baseAddr     uint64
+	fdeInfos     []fdeInfo
+	elfType      elf.Type
+	printCodeSeg bool
 }
 
 var (
 	__entries = []procMapEntry{
-		{"/bin/fio", 0x555deaa8e014, 0x555deaa21000, []fdeInfo{{0x6c8b0, 0x6d56e}, {0x80190, 0x803d1}, {0x7e760, 0x7e86b}}, elf.ET_DYN},
-		{module: "./stack_unwind_cli", rip: 0x401ccb, baseAddr: 0x400000, elfType: elf.ET_EXEC},
+		{"/bin/fio", 0x555deaa8e014, 0x555deaa21000, []fdeInfo{{0x6c8b0, 0x6d56e}, {0x80190, 0x803d1}, {0x7e760, 0x7e86b}}, elf.ET_DYN, false},
+		{module: "./stack_unwind_cli", rip: 0x401ccb, baseAddr: 0x400000, elfType: elf.ET_EXEC, printCodeSeg: true},
 	}
 )
 
@@ -101,6 +102,41 @@ func printFDETable(fde *dlvFrame.FrameDescriptionEntry, order binary.ByteOrder) 
 	ExecuteDwarfProgram(fde, order, addFDERowFunc)
 }
 
+func printCodeSeg(elfF *elf.File, isPrint bool) {
+	// var codeSeg *elf.Prog
+	// for _, prog := range elfF.Progs {
+	// 	if prog.Type == elf.PT_LOAD && prog.Flags&elf.PF_X != 0 {
+	// 		codeSeg = prog
+	// 		break
+	// 	}
+	// }
+
+	// if codeSeg == nil {
+	// 	glog.Error("can't find code segment")
+	// 	return
+	// }
+
+	// // Read the code segment and disassemble instructions
+	// code := make([]byte, codeSeg.Filesz)
+	// if _, err := codeSeg.ReadAt(code, int64(codeSeg.Off)); err != nil {
+	// 	glog.Error(err)
+	// 	return
+	// }
+	// glog.Infof("code segment size:%d bytes", codeSeg.Filesz)
+
+	// engine, err := gapstone.New(gapstone.CS_ARCH_X86, gapstone.CS_MODE_64)
+	// if err != nil {
+	// 	glog.Error(err)
+	// 	return
+	// }
+	// defer engine.Close()
+
+	// insns, _ := engine.Disasm(code, codeSeg.Vaddr, 0)
+	// for _, insn := range insns {
+	// 	glog.Info(insn.Mnemonic, insn.OpStr)
+	// }
+}
+
 func printFDETables(entry *procMapEntry) {
 	glog.Infof("------read .eh_frame section from file:'%s'.", entry.module)
 
@@ -152,6 +188,8 @@ func printFDETables(entry *procMapEntry) {
 				printFDETable(fde, f.ByteOrder)
 			}
 		}
+
+		printCodeSeg(f, entry.printCodeSeg)
 
 		// // procFunc := bi.PCToFunc(pc)
 		// // if procFunc != nil {

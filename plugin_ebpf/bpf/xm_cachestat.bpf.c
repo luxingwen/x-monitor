@@ -8,9 +8,9 @@
 // https://github.com/wubo0067/x-monitor/blob/feature-xm-ebpf-collector/doc/cachestat.md
 
 #include <vmlinux.h>
+#include "../bpf_and_user.h"
 #include "xm_bpf_helpers_common.h"
 #include "xm_bpf_helpers_maps.h"
-#include "../bpf_and_user.h"
 
 // extern int LINUX_KERNEL_VERSION __kconfig;
 

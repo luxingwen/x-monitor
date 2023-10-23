@@ -11,6 +11,15 @@
 #define TASK_COMM_LEN 16
 #endif
 
+// Stack Traces are slightly different
+// in that the value is 1 big byte array
+// of the stack addresses
+// max depth of each stack trace to track
+#ifndef PERF_MAX_STACK_DEPTH
+#define PERF_MAX_STACK_DEPTH 127
+#define MAX_BIN_SEARCH_DEPTH 7
+#endif
+
 #define XDP_UNKNOWN XDP_REDIRECT + 1
 #ifndef XDP_ACTION_MAX
 #define XDP_ACTION_MAX (XDP_UNKNOWN + 1)

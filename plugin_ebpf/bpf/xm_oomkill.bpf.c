@@ -16,9 +16,9 @@ https://lore.kernel.org/linux-mm/20170531163928.GZ27783@dhcp22.suse.cz/
 */
 
 #include <vmlinux.h>
+#include "../bpf_and_user.h"
 #include "xm_bpf_helpers_common.h"
 #include "xm_bpf_helpers_maps.h"
-#include "../bpf_and_user.h"
 
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
