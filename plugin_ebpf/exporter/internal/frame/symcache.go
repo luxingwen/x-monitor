@@ -2,10 +2,10 @@
  * @Author: CALM.WU
  * @Date: 2023-08-22 14:18:10
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-10-09 16:50:06
+ * @Last Modified time: 2023-10-24 15:23:33
  */
 
-package symbols
+package frame
 
 import (
 	"sync"
@@ -22,20 +22,21 @@ type Symbol struct {
 	Offset uint32
 }
 
-type SymCache struct {
-	lc *lru.Cache[int32, *calmutils.ProcSyms]
+type SystemSymbolsCache struct {
+	lc   *lru.Cache[int32, *calmutils.ProcSyms]
+	lock sync.RWMutex
 }
 
 var (
-	__instance *SymCache
+	__instance *SystemSymbolsCache
 	once       sync.Once
 )
 
-func InitCache(size int) error {
+func InitSystemSymbolsCache(size int) error {
 	var err error
 
 	once.Do(func() {
-		__instance = &SymCache{}
+		__instance = &SystemSymbolsCache{}
 		__instance.lc, err = lru.NewWithEvict[int32, *calmutils.ProcSyms](size, func(key int32, _ *calmutils.ProcSyms) {
 			glog.Warningf("pid:%d symbols cache object evicted by lru", key)
 		})
@@ -66,20 +67,23 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 	)
 
 	if __instance != nil {
+		__instance.lock.Lock()
+		defer __instance.lock.Unlock()
+
 		if pid > 0 {
 			// user
 			procSyms, ok = __instance.lc.Get(pid)
 			if ok && procSyms != nil {
 				sym.Name, sym.Offset, sym.Module, err = procSyms.ResolvePC(addr)
 				if err != nil {
-					err = errors.Wrapf(err, "ResolvePC pid:%d.", pid)
+					err = errors.Wrapf(err, "resolve pc from pid:%d.", pid)
 					return nil, err
 				}
 			} else {
 				// add
 				procSyms, err = calmutils.NewProcSyms(int(pid))
 				if err != nil {
-					err = errors.Wrapf(err, "NewProcSyms pid:%d.", pid)
+					err = errors.Wrapf(err, "new pid:%d symbols", pid)
 					return nil, err
 				} else {
 					__instance.lc.Add(pid, procSyms)
@@ -87,7 +91,7 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 
 					sym.Name, sym.Offset, sym.Module, err = procSyms.ResolvePC(addr)
 					if err != nil {
-						err = errors.Wrapf(err, "ResolvePC pid:%d.", pid)
+						err = errors.Wrapf(err, "resolve pc from pid:%d.", pid)
 						return nil, err
 					}
 				}
@@ -104,15 +108,45 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 	return sym, nil
 }
 
+// RemoveByPid removes the symbol cache for a given process ID.
 func RemoveByPid(pid int32) {
 	if __instance != nil && pid > 0 {
+		__instance.lock.Lock()
+		defer __instance.lock.Unlock()
+
 		__instance.lc.Remove(pid)
 	}
 }
 
-func Size() int {
+// CachePidCount returns the number of cached PIDs in the symbol cache.
+func CachePidCount() int {
 	if __instance != nil {
+		__instance.lock.RLock()
+		defer __instance.lock.RUnlock()
+
 		return __instance.lc.Len()
 	}
 	return -1
+}
+
+// __getProcModules returns the symbol information for all modules loaded by the process with the given PID.
+// If the information is already cached, it is returned from the cache. Otherwise, it is fetched and cached.
+// Returns a slice of ProcSymsModule and an error if any.
+func __getProcModules(pid int32) ([]*calmutils.ProcSymsModule, error) {
+	if __instance != nil {
+		__instance.lock.Lock()
+		defer __instance.lock.Unlock()
+
+		procSyms, ok := __instance.lc.Get(pid)
+		if ok && procSyms != nil {
+			return procSyms.Modules, nil
+		} else {
+			procSyms, err := calmutils.NewProcSyms(int(pid))
+			if err == nil {
+				__instance.lc.Add(pid, procSyms)
+				return procSyms.Modules, nil
+			}
+		}
+	}
+	return nil, errors.Errorf("get pid:%d map modules failed.", pid)
 }

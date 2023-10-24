@@ -9,6 +9,8 @@ package utils
 
 import (
 	"unsafe"
+
+	calmutils "github.com/wubo0067/calmwu-go/utils"
 )
 
 func CommToString(commSlice []int8) string {
@@ -35,4 +37,17 @@ func CommToString(commSlice []int8) string {
 	// 	}
 	// }
 	// return calmutils.Bytes2String(byteSlice)
+}
+
+func String2Int8Array(s string, a []int8) {
+	var i int
+	var b byte
+	bs := calmutils.String2Bytes(s)
+	for i, b = range bs {
+		a[i] = int8(b)
+		if i >= len(a)-2 {
+			break
+		}
+	}
+	a[i+1] = 0
 }

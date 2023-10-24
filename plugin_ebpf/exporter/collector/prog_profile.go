@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-08-18 15:34:32
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-09-06 16:13:28
+ * @Last Modified time: 2023-10-24 15:24:10
  */
 
 package collector
@@ -31,8 +31,8 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/frame"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/pyrostub"
-	"xmonitor.calmwu/plugin_ebpf/exporter/internal/symbols"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
@@ -377,7 +377,7 @@ loop:
 				case eventcenter.EBPF_EVENT_PROCESS_EXIT:
 					glog.Infof("eBPFProgram:'%s', receive eBPF Event'%s'", pp.name, litter.Sdump(eBPFEvtInfo))
 					processExitEvt := eBPFEvtInfo.EvtData.(*eventcenter.EBPFEventProcessExit)
-					symbols.RemoveByPid(processExitEvt.Pid)
+					frame.RemoveByPid(processExitEvt.Pid)
 				}
 				eBPFEvtInfo = nil
 			}
@@ -413,7 +413,7 @@ func (pp *profileProgram) collectProfiles() {
 		profileStackMap     = pp.objs.XmProfileStackMap
 		err                 error
 		psis                []*procStackInfo
-		sym                 *symbols.Symbol
+		sym                 *frame.Symbol
 	)
 
 	// 收集xm_profile_sample_count_map数据
@@ -488,7 +488,7 @@ func (pp *profileProgram) collectProfiles() {
 				break
 			}
 			// 解析ip
-			sym, err = symbols.Resolve(pid, ip)
+			sym, err = frame.Resolve(pid, ip)
 			if err == nil {
 				if pid > 0 {
 					symStr := fmt.Sprintf("%s+0x%x [%s]", sym.Name, sym.Offset, sym.Module)
@@ -548,7 +548,7 @@ func (pp *profileProgram) collectProfiles() {
 		}
 	}
 
-	glog.Infof("eBPFProgram:'%s' symCache size:%d", pp.name, symbols.Size())
+	glog.Infof("eBPFProgram:'%s' symCache size:%d", pp.name, frame.CachePidCount())
 }
 
 func (pp *profileProgram) submitEBPFProfile(builders *pprof.ProfileBuilders) {

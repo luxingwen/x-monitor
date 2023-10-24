@@ -27,8 +27,8 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/frame"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/net"
-	"xmonitor.calmwu/plugin_ebpf/exporter/internal/symbols"
 )
 
 var (
@@ -124,7 +124,7 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	// init symbols
-	if err := symbols.InitCache(32); err != nil {
+	if err := frame.InitSystemSymbolsCache(32); err != nil {
 		glog.Fatalf("Init Symbols Cache failed. %s", err.Error())
 	}
 

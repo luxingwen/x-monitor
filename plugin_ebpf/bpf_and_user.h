@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-15 14:06:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-16 16:13:57
+ * @Last Modified time: 2023-10-24 14:52:25
  */
 
 #pragma once
@@ -231,4 +231,34 @@ struct xm_profile_fde_table {
     __u64 end;
     struct xm_profile_fde_row rows[PERF_MAX_STACK_DEPTH];
     __u32 row_count;
+};
+
+#ifndef XM_PATH_MAX_LEN
+#define XM_PATH_MAX_LEN 128
+#endif
+
+#ifndef XM_PER_PROCESS_ASSOC_MODULE_COUNT
+#define XM_PER_PROCESS_ASSOC_MODULE_COUNT 32
+#endif
+
+struct xm_proc_maps_module {
+    __u64 start_addr;
+    __u64 end_addr;
+    __u64 build_id_hash;
+    char path[XM_PATH_MAX_LEN];
+};
+
+struct xm_pid_maps {
+    __u32 module_count;
+    struct xm_proc_maps_module modules[XM_PER_PROCESS_ASSOC_MODULE_COUNT];
+};
+
+#ifndef XM_PER_MODULE_FDE_TABLE_COUNT
+#define XM_PER_MODULE_FDE_TABLE_COUNT 2048
+#endif
+
+struct xm_profile_module_fde_tables {
+    __u32 ref_count;
+    __u32 fde_table_count;
+    struct xm_profile_fde_table fde_tables[XM_PER_MODULE_FDE_TABLE_COUNT];
 };

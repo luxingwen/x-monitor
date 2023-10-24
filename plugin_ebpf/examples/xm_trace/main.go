@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-12-28 10:42:19
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-22 16:20:11
+ * @Last Modified time: 2023-10-24 15:01:30
  */
 
 package main
@@ -481,11 +481,11 @@ func main() {
 					if stackAddr == 0 {
 						continue
 					}
-					sym, offset, err := calmutils.FindKsym(stackAddr)
+					sym, err := calmutils.FindKsym(stackAddr)
 					if err != nil {
 						sym = "?"
 					}
-					glog.Infof("\tip[%d]: 0x%016x\t%s+0x%x", i, stackAddr, sym, offset)
+					glog.Infof("\tip[%d]: 0x%016x\t%s", i, stackAddr, sym)
 				}
 			}
 		}

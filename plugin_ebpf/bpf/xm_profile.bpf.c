@@ -17,13 +17,13 @@ BPF_ARRAY(xm_profile_arg_map, struct xm_prog_filter_args, 1);
 // 堆栈计数
 BPF_HASH(xm_profile_sample_count_map, struct xm_profile_sample,
          struct xm_profile_sample_data, MAX_THREAD_COUNT);
+// 堆栈
 BPF_STACK_TRACE(xm_profile_stack_map, 1024);
-// struct {
-//     __uint(type, BPF_MAP_TYPE_STACK_TRACE);
-//     __uint(key_size, sizeof(__u32));
-//     __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64));
-//     __uint(max_entries, 1024);
-// } xm_profile_stack_map SEC(".maps");
+// 保存pid的内存映射信息，如果pid存在，说明需要执行来获取用户态堆栈
+BPF_HASH(xm_profile_pid_modules_map, __u32, struct xm_pid_maps, 1024);
+// 保存每个module的fde table信息
+BPF_HASH(xm_profile_module_fdetable_map, __u64,
+         struct xm_profile_module_fde_tables, 1024);
 
 const enum xm_prog_filter_target_scope_type __unused_filter_scope_type
     __attribute__((unused)) = XM_PROG_FILTER_TARGET_SCOPE_TYPE_NONE;
@@ -33,6 +33,10 @@ const struct xm_profile_sample_data *__unused_psd __attribute__((unused));
 const struct xm_profile_dw_rule *__unused_pdr __attribute__((unused));
 const struct xm_profile_fde_row *__unused_pfr __attribute__((unused));
 const struct xm_profile_fde_table *__unused_pft __attribute__((unused));
+const struct xm_proc_maps_module *__unused_pmm __attribute__((unused));
+const struct xm_pid_maps *__unused_pm __attribute__((unused));
+const struct xm_profile_module_fde_tables *__unused_pmft
+    __attribute__((unused));
 
 // 获取用户task_struct用户空间的寄存器，为了使用eh_frame的信息做stack unwind
 static __always_inline void
