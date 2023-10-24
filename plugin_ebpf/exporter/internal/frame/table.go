@@ -20,7 +20,10 @@ const (
 	__maxPerProcessAssocModuleCount = 32   // 每个进程关联的module最大数量
 )
 
-func GetProcessMaps(pid int32) (*bpfmodule.XMProfileXmPidMaps, error) {
+// CreateProcMapsTable creates a new XMProfileXmPidMaps object for the given process ID (pid).
+// It populates the object with information about the process's memory mappings (modules).
+// Returns the populated XMProfileXmPidMaps object and an error (if any).
+func CreateProcMapsTable(pid int32) (*bpfmodule.XMProfileXmPidMaps, error) {
 	procMaps := new(bpfmodule.XMProfileXmPidMaps)
 
 	if modules, err := __getProcModules(pid); err != nil {
@@ -33,9 +36,12 @@ func GetProcessMaps(pid int32) (*bpfmodule.XMProfileXmPidMaps, error) {
 			procMaps.Modules[i].BuildIdHash = calmutils.HashStr2Uint64(module.BuildID)
 			utils.String2Int8Array(module.Pathname, procMaps.Modules[i].Path[:])
 
+			glog.Infof("Pid:%d maps module:'%s' buildID:'%s' buidIDHash:%d startAddr:%#x endAddr:%#x",
+				pid, module.Pathname, module.BuildID, procMaps.Modules[i].BuildIdHash, module.StartAddr, module.EndAddr)
+
 			procMaps.ModuleCount += 1
 			if procMaps.ModuleCount >= __maxPerProcessAssocModuleCount {
-				glog.Warning("too many modules associated with process, ignore the rest.")
+				glog.Warningf("too many modules associated with Pid:%d, ignore the rest.", pid)
 				break
 			}
 		}
@@ -44,6 +50,6 @@ func GetProcessMaps(pid int32) (*bpfmodule.XMProfileXmPidMaps, error) {
 	return procMaps, nil
 }
 
-func CreateFDETablesForModule(modulePath string) (*bpfmodule.XMProfileXmProfileModuleFdeTables, error) {
+func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModuleFdeTables, error) {
 	return nil, nil
 }
