@@ -111,16 +111,16 @@ func executeCIEInstructions(cie *dlvFrame.CommonInformationEntry) *FrameContext 
 	return frame
 }
 
-type FDERowFunc func(loc uint64, cfa dlvFrame.DWRule, regs map[uint64]dlvFrame.DWRule, retAddrReg uint64)
+type receiveFDERowFunc func(loc uint64, cfa dlvFrame.DWRule, regs map[uint64]dlvFrame.DWRule, retAddrReg uint64)
 
-func ExecuteDwarfProgram(fde *dlvFrame.FrameDescriptionEntry, order binary.ByteOrder, rowFunc FDERowFunc) {
+func ExecuteDwarfProgram(fde *dlvFrame.FrameDescriptionEntry, order binary.ByteOrder, recevieRow receiveFDERowFunc) {
 	frame := executeCIEInstructions(fde.CIE)
 	frame.order = order
 	frame.loc = fde.Begin()
-	frame.buildFDETables(fde.Instructions, rowFunc)
+	frame.buildFDETables(fde.Instructions, recevieRow)
 }
 
-func (frame *FrameContext) buildFDETables(instructions []byte, rowFunc FDERowFunc) {
+func (frame *FrameContext) buildFDETables(instructions []byte, recevieRow receiveFDERowFunc) {
 	frame.buf.Truncate(0)
 	frame.buf.Write(instructions)
 
@@ -133,16 +133,16 @@ func (frame *FrameContext) buildFDETables(instructions []byte, rowFunc FDERowFun
 		if frame.loc != prevLoc {
 			// start a new frame
 			//glog.Infof("fde row:%d, loc:0x%x, CFA:%#v, Regs:%#v, RetAddrReg:%#v", rowID, prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
-			if rowFunc != nil {
-				rowFunc(prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
+			if recevieRow != nil {
+				recevieRow(prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
 			}
 			rowID += 1
 			prevLoc = frame.loc
 		}
 	}
 	//glog.Infof("fde row:%d, loc:0x%x, CFA:%#v, Regs:%#v, RetAddrReg:%#v", rowID, prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
-	if rowFunc != nil {
-		rowFunc(prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
+	if recevieRow != nil {
+		recevieRow(prevLoc, frame.CFA, frame.Regs, frame.RetAddrReg)
 	}
 }
 

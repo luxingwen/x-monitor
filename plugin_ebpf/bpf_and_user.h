@@ -213,9 +213,9 @@ enum xm_profile_dw_rule_type {
 };
 
 struct xm_profile_dw_rule {
-    enum xm_profile_dw_rule_type rule;
     __s64 offset;
     __u64 reg; // 寄存器序号
+    enum xm_profile_dw_rule_type rule;
 };
 
 struct xm_profile_fde_row {
@@ -223,13 +223,16 @@ struct xm_profile_fde_row {
     struct xm_profile_dw_rule cfa;
     struct xm_profile_dw_rule rbp;
     struct xm_profile_dw_rule ra;
-    struct xm_profile_dw_rule additional;
 };
+
+#ifndef XM_FDE_TABLE_MAX_ROW_COUNT
+#define XM_FDE_TABLE_MAX_ROW_COUNT 40
+#endif
 
 struct xm_profile_fde_table {
     __u64 start;
     __u64 end;
-    struct xm_profile_fde_row rows[PERF_MAX_STACK_DEPTH];
+    struct xm_profile_fde_row rows[XM_FDE_TABLE_MAX_ROW_COUNT];
     __u32 row_count;
 };
 
@@ -241,10 +244,17 @@ struct xm_profile_fde_table {
 #define XM_PER_PROCESS_ASSOC_MODULE_COUNT 32
 #endif
 
+enum module_type {
+    is_unknown = 0,
+    is_exec,
+    is_so,
+};
+
 struct xm_proc_maps_module {
     __u64 start_addr;
     __u64 end_addr;
     __u64 build_id_hash;
+    enum module_type type; // so需要pc-start_addr
     char path[XM_PATH_MAX_LEN];
 };
 

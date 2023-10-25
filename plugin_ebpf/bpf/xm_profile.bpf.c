@@ -20,10 +20,19 @@ BPF_HASH(xm_profile_sample_count_map, struct xm_profile_sample,
 // 堆栈
 BPF_STACK_TRACE(xm_profile_stack_map, 1024);
 // 保存pid的内存映射信息，如果pid存在，说明需要执行来获取用户态堆栈
-BPF_HASH(xm_profile_pid_modules_map, __u32, struct xm_pid_maps, 1024);
-// 保存每个module的fde table信息
+BPF_HASH(xm_profile_pid_modules_map, __u32, struct xm_pid_maps, 256);
+
+// 保存每个module的fde table信息，内核对hash_map的value有大小限制
+// if ((u64)attr->key_size + attr->value_size >= KMALLOC_MAX_SIZE -
+//    sizeof(struct htab_elem))
+// 	 if key_size + value_size is bigger, the user space won't be
+// 	 * able to access the elements via bpf syscall. This check
+// 	 * also makes sure that the elem_size doesn't overflow and it's
+// 	 * kmalloc-able later in htab_map_update_elem()
+//
+// 	return -E2BIG;
 BPF_HASH(xm_profile_module_fdetable_map, __u64,
-         struct xm_profile_module_fde_tables, 1024);
+         struct xm_profile_module_fde_tables, 256);
 
 const enum xm_prog_filter_target_scope_type __unused_filter_scope_type
     __attribute__((unused)) = XM_PROG_FILTER_TARGET_SCOPE_TYPE_NONE;

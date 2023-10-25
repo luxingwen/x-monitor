@@ -37,7 +37,8 @@ func InitSystemSymbolsCache(size int) error {
 
 	once.Do(func() {
 		__instance = &SystemSymbolsCache{}
-		__instance.lc, err = lru.NewWithEvict[int32, *calmutils.ProcSyms](size, func(key int32, _ *calmutils.ProcSyms) {
+		__instance.lc, err = lru.NewWithEvict[int32, *calmutils.ProcSyms](size, func(key int32, v *calmutils.ProcSyms) {
+			v = nil
 			glog.Warningf("pid:%d symbols cache object evicted by lru", key)
 		})
 		if err != nil {

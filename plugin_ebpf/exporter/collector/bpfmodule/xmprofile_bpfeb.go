@@ -24,7 +24,9 @@ type XMProfileXmProcMapsModule struct {
 	StartAddr   uint64
 	EndAddr     uint64
 	BuildIdHash uint64
+	Type        uint32
 	Path        [128]int8
+	_           [4]byte
 }
 
 type XMProfileXmProfileDwRule struct {
@@ -35,11 +37,10 @@ type XMProfileXmProfileDwRule struct {
 }
 
 type XMProfileXmProfileFdeRow struct {
-	Loc        uint64
-	Cfa        XMProfileXmProfileDwRule
-	Rbp        XMProfileXmProfileDwRule
-	Ra         XMProfileXmProfileDwRule
-	Additional XMProfileXmProfileDwRule
+	Loc uint64
+	Cfa XMProfileXmProfileDwRule
+	Rbp XMProfileXmProfileDwRule
+	Ra  XMProfileXmProfileDwRule
 }
 
 type XMProfileXmProfileFdeTable struct {

@@ -8,6 +8,7 @@
 package bpfprog
 
 import (
+	"runtime"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -110,6 +111,7 @@ func (pel *perfEventLink) attachPerfEventIoctl(prog *ebpf.Program) error {
 }
 
 func (pel *perfEventLink) Close() {
+	runtime.SetFinalizer(pel, nil)
 	_ = unix.Close(pel.peFD)
 	if pel.link != nil {
 		pel.link.Close()
