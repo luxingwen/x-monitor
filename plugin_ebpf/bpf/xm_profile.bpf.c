@@ -12,17 +12,17 @@
 #include "xm_bpf_helpers_math.h"
 #include "xm_bpf_helpers_filter.h"
 
-// prog参数，过滤条件
+// prog 参数，过滤条件
 BPF_ARRAY(xm_profile_arg_map, struct xm_prog_filter_args, 1);
 // 堆栈计数
 BPF_HASH(xm_profile_sample_count_map, struct xm_profile_sample,
          struct xm_profile_sample_data, MAX_THREAD_COUNT);
 // 堆栈
 BPF_STACK_TRACE(xm_profile_stack_map, 1024);
-// 保存pid的内存映射信息，如果pid存在，说明需要执行来获取用户态堆栈
+// 保存 pid 的内存映射信息，如果 pid 存在，说明需要执行来获取用户态堆栈
 BPF_HASH(xm_profile_pid_modules_map, __u32, struct xm_pid_maps, 256);
 
-// 保存每个module的fde table信息，内核对hash_map的value有大小限制
+// 保存每个 module 的 fde table 信息，内核对 hash_map 的 value 有大小限制
 // if ((u64)attr->key_size + attr->value_size >= KMALLOC_MAX_SIZE -
 //    sizeof(struct htab_elem))
 // 	 if key_size + value_size is bigger, the user space won't be
@@ -39,7 +39,6 @@ const enum xm_prog_filter_target_scope_type __unused_filter_scope_type
 
 const struct xm_profile_sample *__unused_ps __attribute__((unused));
 const struct xm_profile_sample_data *__unused_psd __attribute__((unused));
-const struct xm_profile_dw_rule *__unused_pdr __attribute__((unused));
 const struct xm_profile_fde_row *__unused_pfr __attribute__((unused));
 const struct xm_profile_fde_table *__unused_pft __attribute__((unused));
 const struct xm_proc_maps_module *__unused_pmm __attribute__((unused));
@@ -47,14 +46,14 @@ const struct xm_pid_maps *__unused_pm __attribute__((unused));
 const struct xm_profile_module_fde_tables *__unused_pmft
     __attribute__((unused));
 
-// 获取用户task_struct用户空间的寄存器，为了使用eh_frame的信息做stack unwind
+// 获取用户 task_struct 用户空间的寄存器，为了使用 eh_frame 的信息做 stack unwind
 static __always_inline void
 __xm_get_task_userspace_regs(struct task_struct *task,
                              struct pt_regs *user_regs,
                              struct xm_task_userspace_regs *tu_regs) {
     // 获取指令寄存器的值，判断了是否是内核地址空间
     if (in_kernel_space(PT_REGS_IP(user_regs))) {
-        // !!由于系统调用在进程切换到内核地址空间，需要按ptrace的方式，来获取保存在stack中的用户态寄存器
+        // !! 由于系统调用在进程切换到内核地址空间，需要按 ptrace 的方式，来获取保存在 stack 中的用户态寄存器
         __u64 __ptr;
         __ptr = (__u64)READ_KERN(task->stack);
         __ptr += THREAD_SIZE - TOP_OF_KERNEL_STACK_PADDING;
@@ -64,7 +63,7 @@ __xm_get_task_userspace_regs(struct task_struct *task,
         tu_regs->rbp = PT_REGS_FP_CORE(regs);
     } else {
         // perf event
-        // snapshot当前task_struct在用户地址空间，直接从cur_regs中获取
+        // snapshot 当前 task_struct 在用户地址空间，直接从 cur_regs 中获取
         tu_regs->rip = PT_REGS_IP(user_regs);
         tu_regs->rsp = PT_REGS_SP(user_regs);
         tu_regs->rbp = PT_REGS_FP(user_regs);
@@ -82,7 +81,7 @@ static __always_inline __s32 __bsearch_fde_table(
     __s32 right = row_count - 1;
     __s32 result = -1;
     __s32 mid = 0;
-    // 堆栈深度是127，二分查找最多7次
+    // 堆栈深度是 127，二分查找最多 7 次
     for (__s32 i = 0; i < MAX_BIN_SEARCH_DEPTH; i++) {
         if (left > right) {
             break;
@@ -114,12 +113,12 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
         .pgid = 0,
     }, *val;
 
-    // 得到线程id
+    // 得到线程 id
     tid = __xm_get_tid();
-    // 得到进程id
+    // 得到进程 id
     pid = __xm_get_pid();
 
-    // perf的快照没有catch到执行线程
+    // perf 的快照没有 catch 到执行线程
     if (tid == 0) {
         return 0;
     }
@@ -150,8 +149,8 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
     ps.pid = pid;
     BPF_CORE_READ_STR_INTO(&ps.comm, ts, group_leader, comm);
 
-    // **如果执行程序支持frame point才能用这种方式，否则要用eh_frame +
-    // **ip、bp、sp来做stack unwind
+    // **如果执行程序支持 frame point 才能用这种方式，否则要用 eh_frame +
+    // **ip、bp、sp 来做 stack unwind
     int stack_id =
         bpf_get_stackid(ctx, &xm_profile_stack_map, BPF_F_USER_STACK);
     if (stack_id >= 0) {

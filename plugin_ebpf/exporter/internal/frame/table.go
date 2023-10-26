@@ -12,6 +12,7 @@ import (
 	"debug/elf"
 	"encoding/binary"
 	"fmt"
+	"math"
 
 	dlvFrame "github.com/go-delve/delve/pkg/dwarf/frame"
 	"github.com/go-delve/delve/pkg/dwarf/leb128"
@@ -24,8 +25,8 @@ import (
 )
 
 const (
-	__maxPerModuleFDETableCount     = 2048 // 每个module包含的fde table最大数量
-	__maxPerProcessAssocModuleCount = 32   // 每个进程关联的module最大数量
+	__maxPerModuleFDETableCount     = 2048 // 每个 module 包含的 fde table 最大数量
+	__maxPerProcessAssocModuleCount = 32   // 每个进程关联的 module 最大数量
 	__maxPerFDETableRowCount        = 127
 )
 
@@ -486,7 +487,7 @@ func __pointerSize(arch elf.Machine) int {
 }
 
 func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModuleFdeTables, error) {
-	// 在创建module fde tables之前要判断是否已经存在于ebpf hash map中
+	// 在创建 module fde tables 之前要判断是否已经存在于 ebpf hash map 中
 
 	ef, err := elf.Open(modulePath)
 	if err != nil {
@@ -513,7 +514,7 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 
 	procModuleFDETables := new(bpfmodule.XMProfileXmProfileModuleFdeTables)
 
-	// 轮询所有的fde
+	// 轮询所有的 fde
 	for i, fde := range fdes {
 		if procModuleFDETables.FdeTableCount >= __maxPerModuleFDETableCount {
 			glog.Warning("module:'%s' fde table count exceeds the limit, ignore the rest.", modulePath)
@@ -526,25 +527,26 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 		table.RowCount = 0
 
 		ExecuteDwarfProgram(fde, ef.ByteOrder, func(loc uint64, cfa dlvFrame.DWRule, regs map[uint64]dlvFrame.DWRule, retAddrReg uint64) {
-			// 每个fde table最多
+			// 每个 fde table 最多
 			if table.RowCount >= __maxPerFDETableRowCount {
 				glog.Warning("module:'%s' fde table{start:'0x%#x---end:0x%#x'} row count exceeds the limit, ignore the rest.",
 					modulePath, table.Start, table.End)
 			} else {
 				row := &table.Rows[table.RowCount]
 				row.Loc = loc
-				// cfa的获取方式
-				row.Cfa.Reg = cfa.Reg           // cfa获取的寄存器号
-				row.Cfa.Rule = uint32(cfa.Rule) // RuleCFA，Value is rule.Reg + rule.Offset
+				// cfa 的获取方式
+				row.Cfa.Reg = cfa.Reg // cfa 获取的寄存器号
 				row.Cfa.Offset = cfa.Offset
 				// rbp 寄存器
-				row.Rbp.Reg = regs[regnum.AMD64_Rbp].Reg           // 一般都是0
-				row.Rbp.Rule = uint32(regs[regnum.AMD64_Rbp].Rule) // RuleOffset
-				row.Rbp.Offset = regs[regnum.AMD64_Rbp].Offset
+				row.RbpCfaOffset = math.MaxInt32 // 约定用 maxInt32 标识没有获取到
+				if regs[regnum.AMD64_Rbp].Rule == dlvFrame.RuleOffset {
+					row.RbpCfaOffset = int32(regs[regnum.AMD64_Rbp].Offset) // RuleOffset
+				}
 				// ra
-				row.Ra.Reg = regs[retAddrReg].Reg
-				row.Ra.Offset = regs[retAddrReg].Offset
-				row.Ra.Rule = uint32(regs[regnum.AMD64_Rbp].Rule) // RuleOffset
+				row.RaCfaOffset = math.MaxInt32
+				if regs[retAddrReg].Rule == dlvFrame.RuleOffset {
+					row.RaCfaOffset = int32(regs[retAddrReg].Offset)
+				}
 			}
 		})
 		procModuleFDETables.FdeTableCount += 1
