@@ -34,6 +34,9 @@ BPF_HASH(xm_profile_pid_modules_map, __u32, struct xm_pid_maps, 256);
 BPF_HASH(xm_profile_module_fdetable_map, __u64,
          struct xm_profile_module_fde_tables, 256);
 
+// in compile print struct sizeof
+char (*__kaboom)[sizeof(struct xm_profile_module_fde_tables)] = 1;
+
 const enum xm_prog_filter_target_scope_type __unused_filter_scope_type
     __attribute__((unused)) = XM_PROG_FILTER_TARGET_SCOPE_TYPE_NONE;
 
@@ -46,14 +49,16 @@ const struct xm_pid_maps *__unused_pm __attribute__((unused));
 const struct xm_profile_module_fde_tables *__unused_pmft
     __attribute__((unused));
 
-// 获取用户 task_struct 用户空间的寄存器，为了使用 eh_frame 的信息做 stack unwind
+// 获取用户 task_struct 用户空间的寄存器，为了使用 eh_frame 的信息做 stack
+// unwind
 static __always_inline void
 __xm_get_task_userspace_regs(struct task_struct *task,
                              struct pt_regs *user_regs,
                              struct xm_task_userspace_regs *tu_regs) {
     // 获取指令寄存器的值，判断了是否是内核地址空间
     if (in_kernel_space(PT_REGS_IP(user_regs))) {
-        // !! 由于系统调用在进程切换到内核地址空间，需要按 ptrace 的方式，来获取保存在 stack 中的用户态寄存器
+        // !! 由于系统调用在进程切换到内核地址空间，需要按 ptrace
+        // 的方式，来获取保存在 stack 中的用户态寄存器
         __u64 __ptr;
         __ptr = (__u64)READ_KERN(task->stack);
         __ptr += THREAD_SIZE - TOP_OF_KERNEL_STACK_PADDING;

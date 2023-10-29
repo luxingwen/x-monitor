@@ -535,6 +535,10 @@ github.com/wubo0067/calmwu-go v0.0.0-20231024032602-9842153bc448 h1:EIYO0CWO1stC
 github.com/wubo0067/calmwu-go v0.0.0-20231024032602-9842153bc448/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
 github.com/wubo0067/calmwu-go v0.0.0-20231024074149-b1d178c0faa2 h1:cSt0Gfqr/lkMala9OWXdkwSA6qdEgA8eDbR719gdsmQ=
 github.com/wubo0067/calmwu-go v0.0.0-20231024074149-b1d178c0faa2/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20231028045626-4378f386a415 h1:bWnwUvqu7NTWbiZURIzUGbvlm9XUNu5tOR9aYZIqrVA=
+github.com/wubo0067/calmwu-go v0.0.0-20231028045626-4378f386a415/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20231028093545-7cd9103a2d75 h1:F2EMFH4j7gWS51XzANc7UCFmr87URP2nnhrKxRpcTag=
+github.com/wubo0067/calmwu-go v0.0.0-20231028093545-7cd9103a2d75/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xyproto/ainur v1.3.3-0.20230327065817-db855584e31b h1:WCn7EjjM1ID/zqwJsEV16NOh8sab7vHkNIo1j35Fuq0=
 github.com/xyproto/ainur v1.3.3-0.20230327065817-db855584e31b/go.mod h1:jZ/u2tXHoZ9GpCeeOUE6hKh/Z+JyrbpGebAFd51m9kw=

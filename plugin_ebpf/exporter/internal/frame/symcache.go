@@ -23,7 +23,7 @@ type Symbol struct {
 }
 
 type SystemSymbolsCache struct {
-	lc   *lru.Cache[int32, *calmutils.ProcSyms]
+	lc   *lru.Cache[int32, *calmutils.ProcMaps]
 	lock sync.RWMutex
 }
 
@@ -36,8 +36,11 @@ func InitSystemSymbolsCache(size int) error {
 	var err error
 
 	once.Do(func() {
+		calmutils.InitModuleSymbolTblMgr(size * 16)
+
 		__instance = &SystemSymbolsCache{}
-		__instance.lc, err = lru.NewWithEvict[int32, *calmutils.ProcSyms](size, func(key int32, v *calmutils.ProcSyms) {
+		__instance.lc, err = lru.NewWithEvict[int32, *calmutils.ProcMaps](size, func(key int32, v *calmutils.ProcMaps) {
+			// TODO: 从symbletblMgr中删除自己的symbolTable，获取第一个ProcMapsModule的buildID去释放
 			v = nil
 			glog.Warningf("pid:%d symbols cache object evicted by lru", key)
 		})
@@ -64,7 +67,7 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 		err      error
 		ok       bool
 		sym      = new(Symbol)
-		procSyms *calmutils.ProcSyms
+		procSyms *calmutils.ProcMaps
 	)
 
 	if __instance != nil {
@@ -88,7 +91,7 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 					return nil, err
 				} else {
 					__instance.lc.Add(pid, procSyms)
-					glog.Infof("add pid:'%d' symbols cache object to lru, module count:'%d'", procSyms.Pid, len(procSyms.Modules))
+					glog.Infof("add pid:'%d' symbols cache object to lru, module count:'%d'", procSyms.Pid, len(procSyms.Modules()))
 
 					sym.Name, sym.Offset, sym.Module, err = procSyms.ResolvePC(addr)
 					if err != nil {
@@ -133,19 +136,19 @@ func CachePidCount() int {
 // __getProcModules returns the symbol information for all modules loaded by the process with the given PID.
 // If the information is already cached, it is returned from the cache. Otherwise, it is fetched and cached.
 // Returns a slice of ProcSymsModule and an error if any.
-func __getProcModules(pid int32) ([]*calmutils.ProcSymsModule, error) {
+func __getProcModules(pid int32) ([]*calmutils.ProcMapsModule, error) {
 	if __instance != nil {
 		__instance.lock.Lock()
 		defer __instance.lock.Unlock()
 
 		procSyms, ok := __instance.lc.Get(pid)
 		if ok && procSyms != nil {
-			return procSyms.Modules, nil
+			return procSyms.Modules(), nil
 		} else {
 			procSyms, err := calmutils.NewProcSyms(int(pid))
 			if err == nil {
 				__instance.lc.Add(pid, procSyms)
-				return procSyms.Modules, nil
+				return procSyms.Modules(), nil
 			}
 		}
 	}
