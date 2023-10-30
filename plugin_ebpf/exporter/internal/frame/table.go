@@ -26,8 +26,8 @@ import (
 
 const (
 	__maxPerModuleFDETableCount     = 2048 // 每个 module 包含的 fde table 最大数量
-	__maxPerProcessAssocModuleCount = 32   // 每个进程关联的 module 最大数量
-	__maxPerFDETableRowCount        = 127
+	__maxPerProcessAssocModuleCount = 36   // 每个进程关联的 module 最大数量
+	__maxPerFDETableRowCount        = 36
 )
 
 type FrameContext struct {
@@ -449,7 +449,7 @@ func hiuser(frame *FrameContext) {
 func CreateProcMapsTable(pid int32) (*bpfmodule.XMProfileXmPidMaps, error) {
 	procMaps := new(bpfmodule.XMProfileXmPidMaps)
 
-	if modules, err := __getProcModules(pid); err != nil {
+	if modules, err := GetProcModules(pid); err != nil {
 		return nil, errors.Wrap(err, "get process modules failed.")
 	} else {
 
@@ -526,14 +526,22 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 		table.End = fde.End()
 		table.RowCount = 0
 
+		var errCfaHasInvalidRegNum error
+
 		ExecuteDwarfProgram(fde, ef.ByteOrder, func(loc uint64, cfa dlvFrame.DWRule, regs map[uint64]dlvFrame.DWRule, retAddrReg uint64) {
-			// 每个 fde table 最多
+			// 每个 fde table 最多 row 数
 			if table.RowCount >= __maxPerFDETableRowCount {
 				glog.Warning("module:'%s' fde table{start:'0x%#x---end:0x%#x'} row count exceeds the limit, ignore the rest.",
 					modulePath, table.Start, table.End)
 			} else {
 				row := &table.Rows[table.RowCount]
 				row.Loc = loc
+				// 只支持 cfg 计算的寄存器是 rsp 或 rbp，如果使用其它寄存器放弃创建 FDETables
+				if cfa.Reg != regnum.AMD64_Rsp && cfa.Reg != regnum.AMD64_Rbp {
+					errCfaHasInvalidRegNum = errors.Errorf("module:'%s' fde table{start:'0x%#x---end:0x%#x'} row:%d has invalid reg:'%d'",
+						modulePath, table.Start, table.End, table.RowCount, cfa.Reg)
+					glog.Warning(errCfaHasInvalidRegNum.Error())
+				}
 				// cfa 的获取方式
 				row.Cfa.Reg = cfa.Reg // cfa 获取的寄存器号
 				row.Cfa.Offset = cfa.Offset
@@ -547,8 +555,14 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 				if regs[retAddrReg].Rule == dlvFrame.RuleOffset {
 					row.RaCfaOffset = int32(regs[retAddrReg].Offset)
 				}
+				table.RowCount += 1
 			}
 		})
+
+		if errCfaHasInvalidRegNum != nil {
+			return nil, errCfaHasInvalidRegNum
+		}
+
 		procModuleFDETables.FdeTableCount += 1
 	}
 

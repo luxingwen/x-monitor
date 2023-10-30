@@ -7,6 +7,8 @@
 
 package collector
 
+//go:generate genny -in=../../../vendor/github.com/wubo0067/calmwu-go/utils/generic_channel.go -out=gen_xm_unwindtables_oper_channel.go -pkg=collector gen "ChannelCustomType=*UnwindTablesEvt ChannelCustomName=UnwindTablesEvt"
+
 import (
 	"bytes"
 	"context"
@@ -138,7 +140,7 @@ func newProfileTarget(targetConf *profileTargetConf) *ProfileTarget {
 		labelConf := &targetConf.Labels[i]
 		labelSet[labelConf.LabelName] = labelConf.LabelVal
 	}
-	// service_name标签
+	// service_name 标签
 	if targetConf.Name == __defaultMatricValue {
 		labelSet[labelServiceName] = fmt.Sprintf("xm_host_%s", func() string {
 			ip, _ := config.APISrvBindAddr()
@@ -311,14 +313,14 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 
-	// 加载eBPF对象
+	// 加载 eBPF 对象
 	if err = bpfmodule.LoadXMProfileObjects(profileProg.objs, nil); err != nil {
 		profileProg.finalizer()
 		err = errors.Wrapf(err, "eBPFProgram:'%s' LoadXMProfileObjects failed.", name)
 		return nil, err
 	}
 
-	// 设置ebpf prog参数
+	// 设置 ebpf prog 参数
 	args := new(bpfmodule.XMProfileXmProgFilterArgs)
 	args.ScopeType = bpfmodule.XMProfileXmProgFilterTargetScopeType(__profileEBpfArgs.FilterScopeType)
 	args.FilterCondValue = uint64(__profileEBpfArgs.FilterScopeValue)
@@ -329,7 +331,7 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 
-	// attach eBPF程序
+	// attach eBPF 程序
 	profileProg.perfLink, err = bpfprog.AttachPerfEventProg(-1, __profilePrivateArgs.SampleRate, profileProg.objs.XmDoPerfEvent)
 	if err != nil {
 		profileProg.Stop()
@@ -368,7 +370,7 @@ loop:
 			glog.Warningf("eBPFProgram:'%s' handling eBPF Data goroutine receive stop notify", pp.name)
 			break loop
 		case <-pp.gatherTimer.Chan():
-			// 收集堆栈，上报pyroscope，清理
+			// 收集堆栈，上报 pyroscope，清理
 			pp.collectProfiles()
 			pp.gatherTimer.Reset(__profilePrivateArgs.GatherInterval)
 		case eBPFEvtInfo, ok := <-eBPFEventReadChan.C:
@@ -416,7 +418,7 @@ func (pp *profileProgram) collectProfiles() {
 		sym                 *frame.Symbol
 	)
 
-	// 收集xm_profile_sample_count_map数据
+	// 收集 xm_profile_sample_count_map 数据
 	keys := make([]bpfmodule.XMProfileXmProfileSample, 0)
 	vals := make([]bpfmodule.XMProfileXmProfileSampleData, 0)
 
@@ -472,27 +474,30 @@ func (pp *profileProgram) collectProfiles() {
 		psis = append(psis, psi)
 	}
 
-	pfnWalkStack := func(stack []byte, pid int32, comm string, sb *stackBuilder) {
+	pfnWalkStack := func(stack []byte, pid int32, comm string, sb *stackBuilder) (stackDepth, resolveFailedCount int) {
 		if len(stack) == 0 {
-			return
+			return 0, 0
 		}
 
 		var stacks Stacks
-		binary.Read(bytes.NewBuffer(stack), binary.LittleEndian, stacks[:__perf_max_stack_depth])
+		if err := binary.Read(bytes.NewBuffer(stack), binary.LittleEndian, stacks[:__perf_max_stack_depth]); err != nil {
+			return 0, 0
+		}
+
+		stackDepth = len(stacks)
 
 		var frames []string
 		// for i := 0; i < len(stack); i += __stackFrameSize {
 		// 	ip := binary.LittleEndian.Uint64(stack[i : i+__stackFrameSize])
-		for _, ip := range stacks {
-			if ip == 0 {
+		for _, pc := range stacks {
+			if pc == 0 {
 				break
 			}
-			// 解析ip
-			sym, err = frame.Resolve(pid, ip)
+			// 解析 pc
+			sym, err = frame.Resolve(pid, pc)
 			if err == nil {
 				if pid > 0 {
 					symStr := fmt.Sprintf("%s+0x%x [%s]", sym.Name, sym.Offset, sym.Module)
-					//glog.Infof("eBPFProgram:'%s' comm:'%s' ip:0x%x ==> '%s'", pp.name, comm, ip, symStr)
 					frames = append(frames, symStr)
 				} else {
 					frames = append(frames, sym.Name) //fmt.Sprintf("%s+0x%x", sym.Name, sym.Offset))
@@ -500,6 +505,7 @@ func (pp *profileProgram) collectProfiles() {
 			} else {
 				frames = append(frames, "[unknown]")
 				glog.Errorf("eBPFProgram:'%s' comm:'%s' err:%s", pp.name, comm, err.Error())
+				resolveFailedCount++
 			}
 		}
 		// 将堆栈反转
@@ -507,6 +513,7 @@ func (pp *profileProgram) collectProfiles() {
 		for _, f := range frames {
 			sb.append(f)
 		}
+		return
 	}
 
 	builders := pprof.NewProfileBuilders(__profilePrivateArgs.SampleRate)
@@ -515,7 +522,12 @@ func (pp *profileProgram) collectProfiles() {
 	for _, psi := range psis {
 		sb.rest()
 		sb.append(psi.comm)
-		pfnWalkStack(psi.uStackBytes, psi.pid, psi.comm, &sb)
+		stackDepth, resolveFailedCount := pfnWalkStack(psi.uStackBytes, psi.pid, psi.comm, &sb)
+		if stackDepth > 0 && resolveFailedCount > stackDepth/2 {
+			// TODO: 使用 DWARF-based Stack Walking
+			glog.Warningf("eBPFProgram:'%s' comm:'%s', pid:%d Stack walking fails:'%d' beyond half of the stack depth:'%d'",
+				pp.name, psi.comm, psi.pid, resolveFailedCount, stackDepth)
+		}
 		pfnWalkStack(psi.kStackBytes, 0, "kernel", &sb)
 
 		if len(sb.stack) == 1 {
@@ -529,17 +541,17 @@ func (pp *profileProgram) collectProfiles() {
 
 		glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d count:%d build depth:%d stacks:\n\t%s", pp.name, psi.comm, psi.pid, psi.count, len(sb.stack), strings.Join(sb.stack, "\n\t"))
 	}
-	// 上报ebpf profile结果到pyroscope
+	// 上报 ebpf profile 结果到 pyroscope
 	pp.submitEBPFProfile(builders)
 
-	// 清理profileSample map
+	// 清理 profileSample map
 	for i := range keys {
 		if err = profileSampleMap.Delete(keys[i]); err != nil {
 			glog.Infof("eBPFProgram:'%s' sampleMap.Delete('key=%#v)' failed, err:%s", pp.name, keys[i], err.Error())
 		}
 	}
 
-	// 清理stack map
+	// 清理 stack map
 	for stackID := range stackIDSet {
 		if stackID > 0 {
 			if err = profileStackMap.Delete(stackID); err != nil {
@@ -585,4 +597,16 @@ func (s *stackBuilder) rest() {
 
 func (s *stackBuilder) append(sym string) {
 	s.stack = append(s.stack, sym)
+}
+
+type UnwindTablesOper int
+
+const (
+	CreateUnwindTables = iota + 1
+	DeleteUnwindTables
+)
+
+type UnwindTablesEvt struct {
+	Pid  int
+	Oper UnwindTablesOper
 }

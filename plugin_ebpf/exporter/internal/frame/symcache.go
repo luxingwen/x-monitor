@@ -40,9 +40,14 @@ func InitSystemSymbolsCache(size int) error {
 
 		__instance = &SystemSymbolsCache{}
 		__instance.lc, err = lru.NewWithEvict[int32, *calmutils.ProcMaps](size, func(key int32, v *calmutils.ProcMaps) {
-			// TODO: 从symbletblMgr中删除自己的symbolTable，获取第一个ProcMapsModule的buildID去释放
-			v = nil
 			glog.Warningf("pid:%d symbols cache object evicted by lru", key)
+			// ** 从 symbletblMgr 中删除自己的 symbolTable，获取第一个 ProcMapsModule 的 buildID 去释放
+			if len(v.Modules()) > 0 {
+				calmutils.DeleteModuleSymbolTbl(v.Modules()[0].BuildID)
+			} else {
+				glog.Warning("pid:%d symbols cache object evicted by lru, but module count is 0", key)
+			}
+			v = nil
 		})
 		if err != nil {
 			err = errors.Wrap(err, "new evict lru failed.")
@@ -133,10 +138,10 @@ func CachePidCount() int {
 	return -1
 }
 
-// __getProcModules returns the symbol information for all modules loaded by the process with the given PID.
+// GetProcModules returns the symbol information for all modules loaded by the process with the given PID.
 // If the information is already cached, it is returned from the cache. Otherwise, it is fetched and cached.
 // Returns a slice of ProcSymsModule and an error if any.
-func __getProcModules(pid int32) ([]*calmutils.ProcMapsModule, error) {
+func GetProcModules(pid int32) ([]*calmutils.ProcMapsModule, error) {
 	if __instance != nil {
 		__instance.lock.Lock()
 		defer __instance.lock.Unlock()

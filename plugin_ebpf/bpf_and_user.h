@@ -215,7 +215,7 @@ struct xm_profile_sample {
 #endif
 
 #ifndef XM_PER_PROCESS_ASSOC_MODULE_COUNT
-#define XM_PER_PROCESS_ASSOC_MODULE_COUNT 32
+#define XM_PER_PROCESS_ASSOC_MODULE_COUNT 36
 #endif
 
 #ifndef XM_PER_MODULE_FDE_TABLE_COUNT
