@@ -21,13 +21,13 @@ import (
 	"github.com/pkg/errors"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
-	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
 const (
 	__maxPerModuleFDETableCount     = 2048 // 每个 module 包含的 fde table 最大数量
-	__maxPerProcessAssocModuleCount = 36   // 每个进程关联的 module 最大数量
+	__maxPerProcessAssocModuleCount = 64   // 每个进程关联的 module 最大数量
 	__maxPerFDETableRowCount        = 36
+	__DW_CFA_GNU_args_size          = 0x2e
 )
 
 type FrameContext struct {
@@ -80,6 +80,7 @@ var fnlookup = map[byte]instruction{
 	dlvFrame.DW_CFA_val_expression:     valexpression,
 	dlvFrame.DW_CFA_lo_user:            louser,
 	dlvFrame.DW_CFA_hi_user:            hiuser,
+	__DW_CFA_GNU_args_size:             gnuargsize,
 }
 
 const low_6_offset = 0x3f
@@ -443,21 +444,27 @@ func hiuser(frame *FrameContext) {
 	frame.buf.Next(1)
 }
 
-// CreateProcMapsTable creates a new XMProfileXmPidMaps object for the given process ID (pid).
-// It populates the object with information about the process's memory mappings (modules).
-// Returns the populated XMProfileXmPidMaps object and an error (if any).
-func CreateProcMapsTable(pid int32) (*bpfmodule.XMProfileXmPidMaps, error) {
+func gnuargsize(frame *FrameContext) {
+	// The DW_CFA_GNU_args_size instruction takes an unsigned LEB128 operand representing an argument size.
+	// Just read and do nothing.
+	_, _ = leb128.DecodeSigned(frame.buf)
+}
+
+func CreatePidMaps(pid int32) (*bpfmodule.XMProfileXmPidMaps, []*calmutils.ProcMapsModule, error) {
+	var (
+		modules []*calmutils.ProcMapsModule
+		err     error
+	)
 	procMaps := new(bpfmodule.XMProfileXmPidMaps)
 
-	if modules, err := GetProcModules(pid); err != nil {
-		return nil, errors.Wrap(err, "get process modules failed.")
+	if modules, err = GetProcModules(pid); err != nil {
+		return nil, nil, errors.Wrap(err, "get process modules failed.")
 	} else {
 
 		for i, module := range modules {
 			procMaps.Modules[i].StartAddr = module.StartAddr
 			procMaps.Modules[i].EndAddr = module.EndAddr
 			procMaps.Modules[i].BuildIdHash = calmutils.HashStr2Uint64(module.BuildID)
-			utils.String2Int8Array(module.Pathname, procMaps.Modules[i].Path[:])
 			procMaps.Modules[i].Type = uint32(module.Type)
 
 			glog.Infof("Pid:%d maps module:'%s' buildID:'%s' buidIDHash:%d startAddr:%#x endAddr:%#x",
@@ -465,16 +472,16 @@ func CreateProcMapsTable(pid int32) (*bpfmodule.XMProfileXmPidMaps, error) {
 
 			procMaps.ModuleCount += 1
 			if procMaps.ModuleCount >= __maxPerProcessAssocModuleCount {
-				glog.Warningf("too many modules associated with Pid:%d, ignore the rest.", pid)
-				break
+				err = errors.Errorf("/proc/%d/maps modules count exceeds the limit:%d", pid, __maxPerProcessAssocModuleCount)
+				return nil, nil, err
 			}
 		}
 	}
 
-	return procMaps, nil
+	return procMaps, modules, nil
 }
 
-func __pointerSize(arch elf.Machine) int {
+func pointerSize(arch elf.Machine) int {
 	//nolint:exhaustive
 	switch arch {
 	case elf.EM_386:
@@ -505,7 +512,7 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 		return nil, err
 	}
 
-	fdes, err := dlvFrame.Parse(data, ef.ByteOrder, 0, __pointerSize(ef.Machine), section.Addr)
+	fdes, err := dlvFrame.Parse(data, ef.ByteOrder, 0, pointerSize(ef.Machine), section.Addr)
 	if err != nil {
 		err = errors.Wrap(err, "delve frame parse .eh_frame section data.")
 		glog.Error(err.Error())
@@ -513,34 +520,39 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 	}
 
 	procModuleFDETables := new(bpfmodule.XMProfileXmProfileModuleFdeTables)
+	procModuleFDETables.RefCount = 1
+	procModuleFDETables.FdeTableCount = 0
 
 	// 轮询所有的 fde
-	for i, fde := range fdes {
+	for _, fde := range fdes {
 		if procModuleFDETables.FdeTableCount >= __maxPerModuleFDETableCount {
-			glog.Warning("module:'%s' fde table count exceeds the limit, ignore the rest.", modulePath)
+			glog.Warningf("module:'%s' fde table count exceeds the limit, ignore the rest.", modulePath)
 			break
 		}
 
-		table := &procModuleFDETables.FdeTables[i]
+		table := &procModuleFDETables.FdeTables[procModuleFDETables.FdeTableCount]
 		table.Start = fde.Begin()
 		table.End = fde.End()
 		table.RowCount = 0
 
-		var errCfaHasInvalidRegNum error
+		var innerErr error
 
 		ExecuteDwarfProgram(fde, ef.ByteOrder, func(loc uint64, cfa dlvFrame.DWRule, regs map[uint64]dlvFrame.DWRule, retAddrReg uint64) {
 			// 每个 fde table 最多 row 数
 			if table.RowCount >= __maxPerFDETableRowCount {
-				glog.Warning("module:'%s' fde table{start:'0x%#x---end:0x%#x'} row count exceeds the limit, ignore the rest.",
-					modulePath, table.Start, table.End)
+				innerErr = errors.Errorf("module:'%s' fde table{start:'%#x---end:%#x'} row count exceeds the limit:%d.",
+					modulePath, table.Start, table.End, table.RowCount)
+				//glog.Error(innerErr.Error())
+				return
 			} else {
 				row := &table.Rows[table.RowCount]
 				row.Loc = loc
 				// 只支持 cfg 计算的寄存器是 rsp 或 rbp，如果使用其它寄存器放弃创建 FDETables
 				if cfa.Reg != regnum.AMD64_Rsp && cfa.Reg != regnum.AMD64_Rbp {
-					errCfaHasInvalidRegNum = errors.Errorf("module:'%s' fde table{start:'0x%#x---end:0x%#x'} row:%d has invalid reg:'%d'",
-						modulePath, table.Start, table.End, table.RowCount, cfa.Reg)
-					glog.Warning(errCfaHasInvalidRegNum.Error())
+					innerErr = errors.Errorf("module:'%s' fde table{start:'%#x---end:%#x'} row:%d has invalid reg:'%s'",
+						modulePath, table.Start, table.End, table.RowCount, regnum.AMD64ToName(cfa.Reg))
+					//glog.Error(innerErr.Error())
+					return
 				}
 				// cfa 的获取方式
 				row.Cfa.Reg = cfa.Reg // cfa 获取的寄存器号
@@ -559,12 +571,14 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 			}
 		})
 
-		if errCfaHasInvalidRegNum != nil {
-			return nil, errCfaHasInvalidRegNum
+		if innerErr == nil {
+			// procModuleFDETables = nil
+			// return nil, innerErr
+			procModuleFDETables.FdeTableCount += 1
+		} else {
+			glog.Error(innerErr.Error())
 		}
-
-		procModuleFDETables.FdeTableCount += 1
 	}
 
-	return nil, nil
+	return procModuleFDETables, nil
 }

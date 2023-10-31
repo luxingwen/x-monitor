@@ -15,9 +15,8 @@ import (
 type XMProfileStackTraceType [127]uint64
 
 type XMProfileXmPidMaps struct {
+	Modules     [36]XMProfileXmProcMapsModule
 	ModuleCount uint32
-	_           [4]byte
-	Modules     [32]XMProfileXmProcMapsModule
 }
 
 type XMProfileXmProcMapsModule struct {
@@ -25,7 +24,6 @@ type XMProfileXmProcMapsModule struct {
 	EndAddr     uint64
 	BuildIdHash uint64
 	Type        uint32
-	Path        [128]int8
 	_           [4]byte
 }
 
@@ -44,7 +42,6 @@ type XMProfileXmProfileFdeTable struct {
 	End      uint64
 	Rows     [36]XMProfileXmProfileFdeRow
 	RowCount uint32
-	_        [4]byte
 }
 
 type XMProfileXmProfileModuleFdeTables struct {
@@ -132,11 +129,11 @@ type XMProfileProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProfileMapSpecs struct {
-	XmProfileArgMap            *ebpf.MapSpec `ebpf:"xm_profile_arg_map"`
-	XmProfileModuleFdetableMap *ebpf.MapSpec `ebpf:"xm_profile_module_fdetable_map"`
-	XmProfilePidModulesMap     *ebpf.MapSpec `ebpf:"xm_profile_pid_modules_map"`
-	XmProfileSampleCountMap    *ebpf.MapSpec `ebpf:"xm_profile_sample_count_map"`
-	XmProfileStackMap          *ebpf.MapSpec `ebpf:"xm_profile_stack_map"`
+	XmProfileArgMap             *ebpf.MapSpec `ebpf:"xm_profile_arg_map"`
+	XmProfileModuleFdetablesMap *ebpf.MapSpec `ebpf:"xm_profile_module_fdetables_map"`
+	XmProfilePidModulesMap      *ebpf.MapSpec `ebpf:"xm_profile_pid_modules_map"`
+	XmProfileSampleCountMap     *ebpf.MapSpec `ebpf:"xm_profile_sample_count_map"`
+	XmProfileStackMap           *ebpf.MapSpec `ebpf:"xm_profile_stack_map"`
 }
 
 // XMProfileObjects contains all objects after they have been loaded into the kernel.
@@ -158,17 +155,17 @@ func (o *XMProfileObjects) Close() error {
 //
 // It can be passed to LoadXMProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProfileMaps struct {
-	XmProfileArgMap            *ebpf.Map `ebpf:"xm_profile_arg_map"`
-	XmProfileModuleFdetableMap *ebpf.Map `ebpf:"xm_profile_module_fdetable_map"`
-	XmProfilePidModulesMap     *ebpf.Map `ebpf:"xm_profile_pid_modules_map"`
-	XmProfileSampleCountMap    *ebpf.Map `ebpf:"xm_profile_sample_count_map"`
-	XmProfileStackMap          *ebpf.Map `ebpf:"xm_profile_stack_map"`
+	XmProfileArgMap             *ebpf.Map `ebpf:"xm_profile_arg_map"`
+	XmProfileModuleFdetablesMap *ebpf.Map `ebpf:"xm_profile_module_fdetables_map"`
+	XmProfilePidModulesMap      *ebpf.Map `ebpf:"xm_profile_pid_modules_map"`
+	XmProfileSampleCountMap     *ebpf.Map `ebpf:"xm_profile_sample_count_map"`
+	XmProfileStackMap           *ebpf.Map `ebpf:"xm_profile_stack_map"`
 }
 
 func (m *XMProfileMaps) Close() error {
 	return _XMProfileClose(
 		m.XmProfileArgMap,
-		m.XmProfileModuleFdetableMap,
+		m.XmProfileModuleFdetablesMap,
 		m.XmProfilePidModulesMap,
 		m.XmProfileSampleCountMap,
 		m.XmProfileStackMap,

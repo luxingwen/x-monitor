@@ -31,7 +31,8 @@ BPF_HASH(xm_profile_pid_modules_map, __u32, struct xm_pid_maps, 256);
 // 	 * kmalloc-able later in htab_map_update_elem()
 //
 // 	return -E2BIG;
-BPF_HASH(xm_profile_module_fdetable_map, __u64,
+// key is hash(buildid)
+BPF_HASH(xm_profile_module_fdetables_map, __u64,
          struct xm_profile_module_fde_tables, 256);
 
 // in compile print struct sizeof

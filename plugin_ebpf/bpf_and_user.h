@@ -215,7 +215,7 @@ struct xm_profile_sample {
 #endif
 
 #ifndef XM_PER_PROCESS_ASSOC_MODULE_COUNT
-#define XM_PER_PROCESS_ASSOC_MODULE_COUNT 36
+#define XM_PER_PROCESS_ASSOC_MODULE_COUNT 64
 #endif
 
 #ifndef XM_PER_MODULE_FDE_TABLE_COUNT
@@ -240,7 +240,7 @@ struct xm_profile_fde_row {
     __s32 ra_cfa_offset;
 };
 
-struct xm_profile_fde_table {
+struct __attribute__((__packed__)) xm_profile_fde_table {
     __u64 start; // 起始地址
     __u64 end; // 结束地址
     struct xm_profile_fde_row rows[XM_FDE_TABLE_MAX_ROW_COUNT];
@@ -264,10 +264,9 @@ struct xm_proc_maps_module {
     __u64 end_addr;
     __u64 build_id_hash;
     enum module_type type; // so 需要 pc-start_addr
-    char path[XM_PATH_MAX_LEN];
 };
 
-struct xm_pid_maps {
-    __u32 module_count;
+struct __attribute__((__packed__)) xm_pid_maps {
     struct xm_proc_maps_module modules[XM_PER_PROCESS_ASSOC_MODULE_COUNT];
+    __u32 module_count;
 };

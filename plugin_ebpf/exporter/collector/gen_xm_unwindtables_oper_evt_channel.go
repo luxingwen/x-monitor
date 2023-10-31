@@ -20,34 +20,34 @@ import (
 
 // NOTE: this is how easy it is to define a generic type
 
-// UnwindTablesEvtChannel channel的封装对象
-type UnwindTablesEvtChannel struct {
-	C          chan *UnwindTablesEvt
+// UnwindTablesOperEvtChannel channel的封装对象
+type UnwindTablesOperEvtChannel struct {
+	C          chan *UnwindTablesOperEvt
 	mutex      sync.Mutex
 	closedFlag bool
 }
 
-// NewUnwindTablesEvtChannel 创建函数
-func NewUnwindTablesEvtChannel(size int) *UnwindTablesEvtChannel {
-	customChannel := new(UnwindTablesEvtChannel)
+// NewUnwindTablesOperEvtChannel 创建函数
+func NewUnwindTablesOperEvtChannel(size int) *UnwindTablesOperEvtChannel {
+	customChannel := new(UnwindTablesOperEvtChannel)
 	if size > 0 {
-		customChannel.C = make(chan *UnwindTablesEvt, size)
+		customChannel.C = make(chan *UnwindTablesOperEvt, size)
 	} else {
-		customChannel.C = make(chan *UnwindTablesEvt)
+		customChannel.C = make(chan *UnwindTablesOperEvt)
 	}
 	customChannel.closedFlag = false
 	return customChannel
 }
 
 // IsClosed 判断是否被关闭
-func (cc *UnwindTablesEvtChannel) IsClosed() bool {
+func (cc *UnwindTablesOperEvtChannel) IsClosed() bool {
 	cc.mutex.Lock()
 	defer cc.mutex.Unlock()
 	return cc.closedFlag
 }
 
 // SafeClose 安全的关闭channel
-func (cc *UnwindTablesEvtChannel) SafeClose() {
+func (cc *UnwindTablesOperEvtChannel) SafeClose() {
 	cc.mutex.Lock()
 	defer cc.mutex.Unlock()
 	if !cc.closedFlag {
@@ -57,7 +57,7 @@ func (cc *UnwindTablesEvtChannel) SafeClose() {
 }
 
 // SafeSend 安全的发送数据
-func (cc *UnwindTablesEvtChannel) SafeSend(value *UnwindTablesEvt, block bool) (ok, closed bool, err error) {
+func (cc *UnwindTablesOperEvtChannel) SafeSend(value *UnwindTablesOperEvt, block bool) (ok, closed bool, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			closed = true
@@ -85,7 +85,7 @@ func (cc *UnwindTablesEvtChannel) SafeSend(value *UnwindTablesEvt, block bool) (
 }
 
 // Read 读取
-func (cc *UnwindTablesEvtChannel) Read(block bool) (val *UnwindTablesEvt, ok bool) {
+func (cc *UnwindTablesOperEvtChannel) Read(block bool) (val *UnwindTablesOperEvt, ok bool) {
 	if block {
 		val, ok = <-cc.C
 	} else {

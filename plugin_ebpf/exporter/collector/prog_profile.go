@@ -7,7 +7,7 @@
 
 package collector
 
-//go:generate genny -in=../../../vendor/github.com/wubo0067/calmwu-go/utils/generic_channel.go -out=gen_xm_unwindtables_oper_channel.go -pkg=collector gen "ChannelCustomType=*UnwindTablesEvt ChannelCustomName=UnwindTablesEvt"
+//go:generate genny -in=../../../vendor/github.com/wubo0067/calmwu-go/utils/generic_channel.go -out=gen_xm_unwindtables_oper_evt_channel.go -pkg=collector gen "ChannelCustomType=*UnwindTablesOperEvt ChannelCustomName=UnwindTablesOperEvt"
 
 import (
 	"bytes"
@@ -19,6 +19,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cilium/ebpf"
+	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/golang/glog"
 	"github.com/grafana/agent/component/pyroscope"
 	"github.com/grafana/pyroscope/ebpf/pprof"
@@ -39,12 +41,13 @@ import (
 )
 
 const (
-	__mapKey               uint32 = 0
-	__perf_max_stack_depth        = 127
-	__stackFrameSize              = (strconv.IntSize / 8)
-	__defaultMetricName           = "__name__"
-	labelServiceName              = "service_name"
-	__defaultMatricValue          = "host"
+	__mapKey                        uint32 = 0
+	__perf_max_stack_depth                 = 127
+	__stackFrameSize                       = (strconv.IntSize / 8)
+	__defaultMetricName                    = "__name__"
+	__labelServiceName                     = "service_name"
+	__defaultMatricValue                   = "host"
+	__defaultUnwindTablesOpChanSize        = (1 << 7)
 )
 
 type profileMatchTargetType uint32
@@ -142,7 +145,7 @@ func newProfileTarget(targetConf *profileTargetConf) *ProfileTarget {
 	}
 	// service_name 标签
 	if targetConf.Name == __defaultMatricValue {
-		labelSet[labelServiceName] = fmt.Sprintf("xm_host_%s", func() string {
+		labelSet[__labelServiceName] = fmt.Sprintf("xm_host_%s", func() string {
 			ip, _ := config.APISrvBindAddr()
 			return ip
 		}())
@@ -150,13 +153,13 @@ func newProfileTarget(targetConf *profileTargetConf) *ProfileTarget {
 		switch MatchType {
 		case MatchTargetComm:
 			// 固定标签，service_name = comm
-			labelSet[labelServiceName] = targetConf.Name
+			labelSet[__labelServiceName] = targetConf.Name
 		case MatchTargetPgID:
 			// 固定标签，service_name = comm_pgid_xxx
-			labelSet[labelServiceName] = fmt.Sprintf("%s_pgid_%s", targetConf.Name, targetConf.Val)
+			labelSet[__labelServiceName] = fmt.Sprintf("%s_pgid_%s", targetConf.Name, targetConf.Val)
 		case MatchTargetPidNS:
 			// 固定标签，service_name = comm_pidns_xxx
-			labelSet[labelServiceName] = fmt.Sprintf("%s_pidns_%s", targetConf.Name, targetConf.Val)
+			labelSet[__labelServiceName] = fmt.Sprintf("%s_pidns_%s", targetConf.Name, targetConf.Val)
 		}
 	}
 
@@ -244,10 +247,11 @@ type profilePrivateArgs struct {
 
 type profileProgram struct {
 	*eBPFBaseProgram
-	objs         *bpfmodule.XMProfileObjects
-	perfLink     *bpfprog.PerfEvent
-	pyroExporter pyroscope.Appendable
-	tf           profileTargetFinderItf
+	objs                    *bpfmodule.XMProfileObjects
+	perfLink                *bpfprog.PerfEvent
+	pyroExporter            pyroscope.Appendable
+	tf                      profileTargetFinderItf
+	unwindTablesOperEvtChan *UnwindTablesOperEvtChannel
 }
 
 type procStackInfo struct {
@@ -339,8 +343,11 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 
+	profileProg.unwindTablesOperEvtChan = NewUnwindTablesOperEvtChannel(__defaultUnwindTablesOpChanSize)
+
 	// start handling eBPF data
 	profileProg.wg.Go(profileProg.handlingeBPFData)
+	profileProg.wg.Go(profileProg.handlingUnwindTables)
 
 	return profileProg, nil
 }
@@ -380,6 +387,7 @@ loop:
 					glog.Infof("eBPFProgram:'%s', receive eBPF Event'%s'", pp.name, litter.Sdump(eBPFEvtInfo))
 					processExitEvt := eBPFEvtInfo.EvtData.(*eventcenter.EBPFEventProcessExit)
 					frame.RemoveByPid(processExitEvt.Pid)
+					pp.unwindTablesOperEvtChan.SafeSend(&UnwindTablesOperEvt{pid: processExitEvt.Pid, opType: deleteUnwindTables}, true)
 				}
 				eBPFEvtInfo = nil
 			}
@@ -396,6 +404,7 @@ func (pp *profileProgram) Stop() {
 		pp.objs.Close()
 		pp.objs = nil
 	}
+	pp.unwindTablesOperEvtChan.SafeClose()
 	glog.Infof("eBPFProgram:'%s' stopped", pp.name)
 }
 
@@ -527,6 +536,7 @@ func (pp *profileProgram) collectProfiles() {
 			// TODO: 使用 DWARF-based Stack Walking
 			glog.Warningf("eBPFProgram:'%s' comm:'%s', pid:%d Stack walking fails:'%d' beyond half of the stack depth:'%d'",
 				pp.name, psi.comm, psi.pid, resolveFailedCount, stackDepth)
+			pp.unwindTablesOperEvtChan.SafeSend(&UnwindTablesOperEvt{pid: psi.pid, opType: createUnwindTables}, true)
 		}
 		pfnWalkStack(psi.kStackBytes, 0, "kernel", &sb)
 
@@ -599,14 +609,143 @@ func (s *stackBuilder) append(sym string) {
 	s.stack = append(s.stack, sym)
 }
 
-type UnwindTablesOper int
+//---------------------------------------------------------------------------
+
+type unwindTablesOperType int
 
 const (
-	CreateUnwindTables = iota + 1
-	DeleteUnwindTables
+	createUnwindTables unwindTablesOperType = iota + 1
+	deleteUnwindTables
 )
 
-type UnwindTablesEvt struct {
-	Pid  int
-	Oper UnwindTablesOper
+type UnwindTablesOperEvt struct {
+	pid    int32
+	opType unwindTablesOperType
+}
+
+func (pp *profileProgram) handlingUnwindTables() {
+	glog.Infof("eBPFProgram:'%s' start handling UnwindTables...", pp.name)
+
+	defer func() {
+		if err := recover(); err != nil {
+			panicStack := calmutils.CallStack(3)
+			glog.Errorf("Panic. err:%v, stack:%s", err, panicStack)
+		}
+	}()
+
+	pidsFilter := hashset.New()
+	var moduleFDETablesMapData bpfmodule.XMProfileXmProfileModuleFdeTables
+	var pidMapsData bpfmodule.XMProfileXmPidMaps
+
+loop:
+	for {
+		select {
+		case <-pp.stopChan:
+			glog.Warningf("eBPFProgram:'%s' handling UnwindTables goroutine receive stop notify", pp.name)
+			break loop
+		case opEvt, ok := <-pp.unwindTablesOperEvtChan.C:
+			if ok {
+				switch opEvt.opType {
+				case createUnwindTables:
+					if !pidsFilter.Contains(opEvt.pid) {
+						pidsFilter.Add(opEvt.pid)
+
+						if pidModulesMapData, modules, err := frame.CreatePidMaps(opEvt.pid); err == nil {
+							glog.Infof("eBPFProgram:'%s' pid:%d create xm_profile_pid_modules_map data successed.", pp.name, opEvt.pid)
+
+							// 更新到表 xm_profile_pid_modules_map 中
+							if err = pp.objs.XmProfilePidModulesMap.Update(opEvt.pid, pidModulesMapData, 0); err == nil {
+								glog.Infof("eBPFProgram:'%s' pid:%d update xm_profile_pid_modules_map successed.", pp.name, opEvt.pid)
+
+								// 为每个 modules 创建 FDEtable
+								for i, m := range modules {
+									modulePath := fmt.Sprintf("%s%s", m.RootFS, m.Pathname)
+
+									// 查询该 module 的 FDETables 是否存在 xm_profile_module_fdetables_map 表中
+									key := pidModulesMapData.Modules[i].BuildIdHash
+									err = pp.objs.XmProfileModuleFdetablesMap.Lookup(key, &moduleFDETablesMapData)
+
+									if err != nil {
+										if errors.Is(err, ebpf.ErrKeyNotExist) {
+											// 如果 module 的 FDETables 不存在，创建
+
+											if fdeTables, err := frame.CreateModuleFDETables(modulePath); err == nil {
+												glog.Infof("eBPFProgram:'%s' module:'%s' buidIDHash:%d create xm_profile_module_fdetables_map data successed.",
+													pp.name, modulePath, key)
+
+												if err = pp.objs.XmProfileModuleFdetablesMap.Update(key, fdeTables, 0); err == nil {
+													glog.Infof("eBPFProgram:'%s' module:'%s' buildIDHash:%d update xm_profile_module_fdetables_map succeeded.",
+														pp.name, modulePath, key)
+												} else {
+													glog.Errorf("eBPFProgram:'%s' module:'%s' buildIDHash:%d update xm_profile_module_fdetables_map failed. err:%s",
+														pp.name, modulePath, key, err.Error())
+												}
+											} else {
+												glog.Errorf("eBPFProgram:'%s' module:'%s' buildIDHash:%d create xm_profile_module_fdetables_map data failed. err:%s",
+													pp.name, modulePath, key, err.Error())
+											}
+										} else {
+											// 根据 buildID 的 hash 值查询表 xm_profile_module_fdetables_map 失败
+											glog.Errorf("eBPFProgram:'%s' module:'%s' buildIDHash:%d lookup xm_profile_module_fdetables_map failed. err:%s",
+												pp.name, modulePath, key, err.Error())
+										}
+									} else {
+										// 该 module 的 FDETables 已经存在，递增 RefCount 值
+										moduleFDETablesMapData.RefCount += 1
+										// 更新
+										if err = pp.objs.XmProfileModuleFdetablesMap.Update(key, &moduleFDETablesMapData, 0); err != nil {
+											glog.Errorf("eBPFProgram:'%s' module:'%s' buildIDHash:%d update xm_profile_module_fdetables_map failed. err:%s",
+												pp.name, modulePath, key, err.Error())
+										} else {
+											glog.Infof("eBPFProgram:'%s' module:'%s' buildIDHash:%d refCount:%d update xm_profile_module_fdetables_map succeeded.",
+												pp.name, modulePath, key, moduleFDETablesMapData.RefCount)
+										}
+									}
+								}
+							} else {
+								glog.Errorf("eBPFProgram:'%s' pid:%d update xm_profile_pid_modules_map failed, err:%s",
+									pp.name, err.Error())
+							}
+						} else {
+							glog.Errorf("eBPFProgram:'%s' pid:%d create xm_profile_pid_modules_map data failed. err:%s", pp.name, opEvt.pid, err.Error())
+						}
+					}
+				case deleteUnwindTables:
+					if pidsFilter.Contains(opEvt.pid) {
+						// 根据 pid 查询表 xm_profile_pid_modules_map
+						if err := pp.objs.XmProfilePidModulesMap.Lookup(opEvt.pid, &pidMapsData); err == nil {
+							for i := 0; i < int(pidMapsData.ModuleCount); i++ {
+								// 在表 xm_profile_module_fdetables_map 中查找每个 module 的 FDETables，减少引用次数，如果为 0，就删除
+								moduleFDETables := &pidMapsData.Modules[i]
+
+								err = pp.objs.XmProfileModuleFdetablesMap.Lookup(moduleFDETables.BuildIdHash, &moduleFDETablesMapData)
+								if err == nil {
+									moduleFDETablesMapData.RefCount -= 1
+									if moduleFDETablesMapData.RefCount > 0 {
+										// update
+										pp.objs.XmProfileModuleFdetablesMap.Update(moduleFDETables.BuildIdHash, &moduleFDETablesMapData, 0)
+										glog.Infof("eBPFProgram:'%s' buildIDHash:%d refCount:%d update xm_profile_module_fdetables_map.",
+											pp.name, moduleFDETables.BuildIdHash, moduleFDETablesMapData.RefCount)
+									} else {
+										// delete
+										pp.objs.XmProfileModuleFdetablesMap.Delete(moduleFDETables.BuildIdHash)
+										glog.Infof("eBPFProgram:'%s' buildIDHash:%d delete xm_profile_module_fdetables_map.",
+											pp.name, moduleFDETables.BuildIdHash)
+									}
+								}
+							}
+							// 从表 xm_profile_pid_modules_map 中删除
+							if err = pp.objs.XmProfilePidModulesMap.Delete(opEvt.pid); err == nil {
+								glog.Infof("eBPFProgram:'%s' pid:%d delete xm_profile_pid_modules_map data successed.",
+									pp.name, opEvt.pid)
+							}
+						}
+						pidsFilter.Remove(opEvt.pid)
+					}
+				}
+			}
+		}
+	}
+
+	pidsFilter = nil
 }
