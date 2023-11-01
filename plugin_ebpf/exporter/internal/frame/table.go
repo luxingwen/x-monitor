@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	__maxPerModuleFDETableCount     = 2048 // 每个 module 包含的 fde table 最大数量
-	__maxPerProcessAssocModuleCount = 64   // 每个进程关联的 module 最大数量
-	__maxPerFDETableRowCount        = 36
+	__maxPerModuleFDETableCount     = 2048                               // 每个 module 包含的 fde table 最大数量
+	__maxPerProcessAssocModuleCount = 64                                 // 每个进程关联的 module 最大数量
+	__maxPerModuleAssocFDERowCount  = (__maxPerModuleFDETableCount << 5) // 每个 module 关联的 fde row 最大数量
 	__DW_CFA_GNU_args_size          = 0x2e
 )
 
@@ -505,6 +505,10 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 	defer ef.Close()
 
 	section := ef.Section(".eh_frame")
+	if section == nil {
+		return nil, errors.Errorf("module:'%s' no .eh_frame section", modulePath)
+	}
+
 	data, err := section.Data()
 	if err != nil {
 		err = errors.Wrap(err, "get .eh_frame section data.")
@@ -523,6 +527,9 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 	procModuleFDETables.RefCount = 1
 	procModuleFDETables.FdeTableCount = 0
 
+	moduleAssocFDERowCount := 0
+	var innerErr error = nil
+
 	// 轮询所有的 fde
 	for _, fde := range fdes {
 		if procModuleFDETables.FdeTableCount >= __maxPerModuleFDETableCount {
@@ -530,55 +537,66 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 			break
 		}
 
-		table := &procModuleFDETables.FdeTables[procModuleFDETables.FdeTableCount]
-		table.Start = fde.Begin()
-		table.End = fde.End()
-		table.RowCount = 0
+		tableInfo := &procModuleFDETables.FdeInfos[procModuleFDETables.FdeTableCount]
+		tableInfo.Start = fde.Begin()
+		tableInfo.End = fde.End()
+		tableInfo.RowCount = 0
+		tableInfo.RowPos = uint32(moduleAssocFDERowCount)
 
-		var innerErr error
+		innerErr = nil
 
 		ExecuteDwarfProgram(fde, ef.ByteOrder, func(loc uint64, cfa dlvFrame.DWRule, regs map[uint64]dlvFrame.DWRule, retAddrReg uint64) {
+			if innerErr != nil {
+				return
+			}
+
 			// 每个 fde table 最多 row 数
-			if table.RowCount >= __maxPerFDETableRowCount {
-				innerErr = errors.Errorf("module:'%s' fde table{start:'%#x---end:%#x'} row count exceeds the limit:%d.",
-					modulePath, table.Start, table.End, table.RowCount)
+			if moduleAssocFDERowCount >= __maxPerModuleAssocFDERowCount {
+				innerErr = errors.Errorf("module:'%s' row count exceeds the limit:%d. so fde table{start:'%#x---end:%#x'} ignore.",
+					modulePath, __maxPerModuleAssocFDERowCount, tableInfo.Start, tableInfo.End)
 				//glog.Error(innerErr.Error())
 				return
 			} else {
-				row := &table.Rows[table.RowCount]
-				row.Loc = loc
+				tableRow := &procModuleFDETables.FdeRows[moduleAssocFDERowCount]
+				tableRow.Loc = loc
 				// 只支持 cfg 计算的寄存器是 rsp 或 rbp，如果使用其它寄存器放弃创建 FDETables
 				if cfa.Reg != regnum.AMD64_Rsp && cfa.Reg != regnum.AMD64_Rbp {
 					innerErr = errors.Errorf("module:'%s' fde table{start:'%#x---end:%#x'} row:%d has invalid reg:'%s'",
-						modulePath, table.Start, table.End, table.RowCount, regnum.AMD64ToName(cfa.Reg))
+						modulePath, tableInfo.Start, tableInfo.End, tableInfo.RowCount, regnum.AMD64ToName(cfa.Reg))
 					//glog.Error(innerErr.Error())
 					return
 				}
 				// cfa 的获取方式
-				row.Cfa.Reg = cfa.Reg // cfa 获取的寄存器号
-				row.Cfa.Offset = cfa.Offset
+				tableRow.Cfa.Reg = cfa.Reg // cfa 获取的寄存器号
+				tableRow.Cfa.Offset = cfa.Offset
 				// rbp 寄存器
-				row.RbpCfaOffset = math.MaxInt32 // 约定用 maxInt32 标识没有获取到
+				tableRow.RbpCfaOffset = math.MaxInt32 // 约定用 maxInt32 标识没有获取到
 				if regs[regnum.AMD64_Rbp].Rule == dlvFrame.RuleOffset {
-					row.RbpCfaOffset = int32(regs[regnum.AMD64_Rbp].Offset) // RuleOffset
+					tableRow.RbpCfaOffset = int32(regs[regnum.AMD64_Rbp].Offset) // RuleOffset
 				}
 				// ra
-				row.RaCfaOffset = math.MaxInt32
+				tableRow.RaCfaOffset = math.MaxInt32
 				if regs[retAddrReg].Rule == dlvFrame.RuleOffset {
-					row.RaCfaOffset = int32(regs[retAddrReg].Offset)
+					tableRow.RaCfaOffset = int32(regs[retAddrReg].Offset)
 				}
-				table.RowCount += 1
+				tableInfo.RowCount += 1
+				moduleAssocFDERowCount += 1
 			}
 		})
 
-		if innerErr == nil {
+		if innerErr == nil && tableInfo.RowCount > 0 {
 			// procModuleFDETables = nil
 			// return nil, innerErr
 			procModuleFDETables.FdeTableCount += 1
 		} else {
-			glog.Error(innerErr.Error())
+			if err != nil {
+				glog.Errorf(innerErr.Error())
+			}
+			if tableInfo.RowCount == 0 {
+				glog.Warningf("module:'%s' fde table{start:'%#x---end:%#x'} is empty", modulePath, tableInfo.Start, tableInfo.End)
+			}
 		}
 	}
-
+	glog.Infof("module:'%s' have %d FDETables, %d FDERows", modulePath, procModuleFDETables.FdeTableCount, moduleAssocFDERowCount)
 	return procModuleFDETables, nil
 }

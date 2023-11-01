@@ -17,8 +17,10 @@
 // max depth of each stack trace to track
 #ifndef PERF_MAX_STACK_DEPTH
 #define PERF_MAX_STACK_DEPTH 127
-#define MAX_BIN_SEARCH_DEPTH 7
 #endif
+
+// 在 FDETable 中二分查找的最大深度，那么一个 FDETable 最多支持 2^8=256 有 row
+#define MAX_BIN_SEARCH_DEPTH 8
 
 #define XDP_UNKNOWN XDP_REDIRECT + 1
 #ifndef XDP_ACTION_MAX
@@ -206,10 +208,6 @@ struct xm_profile_sample {
     char comm[TASK_COMM_LEN];
 };
 
-#ifndef XM_FDE_TABLE_MAX_ROW_COUNT
-#define XM_FDE_TABLE_MAX_ROW_COUNT 36
-#endif
-
 #ifndef XM_PATH_MAX_LEN
 #define XM_PATH_MAX_LEN 128
 #endif
@@ -220,6 +218,10 @@ struct xm_profile_sample {
 
 #ifndef XM_PER_MODULE_FDE_TABLE_COUNT
 #define XM_PER_MODULE_FDE_TABLE_COUNT 2048
+#endif
+
+#ifndef XM_PER_MODULE_FDE_ROWS_COUNT
+#define XM_PER_MODULE_FDE_ROWS_COUNT (XM_PER_MODULE_FDE_TABLE_COUNT << 5)
 #endif
 
 struct xm_profile_sample_data {
@@ -233,24 +235,25 @@ struct xm_profile_dw_cfa {
     __u64 reg; // cfa 计算的寄存器号，从该寄存器读取值，然后加上 offset
 };
 
-struct xm_profile_fde_row {
+struct xm_profile_fde_table_row {
     __u64 loc;
     struct xm_profile_dw_cfa cfa;
     __s32 rbp_cfa_offset;
     __s32 ra_cfa_offset;
 };
 
-struct __attribute__((__packed__)) xm_profile_fde_table {
+struct __attribute__((__packed__)) xm_profile_fde_table_info {
     __u64 start; // 起始地址
     __u64 end; // 结束地址
-    struct xm_profile_fde_row rows[XM_FDE_TABLE_MAX_ROW_COUNT];
-    __u32 row_count;
+    __u32 row_pos; // 所在行的位置
+    __u32 row_count; // 行的数量
 };
 
 struct xm_profile_module_fde_tables {
     __u32 ref_count;
     __u32 fde_table_count;
-    struct xm_profile_fde_table fde_tables[XM_PER_MODULE_FDE_TABLE_COUNT];
+    struct xm_profile_fde_table_info fde_infos[XM_PER_MODULE_FDE_TABLE_COUNT];
+    struct xm_profile_fde_table_row fde_rows[XM_PER_MODULE_FDE_ROWS_COUNT];
 };
 
 enum module_type {

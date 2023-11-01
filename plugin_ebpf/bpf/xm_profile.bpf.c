@@ -43,8 +43,8 @@ const enum xm_prog_filter_target_scope_type __unused_filter_scope_type
 
 const struct xm_profile_sample *__unused_ps __attribute__((unused));
 const struct xm_profile_sample_data *__unused_psd __attribute__((unused));
-const struct xm_profile_fde_row *__unused_pfr __attribute__((unused));
-const struct xm_profile_fde_table *__unused_pft __attribute__((unused));
+const struct xm_profile_fde_table_row *__unused_pfr __attribute__((unused));
+const struct xm_profile_fde_table_info *__unused_pft __attribute__((unused));
 const struct xm_proc_maps_module *__unused_pmm __attribute__((unused));
 const struct xm_pid_maps *__unused_pm __attribute__((unused));
 const struct xm_profile_module_fde_tables *__unused_pmft
@@ -78,8 +78,8 @@ __xm_get_task_userspace_regs(struct task_struct *task,
 
 // int element = sortedArray[index];
 static __always_inline __s32 __bsearch_fde_table(
-    const struct xm_profile_fde_row *rows, __u32 row_count, __u64 pc) {
-    if (!rows || 0 == row_count || row_count > PERF_MAX_STACK_DEPTH) {
+    const struct xm_profile_fde_table_row *rows, __u32 row_count, __u64 pc) {
+    if (!rows || 0 == row_count) {
         return -1;
     }
 
@@ -87,7 +87,7 @@ static __always_inline __s32 __bsearch_fde_table(
     __s32 right = row_count - 1;
     __s32 result = -1;
     __s32 mid = 0;
-    // 堆栈深度是 127，二分查找最多 7 次
+    // 最大深度限制查找 rows 的范围
     for (__s32 i = 0; i < MAX_BIN_SEARCH_DEPTH; i++) {
         if (left > right) {
             break;

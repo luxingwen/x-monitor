@@ -15,7 +15,7 @@ import (
 type XMProfileStackTraceType [127]uint64
 
 type XMProfileXmPidMaps struct {
-	Modules     [36]XMProfileXmProcMapsModule
+	Modules     [64]XMProfileXmProcMapsModule
 	ModuleCount uint32
 }
 
@@ -27,7 +27,14 @@ type XMProfileXmProcMapsModule struct {
 	_           [4]byte
 }
 
-type XMProfileXmProfileFdeRow struct {
+type XMProfileXmProfileFdeTableInfo struct {
+	Start    uint64
+	End      uint64
+	RowPos   uint32
+	RowCount uint32
+}
+
+type XMProfileXmProfileFdeTableRow struct {
 	Loc uint64
 	Cfa struct {
 		Offset int64
@@ -37,17 +44,11 @@ type XMProfileXmProfileFdeRow struct {
 	RaCfaOffset  int32
 }
 
-type XMProfileXmProfileFdeTable struct {
-	Start    uint64
-	End      uint64
-	Rows     [36]XMProfileXmProfileFdeRow
-	RowCount uint32
-}
-
 type XMProfileXmProfileModuleFdeTables struct {
 	RefCount      uint32
 	FdeTableCount uint32
-	FdeTables     [2048]XMProfileXmProfileFdeTable
+	FdeInfos      [2048]XMProfileXmProfileFdeTableInfo
+	FdeRows       [65536]XMProfileXmProfileFdeTableRow
 }
 
 type XMProfileXmProfileSample struct {
