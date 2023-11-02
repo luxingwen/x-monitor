@@ -20,7 +20,7 @@ BPF_HASH(xm_profile_sample_count_map, struct xm_profile_sample,
 // 堆栈
 BPF_STACK_TRACE(xm_profile_stack_map, 1024);
 // 保存 pid 的内存映射信息，如果 pid 存在，说明需要执行来获取用户态堆栈
-BPF_HASH(xm_profile_pid_modules_map, __u32, struct xm_pid_maps, 256);
+BPF_HASH(xm_profile_pid_modules_map, __u32, struct xm_profile_pid_maps, 256);
 
 // 保存每个 module 的 fde table 信息，内核对 hash_map 的 value 有大小限制
 // if ((u64)attr->key_size + attr->value_size >= KMALLOC_MAX_SIZE -
@@ -45,8 +45,8 @@ const struct xm_profile_sample *__unused_ps __attribute__((unused));
 const struct xm_profile_sample_data *__unused_psd __attribute__((unused));
 const struct xm_profile_fde_table_row *__unused_pfr __attribute__((unused));
 const struct xm_profile_fde_table_info *__unused_pft __attribute__((unused));
-const struct xm_proc_maps_module *__unused_pmm __attribute__((unused));
-const struct xm_pid_maps *__unused_pm __attribute__((unused));
+const struct xm_profile_proc_maps_module *__unused_pmm __attribute__((unused));
+const struct xm_profile_pid_maps *__unused_pm __attribute__((unused));
 const struct xm_profile_module_fde_tables *__unused_pmft
     __attribute__((unused));
 
@@ -77,8 +77,9 @@ __xm_get_task_userspace_regs(struct task_struct *task,
 }
 
 // int element = sortedArray[index];
-static __always_inline __s32 __bsearch_fde_table(
-    const struct xm_profile_fde_table_row *rows, __u32 row_count, __u64 pc) {
+static __always_inline __s32
+__bsearch_fde_table(const struct xm_profile_fde_table_row *rows,
+                    __u32 row_count, __u64 address) {
     if (!rows || 0 == row_count) {
         return -1;
     }
@@ -93,7 +94,7 @@ static __always_inline __s32 __bsearch_fde_table(
             break;
         }
         mid = left + (right - left) / 2;
-        if (rows[mid].loc <= pc) {
+        if (rows[mid].loc <= address) {
             result = mid;
             left = mid + 1;
         } else {
@@ -103,8 +104,97 @@ static __always_inline __s32 __bsearch_fde_table(
     return result;
 }
 
-SEC("perf_event")
-__s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
+static __always_inline const struct xm_profile_fde_table_info *
+__find_fde_table_info_in_module(
+    const struct xm_profile_module_fde_tables *module_tables, __u64 address) {
+    if (module_tables && 0 < module_tables->fde_table_count) {
+        // !! 要用二分查找，不然超过了 epbf 对指令数量的限制
+        for (__u32 i = 0; i < module_tables->fde_table_count
+                          && i < XM_PER_MODULE_FDE_TABLE_COUNT;
+             i++) {
+            const struct xm_profile_fde_table_info *table_info =
+                &module_tables->fde_infos[i];
+            if (table_info && table_info->start <= address
+                && address <= table_info->end) {
+                return table_info;
+            }
+        }
+    }
+    return 0;
+}
+
+static __always_inline const struct xm_profile_proc_maps_module *
+__find_module_in_maps(const struct xm_profile_pid_maps *maps, __u64 pc) {
+    if (maps && maps->module_count > 0) {
+        for (__u32 i = 0;
+             i < maps->module_count && i < XM_PER_PROCESS_ASSOC_MODULE_COUNT;
+             i++) {
+            const struct xm_profile_proc_maps_module *module =
+                &maps->modules[i];
+            if (module && module->start_addr <= pc && pc <= module->end_addr) {
+                // 判断 pc 在/proc/pid/maps 对应的 module 地址范围内
+                return module;
+            }
+        }
+    }
+    return 0;
+}
+
+static __always_inline void __get_user_stack(pid_t pid,
+                                             struct task_struct *task,
+                                             struct pt_regs *user_regs) {
+    struct xm_task_userspace_regs tu_regs;
+    struct xm_profile_pid_maps *pid_maps = 0;
+    const struct xm_profile_proc_maps_module *module = 0;
+    const struct xm_profile_module_fde_tables *module_fde_tables = 0;
+    const struct xm_profile_fde_table_info *module_fde_table_info = 0;
+    __u64 addr = 0;
+
+    pid_maps = bpf_map_lookup_elem(&xm_profile_pid_modules_map, &pid);
+    if (pid_maps) {
+        bpf_printk("---> __get_user_stack pid:%d", pid);
+        // 获取当前的寄存器
+        __xm_get_task_userspace_regs(task, user_regs, &tu_regs);
+        bpf_printk("rip:0x%lx, rsp:0x%lx, rbp:0x%x", tu_regs.rip, tu_regs.rsp,
+                   tu_regs.rbp);
+
+        // 根据 rip 查找对应的 module
+        module = __find_module_in_maps(pid_maps, tu_regs.rip);
+        if (module) {
+            bpf_printk("rip in module-{start:0x%lx...end:0x%lx}",
+                       module->start_addr, module->end_addr);
+
+            addr = tu_regs.rip;
+            if (module->type == so) {
+                addr -= module->start_addr;
+            }
+            // 根据 addr 查找对应的 fde table
+            module_fde_tables = bpf_map_lookup_elem(
+                &xm_profile_module_fdetables_map, &(module->build_id_hash));
+            if (module_fde_tables) {
+                // module_fde_table_info =
+                //     __find_fde_table_info_in_module(module_fde_tables, addr);
+                // if (module_fde_table_info) {
+                //     bpf_printk("rip in fde_table-{start:0x%lx...end:0x%lx}",
+                //                module_fde_table_info->start,
+                //                module_fde_table_info->end);
+                // }
+                bpf_printk("module-{start:0x%lx...end:0x%lx} in "
+                           "xm_profile_module_fde_tables",
+                           module->start_addr, module->end_addr);
+            } else {
+                bpf_printk("module-{start:0x%lx...end:0x%lx}, build_id_hash:%d "
+                           "not in "
+                           "xm_profile_module_fde_tables",
+                           module->start_addr, module->end_addr,
+                           module->build_id_hash);
+            }
+        }
+        bpf_printk("<---");
+    }
+}
+
+SEC("perf_event") __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
     pid_t tid, pid;
 
     struct xm_profile_sample ps = {
@@ -144,13 +234,13 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
     }
     // bpf_printk("+++>xm_do_perf_event enter<+++");
 
-    struct xm_task_userspace_regs tu_regs;
-    bpf_user_pt_regs_t *user_regs = &ctx->regs;
-    __xm_get_task_userspace_regs(ts, user_regs, &tu_regs);
-
-    bpf_printk("---> xm_do_perf_event pid:%d", pid);
-    bpf_printk("xm_do_perf_event rip:0x%lx, rsp:0x%lx, rbp:0x%x <---",
-               tu_regs.rip, tu_regs.rsp, tu_regs.rbp);
+    __get_user_stack(pid, ts, &ctx->regs);
+    // struct xm_task_userspace_regs tu_regs;
+    // bpf_user_pt_regs_t *user_regs = &ctx->regs;
+    //__xm_get_task_userspace_regs(ts, user_regs, &tu_regs);
+    // bpf_printk("---> xm_do_perf_event pid:%d", pid);
+    // bpf_printk("xm_do_perf_event rip:0x%lx, rsp:0x%lx, rbp:0x%x <---",
+    //            tu_regs.rip, tu_regs.rsp, tu_regs.rbp);
 
     ps.pid = pid;
     BPF_CORE_READ_STR_INTO(&ps.comm, ts, group_leader, comm);
@@ -177,10 +267,6 @@ __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
         val->pid_ns = __xm_get_task_pidns(ts);
         val->pgid = __xm_get_task_pgid(ts);
     }
-
-    // bpf_printk("xm_do_perf_event pid:%d, kernel_stack_id:%d, "
-    //            "user_stack_id:%d",
-    //            ps.pid, ps.kernel_stack_id, ps.user_stack_id);
 
     return 0;
 }

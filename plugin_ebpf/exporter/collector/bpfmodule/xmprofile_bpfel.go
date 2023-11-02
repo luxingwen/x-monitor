@@ -14,19 +14,6 @@ import (
 
 type XMProfileStackTraceType [127]uint64
 
-type XMProfileXmPidMaps struct {
-	Modules     [64]XMProfileXmProcMapsModule
-	ModuleCount uint32
-}
-
-type XMProfileXmProcMapsModule struct {
-	StartAddr   uint64
-	EndAddr     uint64
-	BuildIdHash uint64
-	Type        uint32
-	_           [4]byte
-}
-
 type XMProfileXmProfileFdeTableInfo struct {
 	Start    uint64
 	End      uint64
@@ -47,8 +34,21 @@ type XMProfileXmProfileFdeTableRow struct {
 type XMProfileXmProfileModuleFdeTables struct {
 	RefCount      uint32
 	FdeTableCount uint32
-	FdeInfos      [2048]XMProfileXmProfileFdeTableInfo
-	FdeRows       [65536]XMProfileXmProfileFdeTableRow
+	FdeInfos      [8192]XMProfileXmProfileFdeTableInfo
+	FdeRows       [46080]XMProfileXmProfileFdeTableRow
+}
+
+type XMProfileXmProfilePidMaps struct {
+	Modules     [64]XMProfileXmProfileProcMapsModule
+	ModuleCount uint32
+}
+
+type XMProfileXmProfileProcMapsModule struct {
+	StartAddr   uint64
+	EndAddr     uint64
+	BuildIdHash uint64
+	Type        uint32
+	_           [4]byte
 }
 
 type XMProfileXmProfileSample struct {

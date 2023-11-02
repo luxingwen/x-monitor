@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	__maxPerModuleFDETableCount     = 2048                               // 每个 module 包含的 fde table 最大数量
-	__maxPerProcessAssocModuleCount = 64                                 // 每个进程关联的 module 最大数量
-	__maxPerModuleAssocFDERowCount  = (__maxPerModuleFDETableCount << 5) // 每个 module 关联的 fde row 最大数量
+	__maxPerModuleFDETableCount     = 8192        // 每个 module 包含的 fde table 最大数量
+	__maxPerProcessAssocModuleCount = 64          // 每个进程关联的 module 最大数量
+	__maxPerModuleAssocFDERowCount  = (45 * 1024) // 每个 module 关联的 fde row 最大数量
 	__DW_CFA_GNU_args_size          = 0x2e
 )
 
@@ -450,12 +450,12 @@ func gnuargsize(frame *FrameContext) {
 	_, _ = leb128.DecodeSigned(frame.buf)
 }
 
-func CreatePidMaps(pid int32) (*bpfmodule.XMProfileXmPidMaps, []*calmutils.ProcMapsModule, error) {
+func CreatePidMaps(pid int32) (*bpfmodule.XMProfileXmProfilePidMaps, []*calmutils.ProcMapsModule, error) {
 	var (
 		modules []*calmutils.ProcMapsModule
 		err     error
 	)
-	procMaps := new(bpfmodule.XMProfileXmPidMaps)
+	procMaps := new(bpfmodule.XMProfileXmProfilePidMaps)
 
 	if modules, err = GetProcModules(pid); err != nil {
 		return nil, nil, errors.Wrap(err, "get process modules failed.")

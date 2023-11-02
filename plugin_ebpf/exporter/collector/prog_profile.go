@@ -635,7 +635,7 @@ func (pp *profileProgram) handlingUnwindTables() {
 
 	pidsFilter := hashset.New()
 	var moduleFDETablesMapData bpfmodule.XMProfileXmProfileModuleFdeTables
-	var pidMapsData bpfmodule.XMProfileXmPidMaps
+	var pidMapsData bpfmodule.XMProfileXmProfilePidMaps
 
 loop:
 	for {

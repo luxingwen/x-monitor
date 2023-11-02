@@ -217,11 +217,11 @@ struct xm_profile_sample {
 #endif
 
 #ifndef XM_PER_MODULE_FDE_TABLE_COUNT
-#define XM_PER_MODULE_FDE_TABLE_COUNT 2048
+#define XM_PER_MODULE_FDE_TABLE_COUNT 8192
 #endif
 
 #ifndef XM_PER_MODULE_FDE_ROWS_COUNT
-#define XM_PER_MODULE_FDE_ROWS_COUNT (XM_PER_MODULE_FDE_TABLE_COUNT << 5)
+#define XM_PER_MODULE_FDE_ROWS_COUNT (45 * 1024)
 #endif
 
 struct xm_profile_sample_data {
@@ -257,19 +257,25 @@ struct xm_profile_module_fde_tables {
 };
 
 enum module_type {
-    is_unknown = 0,
-    is_exec,
-    is_so,
+    unknown = 0,
+    exec,
+    so,
 };
 
-struct xm_proc_maps_module {
+struct xm_profile_proc_maps_module {
     __u64 start_addr;
     __u64 end_addr;
     __u64 build_id_hash;
     enum module_type type; // so 需要 pc-start_addr
 };
 
-struct __attribute__((__packed__)) xm_pid_maps {
-    struct xm_proc_maps_module modules[XM_PER_PROCESS_ASSOC_MODULE_COUNT];
+struct __attribute__((__packed__)) xm_profile_pid_maps {
+    struct xm_profile_proc_maps_module
+        modules[XM_PER_PROCESS_ASSOC_MODULE_COUNT];
     __u32 module_count;
+};
+
+struct xm_stack_trace {
+    __u64 len;
+    __u64 addresses[PERF_MAX_STACK_DEPTH];
 };
