@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-08-16 15:15:40
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-16 17:18:49
+ * @Last Modified time: 2023-11-03 17:30:12
  */
 
 #include <vmlinux.h>
@@ -11,6 +11,13 @@
 #include "xm_bpf_helpers_maps.h"
 #include "xm_bpf_helpers_math.h"
 #include "xm_bpf_helpers_filter.h"
+
+// 在 FDETable 中二分查找对应 row 的最大深度，那么一个 FDETable 最多支持 2^8=256
+// 有 row
+#define MAX_FDE_TABLE_ROW_BIN_SEARCH_DEPTH 8
+// 在 Module 中查找 FDEInfo
+// 的最大深度，XM_PER_MODULE_FDE_TABLE_COUNT=8192，最大深度是 13
+#define MAX_MODULE_FDE_TABLE_BIN_SEARCH_DEPTH 13
 
 // prog 参数，过滤条件
 BPF_ARRAY(xm_profile_arg_map, struct xm_prog_filter_args, 1);
@@ -77,23 +84,23 @@ __xm_get_task_userspace_regs(struct task_struct *task,
 }
 
 // int element = sortedArray[index];
+// **R8 unbounded memory access, make sure to bounds check any such access
 static __always_inline __s32
-__bsearch_fde_table(const struct xm_profile_fde_table_row *rows,
-                    __u32 row_count, __u64 address) {
-    if (!rows || 0 == row_count) {
-        return -1;
-    }
-
-    __s32 left = 0;
-    __s32 right = row_count - 1;
+__bsearch_fde_table_row(const struct xm_profile_fde_table_row *rows, __s32 left,
+                        __s32 right, __u64 address) {
     __s32 result = -1;
     __s32 mid = 0;
     // 最大深度限制查找 rows 的范围
-    for (__s32 i = 0; i < MAX_BIN_SEARCH_DEPTH; i++) {
+    for (__s32 i = 0; i < MAX_FDE_TABLE_ROW_BIN_SEARCH_DEPTH; i++) {
         if (left > right) {
             break;
         }
         mid = left + (right - left) / 2;
+
+        if (mid < 0 || mid >= XM_PER_MODULE_FDE_ROWS_COUNT) {
+            return 0;
+        }
+
         if (rows[mid].loc <= address) {
             result = mid;
             left = mid + 1;
@@ -107,17 +114,36 @@ __bsearch_fde_table(const struct xm_profile_fde_table_row *rows,
 static __always_inline const struct xm_profile_fde_table_info *
 __find_fde_table_info_in_module(
     const struct xm_profile_module_fde_tables *module_tables, __u64 address) {
-    if (module_tables && 0 < module_tables->fde_table_count) {
-        // !! 要用二分查找，不然超过了 epbf 对指令数量的限制
-        for (__u32 i = 0; i < module_tables->fde_table_count
-                          && i < XM_PER_MODULE_FDE_TABLE_COUNT;
-             i++) {
-            const struct xm_profile_fde_table_info *table_info =
-                &module_tables->fde_infos[i];
-            if (table_info && table_info->start <= address
-                && address <= table_info->end) {
-                return table_info;
+    if (module_tables && 0 < module_tables->fde_table_count
+        && module_tables->fde_table_count < XM_PER_MODULE_FDE_TABLE_COUNT) {
+        __s32 left = 0;
+        __s32 right = module_tables->fde_table_count - 1;
+        __s32 result = -1;
+        __s32 mid = 0;
+        const struct xm_profile_fde_table_info *fde_table_infos =
+            module_tables->fde_infos;
+
+        for (__s32 i = 0; i < MAX_MODULE_FDE_TABLE_BIN_SEARCH_DEPTH; i++) {
+            if (left > right) {
+                break;
             }
+            mid = left + (right - left) / 2;
+
+            // **fix:math between map_value pointer and register with unbounded
+            // **min value is not allowed
+            if (mid < 0 || mid >= XM_PER_MODULE_FDE_TABLE_COUNT) {
+                return 0;
+            }
+            if (fde_table_infos[mid].start <= address) {
+                result = mid;
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        if (result >= 0) {
+            return &module_tables->fde_infos[result];
         }
     }
     return 0;
@@ -149,6 +175,7 @@ static __always_inline void __get_user_stack(pid_t pid,
     const struct xm_profile_module_fde_tables *module_fde_tables = 0;
     const struct xm_profile_fde_table_info *module_fde_table_info = 0;
     __u64 addr = 0;
+    __s32 row_pos = 0;
 
     pid_maps = bpf_map_lookup_elem(&xm_profile_pid_modules_map, &pid);
     if (pid_maps) {
@@ -168,29 +195,57 @@ static __always_inline void __get_user_stack(pid_t pid,
             if (module->type == so) {
                 addr -= module->start_addr;
             }
-            // 根据 addr 查找对应的 fde table
+            // 根据 module 的 build_id_hash 查找对应的 module
             module_fde_tables = bpf_map_lookup_elem(
                 &xm_profile_module_fdetables_map, &(module->build_id_hash));
+
             if (module_fde_tables) {
-                // module_fde_table_info =
-                //     __find_fde_table_info_in_module(module_fde_tables, addr);
-                // if (module_fde_table_info) {
-                //     bpf_printk("rip in fde_table-{start:0x%lx...end:0x%lx}",
-                //                module_fde_table_info->start,
-                //                module_fde_table_info->end);
-                // }
                 bpf_printk("module-{start:0x%lx...end:0x%lx} in "
                            "xm_profile_module_fde_tables",
                            module->start_addr, module->end_addr);
+
+                // 根据 addr 查找对应的 fde table
+                module_fde_table_info =
+                    __find_fde_table_info_in_module(module_fde_tables, addr);
+                if (module_fde_table_info) {
+                    bpf_printk("addr:0x%lx in "
+                               "fde_table-{start:0x%lx...end:0x%lx}",
+                               addr, module_fde_table_info->start,
+                               module_fde_table_info->end);
+
+                    // 根据 addr 查找对应的 fde table row
+                    if (module_fde_table_info->row_pos >= 0
+                        && module_fde_table_info->row_pos
+                               < XM_PER_MODULE_FDE_ROWS_COUNT
+                        && module_fde_table_info->row_count > 0
+                        && module_fde_table_info->row_count
+                               <= XM_PER_MODULE_FDE_ROWS_COUNT
+                                      - module_fde_table_info->row_pos) {
+                        row_pos = __bsearch_fde_table_row(
+                            module_fde_tables->fde_rows,
+                            module_fde_table_info->row_pos,
+                            module_fde_table_info->row_pos
+                                + module_fde_table_info->row_count - 1,
+                            addr);
+                        if (row_pos > 0) {
+                            bpf_printk("addr:0x%lx at fde_table %d row.", addr,
+                                       row_pos
+                                           - module_fde_table_info->row_pos);
+                        } else {
+                            bpf_printk("addr:0x%lx does not have a "
+                                       "corresponding row in the fde_table.",
+                                       addr);
+                        }
+                    }
+                }
             } else {
                 bpf_printk("module-{start:0x%lx...end:0x%lx}, build_id_hash:%d "
-                           "not in "
-                           "xm_profile_module_fde_tables",
+                           "not in xm_profile_module_fde_tables",
                            module->start_addr, module->end_addr,
                            module->build_id_hash);
             }
         }
-        bpf_printk("<---");
+        bpf_printk("<---\n");
     }
 }
 

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-15 14:06:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-10-24 14:52:25
+ * @Last Modified time: 2023-11-03 17:03:40
  */
 
 #pragma once
@@ -18,9 +18,6 @@
 #ifndef PERF_MAX_STACK_DEPTH
 #define PERF_MAX_STACK_DEPTH 127
 #endif
-
-// 在 FDETable 中二分查找的最大深度，那么一个 FDETable 最多支持 2^8=256 有 row
-#define MAX_BIN_SEARCH_DEPTH 8
 
 #define XDP_UNKNOWN XDP_REDIRECT + 1
 #ifndef XDP_ACTION_MAX

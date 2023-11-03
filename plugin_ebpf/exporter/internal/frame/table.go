@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-10-24 14:47:25
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-10-24 15:07:18
+ * @Last Modified time: 2023-11-03 15:27:11
  */
 
 package frame
@@ -20,6 +20,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
+	"golang.org/x/exp/slices"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 )
 
@@ -597,6 +598,10 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 			}
 		}
 	}
+	// 按 table 的 start 排序
+	slices.SortFunc(procModuleFDETables.FdeInfos[0:procModuleFDETables.FdeTableCount],
+		func(a, b bpfmodule.XMProfileXmProfileFdeTableInfo) bool { return a.Start < b.Start })
+
 	glog.Infof("module:'%s' have %d FDETables, %d FDERows", modulePath, procModuleFDETables.FdeTableCount, moduleAssocFDERowCount)
 	return procModuleFDETables, nil
 }
