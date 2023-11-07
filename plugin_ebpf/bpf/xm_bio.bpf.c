@@ -17,7 +17,7 @@
 
 extern int LINUX_KERNEL_VERSION __kconfig;
 
-// 是否按每个request的cmd_flags进行过滤
+// 是否按每个 request 的 cmd_flags 进行过滤
 const volatile bool __filter_per_cmd_flag = false;
 const volatile __s64 __request_min_latency_ns = 1000000; // 1ms
 
@@ -27,8 +27,8 @@ struct bio_req_stage {
 };
 
 struct bio_pid_data {
-    pid_t tid; // 线程id
-    pid_t pid; // 进程id
+    pid_t tid; // 线程 id
+    pid_t pid; // 进程 id
     char comm[TASK_COMM_LEN];
 };
 
@@ -37,13 +37,13 @@ BPF_HASH(xm_bio_request_pid_data_map, struct request *, struct bio_pid_data,
 BPF_HASH(xm_bio_request_start_map, struct request *, struct bio_req_stage,
          10240);
 BPF_HASH(xm_bio_info_map, struct xm_bio_key, struct xm_bio_data,
-         1024); // op枚举乘以8个分区
+         1024); // op 枚举乘以 8 个分区
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 1 << 16); // 64k
 } xm_bio_req_latency_event_ringbuf_map SEC(".maps");
 
-// ** 类型标识，为了bpf2go程序生成golang类型
+// ** 类型标识，为了 bpf2go 程序生成 golang 类型
 static struct xm_bio_key __zero_bio_key __attribute__((unused)) = {
     .major = 0,
     .first_minor = 0,
@@ -68,17 +68,17 @@ static __always_inline __s32 xm_trace_request(struct request *rq, bool insert) {
     // 查找
     stage_p = bpf_map_lookup_elem(&xm_bio_request_start_map, &rq);
     if (!stage_p) {
-        // request不存在
+        // request 不存在
         stage_p = &init_stage;
     }
 
     if (insert) {
-        // 记录request 插入dispatch队列的时间
-        // **实际过程有很多request直接issue，没有经过insert
+        // 记录 request 插入 dispatch 队列的时间
+        // **实际过程有很多 request 直接 issue，没有经过 insert
         stage_p->insert = now_ns;
         // bpf_printk("xm_ebpf_exporter bio insert request:0x%x", rq);
     } else {
-        // 记录request 从dispatch队列出来放入驱动队列的事件，开始执行
+        // 记录 request 从 dispatch 队列出来放入驱动队列的事件，开始执行
         stage_p->issue = now_ns;
         __s64 delta = (__s64)(now_ns - stage_p->insert);
         if (delta < 0) {
@@ -89,7 +89,7 @@ static __always_inline __s32 xm_trace_request(struct request *rq, bool insert) {
     }
 
     if (stage_p == &init_stage) {
-        // 相等只有在request不存在的时候
+        // 相等只有在 request 不存在的时候
         bpf_map_update_elem(&xm_bio_request_start_map, &rq, stage_p,
                             BPF_NOEXIST);
     }
@@ -159,8 +159,8 @@ __s32 BPF_KPROBE(kprobe__blk_account_io_start, struct request *rq) {
 // }
 
 /*
-    基本insert -- issue -- complete 基本完整
-    但也有bypass, 调用blk_mq_try_issue_list_directly, 直接issue -- complete的
+    基本 insert -- issue -- complete 基本完整
+    但也有 bypass, 调用 blk_mq_try_issue_list_directly, 直接 issue -- complete 的
  */
 // SEC("kprobe/blk_mq_sched_insert_requests")
 // __s32 BPF_KPROBE(kprobe__blk_mq_sched_insert_requests,
@@ -179,25 +179,25 @@ __s32 BPF_KPROBE(kprobe__blk_account_io_start, struct request *rq) {
 //     return 0;
 // }
 
-// 在插入io-scheduler的dispatch队列之前触发这个tracepoint
-// 因为在kernel 5.11.0之后，这个tracepoint的参数只有struct request了，
-// 所以这里没法用BPF_PROG宏，需直接使用ctx作为参数，根据内核版本来获取参数
+// 在插入 io-scheduler 的 dispatch 队列之前触发这个 tracepoint
+// 因为在 kernel 5.11.0 之后，这个 tracepoint 的参数只有 struct request 了，
+// 所以这里没法用 BPF_PROG 宏，需直接使用 ctx 作为参数，根据内核版本来获取参数
 /*
-    看内核函数blk_mq_sched_insert_request，会发现如果request有三条路径
+    看内核函数 blk_mq_sched_insert_request，会发现如果 request 有三条路径
     1：blk_mq_sched_bypass_insert
 
-    2：e->type->ops.insert_requests(hctx, &list, at_head);
+    2: e->type->ops.insert_requests(hctx, &list, at_head);
    --->如果有调度器/sys/block/sdc/queue/scheduler，就会走这条路
-   ，在有电梯算法的时候，例如mq_deadline，会做request的合并，那么就不会重新插入了
-   例如这个函数返回blk_mq_sched_try_insert_merge true。
-   所以要用kretprobe:blk_mq_sched_try_insert_merge，来做insert
+   ，在有电梯算法的时候，例如 mq_deadline，会做 request 的合并，那么就不会重新插入了
+   例如这个函数返回 blk_mq_sched_try_insert_merge true。
+   所以要用 kretprobe:blk_mq_sched_try_insert_merge，来做 insert
 
-    3: __blk_mq_insert_request，实际中只有走这条路才会触发该tracepoint
+    3: __blk_mq_insert_request，实际中只有走这条路才会触发该 tracepoint
    --->没有调度器/sys/block/sdc/queue/scheduler，就会走这条路
 */
 SEC("tp_btf/block_rq_insert") __s32 xm_tp_btf__block_rq_insert(__u64 *ctx) {
     if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0)) {
-        // !! 这里这样写导致了bpf_load失败
+        // !! 这里这样写导致了 bpf_load 失败
         // rq = (struct request *)ctx[1];
         xm_trace_request((struct request *)ctx[1], true);
     } else {
@@ -207,7 +207,7 @@ SEC("tp_btf/block_rq_insert") __s32 xm_tp_btf__block_rq_insert(__u64 *ctx) {
 }
 
 /*
-    在函数blk_mq_sched_insert_requests中，可能直接issue request
+    在函数 blk_mq_sched_insert_requests 中，可能直接 issue request
     * try to issue requests directly if the hw queue isn't
     * busy in case of 'none' scheduler, and this way may save
     * us one extra enqueue & dequeue to sw queue.
@@ -243,7 +243,7 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
     //
     __u64 slot;
 
-    // TODO: 读取rq_flags这个字段看看，是否是被merge的request
+    // TODO: 读取 rq_flags 这个字段看看，是否是被 merge 的 request
     // req_flags_t rq_flags = BPF_CORE_READ(rq, rq_flags);
     // bpf_printk("xm_ebpf_exporter bio complete request:0x%x, rq_flags:0x%x",
     // rq,
@@ -252,18 +252,18 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
     struct bio_req_stage *stage_p =
         bpf_map_lookup_elem(&xm_bio_request_start_map, &rq);
     if (!stage_p) {
-        // 如果在complete回调中找不到该request，直接返回
+        // 如果在 complete 回调中找不到该 request，直接返回
         return 0;
     }
 
-    // req在队列中计算时间
+    // req 在队列中计算时间
     in_queue_delta = 0;
     if (stage_p->insert != 0) {
         delta = (__s64)(stage_p->issue - stage_p->insert);
         if (delta < 0) {
             goto cleanup;
         }
-        // 转换为us
+        // 转换为 us
         in_queue_delta = delta / 1000U;
 
         delta = (__s64)(now_ns - stage_p->insert);
@@ -285,11 +285,11 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
     // 获得磁盘信息
     struct gendisk *disk = __xm_get_disk(rq);
     if (disk) {
-        // 构建key
+        // 构建 key
         bio_key.major = BPF_CORE_READ(disk, major);
         bio_key.first_minor = BPF_CORE_READ(disk, first_minor);
         if (__filter_per_cmd_flag) {
-            // 读取cmd_flags
+            // 读取 cmd_flags
             // bio_key.cmd_flags = BPF_CORE_READ(rq, cmd_flags) | REQ_OP_MASK;
             bio_key.cmd_flags = rq->cmd_flags & REQ_OP_MASK;
         }
@@ -317,10 +317,10 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
             // 累计块设备的操作字节数
             __xm_update_u64(&bio_info_p->bytes, nr_bytes);
         }
-        // 计算last sector
+        // 计算 last sector
         bio_info_p->last_sector = sector + nr_sector;
 
-        // 统计blk request错误次数
+        // 统计 blk request 错误次数
         if (error < 0) {
             __xm_update_u64(&bio_info_p->req_err_count, 1);
         }
@@ -344,7 +344,7 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
                 &xm_bio_req_latency_event_ringbuf_map,
                 sizeof(struct xm_bio_request_latency_evt_data), 0);
             if (evt) {
-                // 进程信息需要从xm_bio_request_pid_data_map来获取
+                // 进程信息需要从 xm_bio_request_pid_data_map 来获取
                 struct bio_pid_data *bpd =
                     bpf_map_lookup_elem(&xm_bio_request_pid_data_map, &rq);
                 if (!bpd) {

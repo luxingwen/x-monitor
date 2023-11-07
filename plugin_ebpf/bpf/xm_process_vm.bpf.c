@@ -21,12 +21,12 @@
 #define PROT_SEM 0x8 /* page may be used for atomic ops */
 
 // **全局变量：过滤条件
-// 过滤范围，1:os，2：namespace，3：CGroup，4：PID，5：PGID，暂时不支持cg
+// 过滤范围，1:os，2：namespace，3：CGroup，4：PID，5：PGID，暂时不支持 cg
 const volatile __s32 __filter_scope_type = 1;
-// 范围具体值，例如pidnsID, pid, pgid，如果scope_type为1，表示范围为整个os
+// 范围具体值，例如 pidnsID, pid, pgid，如果 scope_type 为 1，表示范围为整个 os
 const volatile __s64 __filter_scope_value = 0;
 
-// !! Force emitting struct event into the ELF. 切记不能使用static做修饰符
+// !! Force emitting struct event into the ELF. 切记不能使用 static 做修饰符
 const struct xm_processvm_evt_data *__unused_vm_evt __attribute__((unused));
 
 struct {
@@ -34,7 +34,7 @@ struct {
     __uint(max_entries, 1 << 24); // 16M
 } xm_processvm_event_ringbuf_map SEC(".maps");
 
-//**如果type是__u32，整个结构会有空洞，如果不memset，加载器会报错，导致加载失败
+//**如果 type 是__u32，整个结构会有空洞，如果不 memset，加载器会报错，导致加载失败
 struct vm_op_info {
     enum xm_processvm_evt_type type;
     __u64 addr;
@@ -77,7 +77,7 @@ static void __insert_processvm_event(struct vm_op_info *voi) {
         evt->len = voi->len;
         evt->evt_type = voi->type;
         bpf_core_read_str(evt->comm, sizeof(evt->comm), &ts->comm);
-        // !!如果evt放在submit后面调用，就会被检查出内存无效
+        // !! 如果 evt 放在 submit 后面调用，就会被检查出内存无效
         // bpf_printk("xm_ebpf_exporter vma alloc event type:%d tgid:%d
         // len:%lu\n",
         //            evt_type, evt->tgid, evt->len);
@@ -102,7 +102,7 @@ __s32 BPF_KRETPROBE(kretprobe__xm_vma_merge, struct vm_area_struct *vma) {
     __u32 pid = __xm_get_pid();
     struct vm_op_info *voi = bpf_map_lookup_elem(&hashmap_xm_vm_op, &tid);
     if (voi) {
-        // 如果返回值vma不为空，表示合并成功，vma进行了扩展
+        // 如果返回值 vma 不为空，表示合并成功，vma 进行了扩展
         if (vma) {
             __u64 vma_start = 0, vma_end = 0, vma_size = 0;
             BPF_CORE_READ_INTO(&vma_start, vma, vm_start);
@@ -162,7 +162,7 @@ __s32 kprobe__xm_do_mmap(struct pt_regs *ctx) {
         struct file *pf = (struct file *)PT_REGS_PARM1_CORE(ctx);
         __u64 addr = (__u64)PT_REGS_PARM2_CORE(ctx);
         __u64 len = (__u64)PT_REGS_PARM3_CORE(ctx);
-        // 表示映射区域的保护权限，可以是PROT_NONE、PROT_READ、PROT_WRITE、PROT_EXEC，或它们的组合
+        // 表示映射区域的保护权限，可以是 PROT_NONE、PROT_READ、PROT_WRITE、PROT_EXEC，或它们的组合
         //__u64 prot = (__u64)PT_REGS_PARM4_CORE(ctx);
         // flags：表示映射区域的标志，可以是
         // MAP_SHARED、MAP_PRIVATE、MAP_FIXED、MAP_ANONYMOUS、MAP_LOCKED 等。
@@ -172,9 +172,9 @@ __s32 kprobe__xm_do_mmap(struct pt_regs *ctx) {
 
         char comm[TASK_COMM_LEN];
         bpf_get_current_comm(&comm, sizeof(comm));
-        // !addr非MAP_FIXED
+        // !addr 非 MAP_FIXED
         if (!pf && !addr && ((flags & (MAP_PRIVATE | MAP_ANONYMOUS)) != 0)) {
-            // 使用mmap分配的私有匿名虚拟地址空间
+            // 使用 mmap 分配的私有匿名虚拟地址空间
             // bpf_printk("kprobe__xm_do_mmap MMAP_ANON_PRIV comm:'%s', "
             //            "pid:%d, len:%lu",
             //            comm, pid, len);
@@ -190,7 +190,7 @@ __s32 kprobe__xm_do_mmap(struct pt_regs *ctx) {
             }
 
         } else if (pf && !addr && (flags & MAP_SHARED)) {
-            // 使用mmap做文件映射
+            // 使用 mmap 做文件映射
             voi.len = len;
             voi.type = XM_PROCESSVM_EVT_TYPE_MMAP_SHARED;
             bpf_map_update_elem(&hashmap_xm_vm_op, &tid, &voi, BPF_ANY);
@@ -209,7 +209,7 @@ __s32 BPF_KRETPROBE(kretprobe__xm_do_mmap, unsigned long ret) {
     struct vm_op_info *voi = bpf_map_lookup_elem(&hashmap_xm_vm_op, &tid);
     if (voi) {
         if (!IS_ERR_VALUE(ret)) {
-            // do_mmap成功
+            // do_mmap 成功
             // bpf_printk("kretprobe__xm_do_mmap pid:%d, addr:0x%lx, ret:0x%lx",
             //            pid, voi->addr, ret);
             __insert_processvm_event(voi);
@@ -267,8 +267,8 @@ __s32 BPF_KRETPROBE(kretprobe__xm_do_brk_flags, __s32 ret) {
     return 0;
 }
 
-// !!不知道为何kprobe无法获取系统调用的参数，只有换为tracepoint
-// **是不是应该改为ksyscall/
+// !! 不知道为何 kprobe 无法获取系统调用的参数，只有换为 tracepoint
+// **是不是应该改为 ksyscall/
 // SEC("kprobe/" SYSCALL(sys_brk))
 // __s32 BPF_KPROBE(xm_process_sys_brk, __u64 brk) {
 SEC("tracepoint/syscalls/sys_enter_brk")
@@ -284,10 +284,10 @@ __s32 tracepoint_xm_sys_enter_brk(struct trace_event_raw_sys_enter *ctx) {
         return 0;
     }
 
-    // 获取task
+    // 获取 task
     struct task_struct *ts = (struct task_struct *)bpf_get_current_task();
     if (0 == __filter_check(ts)) {
-        // 读取task的堆顶地址
+        // 读取 task 的堆顶地址
         // start_brk = (__u64)BPF_CORE_READ(ts, mm, start_brk);
         orig_brk = (__u64)BPF_CORE_READ(ts, mm, brk);
 
@@ -296,7 +296,7 @@ __s32 tracepoint_xm_sys_enter_brk(struct trace_event_raw_sys_enter *ctx) {
             // bpf_printk("tracepoint_xm_sys_enter_brk pid:%d, new_brk:%lu <= "
             //            "orig_brk:%lu",
             //            pid, new_brk, orig_brk);
-            // !!map的数据类型必须完全对应，否则报错
+            // !!map 的数据类型必须完全对应，否则报错
             struct vm_op_info voi;
             __builtin_memset((void *)&voi, 0, sizeof(voi));
             voi.len = 0;
@@ -318,7 +318,7 @@ __s32 kprobe__xm___do_munmap(struct pt_regs *ctx) {
         __u64 len = (__u64)PT_REGS_PARM3_CORE(ctx);
         struct vm_op_info *voi = bpf_map_lookup_elem(&hashmap_xm_vm_op, &tid);
         if (voi) {
-            // munmap的地址空间长度
+            // munmap 的地址空间长度
             voi->addr = addr;
             __sync_fetch_and_add(&(voi->len), len);
         } else {

@@ -210,7 +210,7 @@ struct xm_profile_sample {
 #endif
 
 #ifndef XM_PER_PROCESS_ASSOC_MODULE_COUNT
-#define XM_PER_PROCESS_ASSOC_MODULE_COUNT 64
+#define XM_PER_PROCESS_ASSOC_MODULE_COUNT 48
 #endif
 
 #ifndef XM_PER_MODULE_FDE_TABLE_COUNT
@@ -220,6 +220,11 @@ struct xm_profile_sample {
 #ifndef XM_PER_MODULE_FDE_ROWS_COUNT
 #define XM_PER_MODULE_FDE_ROWS_COUNT (45 * 1024)
 #endif
+
+struct xm_dwarf_stack_trace {
+    __s64 len;
+    __u64 pc[PERF_MAX_STACK_DEPTH];
+};
 
 struct xm_profile_sample_data {
     __u32 count; // sample 数量
@@ -270,9 +275,4 @@ struct __attribute__((__packed__)) xm_profile_pid_maps {
     struct xm_profile_proc_maps_module
         modules[XM_PER_PROCESS_ASSOC_MODULE_COUNT];
     __u32 module_count;
-};
-
-struct xm_stack_trace {
-    __u64 len;
-    __u64 addresses[PERF_MAX_STACK_DEPTH];
 };

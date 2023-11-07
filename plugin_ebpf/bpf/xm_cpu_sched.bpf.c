@@ -7,8 +7,8 @@
 
 // Observation of CPU scheduling status
 // 1: 运行队列等待时长，单位微秒
-// 2: task off cpu的时长，单位微秒
-// 3: 对task hang观察，输出hang的task信息
+// 2: task off cpu 的时长，单位微秒
+// 3: 对 task hang 观察，输出 hang 的 task 信息
 
 #include <vmlinux.h>
 #include "../bpf_and_user.h"
@@ -18,28 +18,28 @@
 #include "xm_bpf_helpers_math.h"
 
 // **全局变量：过滤条件
-// 过滤范围，1:os，2：namespace，3：CGroup，4：PID，5：PGID，暂时不支持cg
+// 过滤范围，1:os，2：namespace，3：CGroup，4：PID，5：PGID，暂时不支持 cg
 const volatile __s32 __filter_scope_type = 1;
-// 范围具体值，例如pidnsID, pid, pgid，如果scope_type为1，表示范围为整个os
+// 范围具体值，例如 pidnsID, pid, pgid，如果 scope_type 为 1，表示范围为整个 os
 const volatile __s64 __filter_scope_value = 0;
 const volatile __s64 __offcpu_min_duration_nanosecs = 5000000000;
 const volatile __s64 __offcpu_max_duration_nanosecs =
-    50000000000; // 从离开cpu到从新进入cpu的时间间隔，单位纳秒
+    50000000000; // 从离开 cpu 到从新进入 cpu 的时间间隔，单位纳秒
 const volatile __s8 __offcpu_task_type = 0; // 0: all，1：user，2：kernel
 
-// **bpf map定义
-// 记录task_struct插入running queue的时间
+// **bpf map 定义
+// 记录 task_struct 插入 running queue 的时间
 BPF_HASH(xm_cs_runqlat_start_map, __u32, __u64, MAX_THREAD_COUNT);
-// 记录从插入running-queue时间到上cpu的等待时间的分布，单位微秒
+// 记录从插入 running-queue 时间到上 cpu 的等待时间的分布，单位微秒
 BPF_HASH(xm_cs_runqlat_hists_map, __u32, struct xm_runqlat_hist, 1);
-// 记录task_struct从cpu调度出去的时间
+// 记录 task_struct 从 cpu 调度出去的时间
 BPF_HASH(xm_cs_offcpu_start_map, __u32, __u64, MAX_THREAD_COUNT);
-// CPU调度event通知
+// CPU 调度 event 通知
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 1 << 24); // 16M
 } xm_cs_event_ringbuf_map SEC(".maps");
-// task堆栈
+// task 堆栈
 struct {
     __uint(type, BPF_MAP_TYPE_STACK_TRACE);
     __uint(key_size, sizeof(__u32));
@@ -47,13 +47,13 @@ struct {
     __uint(max_entries, 1024);
 } xm_cs_stack_map SEC(".maps");
 
-// ** 类型标识，为了bpf2go程序生成golang类型
+// ** 类型标识，为了 bpf2go 程序生成 golang 类型
 static struct xm_runqlat_hist __zero_hist = {
     .slots = { 0 },
 };
 const enum xm_cpu_sched_evt_type __unused_cs_evt_type __attribute__((unused)) =
     XM_CS_EVT_TYPE_NONE;
-// !! Force emitting struct event into the ELF. 切记不能使用static做修饰符
+// !! Force emitting struct event into the ELF. 切记不能使用 static 做修饰符
 const struct xm_cpu_sched_evt_data *__unused_cs_evt __attribute__((unused));
 
 // ** 辅助函数
@@ -63,7 +63,7 @@ static __s32 __insert_cs_start_map(struct task_struct *ts,
     pid_t pid = ts->pid;
 
     if (__filter_scope_type == 2) {
-        // 判断pid_namespace是否相同
+        // 判断 pid_namespace 是否相同
         __u32 pidns_id = __xm_get_task_pidns(ts);
         if (pidns_id != (pid_t)__filter_scope_value) {
             return 0;
@@ -83,23 +83,23 @@ static __s32 __insert_cs_start_map(struct task_struct *ts,
         return 0;
     }
 
-    // 得到wakeup时间，单位纳秒
+    // 得到 wakeup 时间，单位纳秒
     __u64 now_ns = bpf_ktime_get_ns();
     if (evt_type == XM_CS_EVT_TYPE_RUNQLAT) {
-        // 更新map，记录thread wakeup time
+        // 更新 map，记录 thread wakeup time
         bpf_map_update_elem(&xm_cs_runqlat_start_map, &pid, &now_ns, BPF_ANY);
     } else if (evt_type == XM_CS_EVT_TYPE_OFFCPU) {
-        // 更新map，记录thread offcpu time
+        // 更新 map，记录 thread offcpu time
         if (__offcpu_task_type == 0) {
             bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns,
                                 BPF_ANY);
         } else if (__offcpu_task_type == 1 && !__xm_task_is_kthread(ts)) {
-            // 只关注用户的task
+            // 只关注用户的 task
             bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns,
                                 BPF_ANY);
             // bpf_printk("xm_cs_offcpu_start_map add user pid:%d", pid);
         } else if (__offcpu_task_type == 2 && __xm_task_is_kthread(ts)) {
-            // 只关注内核的task
+            // 只关注内核的 task
             bpf_map_update_elem(&xm_cs_offcpu_start_map, &pid, &now_ns,
                                 BPF_ANY);
         }
@@ -109,7 +109,7 @@ static __s32 __insert_cs_start_map(struct task_struct *ts,
 
 static __s32 __statistics_runqlat(pid_t pid, __u64 now_ns) {
     struct xm_runqlat_hist *hist = NULL;
-    // 查询map得到该task何时插入running queue
+    // 查询 map 得到该 task 何时插入 running queue
     __u64 *wakeup_ns = bpf_map_lookup_elem(&xm_cs_runqlat_start_map, &pid);
     if (!wakeup_ns) {
         // wakeup 时间不存在
@@ -120,7 +120,7 @@ static __s32 __statistics_runqlat(pid_t pid, __u64 now_ns) {
         }
         return 0;
     } else {
-        // 计算插入running queue到被选中上cpu的时间差，单位纳秒
+        // 计算插入 running queue 到被选中上 cpu 的时间差，单位纳秒
         __s64 wakeup_to_run_duration_us = (__s64)(now_ns - *wakeup_ns);
         if (wakeup_to_run_duration_us < 0)
             goto cleanup;
@@ -135,7 +135,7 @@ static __s32 __statistics_runqlat(pid_t pid, __u64 now_ns) {
         }
         // 时间换算为微秒
         wakeup_to_run_duration_us = wakeup_to_run_duration_us / 1000U;
-        // 计算2的对数，求出在哪个slot, 总共26个槽位，1---2的25次方
+        // 计算 2 的对数，求出在哪个 slot, 总共 26 个槽位，1---2 的 25 次方
         // !! I found out the reason, is because of slot definition. "u32 slot"
         // !! doesn't work, u64 works, this is very strange.
         __u64 slot = __xm_log2l(wakeup_to_run_duration_us);
@@ -147,7 +147,7 @@ static __s32 __statistics_runqlat(pid_t pid, __u64 now_ns) {
     }
 
 cleanup:
-    // 从map中删除该task
+    // 从 map 中删除该 task
     bpf_map_delete_elem(&xm_cs_runqlat_start_map, &pid);
 
     return 0;
@@ -170,7 +170,7 @@ static __s32 __process_return_to_cpu_task(struct task_struct *ts,
 
     if (offcpu_duration >= __offcpu_min_duration_nanosecs
         && offcpu_duration <= __offcpu_max_duration_nanosecs) {
-        // 如果回归超时，生成事件，通过ringbuf发送
+        // 如果回归超时，生成事件，通过 ringbuf 发送
         struct xm_cpu_sched_evt_data *evt = bpf_ringbuf_reserve(
             &xm_cs_event_ringbuf_map, sizeof(struct xm_cpu_sched_evt_data), 0);
         //__builtin_memset(evt, 0, sizeof(*evt));
@@ -180,7 +180,7 @@ static __s32 __process_return_to_cpu_task(struct task_struct *ts,
             evt->pid = tgid;
             evt->offcpu_duration_millsecs = offcpu_duration / 1000000U;
             bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
-            // 进程如果sleep后重新执行，这里会显示offcpu duration睡眠时间
+            // 进程如果 sleep 后重新执行，这里会显示 offcpu duration 睡眠时间
             // bpf_printk("xm_ebpf_exporter pid:%d, comm:'%s', offcpu duration "
             //            "nanosecs:%lld",
             //            evt->pid, evt->comm, offcpu_duration);
@@ -194,7 +194,7 @@ cleanup:
 }
 
 // ** ebpf program
-// ts被唤醒, 当task被插入cpu的runqueue后，会触发该tracepoint
+// ts 被唤醒，当 task 被插入 cpu 的 runqueue 后，会触发该 tracepoint
 // activate_task(rq, p, en_flags); ttwu_do_wakeup(rq, p, wake_flags, rf);
 SEC("tp_btf/sched_wakeup")
 __s32 BPF_PROG(btf_tracepoint__xm_sched_wakeup, struct task_struct *ts) {
@@ -204,14 +204,14 @@ __s32 BPF_PROG(btf_tracepoint__xm_sched_wakeup, struct task_struct *ts) {
 
 SEC("tp_btf/sched_wakeup_new")
 __s32 BPF_PROG(btf_tracepoint__xm_sched_wakeup_new, struct task_struct *ts) {
-    // ts被唤醒
+    // ts 被唤醒
     return __insert_cs_start_map(ts, XM_CS_EVT_TYPE_RUNQLAT);
 }
 
 SEC("tp_btf/sched_switch")
 __s32 BPF_PROG(btf_tracepoint__xm_sched_switch, bool preempt,
                struct task_struct *prev, struct task_struct *next) {
-    // 调度出cpu的task，如果状态还是RUNNING，继续插入wakeup
+    // 调度出 cpu 的 task，如果状态还是 RUNNING，继续插入 wakeup
     // map，算成一种重新唤醒
     __s64 prev_task_state = __xm_get_task_state(prev);
     if (prev_task_state == TASK_RUNNING) {
@@ -233,13 +233,13 @@ __s32 BPF_PROG(btf_tracepoint__xm_sched_switch, bool preempt,
     //            "exit_state:%lx",
     //            prev_pid, prev_task_state, prev->exit_state);
 
-    // 因为是raw BTF tracepoint，所以可以直接使用内核结构
-    // next是被选中即将在cpu上执行的task
-    // prev是被调度出去的task
+    // 因为是 raw BTF tracepoint，所以可以直接使用内核结构
+    // next 是被选中即将在 cpu 上执行的 task
+    // prev 是被调度出去的 task
     __u64 now_ns = bpf_ktime_get_ns();
     pid_t next_pid = next->pid;
 
-    // 记录离开cpu的task的时间
+    // 记录离开 cpu 的 task 的时间
     __insert_cs_start_map(prev, XM_CS_EVT_TYPE_OFFCPU);
 
     if (next_pid != 0) {
@@ -276,7 +276,7 @@ __s32 BPF_PROG(btf_tracepoint__xm_sched_process_hang, struct task_struct *ts) {
     return 0;
 }
 
-// task被释放
+// task 被释放
 SEC("tp_btf/sched_process_exit")
 __s32 BPF_PROG(btf_tracepoint__xm_sched_process_exit, struct task_struct *ts) {
     pid_t pid = ts->pid;
@@ -296,7 +296,7 @@ __s32 BPF_PROG(btf_tracepoint__xm_sched_process_exit, struct task_struct *ts) {
         bpf_ringbuf_submit(evt, 0);
     }
 
-    // 如果task被调度处cpu后结束生命周期，从offcpu map中删除
+    // 如果 task 被调度处 cpu 后结束生命周期，从 offcpu map 中删除
     bpf_map_delete_elem(&xm_cs_offcpu_start_map, &pid);
     bpf_map_delete_elem(&xm_cs_runqlat_start_map, &pid);
 

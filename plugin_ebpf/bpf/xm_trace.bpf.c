@@ -5,7 +5,7 @@
  * @Last Modified time: 2023-03-22 16:05:45
  */
 
-// 使用BPF_PROG_TYPE_BTF_RAW_TRACEPOINT来追踪进程的系统调用，对于btf_raw_tracepoint，使用BPF_PROG封装
+// 使用 BPF_PROG_TYPE_BTF_RAW_TRACEPOINT 来追踪进程的系统调用，对于 btf_raw_tracepoint，使用 BPF_PROG 封装
 // 1: 统计进程的系统调用次数
 // 2: 统计进程的系统调用累积耗时
 // 3: 统计进程的系统调用耗时分布
@@ -18,10 +18,10 @@
 #include "xm_bpf_helpers_common.h"
 #include "xm_bpf_helpers_maps.h"
 
-// 过滤系统调用的进程id
+// 过滤系统调用的进程 id
 const volatile pid_t xm_trace_syscall_filter_pid = 0;
 
-// 过滤系统调用的map
+// 过滤系统调用的 map
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, __s64); // syscall_nr
@@ -68,7 +68,7 @@ __s32 BPF_PROG(xm_trace_tp_btf__sys_enter, struct pt_regs *regs,
 
     // load program: permission denied: invalid indirect read from stack R3 off
     // -56+16 size 48 (67 line(s) omitted)
-    // 对于栈变量必须初始化，不然map操作在虚拟机校验过程中会报错
+    // 对于栈变量必须初始化，不然 map 操作在虚拟机校验过程中会报错
     __builtin_memset(&se, 0, sizeof(struct syscall_event));
     se.call_start_ns = bpf_ktime_get_ns();
     se.syscall_nr = syscall_nr;
@@ -93,8 +93,8 @@ __s32 BPF_PROG(xm_trace_tp_btf__sys_exit, struct pt_regs *regs, __s64 ret) {
     pid_t pid = __xm_get_pid();
     __u32 tid = __xm_get_tid();
 
-    // 怎么从sys_exit中得到syscall_nr呢 %ax寄存器保存的是返回结果,
-    // orig_ax保存的是系统调用号
+    // 怎么从 sys_exit 中得到 syscall_nr 呢 %ax 寄存器保存的是返回结果，
+    // orig_ax 保存的是系统调用号
 
     __s64 syscall_nr = BPF_CORE_READ(regs, orig_ax);
 
@@ -131,7 +131,7 @@ __s32 BPF_PROG(xm_trace_tp_btf__sys_exit, struct pt_regs *regs, __s64 ret) {
     return 0;
 }
 
-// !!获取的堆栈栈帧地址不对，是不是不能使用btf_raw_tracepoint，试试raw_tracepoint
+// !! 获取的堆栈栈帧地址不对，是不是不能使用 btf_raw_tracepoint，试试 raw_tracepoint
 
 #define XM_TRACE_KPROBE_PROG(name)                                             \
     __s32 xm_trace_kp__##name(struct pt_regs *ctx) {                           \
@@ -186,7 +186,7 @@ __s32 xm_trace_raw_tp__sys_enter(struct bpf_raw_tracepoint_args *ctx) {
 
     // load program: permission denied: invalid indirect read from stack R3 off
     // -56+16 size 48 (67 line(s) omitted)
-    // 对于栈变量必须初始化，不然map操作在虚拟机校验过程中会报错
+    // 对于栈变量必须初始化，不然 map 操作在虚拟机校验过程中会报错
     __builtin_memset(&se, 0, sizeof(struct syscall_event));
     se.call_start_ns = bpf_ktime_get_ns();
     se.syscall_nr = ctx->args[1];
@@ -278,7 +278,7 @@ main.go:168] 	0xip[4]: ffffffffba803f0e016x	syscall_trace_enter+29e I0105
 do_syscall_64+149 I0105 16:39:35.254256 2630321 main.go:168] 	0xip[6]:
 ffffffffbb2000ad016x	entry_SYSCALL_64_after_hwframe+65
 
-使用bcc trace命令：trace '__x64_sys_openat' -K -U -T -a -p 342284
+使用 bcc trace 命令：trace '__x64_sys_openat' -K -U -T -a -p 342284
 
-dump prog指令：bpftool prog dump xlated id 209 linum
+dump prog 指令：bpftool prog dump xlated id 209 linum
 */
