@@ -45,7 +45,7 @@ func InitSystemSymbolsCache(size int) error {
 			if len(v.Modules()) > 0 {
 				calmutils.DeleteModuleSymbolTbl(v.Modules()[0].BuildID)
 			} else {
-				glog.Warning("pid:%d symbols cache object evicted by lru, but module count is 0", key)
+				glog.Warningf("pid:%d symbols cache object evicted by lru, but module count is 0", key)
 			}
 			v = nil
 		})
