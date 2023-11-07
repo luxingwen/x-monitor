@@ -93,21 +93,21 @@ __xm_get_task_userspace_regs(struct task_struct *task,
 }
 
 // int element = sortedArray[index];
-// **R8 unbounded memory access, make sure to bounds check any such access
+// !!R8 unbounded memory access, make sure to bounds check any such access
 static __always_inline __s32
-__bsearch_fde_table_row(const struct xm_profile_fde_table_row *rows, __s32 left,
-                        __s32 right, __u64 address) {
+__bsearch_fde_table_row(const struct xm_profile_fde_table_row *rows, __u32 left,
+                        __u32 right, __u64 address) {
     __s32 result = -1;
     __s32 mid = 0;
     // 最大深度限制查找 rows 的范围
-    for (__s32 i = 0; i < MAX_FDE_TABLE_ROW_BIN_SEARCH_DEPTH; i++) {
+    for (__u32 i = 0; i < MAX_FDE_TABLE_ROW_BIN_SEARCH_DEPTH; i++) {
         if (left > right) {
             break;
         }
         mid = left + (right - left) / 2;
 
         if (mid < 0 || mid >= XM_PER_MODULE_FDE_ROWS_COUNT) {
-            return 0;
+            return -1;
         }
 
         if (rows[mid].loc <= address) {
@@ -159,14 +159,14 @@ __find_fde_table_info_in_module(
 
 static __always_inline const struct xm_profile_proc_maps_module *
 __find_module_in_maps(const struct xm_profile_pid_maps *maps, __u64 pc) {
-    for (__u32 i = 0;
-         i < maps->module_count && i < XM_PER_PROCESS_ASSOC_MODULE_COUNT; i++) {
+    for (__u32 i = 0; i < XM_PER_PROCESS_ASSOC_MODULE_COUNT; i++) {
         const struct xm_profile_proc_maps_module *module = &maps->modules[i];
-        if (module && module->start_addr <= pc && pc <= module->end_addr) {
+        if (module->start_addr <= pc && pc <= module->end_addr) {
             // 判断 pc 在/proc/pid/maps 对应的 module 地址范围内
             return module;
         }
     }
+
     return 0;
 }
 
@@ -177,7 +177,7 @@ __find_fde_table_row_by_pc(const struct xm_profile_pid_maps *pid_maps,
     const struct xm_profile_module_fde_tables *module_fde_tables = 0;
     const struct xm_profile_fde_table_info *module_fde_table_info = 0;
     __u64 addr = 0;
-    __s32 row_pos = 0;
+    __s32 find_row_pos = 0;
 
     // 根据 rip 查找对应的 module
     module = __find_module_in_maps(pid_maps, pc);
@@ -208,23 +208,21 @@ __find_fde_table_row_by_pc(const struct xm_profile_pid_maps *pid_maps,
                            module_fde_table_info->end);
 
                 // 根据 addr 查找对应的 fde table row
-                if (/*module_fde_table_info->row_pos >= 0
-                    &&*/ module_fde_table_info->row_pos
-                        < XM_PER_MODULE_FDE_ROWS_COUNT
-                    /*&& module_fde_table_info->row_count > 0*/
-                    && module_fde_table_info->row_count
-                           <= XM_PER_MODULE_FDE_ROWS_COUNT
-                                  - module_fde_table_info->row_pos) {
-                    row_pos = __bsearch_fde_table_row(
+                if ((module_fde_table_info->row_pos
+                     + module_fde_table_info->row_count)
+                    <= XM_PER_MODULE_FDE_ROWS_COUNT) {
+                    find_row_pos = __bsearch_fde_table_row(
                         module_fde_tables->fde_rows,
                         module_fde_table_info->row_pos,
                         module_fde_table_info->row_pos
                             + module_fde_table_info->row_count - 1,
                         addr);
-                    if (row_pos > 0) {
+                    if (find_row_pos >= 0
+                        && find_row_pos < XM_PER_MODULE_FDE_ROWS_COUNT) {
                         bpf_printk("addr:0x%lx at fde_table %d row.", addr,
-                                   row_pos - module_fde_table_info->row_pos);
-                        return &module_fde_tables->fde_rows[row_pos];
+                                   find_row_pos
+                                       - module_fde_table_info->row_pos);
+                        return &module_fde_tables->fde_rows[find_row_pos];
                     } else {
                         bpf_printk("addr:0x%lx does not have a "
                                    "corresponding row in the fde_table.",
@@ -251,7 +249,6 @@ static __always_inline __s32 __get_user_stack(
           cfa = 0;
     __s32 ret = 0;
     bool reached_bottom = false;
-    st->len = 0;
 
     // 获取当前的寄存器
     __xm_get_task_userspace_regs(task, user_regs, &tu_regs);
@@ -261,12 +258,10 @@ static __always_inline __s32 __get_user_stack(
     rip = tu_regs.rip;
     rsp = tu_regs.rsp;
     rbp = tu_regs.rbp;
-    if (st->len >= 0 && st->len < PERF_MAX_STACK_DEPTH) {
-        st->pc[st->len] = rip;
-        st->len += 1;
-    }
+    st->len = 0;
+    st->pc[0] = rip;
 
-    for (__s32 i = 1; i < PERF_MAX_STACK_DEPTH; i++) {
+    for (__s32 i = 1; i < XM_MAX_STACK_DEPTH_PER_PROGRAM; i++) {
         row = __find_fde_table_row_by_pc(pid_maps, rip);
         if (row) {
             // 找到 pc 在 FDETables 中对应的 row
@@ -331,10 +326,8 @@ static __always_inline __s32 __get_user_stack(
 
             if (!reached_bottom) {
                 rsp = cfa;
-                if (st->len >= 0 && st->len < PERF_MAX_STACK_DEPTH) {
-                    st->pc[st->len] = rip;
-                    st->len += 1;
-                }
+                st->pc[i] = rip;
+                st->len += 1;
             } else {
                 // 到了最低的 call frame
                 bpf_printk("   reached bottom, stack depth:%d", st->len);
@@ -435,3 +428,12 @@ SEC("perf_event") __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
 }
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
+
+// !! processed 57970 insns (limit 1000000) max_states_per_insn 4 total_states
+// !! 1110 peak_states 1109 mark_read 36
+
+// !! The sequence of 8193 jumps is too complex.
+
+// !! processed 1000001 insns (limit 1000000) max_states_per_insn 19
+// !! total_states
+// !! 20748 peak_states 1257 mark_read 33
