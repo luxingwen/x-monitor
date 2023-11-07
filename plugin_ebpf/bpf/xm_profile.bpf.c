@@ -176,27 +176,29 @@ __find_fde_table_row_by_pc(const struct xm_profile_pid_maps *pid_maps,
     const struct xm_profile_proc_maps_module *module = 0;
     const struct xm_profile_module_fde_tables *module_fde_tables = 0;
     const struct xm_profile_fde_table_info *module_fde_table_info = 0;
-    __u64 addr = 0;
+    __u64 addr = pc;
     __s32 find_row_pos = 0;
 
     // 根据 rip 查找对应的 module
     module = __find_module_in_maps(pid_maps, pc);
     if (module) {
-        bpf_printk("rip:0x%lx in module-{start:0x%lx...end:0x%lx}", pc,
-                   module->start_addr, module->end_addr);
+        bpf_printk("find module-{start:0x%lx...end:0x%lx}, type:%d",
+                   module->start_addr, module->end_addr, module->type);
 
-        addr = pc;
         if (module->type == so) {
             addr -= module->start_addr;
+            bpf_printk("module type is 'so', adjust (addr-=module->start_addr) "
+                       "==> 0x%lx",
+                       addr);
         }
         // 根据 module 的 build_id_hash 查找对应的 module
         module_fde_tables = bpf_map_lookup_elem(
             &xm_profile_module_fdetables_map, &(module->build_id_hash));
 
         if (module_fde_tables) {
-            bpf_printk("module-{start:0x%lx...end:0x%lx} in "
+            bpf_printk("module build_id_hash:'%llu' in "
                        "xm_profile_module_fde_tables",
-                       module->start_addr, module->end_addr);
+                       module->build_id_hash);
 
             // 根据 addr 查找对应的 fde table
             module_fde_table_info =
@@ -262,13 +264,14 @@ static __always_inline __s32 __get_user_stack(
     st->pc[0] = rip;
 
     for (__s32 i = 1; i < XM_MAX_STACK_DEPTH_PER_PROGRAM; i++) {
+        bpf_printk("\t*** find rip:0x%lx ***", rip);
         row = __find_fde_table_row_by_pc(pid_maps, rip);
         if (row) {
             // 找到 pc 在 FDETables 中对应的 row
-            bpf_printk("\t***rip:0x%lx, row loc:0x%lx", rip, row->loc);
-            bpf_printk("\t   cfa: reg_num:%d, offset:%d", row->cfa.reg,
-                       row->cfa.offset);
-            bpf_printk("\t   rbp: cfa offset:%d, ra: cfa offset:%d***",
+            bpf_printk("\t***rip correspond with row loc:0x%lx cfa{reg_num:%d, "
+                       "offset:%d}",
+                       row->loc, row->cfa.reg, row->cfa.offset);
+            bpf_printk("\t   rbp_cfa_offset:%d, ra_cfa_offset:%d***",
                        row->rbp_cfa_offset, row->ra_cfa_offset);
 
             // 判断是否到了 top frame
@@ -286,20 +289,22 @@ static __always_inline __s32 __get_user_stack(
                            row->cfa.reg);
                 break;
             }
+            bpf_printk("\t   cfa:0x%lx", cfa);
 
             if (row->rbp_cfa_offset != INT_MAX) {
                 // 通过 cfa + rbp_cfa_offset 来计算 上一帧 rbp
                 // 在栈空间的地址
                 prev_rbp_addr = cfa + row->rbp_cfa_offset;
+                bpf_printk("\t   prev_rbp_addr:0x%lx", prev_rbp_addr);
                 // 读取上一帧 rbp 的值
-                ret = bpf_probe_read_user(&prev_rbp_addr, 8, &rbp);
+                ret = bpf_probe_read_user(&rbp, 8, (void *)prev_rbp_addr);
                 if (ret < 0) {
-                    bpf_printk("   [error] read previous rbp at "
+                    bpf_printk("\t   [error] read previous rbp at "
                                "prev_rbp_addr:0x%lx failed. err:%d",
                                prev_rbp_addr, ret);
                     break;
                 } else {
-                    bpf_printk("   previous rbp:0x%lx, prev_rbp_addr:0x%lx",
+                    bpf_printk("\t   previous rbp:0x%lx, prev_rbp_addr:0x%lx",
                                rbp, prev_rbp_addr);
                 }
             } else {
@@ -309,28 +314,30 @@ static __always_inline __s32 __get_user_stack(
             if (row->ra_cfa_offset != INT_MAX) {
                 // 通过 cfa + ra_cfa_offset 来计算上一帧 rip
                 prev_rip_addr = cfa + row->ra_cfa_offset;
+                bpf_printk("\t   prev_rip_addr:0x%lx", prev_rip_addr);
                 // 读取上一帧 rip 的值
-                ret = bpf_probe_read_user(&prev_rip_addr, 8, &rip);
+                ret = bpf_probe_read_user(&rip, 8, (void *)prev_rip_addr);
                 if (ret < 0) {
-                    bpf_printk("   [error] read previous rip at "
+                    bpf_printk("\t   [error] read previous rip at "
                                "prev_rip_addr:0x%lx failed. err:%d",
                                prev_rip_addr, ret);
                     break;
                 } else {
-                    bpf_printk("   previous rip:0x%lx, prev_rip_addr:0x%lx",
-                               rbp, prev_rip_addr);
+                    bpf_printk("\t   previous rip:0x%lx, prev_rip_addr:0x%lx",
+                               rip, prev_rip_addr);
                 }
             } else {
                 reached_bottom = true;
             }
 
+            st->pc[i] = rip;
+            st->len += 1;
+
             if (!reached_bottom) {
                 rsp = cfa;
-                st->pc[i] = rip;
-                st->len += 1;
             } else {
                 // 到了最低的 call frame
-                bpf_printk("   reached bottom, stack depth:%d", st->len);
+                bpf_printk("\t   reached bottom, stack depth:%d", st->len);
                 break;
             }
         } else {

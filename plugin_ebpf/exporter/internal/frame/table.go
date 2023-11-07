@@ -26,7 +26,7 @@ import (
 
 const (
 	__maxPerModuleFDETableCount     = 8192        // 每个 module 包含的 fde table 最大数量
-	__maxPerProcessAssocModuleCount = 64          // 每个进程关联的 module 最大数量
+	__maxPerProcessAssocModuleCount = 56          // 每个进程关联的 module 最大数量
 	__maxPerModuleAssocFDERowCount  = (45 * 1024) // 每个 module 关联的 fde row 最大数量
 	__DW_CFA_GNU_args_size          = 0x2e
 )
