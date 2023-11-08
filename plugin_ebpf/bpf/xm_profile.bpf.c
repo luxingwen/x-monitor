@@ -260,10 +260,10 @@ static __always_inline __s32 __get_user_stack(
     rip = tu_regs.rip;
     rsp = tu_regs.rsp;
     rbp = tu_regs.rbp;
-    st->len = 0;
+    st->len = 1;
     st->pc[0] = rip;
 
-    for (__s32 i = 1; i < XM_MAX_STACK_DEPTH_PER_PROGRAM; i++) {
+    for (__s32 i = 0; i < XM_MAX_STACK_DEPTH_PER_PROGRAM; i++) {
         bpf_printk("\t*** find rip:0x%lx ***", rip);
         row = __find_fde_table_row_by_pc(pid_maps, rip);
         if (row) {
@@ -329,9 +329,12 @@ static __always_inline __s32 __get_user_stack(
             } else {
                 reached_bottom = true;
             }
-
-            st->pc[i] = rip;
-            st->len += 1;
+            // !! math between map_value pointer and register with unbounded min
+            // value is not allowed
+            if (st->len < PERF_MAX_STACK_DEPTH) {
+                st->pc[st->len] = rip;
+                st->len += 1;
+            }
 
             if (!reached_bottom) {
                 rsp = cfa;
@@ -341,6 +344,8 @@ static __always_inline __s32 __get_user_stack(
                 break;
             }
         } else {
+            bpf_printk("\t    rip:0x%lx is invalid, stack depth:%d", rip,
+                       st->len);
             break;
         }
     }
