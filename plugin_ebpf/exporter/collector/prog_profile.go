@@ -329,12 +329,19 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 	args.ScopeType = bpfmodule.XMProfileXmProgFilterTargetScopeType(__profileEBpfArgs.FilterScopeType)
 	args.FilterCondValue = uint64(__profileEBpfArgs.FilterScopeValue)
 
-	if err := profileProg.objs.XmProfileArgMap.Update(__mapKey, args, 0); err != nil {
+	if err = profileProg.objs.XmProfileArgMap.Update(__mapKey, args, 0); err != nil {
 		profileProg.finalizer()
 		err = errors.Wrapf(err, "eBPFProgram:'%s' update profile args map failed.", name)
 		return nil, err
 	}
 
+	// 设置尾调函数，就一个尾调函数，key 为 0
+	// key 必须使用 uint32 类型，不能使用 int，否则 Marshall.write 会报错
+	if err = profileProg.objs.XmProfileWalkStackProgsAry.Put(__mapKey, profileProg.objs.XmWalkUserStacktrace); err != nil {
+		profileProg.finalizer()
+		err = errors.Wrapf(err, "eBPFProgram:'%s' update walk stack progs map failed.", name)
+		return nil, err
+	}
 	// attach eBPF 程序
 	profileProg.perfLink, err = bpfprog.AttachPerfEventProg(-1, __profilePrivateArgs.SampleRate, profileProg.objs.XmDoPerfEvent)
 	if err != nil {

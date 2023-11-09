@@ -70,9 +70,9 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 
 			switch bpfProg.Type() {
 			case ebpf.Kprobe:
-				// **要判断progSpec.AttachTo这个是否在/proc/kallsyms存在，不然就是一个非法的绑定
+				// **要判断 progSpec.AttachTo 这个是否在/proc/kallsyms 存在，不然就是一个非法的绑定
 				if calmutils.KsymNameExists(progSpec.AttachTo) {
-					// **kretprobe也是这个类型，要通过sec的name来进行判断。tmd！！！
+					// **kretprobe 也是这个类型，要通过 sec 的 name 来进行判断。tmd！！！
 					if strings.HasPrefix(progSpec.SectionName, "kprobe") {
 						linkKP, err := link.Kprobe(progSpec.AttachTo, bpfProg, nil)
 						if err == nil {
@@ -179,7 +179,7 @@ func AttachToRun(name string, objs interface{}, loadF __load, rewriteConstVarsF 
 		return nil, err
 	}
 
-	// 得到objs的xxxPrograms对象
+	// 得到 objs 的 xxxPrograms 对象
 	objsV := reflect.Indirect(reflect.ValueOf(objs))
 	objsT := objsV.Type()
 	objsNumFields := objsV.NumField() //objsT.NumField()

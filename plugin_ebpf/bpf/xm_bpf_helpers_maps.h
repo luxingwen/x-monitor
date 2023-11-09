@@ -25,20 +25,20 @@
     BPF_MAP(_name, BPF_MAP_TYPE_LRU_HASH, _key_type, _value_type, _max_entries)
 
 #define BPF_ARRAY(_name, _value_type, _max_entries) \
-    BPF_MAP(_name, BPF_MAP_TYPE_ARRAY, u32, _value_type, _max_entries)
+    BPF_MAP(_name, BPF_MAP_TYPE_ARRAY, __u32, _value_type, _max_entries)
 
 #define BPF_PERCPU_ARRAY(_name, _value_type, _max_entries) \
-    BPF_MAP(_name, BPF_MAP_TYPE_PERCPU_ARRAY, u32, _value_type, _max_entries)
+    BPF_MAP(_name, BPF_MAP_TYPE_PERCPU_ARRAY, __u32, _value_type, _max_entries)
 
 #define BPF_PROG_ARRAY(_name, _max_entries) \
-    BPF_MAP(_name, BPF_MAP_TYPE_PROG_ARRAY, u32, u32, _max_entries)
+    BPF_MAP(_name, BPF_MAP_TYPE_PROG_ARRAY, __u32, __u32, _max_entries)
 
 #define BPF_PERF_OUTPUT(_name, _max_entries) \
     BPF_MAP(_name, BPF_MAP_TYPE_PERF_EVENT_ARRAY, int, __u32, _max_entries)
 
 typedef __u64 stack_trace_type[PERF_MAX_STACK_DEPTH];
-#define BPF_STACK_TRACE(_name, _max_entries)                        \
-    BPF_MAP(_name, BPF_MAP_TYPE_STACK_TRACE, u32, stack_trace_type, \
+#define BPF_STACK_TRACE(_name, _max_entries)                          \
+    BPF_MAP(_name, BPF_MAP_TYPE_STACK_TRACE, __u32, stack_trace_type, \
             _max_entries);
 
 /**

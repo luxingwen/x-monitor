@@ -14,6 +14,16 @@ import (
 
 type XMProfileStackTraceType [127]uint64
 
+type XMProfileXmDwarfStackTrace struct {
+	Regs struct {
+		Rip uint64
+		Rsp uint64
+		Rbp uint64
+	}
+	Len uint64
+	Pc  [127]uint64
+}
+
 type XMProfileXmProfileFdeTableInfo struct {
 	Start    uint64
 	End      uint64
@@ -39,7 +49,7 @@ type XMProfileXmProfileModuleFdeTables struct {
 }
 
 type XMProfileXmProfilePidMaps struct {
-	Modules     [64]XMProfileXmProfileProcMapsModule
+	Modules     [56]XMProfileXmProfileProcMapsModule
 	ModuleCount uint32
 }
 
@@ -123,7 +133,8 @@ type XMProfileSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProfileProgramSpecs struct {
-	XmDoPerfEvent *ebpf.ProgramSpec `ebpf:"xm_do_perf_event"`
+	XmDoPerfEvent        *ebpf.ProgramSpec `ebpf:"xm_do_perf_event"`
+	XmWalkUserStacktrace *ebpf.ProgramSpec `ebpf:"xm_walk_user_stacktrace"`
 }
 
 // XMProfileMapSpecs contains maps before they are loaded into the kernel.
@@ -135,6 +146,8 @@ type XMProfileMapSpecs struct {
 	XmProfilePidModulesMap      *ebpf.MapSpec `ebpf:"xm_profile_pid_modules_map"`
 	XmProfileSampleCountMap     *ebpf.MapSpec `ebpf:"xm_profile_sample_count_map"`
 	XmProfileStackMap           *ebpf.MapSpec `ebpf:"xm_profile_stack_map"`
+	XmProfileStackTraceHeap     *ebpf.MapSpec `ebpf:"xm_profile_stack_trace_heap"`
+	XmProfileWalkStackProgsAry  *ebpf.MapSpec `ebpf:"xm_profile_walk_stack_progs_ary"`
 }
 
 // XMProfileObjects contains all objects after they have been loaded into the kernel.
@@ -161,6 +174,8 @@ type XMProfileMaps struct {
 	XmProfilePidModulesMap      *ebpf.Map `ebpf:"xm_profile_pid_modules_map"`
 	XmProfileSampleCountMap     *ebpf.Map `ebpf:"xm_profile_sample_count_map"`
 	XmProfileStackMap           *ebpf.Map `ebpf:"xm_profile_stack_map"`
+	XmProfileStackTraceHeap     *ebpf.Map `ebpf:"xm_profile_stack_trace_heap"`
+	XmProfileWalkStackProgsAry  *ebpf.Map `ebpf:"xm_profile_walk_stack_progs_ary"`
 }
 
 func (m *XMProfileMaps) Close() error {
@@ -170,6 +185,8 @@ func (m *XMProfileMaps) Close() error {
 		m.XmProfilePidModulesMap,
 		m.XmProfileSampleCountMap,
 		m.XmProfileStackMap,
+		m.XmProfileStackTraceHeap,
+		m.XmProfileWalkStackProgsAry,
 	)
 }
 
@@ -177,12 +194,14 @@ func (m *XMProfileMaps) Close() error {
 //
 // It can be passed to LoadXMProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProfilePrograms struct {
-	XmDoPerfEvent *ebpf.Program `ebpf:"xm_do_perf_event"`
+	XmDoPerfEvent        *ebpf.Program `ebpf:"xm_do_perf_event"`
+	XmWalkUserStacktrace *ebpf.Program `ebpf:"xm_walk_user_stacktrace"`
 }
 
 func (p *XMProfilePrograms) Close() error {
 	return _XMProfileClose(
 		p.XmDoPerfEvent,
+		p.XmWalkUserStacktrace,
 	)
 }
 

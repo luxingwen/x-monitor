@@ -48,6 +48,8 @@ BPF_PERCPU_ARRAY(xm_profile_stack_trace_heap, struct xm_dwarf_stack_trace, 1);
 // key is hash(buildid)
 BPF_HASH(xm_profile_module_fdetables_map, __u64,
          struct xm_profile_module_fde_tables, 256);
+// 尾调
+BPF_PROG_ARRAY(xm_profile_walk_stack_progs_ary, 1);
 
 // in compile print struct sizeof
 char (*__kaboom)[sizeof(struct xm_profile_module_fde_tables)] = 1;
@@ -157,8 +159,38 @@ __find_fde_table_info_in_module(
     return 0;
 }
 
+// struct xm_find_module_ctx {
+//     __u64 pc;
+//     const struct xm_profile_pid_maps *maps;
+// };
+
+// static __always_inline __s32 check_module(__u32 index, void *ctx) {
+//     const struct xm_find_module_ctx *find_ctx =
+//         (const struct xm_find_module_ctx *)ctx;
+//     const struct xm_profile_proc_maps_module *module =
+//         &find_ctx->maps->modules[index];
+
+//     if (module->start_addr <= find_ctx->pc
+//         && find_ctx->pc <= module->end_addr) {
+//         // 判断 pc 在/proc/pid/maps 对应的 module 地址范围内
+//         return 1;
+//     }
+
+//     // continue
+//     return 0;
+// }
+
 static __always_inline const struct xm_profile_proc_maps_module *
 __find_module_in_maps(const struct xm_profile_pid_maps *maps, __u64 pc) {
+    // struct xm_find_module_ctx ctx = {
+    //     .pc = pc,
+    //     .maps = maps,
+    // };
+
+    // __s32 pos = bpf_loop(XM_PER_PROCESS_ASSOC_MODULE_COUNT,
+    //                      (void *)&check_module, (void *)&ctx, 0);
+    // if (pos >= 0 && pos < XM_PER_PROCESS_ASSOC_MODULE_COUNT)
+    //     return &maps->modules[pos];
     for (__u32 i = 0; i < XM_PER_PROCESS_ASSOC_MODULE_COUNT; i++) {
         const struct xm_profile_proc_maps_module *module = &maps->modules[i];
         if (module->start_addr <= pc && pc <= module->end_addr) {
@@ -334,6 +366,10 @@ static __always_inline __s32 __get_user_stack(
             if (st->len < PERF_MAX_STACK_DEPTH) {
                 st->pc[st->len] = rip;
                 st->len += 1;
+                // 保存寄存器，为下一个尾调做准备
+                st->regs.rbp = rbp;
+                st->regs.rip = rip;
+                st->regs.rsp = cfa;
             }
 
             if (!reached_bottom) {
@@ -351,6 +387,11 @@ static __always_inline __s32 __get_user_stack(
     }
 
     return ret;
+}
+
+SEC("perf_event")
+__s32 xm_walk_user_stacktrace(struct bpf_perf_event_data *ctx) {
+    return 0;
 }
 
 SEC("perf_event") __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
