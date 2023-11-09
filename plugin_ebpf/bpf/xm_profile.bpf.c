@@ -34,7 +34,8 @@ BPF_STACK_TRACE(xm_profile_stack_map, 1024);
 BPF_HASH(xm_profile_pid_modules_map, __u32, struct xm_profile_pid_maps, 256);
 // 解决：error: Looks like the BPF stack limit of 512 bytes is
 // exceeded，因为结构太大，不能作为局部变量
-BPF_PERCPU_ARRAY(xm_profile_stack_trace_heap, struct xm_dwarf_stack_trace, 1);
+BPF_PERCPU_ARRAY(xm_unwind_user_stack_data_heap,
+                 struct xm_unwind_user_stack_info, 1);
 
 // 保存每个 module 的 fde table 信息，内核对 hash_map 的 value 有大小限制
 // if ((u64)attr->key_size + attr->value_size >= KMALLOC_MAX_SIZE -
@@ -275,38 +276,26 @@ __find_fde_table_row_by_pc(const struct xm_profile_pid_maps *pid_maps,
 }
 
 static __always_inline __s32 __get_user_stack(
-    const struct xm_profile_pid_maps *pid_maps, struct task_struct *task,
-    struct pt_regs *user_regs, struct xm_dwarf_stack_trace *st) {
-    struct xm_task_userspace_regs tu_regs;
+    struct bpf_perf_event_data *ctx, const struct xm_profile_pid_maps *pid_maps,
+    struct task_struct *task, struct xm_unwind_user_stack_info *uwind_usi) {
+    //
     const struct xm_profile_fde_table_row *row = 0;
-    __u64 rip = 0, prev_rip_addr = 0, rsp = 0, rbp = 0, prev_rbp_addr = 0,
-          cfa = 0;
+    __u64 rip = uwind_usi->regs.rip, prev_rip_addr = 0,
+          rsp = uwind_usi->regs.rsp, rbp = uwind_usi->regs.rbp,
+          prev_rbp_addr = 0, cfa = 0;
     __s32 ret = 0;
     bool reached_bottom = false;
-
-    // 获取当前的寄存器
-    __xm_get_task_userspace_regs(task, user_regs, &tu_regs);
-    bpf_printk("rip:0x%lx, rsp:0x%lx, rbp:0x%x", tu_regs.rip, tu_regs.rsp,
-               tu_regs.rbp);
-    // 这是 top frame 当前执行的指令地址
-    rip = tu_regs.rip;
-    rsp = tu_regs.rsp;
-    rbp = tu_regs.rbp;
-    st->len = 1;
-    st->pc[0] = rip;
 
     for (__s32 i = 0; i < XM_MAX_STACK_DEPTH_PER_PROGRAM; i++) {
         bpf_printk("\t*** find rip:0x%lx ***", rip);
         row = __find_fde_table_row_by_pc(pid_maps, rip);
         if (row) {
             // 找到 pc 在 FDETables 中对应的 row
-            bpf_printk("\t***rip correspond with row loc:0x%lx cfa{reg_num:%d, "
+            bpf_printk("\t   rip correspond with row loc:0x%lx cfa{reg_num:%d, "
                        "offset:%d}",
                        row->loc, row->cfa.reg, row->cfa.offset);
             bpf_printk("\t   rbp_cfa_offset:%d, ra_cfa_offset:%d***",
                        row->rbp_cfa_offset, row->ra_cfa_offset);
-
-            // 判断是否到了 top frame
 
             // 开始计算 cfa，也是上一帧的 rsp
             // AMD64_Rbp     = 6
@@ -361,29 +350,41 @@ static __always_inline __s32 __get_user_stack(
             } else {
                 reached_bottom = true;
             }
-            // !! math between map_value pointer and register with unbounded min
-            // value is not allowed
-            if (st->len < PERF_MAX_STACK_DEPTH) {
-                st->pc[st->len] = rip;
-                st->len += 1;
+            // ** math between map_value pointer and register with unbounded min
+            // ** value is not allowed
+            if (uwind_usi->len < PERF_MAX_STACK_DEPTH) {
+                uwind_usi->pc[uwind_usi->len] = rip;
+                uwind_usi->len += 1;
                 // 保存寄存器，为下一个尾调做准备
-                st->regs.rbp = rbp;
-                st->regs.rip = rip;
-                st->regs.rsp = cfa;
+                uwind_usi->regs.rbp = rbp;
+                uwind_usi->regs.rip = rip;
+                uwind_usi->regs.rsp = cfa;
             }
 
             if (!reached_bottom) {
                 rsp = cfa;
             } else {
                 // 到了最低的 call frame
-                bpf_printk("\t   reached bottom, stack depth:%d", st->len);
+                bpf_printk("\t   reached bottom, stack depth:%d",
+                           uwind_usi->len);
                 break;
             }
         } else {
             bpf_printk("\t    rip:0x%lx is invalid, stack depth:%d", rip,
-                       st->len);
+                       uwind_usi->len);
+            ret = -1;
             break;
         }
+    }
+
+    uwind_usi->tail_call_count++;
+
+    if (ret == 0 && !reached_bottom && uwind_usi->len < PERF_MAX_STACK_DEPTH
+        && uwind_usi->tail_call_count < MX_MAX_TAIL_CALL_COUNT) {
+        bpf_printk("\t   continue walk user stack in tail call, current "
+                   "tail:%d",
+                   uwind_usi->tail_call_count);
+        bpf_tail_call(ctx, &xm_profile_walk_stack_progs_ary, 0);
     }
 
     return ret;
@@ -391,6 +392,31 @@ static __always_inline __s32 __get_user_stack(
 
 SEC("perf_event")
 __s32 xm_walk_user_stacktrace(struct bpf_perf_event_data *ctx) {
+    struct xm_unwind_user_stack_info *uwind_usi =
+        bpf_map_lookup_elem(&xm_unwind_user_stack_data_heap, &__zero);
+    if (uwind_usi) {
+        bpf_printk("--->xm_walk_user_stacktrace pid:%d, "
+                   "tail call times:%d",
+                   uwind_usi->pid, uwind_usi->tail_call_count);
+        struct xm_profile_pid_maps *pid_maps =
+            bpf_map_lookup_elem(&xm_profile_pid_modules_map, &(uwind_usi->pid));
+        if (pid_maps) {
+            struct task_struct *ts =
+                (struct task_struct *)bpf_get_current_task();
+            pid_t tgid = READ_KERN(ts->tgid);
+            // same as uwind_usi->pid
+            // bpf_printk("current task pid:%d", tgid);
+            __get_user_stack(ctx, pid_maps, ts, uwind_usi);
+            // __s32 ret = __get_user_stack(pid_maps, ts, uwind_usi);
+            // if (ret == 0) {
+            //     // 获取其它的堆栈信息
+            // }
+        } else {
+            bpf_printk("pid:%d not in xm_profile_pid_modules_map",
+                       uwind_usi->pid);
+        }
+    }
+
     return 0;
 }
 
@@ -433,28 +459,32 @@ SEC("perf_event") __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
     if (!filter_ts(&xm_profile_arg_map, ts, pid)) {
         return 0;
     }
-    // bpf_printk("+++>xm_do_perf_event enter<+++");
-    // struct xm_task_userspace_regs tu_regs;
-    // bpf_user_pt_regs_t *user_regs = &ctx->regs;
-    //__xm_get_task_userspace_regs(ts, user_regs, &tu_regs);
-    // bpf_printk("---> xm_do_perf_event pid:%d", pid);
-    // bpf_printk("xm_do_perf_event rip:0x%lx, rsp:0x%lx, rbp:0x%x <---",
-    //            tu_regs.rip, tu_regs.rsp, tu_regs.rbp);
-
-    ps.pid = pid;
-    BPF_CORE_READ_STR_INTO(&ps.comm, ts, group_leader, comm);
 
     // **如果执行程序支持 frame point 才能用这种方式，否则要用 eh_frame +
     // **ip、bp、sp 来做 stack unwind
-    // 判断是否需要通过解析 eh_frame 的方式来做 unwind stack
+    // 判断是否需要通过解析 .eh_frame 的数据来做 unwind stack
     pid_maps = bpf_map_lookup_elem(&xm_profile_pid_modules_map, &pid);
-    struct xm_dwarf_stack_trace *st =
-        bpf_map_lookup_elem(&xm_profile_stack_trace_heap, &__zero);
-    if (pid_maps && st) {
-        bpf_printk("---> __get_user_stack pid:%d", pid);
-        __get_user_stack(pid_maps, ts, &ctx->regs, st);
-        bpf_printk("<---\n");
+    // 获取
+    struct xm_unwind_user_stack_info *uwind_usi =
+        bpf_map_lookup_elem(&xm_unwind_user_stack_data_heap, &__zero);
+
+    if (pid_maps && uwind_usi) {
+        bpf_printk("---> start traversing user stack by section .eh_frame data "
+                   " <---");
+        uwind_usi->pid = pid;
+        // 获取当前的寄存器，这是 top frame 当前执行的指令地址
+        __xm_get_task_userspace_regs(ts, &ctx->regs, &uwind_usi->regs);
+        bpf_printk("rip:0x%lx, rsp:0x%lx, rbp:0x%x", uwind_usi->regs.rip,
+                   uwind_usi->regs.rsp, uwind_usi->regs.rbp);
+        uwind_usi->len = 1;
+        uwind_usi->pc[0] = uwind_usi->regs.rip;
+        uwind_usi->tail_call_count = 0;
+        bpf_tail_call(ctx, &xm_profile_walk_stack_progs_ary, 0);
+        return 0;
     }
+
+    ps.pid = pid;
+    BPF_CORE_READ_STR_INTO(&ps.comm, ts, group_leader, comm);
 
     int stack_id =
         bpf_get_stackid(ctx, &xm_profile_stack_map, BPF_F_USER_STACK);

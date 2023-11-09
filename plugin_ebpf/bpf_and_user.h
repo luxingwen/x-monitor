@@ -223,10 +223,14 @@ struct xm_profile_sample {
 
 #define XM_MAX_STACK_DEPTH_PER_PROGRAM \
     7 // 每个 prog 只能执行的次数，需要通过 tail call 进行组合
-struct xm_dwarf_stack_trace {
+#define MX_MAX_TAIL_CALL_COUNT \
+    18 // (PERF_MAX_STACK_DEPTH - 1) / XM_MAX_STACK_DEPTH_PER_PROGRAM
+struct xm_unwind_user_stack_info {
     struct xm_task_userspace_regs regs;
     __u64 len;
     __u64 pc[PERF_MAX_STACK_DEPTH];
+    pid_t pid; // 进程 id
+    __u32 tail_call_count;
 };
 
 struct xm_profile_sample_data {
