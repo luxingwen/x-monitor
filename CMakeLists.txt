@@ -62,7 +62,7 @@ if(STATIC_LINKING)
   set(CMAKE_LINK_SEARCH_END_STATIC TRUE)
 endif(STATIC_LINKING)
 
-# debug 、 release版本
+# debug、release 版本
 set(CMAKE_C_FLAGS_DEBUG "-Wall -g -ggdb3")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 
@@ -74,22 +74,22 @@ else()
   message(STATUS "Debug Version: ${CMAKE_C_FLAGS_DEBUG}")
 endif()
 
-# 设置c编译参数
+# 设置 c 编译参数
 # Position-Independent Code
 # set(CMAKE_C_FLAGS "-fPIE -Wno-unknown-pragmas -Wextra -Wpedantic")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas -Wextra -fno-omit-frame-pointer -fstack-protector -fno-delete-null-pointer-checks")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpointer-arith -Werror-implicit-function-declaration -Wno-trigraphs -Wno-format-security")
 
-# -Wredundant-decls 如果在同一个可见域某定义多次声明,编译器就发出警告,即使这些重复声明有效并且毫无差别.
+# -Wredundant-decls 如果在同一个可见域某定义多次声明，编译器就发出警告，即使这些重复声明有效并且毫无差别.
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wnested-externs")
 
-# -Wcast-qual 一旦某个指针强制类型转换以便移除类型修饰符时,编译器就发出警告.例如,如果把const char * 强制转换为普通的char *时,警告就会出现.
-# -Wshadow 一旦某个局部变量屏蔽了另一个局部变量,编译器就发出警
+# -Wcast-qual 一旦某个指针强制类型转换以便移除类型修饰符时，编译器就发出警告。例如，如果把 const char * 强制转换为普通的 char *时，警告就会出现。
+# -Wshadow 一旦某个局部变量屏蔽了另一个局部变量，编译器就发出警
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow -Wcast-qual -Wcast-align -Wwrite-strings")
 # generate BTF file
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fverbose-asm -save-temps")
 
-# -Wstrict-prototypes 如果函数的声明或定义没有指出参数类型,编译器就发出警告. (如果函数的前向引用说明指出了参数类型,则允许后面使用旧式风格的函数定义,而不会产生警告.)
+# -Wstrict-prototypes 如果函数的声明或定义没有指出参数类型，编译器就发出警告。(如果函数的前向引用说明指出了参数类型，则允许后面使用旧式风格的函数定义，而不会产生警告.)
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wold-style-definition -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls")
 if (GCC_VERSION GREATER "4.9")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wsuggest-attribute=noreturn -Wjump-misses-init")
@@ -103,7 +103,7 @@ if(USE_ADDRSANITIZER)
   message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
 endif(USE_ADDRSANITIZER)
 
-# 设置c标准 cmake3.18只支持c11
+# 设置 c 标准 cmake3.18 只支持 c11
 if(CMAKE_VERSION VERSION_LESS "3.1")
   if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_C_FLAGS "-std=gnu99 ${CMAKE_C_FLAGS}")
@@ -115,7 +115,7 @@ endif()
 # set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# 这个是支持c11和extensions -std=gnu11
+# 这个是支持 c11 和 extensions -std=gnu11
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -123,20 +123,20 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(EXTRA_DIR "${PROJECT_SOURCE_DIR}/extra")
 set(KERNEL_DIR "/usr/src/linux-5.12.9")
 
-# 配置一个头文件来传递一些CMake设置到源代码
+# 配置一个头文件来传递一些 CMake 设置到源代码
 configure_file(
   "${PROJECT_SOURCE_DIR}/config.h.in"
   "${PROJECT_SOURCE_DIR}/config.h"
 )
 
-# ebpf user include路径
+# ebpf user include 路径
 set(EBPF_USER_INCLUDE_DIRS "${KERNEL_DIR}/usr/include"
   "${KERNEL_DIR}/tools/include"
   "${KERNEL_DIR}/tools/perf"
   "${KERNEL_DIR}/tools/lib"
   "${KERNEL_DIR}/tools/testing/selftests/bpf")
 
-# 头文件include目录
+# 头文件 include 目录
 include_directories("${PROJECT_SOURCE_DIR}"
   "${EXTRA_DIR}/include"
   "${EXTRA_DIR}/include/microhttpd")
@@ -178,7 +178,7 @@ set(EXTRA_LIBS "libcurl.a"
 # -DLOG_DIR="/usr/log/x-monitor"
 # )
 
-# 项目子目录，让cmake去识别子目录下的CMakeLists.txt文件
+# 项目子目录，让 cmake 去识别子目录下的 CMakeLists.txt 文件
 add_subdirectory(utils)
 add_subdirectory(collectors/process)
 add_subdirectory(collectors/proc_sock)
@@ -211,7 +211,7 @@ add_subdirectory(examples/ebpf/stack_unwind_cli)
 
 add_subdirectory(examples/kernel_dev/mmap_dev_module/user)
 
-# x-monitor的所有源代码
+# x-monitor 的所有源代码
 file(GLOB_RECURSE X-MONITOR_SRCS
   "collectors/proc/*.c"
   "collectors/proc/*.h"
@@ -233,7 +233,7 @@ file(GLOB_RECURSE X-MONITOR_SRCS
 message(STATUS "X-MONITOR_SRCS = ${X-MONITOR_SRCS}")
 
 # 编译的执行程序
-# D_FORTIFY_SOURCE 还会在运行时添加检查(检测到缓冲区溢出会终止程序)   -D_FORTIFY_SOURCE=2
+# D_FORTIFY_SOURCE 还会在运行时添加检查 (检测到缓冲区溢出会终止程序)   -D_FORTIFY_SOURCE=2
 add_executable(x-monitor main.c ${X-MONITOR_SRCS})
 target_compile_definitions(x-monitor PRIVATE
   -DDEBUG
