@@ -98,8 +98,8 @@ __xm_get_task_userspace_regs(struct task_struct *task,
 // int element = sortedArray[index];
 // !!R8 unbounded memory access, make sure to bounds check any such access
 static __always_inline __s32
-__bsearch_fde_table_row(const struct xm_profile_fde_table_row *rows, __u32 left,
-                        __u32 right, __u64 address) {
+__bsearch_fde_table_row(const struct xm_profile_fde_table_row *rows, __s32 left,
+                        __s32 right, __u64 address) {
     __s32 result = -1;
     __s32 mid = 0;
     // 最大深度限制查找 rows 的范围
@@ -259,9 +259,9 @@ __find_fde_table_row_by_pc(const struct xm_profile_pid_maps *pid_maps,
                                        - module_fde_table_info->row_pos);
                         return &module_fde_tables->fde_rows[find_row_pos];
                     } else {
-                        bpf_printk("addr:0x%lx does not have a "
-                                   "corresponding row in the fde_table.",
-                                   addr);
+                        bpf_printk("addr:0x%lx does not have a corresponding "
+                                   "row in the fde_table. table row count:%d",
+                                   addr, module_fde_table_info->row_count);
                     }
                 }
             }
@@ -409,7 +409,7 @@ __s32 xm_walk_user_stacktrace(struct bpf_perf_event_data *ctx) {
         if (pid_maps) {
             struct task_struct *ts =
                 (struct task_struct *)bpf_get_current_task();
-            pid_t tgid = READ_KERN(ts->tgid);
+            // pid_t tgid = READ_KERN(ts->tgid);
             // same as uwind_usi->pid
             // bpf_printk("current task pid:%d", tgid);
             __get_user_stack(ctx, pid_maps, ts, uwind_usi);

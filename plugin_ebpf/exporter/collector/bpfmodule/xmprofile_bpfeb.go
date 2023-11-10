@@ -14,16 +14,6 @@ import (
 
 type XMProfileStackTraceType [127]uint64
 
-type XMProfileXmDwarfStackTrace struct {
-	Regs struct {
-		Rip uint64
-		Rsp uint64
-		Rbp uint64
-	}
-	Len uint64
-	Pc  [127]uint64
-}
-
 type XMProfileXmProfileFdeTableInfo struct {
 	Start    uint64
 	End      uint64
@@ -92,6 +82,18 @@ const (
 	XMProfileXmProgFilterTargetScopeTypeXM_PROG_FILTER_TARGET_SCOPE_TYPE_MAX  XMProfileXmProgFilterTargetScopeType = 6
 )
 
+type XMProfileXmUnwindUserStackInfo struct {
+	Regs struct {
+		Rip uint64
+		Rsp uint64
+		Rbp uint64
+	}
+	Len           uint64
+	Pc            [127]uint64
+	Pid           int32
+	TailCallCount uint32
+}
+
 // LoadXMProfile returns the embedded CollectionSpec for XMProfile.
 func LoadXMProfile() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_XMProfileBytes)
@@ -146,8 +148,8 @@ type XMProfileMapSpecs struct {
 	XmProfilePidModulesMap      *ebpf.MapSpec `ebpf:"xm_profile_pid_modules_map"`
 	XmProfileSampleCountMap     *ebpf.MapSpec `ebpf:"xm_profile_sample_count_map"`
 	XmProfileStackMap           *ebpf.MapSpec `ebpf:"xm_profile_stack_map"`
-	XmProfileStackTraceHeap     *ebpf.MapSpec `ebpf:"xm_profile_stack_trace_heap"`
 	XmProfileWalkStackProgsAry  *ebpf.MapSpec `ebpf:"xm_profile_walk_stack_progs_ary"`
+	XmUnwindUserStackDataHeap   *ebpf.MapSpec `ebpf:"xm_unwind_user_stack_data_heap"`
 }
 
 // XMProfileObjects contains all objects after they have been loaded into the kernel.
@@ -174,8 +176,8 @@ type XMProfileMaps struct {
 	XmProfilePidModulesMap      *ebpf.Map `ebpf:"xm_profile_pid_modules_map"`
 	XmProfileSampleCountMap     *ebpf.Map `ebpf:"xm_profile_sample_count_map"`
 	XmProfileStackMap           *ebpf.Map `ebpf:"xm_profile_stack_map"`
-	XmProfileStackTraceHeap     *ebpf.Map `ebpf:"xm_profile_stack_trace_heap"`
 	XmProfileWalkStackProgsAry  *ebpf.Map `ebpf:"xm_profile_walk_stack_progs_ary"`
+	XmUnwindUserStackDataHeap   *ebpf.Map `ebpf:"xm_unwind_user_stack_data_heap"`
 }
 
 func (m *XMProfileMaps) Close() error {
@@ -185,8 +187,8 @@ func (m *XMProfileMaps) Close() error {
 		m.XmProfilePidModulesMap,
 		m.XmProfileSampleCountMap,
 		m.XmProfileStackMap,
-		m.XmProfileStackTraceHeap,
 		m.XmProfileWalkStackProgsAry,
+		m.XmUnwindUserStackDataHeap,
 	)
 }
 

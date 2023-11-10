@@ -254,8 +254,8 @@ struct xm_profile_fde_table_row {
 struct __attribute__((__packed__)) xm_profile_fde_table_info {
     __u64 start; // 起始地址
     __u64 end; // 结束地址
-    __u32 row_pos; // 所在行的位置
-    __u32 row_count; // 行的数量
+    __s32 row_pos; // 所在行的位置
+    __s32 row_count; // 行的数量
 };
 
 struct xm_profile_module_fde_tables {

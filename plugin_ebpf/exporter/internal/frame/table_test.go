@@ -14,7 +14,7 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 )
 
-// GO111MODULE=off go test -v -run=TestSortFdeInfos -v -logtostderr
+// go test -v -run=TestSortFdeInfos -v -logtostderr
 func TestSortFdeInfos(t *testing.T) {
 	FdeInfos := [6]bpfmodule.XMProfileXmProfileFdeTableInfo{
 		{Start: 10, RowCount: 19},
@@ -30,5 +30,25 @@ func TestSortFdeInfos(t *testing.T) {
 
 	for i, fi := range FdeInfos {
 		t.Logf("i:%d fi:%#v", i, fi)
+	}
+}
+
+// go test -v -run=TestDumpModuleFDETables -v -logtostderr
+func TestDumpModuleFDETables(t *testing.T) {
+	module := "/usr/lib64/libc-2.28.so"
+
+	fdeTables, err := CreateModuleFDETables(module)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("module:'%s' has %d fde tables", module, fdeTables.FdeTableCount)
+	var i uint32 = 0
+	for ; i < fdeTables.FdeTableCount; i++ {
+		info := &fdeTables.FdeInfos[i]
+		t.Logf("table{start:'%#x---end:%#x'} row count:%d, row pos:%d", info.Start, info.End, info.RowCount, info.RowPos)
+		if info.RowCount == 1 {
+			t.Logf("\tRow:%#v", fdeTables.FdeRows[info.RowPos])
+		}
 	}
 }

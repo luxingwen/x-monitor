@@ -541,8 +541,8 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 		tableInfo := &procModuleFDETables.FdeInfos[procModuleFDETables.FdeTableCount]
 		tableInfo.Start = fde.Begin()
 		tableInfo.End = fde.End()
-		tableInfo.RowCount = 0
-		tableInfo.RowPos = uint32(moduleAssocFDERowCount)
+		tableInfo.RowCount = int32(0)
+		tableInfo.RowPos = int32(moduleAssocFDERowCount)
 
 		innerErr = nil
 
@@ -588,7 +588,7 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 		if innerErr == nil && tableInfo.RowCount > 0 {
 			// procModuleFDETables = nil
 			// return nil, innerErr
-			procModuleFDETables.FdeTableCount += 1
+			procModuleFDETables.FdeTableCount++
 		} else {
 			if err != nil {
 				glog.Errorf(innerErr.Error())
