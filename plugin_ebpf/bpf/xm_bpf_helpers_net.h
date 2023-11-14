@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-02-10 16:37:40
- * @Last Modified by: calmwu
- * @Last Modified time: 2023-04-22 16:20:44
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2023-11-14 15:24:23
  */
 
 #include <vmlinux.h>
@@ -47,7 +47,7 @@ static __s32 __xm_proto_is_vlan(__u16 h_proto) {
               || h_proto == bpf_htons(ETH_P_8021AD));
 }
 
-// 返回IP包承载的具体协议类型，tcp、udp、icmp等
+// 返回 IP 包承载的具体协议类型，tcp、udp、icmp 等
 static __u8 __xm_parse_ip4hdr(struct hdr_cursor *nh, void *data_end,
                               struct iphdr **iphdr) {
     struct iphdr *iph = nh->pos;
@@ -108,7 +108,7 @@ static __s32 __get_dport(void *trans_data, void *data_end, __u8 protocol) {
     }
 }
 
-// 解析包头得到ethertype
+// 解析包头得到 ethertype
 static bool __xm_parse_eth(struct ethhdr *eth, void *data_end,
                            __u16 *eth_type) {
     __u64 offset;

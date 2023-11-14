@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-15 14:06:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-11-03 17:03:40
+ * @Last Modified time: 2023-11-14 15:54:47
  */
 
 #pragma once
@@ -192,19 +192,6 @@ struct xm_bio_request_latency_evt_data {
 };
 
 //------------------------ profile
-struct xm_task_userspace_regs {
-    __u64 rip;
-    __u64 rsp;
-    __u64 rbp;
-};
-
-struct xm_profile_sample {
-    pid_t pid; // 进程 id
-    int kernel_stack_id; // 调用堆栈
-    int user_stack_id;
-    char comm[TASK_COMM_LEN];
-};
-
 #ifndef XM_PATH_MAX_LEN
 #define XM_PATH_MAX_LEN 128
 #endif
@@ -225,10 +212,28 @@ struct xm_profile_sample {
     7 // 每个 prog 只能执行的次数，需要通过 tail call 进行组合
 #define MX_MAX_TAIL_CALL_COUNT \
     18 // (PERF_MAX_STACK_DEPTH - 1) / XM_MAX_STACK_DEPTH_PER_PROGRAM
-struct xm_unwind_user_stack_info {
-    struct xm_task_userspace_regs regs;
+
+struct xm_task_userspace_regs {
+    __u64 rip;
+    __u64 rsp;
+    __u64 rbp;
+};
+
+struct xm_profile_sample {
+    pid_t pid; // 进程 id
+    __s32 kernel_stack_id; // 调用堆栈
+    __s32 user_stack_id;
+    __u32 ehframe_user_stack_id; // 通过解析 ehframe 的到的用户栈
+    char comm[TASK_COMM_LEN];
+};
+
+struct xm_ehframe_user_stack {
     __u64 len;
     __u64 pc[PERF_MAX_STACK_DEPTH];
+};
+struct xm_unwind_user_stack_resolve_data {
+    struct xm_task_userspace_regs regs;
+    struct xm_ehframe_user_stack e_st;
     pid_t pid; // 进程 id
     __u32 tail_call_count;
 };

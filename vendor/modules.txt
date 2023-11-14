@@ -1,6 +1,9 @@
 # github.com/DeanThompson/ginpprof v0.0.0-20201112072838-007b1e56b2e1
 ## explicit
 github.com/DeanThompson/ginpprof
+# github.com/Masterminds/semver/v3 v3.2.1
+## explicit; go 1.18
+github.com/Masterminds/semver/v3
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
@@ -146,7 +149,7 @@ github.com/golang/protobuf/ptypes/timestamp
 ## explicit; go 1.12
 github.com/google/gofuzz
 github.com/google/gofuzz/bytesource
-# github.com/google/pprof v0.0.0-20230912144702-c363fe2c2ed8
+# github.com/google/pprof v0.0.0-20230926050212-f7f687d19a98
 ## explicit; go 1.19
 github.com/google/pprof/profile
 # github.com/gorilla/mux v1.8.0
@@ -196,8 +199,6 @@ github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/golang-lru v0.6.0
-## explicit; go 1.12
 # github.com/hashicorp/golang-lru/v2 v2.0.3
 ## explicit; go 1.18
 github.com/hashicorp/golang-lru/v2
@@ -223,7 +224,7 @@ github.com/jpillora/backoff
 # github.com/json-iterator/go v1.1.12
 ## explicit; go 1.12
 github.com/json-iterator/go
-# github.com/klauspost/compress v1.16.7
+# github.com/klauspost/compress v1.17.0
 ## explicit; go 1.18
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/gzip
@@ -263,9 +264,15 @@ github.com/mwitkow/go-conntrack
 # github.com/oklog/run v1.1.0
 ## explicit; go 1.13
 github.com/oklog/run
-# github.com/parca-dev/parca-agent v0.25.0
+# github.com/parca-dev/parca-agent v0.26.0
 ## explicit; go 1.21.1
+github.com/parca-dev/parca-agent/internal/dwarf/frame
+github.com/parca-dev/parca-agent/internal/dwarf/util
 github.com/parca-dev/parca-agent/pkg/buildid
+github.com/parca-dev/parca-agent/pkg/cache
+github.com/parca-dev/parca-agent/pkg/cache/lru
+github.com/parca-dev/parca-agent/pkg/runtime
+github.com/parca-dev/parca-agent/pkg/stack/unwind
 # github.com/pelletier/go-toml/v2 v2.0.8
 ## explicit; go 1.16
 github.com/pelletier/go-toml/v2
@@ -280,6 +287,7 @@ github.com/pkg/errors
 ## explicit; go 1.17
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
+github.com/prometheus/client_golang/prometheus/promauto
 github.com/prometheus/client_golang/prometheus/promhttp
 # github.com/prometheus/client_model v0.4.0
 ## explicit; go 1.18
@@ -291,7 +299,7 @@ github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
 github.com/prometheus/common/version
-# github.com/prometheus/procfs v0.11.1
+# github.com/prometheus/procfs v0.12.0
 ## explicit; go 1.19
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
@@ -381,6 +389,9 @@ github.com/vishvananda/netns
 # github.com/wubo0067/calmwu-go v0.0.0-20231030031850-7b45545dc0ed
 ## explicit; go 1.18
 github.com/wubo0067/calmwu-go/utils
+# github.com/xyproto/ainur v1.3.3-0.20230327065817-db855584e31b
+## explicit; go 1.11
+github.com/xyproto/ainur
 # go.opentelemetry.io/otel v1.18.0
 ## explicit; go 1.20
 go.opentelemetry.io/otel/attribute
@@ -474,7 +485,7 @@ google.golang.org/appengine/urlfetch
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20230911183012-2d3300fd4832
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.58.1
+# google.golang.org/grpc v1.58.2
 ## explicit; go 1.19
 google.golang.org/grpc
 google.golang.org/grpc/attributes

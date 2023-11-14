@@ -31,7 +31,7 @@ static __always_inline bool filter_ts(void *arg_map, struct task_struct *ts,
         return false;
     }
 
-    // 通过map获取过滤参数
+    // 通过 map 获取过滤参数
     struct xm_prog_filter_args *filter_args =
         bpf_map_lookup_elem(arg_map, &index);
     if (!filter_args) {
@@ -45,17 +45,17 @@ static __always_inline bool filter_ts(void *arg_map, struct task_struct *ts,
     if (filter_args->scope_type == XM_PROG_FILTER_TARGET_SCOPE_TYPE_OS) {
         return true;
     } else if (filter_args->scope_type == XM_PROG_FILTER_TARGET_SCOPE_TYPE_NS) {
-        // 判断namespace是否匹配
+        // 判断 namespace 是否匹配
         __u32 ns_num = __xm_get_task_pidns(ts);
         if ((__u32)(filter_args->filter_cond_value) == ns_num) {
             return true;
         }
     } else if (filter_args->scope_type == XM_PROG_FILTER_TARGET_SCOPE_TYPE_CG) {
-        // TODO: 判断cgroup，v1 or v2
+        // TODO: 判断 cgroup，v1 or v2
         return true;
     } else if (filter_args->scope_type
                == XM_PROG_FILTER_TARGET_SCOPE_TYPE_PID) {
-        // 判断pid
+        // 判断 pid
         if ((pid_t)(filter_args->filter_cond_value) == tgid) {
             return true;
         }

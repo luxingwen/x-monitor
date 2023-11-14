@@ -14,6 +14,11 @@ import (
 
 type XMProfileStackTraceType [127]uint64
 
+type XMProfileXmEhframeUserStack struct {
+	Len uint64
+	Pc  [127]uint64
+}
+
 type XMProfileXmProfileFdeTableInfo struct {
 	Start    uint64
 	End      uint64
@@ -52,10 +57,11 @@ type XMProfileXmProfileProcMapsModule struct {
 }
 
 type XMProfileXmProfileSample struct {
-	Pid           int32
-	KernelStackId int32
-	UserStackId   int32
-	Comm          [16]int8
+	Pid                int32
+	KernelStackId      int32
+	UserStackId        int32
+	EhframeUserStackId int32
+	Comm               [16]int8
 }
 
 type XMProfileXmProfileSampleData struct {
@@ -82,14 +88,13 @@ const (
 	XMProfileXmProgFilterTargetScopeTypeXM_PROG_FILTER_TARGET_SCOPE_TYPE_MAX  XMProfileXmProgFilterTargetScopeType = 6
 )
 
-type XMProfileXmUnwindUserStackInfo struct {
+type XMProfileXmUnwindUserStackResolveData struct {
 	Regs struct {
 		Rip uint64
 		Rsp uint64
 		Rbp uint64
 	}
-	Len           uint64
-	Pc            [127]uint64
+	E_st          XMProfileXmEhframeUserStack
 	Pid           int32
 	TailCallCount uint32
 }
@@ -143,13 +148,14 @@ type XMProfileProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type XMProfileMapSpecs struct {
-	XmProfileArgMap             *ebpf.MapSpec `ebpf:"xm_profile_arg_map"`
-	XmProfileModuleFdetablesMap *ebpf.MapSpec `ebpf:"xm_profile_module_fdetables_map"`
-	XmProfilePidModulesMap      *ebpf.MapSpec `ebpf:"xm_profile_pid_modules_map"`
-	XmProfileSampleCountMap     *ebpf.MapSpec `ebpf:"xm_profile_sample_count_map"`
-	XmProfileStackMap           *ebpf.MapSpec `ebpf:"xm_profile_stack_map"`
-	XmProfileWalkStackProgsAry  *ebpf.MapSpec `ebpf:"xm_profile_walk_stack_progs_ary"`
-	XmUnwindUserStackDataHeap   *ebpf.MapSpec `ebpf:"xm_unwind_user_stack_data_heap"`
+	XmProfileArgMap              *ebpf.MapSpec `ebpf:"xm_profile_arg_map"`
+	XmProfileEhframeUserStackMap *ebpf.MapSpec `ebpf:"xm_profile_ehframe_user_stack_map"`
+	XmProfileModuleFdetablesMap  *ebpf.MapSpec `ebpf:"xm_profile_module_fdetables_map"`
+	XmProfilePidModulesMap       *ebpf.MapSpec `ebpf:"xm_profile_pid_modules_map"`
+	XmProfileSampleCountMap      *ebpf.MapSpec `ebpf:"xm_profile_sample_count_map"`
+	XmProfileStackMap            *ebpf.MapSpec `ebpf:"xm_profile_stack_map"`
+	XmProfileWalkStackProgsAry   *ebpf.MapSpec `ebpf:"xm_profile_walk_stack_progs_ary"`
+	XmUnwindUserStackDataHeap    *ebpf.MapSpec `ebpf:"xm_unwind_user_stack_data_heap"`
 }
 
 // XMProfileObjects contains all objects after they have been loaded into the kernel.
@@ -171,18 +177,20 @@ func (o *XMProfileObjects) Close() error {
 //
 // It can be passed to LoadXMProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type XMProfileMaps struct {
-	XmProfileArgMap             *ebpf.Map `ebpf:"xm_profile_arg_map"`
-	XmProfileModuleFdetablesMap *ebpf.Map `ebpf:"xm_profile_module_fdetables_map"`
-	XmProfilePidModulesMap      *ebpf.Map `ebpf:"xm_profile_pid_modules_map"`
-	XmProfileSampleCountMap     *ebpf.Map `ebpf:"xm_profile_sample_count_map"`
-	XmProfileStackMap           *ebpf.Map `ebpf:"xm_profile_stack_map"`
-	XmProfileWalkStackProgsAry  *ebpf.Map `ebpf:"xm_profile_walk_stack_progs_ary"`
-	XmUnwindUserStackDataHeap   *ebpf.Map `ebpf:"xm_unwind_user_stack_data_heap"`
+	XmProfileArgMap              *ebpf.Map `ebpf:"xm_profile_arg_map"`
+	XmProfileEhframeUserStackMap *ebpf.Map `ebpf:"xm_profile_ehframe_user_stack_map"`
+	XmProfileModuleFdetablesMap  *ebpf.Map `ebpf:"xm_profile_module_fdetables_map"`
+	XmProfilePidModulesMap       *ebpf.Map `ebpf:"xm_profile_pid_modules_map"`
+	XmProfileSampleCountMap      *ebpf.Map `ebpf:"xm_profile_sample_count_map"`
+	XmProfileStackMap            *ebpf.Map `ebpf:"xm_profile_stack_map"`
+	XmProfileWalkStackProgsAry   *ebpf.Map `ebpf:"xm_profile_walk_stack_progs_ary"`
+	XmUnwindUserStackDataHeap    *ebpf.Map `ebpf:"xm_unwind_user_stack_data_heap"`
 }
 
 func (m *XMProfileMaps) Close() error {
 	return _XMProfileClose(
 		m.XmProfileArgMap,
+		m.XmProfileEhframeUserStackMap,
 		m.XmProfileModuleFdetablesMap,
 		m.XmProfilePidModulesMap,
 		m.XmProfileSampleCountMap,

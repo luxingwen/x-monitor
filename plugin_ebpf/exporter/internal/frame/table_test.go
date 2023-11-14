@@ -10,6 +10,7 @@ package frame
 import (
 	"testing"
 
+	"github.com/parca-dev/parca-agent/pkg/stack/unwind"
 	"golang.org/x/exp/slices"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 )
@@ -50,5 +51,19 @@ func TestDumpModuleFDETables(t *testing.T) {
 		if info.RowCount == 1 {
 			t.Logf("\tRow:%#v", fdeTables.FdeRows[info.RowPos])
 		}
+	}
+}
+
+// go test -v -run=TestDumpModuleFDETableRowsWithParca -v -logtostderr
+func TestDumpModuleFDETableRowsWithParca(t *testing.T) {
+	module := "/usr/lib64/libc-2.28.so"
+
+	rows, _, err := unwind.GenerateCompactUnwindTable(module)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, row := range rows {
+		t.Logf("Row:'%s'", row.ToString(true))
 	}
 }
