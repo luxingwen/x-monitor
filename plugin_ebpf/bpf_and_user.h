@@ -229,7 +229,7 @@ struct xm_profile_sample {
 
 struct xm_ehframe_user_stack {
     __u64 len;
-    __u64 pc[PERF_MAX_STACK_DEPTH];
+    __u64 pcLst[PERF_MAX_STACK_DEPTH];
 };
 struct xm_unwind_user_stack_resolve_data {
     struct xm_task_userspace_regs regs;

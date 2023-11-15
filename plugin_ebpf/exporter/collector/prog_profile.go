@@ -255,14 +255,15 @@ type profileProgram struct {
 }
 
 type procStackInfo struct {
-	pid         int32
-	kStackBytes []byte
-	uStackBytes []byte
-	count       uint32
-	comm        string
-	PidNs       uint32
-	Pgid        int32
-	target      *ProfileTarget
+	pid                int32
+	kStackBytes        []byte
+	uStackBytes        []byte
+	ehFrameUserStackId uint32
+	count              uint32
+	comm               string
+	PidNs              uint32
+	Pgid               int32
+	target             *ProfileTarget
 }
 
 var (
@@ -391,7 +392,7 @@ loop:
 			if ok {
 				switch eBPFEvtInfo.EvtType {
 				case eventcenter.EBPF_EVENT_PROCESS_EXIT:
-					glog.Infof("eBPFProgram:'%s', receive eBPF Event'%s'", pp.name, litter.Sdump(eBPFEvtInfo))
+					// glog.Infof("eBPFProgram:'%s', receive eBPF Event'%s'", pp.name, litter.Sdump(eBPFEvtInfo))
 					processExitEvt := eBPFEvtInfo.EvtData.(*eventcenter.EBPFEventProcessExit)
 					frame.RemoveByPid(processExitEvt.Pid)
 					pp.unwindTablesOperEvtChan.SafeSend(&UnwindTablesOperEvt{pid: processExitEvt.Pid, opType: deleteUnwindTables}, true)
@@ -424,14 +425,15 @@ func (pp *profileProgram) collectProfiles() {
 	defer glog.Infof("eBPFProgram:'%s' collect Profiles completed", pp.name)
 
 	var (
-		profileSampleMap    = pp.objs.XmProfileSampleCountMap
-		profileSampleMapKey = bpfmodule.XMProfileXmProfileSample{}
-		profileSampleMapVal = bpfmodule.XMProfileXmProfileSampleData{}
-		profileSampleCount  int
-		profileStackMap     = pp.objs.XmProfileStackMap
-		err                 error
-		psis                []*procStackInfo
-		sym                 *frame.Symbol
+		profileSampleMap           = pp.objs.XmProfileSampleCountMap
+		profileSampleMapKey        = bpfmodule.XMProfileXmProfileSample{}
+		profileSampleMapVal        = bpfmodule.XMProfileXmProfileSampleData{}
+		profileSampleCount         int
+		profileStackMap            = pp.objs.XmProfileStackMap
+		profileEhframeUserStackMap = pp.objs.XmProfileEhframeUserStackMap
+		err                        error
+		psis                       []*procStackInfo
+		sym                        *frame.Symbol
 	)
 
 	// 收集 xm_profile_sample_count_map 数据
@@ -454,14 +456,18 @@ func (pp *profileProgram) collectProfiles() {
 	glog.Infof("eBPFProgram:'%s' get profileSampleMap iterator succeeded, keyCount:%d", pp.name, profileSampleCount)
 
 	stackIDSet := map[int32]struct{}{}
+	ehFrameStackIDSet := map[uint32]struct{}{}
 
 	pfnGetStackBytes := func(stackID int32) []byte {
-		if stackID > 0 {
+		if stackID >= 0 {
 			stackBytes, err := profileStackMap.LookupBytes(stackID)
 			if err != nil {
 				glog.Errorf("eBPFProgram:'%s' stackMap.LookupBytes('stackID=%d)' failed, err:%s", pp.name, stackID, err.Error())
 				return nil
 			}
+			// 记录获取成功的 stackID，最后删除
+			stackIDSet[stackID] = struct{}{}
+
 			return stackBytes
 		}
 		return nil
@@ -473,18 +479,16 @@ func (pp *profileProgram) collectProfiles() {
 		sampleInfo := &keys[i]
 		sampleData := &vals[i]
 
-		stackIDSet[sampleInfo.UserStackId] = struct{}{}
-		stackIDSet[sampleInfo.KernelStackId] = struct{}{}
-
 		psi := &procStackInfo{
-			pid:         sampleInfo.Pid,
-			count:       sampleData.Count,
-			PidNs:       sampleData.PidNs,
-			Pgid:        sampleData.Pgid,
-			comm:        utils.CommToString(sampleInfo.Comm[:]),
-			uStackBytes: pfnGetStackBytes(sampleInfo.UserStackId),
-			kStackBytes: pfnGetStackBytes(sampleInfo.KernelStackId),
-			target:      pp.tf.FindTarget(utils.CommToString(sampleInfo.Comm[:]), sampleData.Pgid, sampleData.PidNs),
+			pid:                sampleInfo.Pid,
+			count:              sampleData.Count,
+			PidNs:              sampleData.PidNs,
+			Pgid:               sampleData.Pgid,
+			ehFrameUserStackId: sampleInfo.EhframeUserStackId,
+			comm:               utils.CommToString(sampleInfo.Comm[:]),
+			uStackBytes:        pfnGetStackBytes(sampleInfo.UserStackId),
+			kStackBytes:        pfnGetStackBytes(sampleInfo.KernelStackId),
+			target:             pp.tf.FindTarget(utils.CommToString(sampleInfo.Comm[:]), sampleData.Pgid, sampleData.PidNs),
 		}
 
 		psis = append(psis, psi)
@@ -532,24 +536,76 @@ func (pp *profileProgram) collectProfiles() {
 		return
 	}
 
+	pfnWalkEhframeUserStack := func(ehFrameUserStackId uint32, pid int32, comm string, sb *stackBuilder) (stackDepth, resolveFailedCount int) {
+		// 查询
+		var eus bpfmodule.XMProfileXmEhframeUserStack
+		if err := profileEhframeUserStackMap.Lookup(ehFrameUserStackId, &eus); err != nil {
+			glog.Errorf("eBPFProgram:'%s' comm:'%s' lookup xm_profile_ehframe_user_stack_map failed. err:%s", pp.name, comm, err.Error())
+			return 0, 0
+		}
+
+		ehFrameStackIDSet[ehFrameUserStackId] = struct{}{}
+		stackDepth = int(eus.Len)
+
+		var frames []string
+		for i := 0; i < stackDepth && i < 127; i++ {
+			pc := eus.PcLst[i]
+			if pc == 0 {
+				break
+			}
+			// 解析 pc
+			sym, err = frame.Resolve(pid, pc)
+			if err == nil {
+				if pid > 0 {
+					symStr := fmt.Sprintf("%s+0x%x [%s]", sym.Name, sym.Offset, sym.Module)
+					frames = append(frames, symStr)
+				} else {
+					frames = append(frames, sym.Name) //fmt.Sprintf("%s+0x%x", sym.Name, sym.Offset))
+				}
+			} else {
+				frames = append(frames, "[unknown]")
+				glog.Errorf("eBPFProgram:'%s' comm:'%s' err:%s", pp.name, comm, err.Error())
+				resolveFailedCount++
+			}
+		}
+		// 将堆栈反转
+		lo.Reverse(frames)
+		for _, f := range frames {
+			sb.append(f)
+		}
+		return
+	}
+
 	builders := pprof.NewProfileBuilders(__profilePrivateArgs.SampleRate)
 	// 解析堆栈
 	sb := stackBuilder{}
 	for _, psi := range psis {
 		sb.rest()
 		sb.append(psi.comm)
-		stackDepth, resolveFailedCount := pfnWalkStack(psi.uStackBytes, psi.pid, psi.comm, &sb)
-		if stackDepth > 0 && resolveFailedCount > stackDepth/2 {
-			// TODO: 使用 DWARF-based Stack Walking
-			glog.Warningf("eBPFProgram:'%s' comm:'%s', pid:%d Stack walking fails:'%d' beyond half of the stack depth:'%d'",
-				pp.name, psi.comm, psi.pid, resolveFailedCount, stackDepth)
-			pp.unwindTablesOperEvtChan.SafeSend(&UnwindTablesOperEvt{pid: psi.pid, opType: createUnwindTables}, true)
+
+		// 解析用户态堆栈
+		if psi.ehFrameUserStackId == 0 {
+			stackDepth, resolveFailedCount := pfnWalkStack(psi.uStackBytes, psi.pid, psi.comm, &sb)
+			if stackDepth > 0 && resolveFailedCount > stackDepth/2 {
+				// ** 如果堆栈解析失败操过一半深度 使用 DWARF-based Stack Walking，
+				glog.Warningf("eBPFProgram:'%s' comm:'%s', pid:%d Stack walking fails:'%d' beyond half of the stack depth:'%d'",
+					pp.name, psi.comm, psi.pid, resolveFailedCount, stackDepth)
+				pp.unwindTablesOperEvtChan.SafeSend(&UnwindTablesOperEvt{pid: psi.pid, opType: createUnwindTables}, true)
+				continue
+			}
+		} else {
+			// 解析 ehFrame User Stack
+			stackDepth, resolveFailedCount := pfnWalkEhframeUserStack(psi.ehFrameUserStackId, psi.pid, psi.comm, &sb)
+			glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d ehFrameUserStackId:%d stackDepth:%d resolveFailedCount:%d",
+				pp.name, psi.comm, psi.pid, psi.ehFrameUserStackId, stackDepth, resolveFailedCount)
 		}
+		// 解析内核堆栈
 		pfnWalkStack(psi.kStackBytes, 0, "kernel", &sb)
 
 		if len(sb.stack) == 1 {
 			continue
 		}
+		// 将用户堆栈放在内核堆栈上面
 		lo.Reverse(sb.stack)
 
 		lablesHash, labels := psi.target.LSet()
@@ -564,7 +620,7 @@ func (pp *profileProgram) collectProfiles() {
 	// 清理 profileSample map
 	for i := range keys {
 		if err = profileSampleMap.Delete(keys[i]); err != nil {
-			glog.Infof("eBPFProgram:'%s' sampleMap.Delete('key=%#v)' failed, err:%s", pp.name, keys[i], err.Error())
+			glog.Infof("eBPFProgram:'%s' profileSampleMap.Delete('key=%#v)' failed, err:%s", pp.name, keys[i], err.Error())
 		}
 	}
 
@@ -572,8 +628,13 @@ func (pp *profileProgram) collectProfiles() {
 	for stackID := range stackIDSet {
 		if stackID > 0 {
 			if err = profileStackMap.Delete(stackID); err != nil {
-				glog.Errorf("eBPFProgram:'%s' stackMap.Delete('stackID=%d)' failed, err:%s", pp.name, stackID, err.Error())
+				glog.Errorf("eBPFProgram:'%s' profileStackMap.Delete('stackID=%d)' failed, err:%s", pp.name, stackID, err.Error())
 			}
+		}
+	}
+	for ehframeUserStackID := range ehFrameStackIDSet {
+		if err = profileEhframeUserStackMap.Delete(ehframeUserStackID); err != nil {
+			glog.Errorf("eBPFProgram:'%s' profileEhframeUserStackMap.Delete('stackID=%d)' failed, err:%s", pp.name, ehframeUserStackID, err.Error())
 		}
 	}
 

@@ -15,8 +15,8 @@ import (
 type XMProfileStackTraceType [127]uint64
 
 type XMProfileXmEhframeUserStack struct {
-	Len uint64
-	Pc  [127]uint64
+	Len   uint64
+	PcLst [127]uint64
 }
 
 type XMProfileXmProfileFdeTableInfo struct {
@@ -60,7 +60,7 @@ type XMProfileXmProfileSample struct {
 	Pid                int32
 	KernelStackId      int32
 	UserStackId        int32
-	EhframeUserStackId int32
+	EhframeUserStackId uint32
 	Comm               [16]int8
 }
 
