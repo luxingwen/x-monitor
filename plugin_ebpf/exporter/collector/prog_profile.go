@@ -586,7 +586,7 @@ func (pp *profileProgram) collectProfiles() {
 		// 解析用户态堆栈
 		if psi.ehFrameUserStackId == 0 {
 			stackDepth, resolveFailedCount := pfnWalkStack(psi.uStackBytes, psi.pid, psi.comm, &sb)
-			if stackDepth > 0 && resolveFailedCount > stackDepth/2 {
+			if stackDepth > 0 && (resolveFailedCount > stackDepth/2 || resolveFailedCount >= 3) {
 				// ** 如果堆栈解析失败操过一半深度 使用 DWARF-based Stack Walking，
 				glog.Warningf("eBPFProgram:'%s' comm:'%s', pid:%d Stack walking fails:'%d' beyond half of the stack depth:'%d'",
 					pp.name, psi.comm, psi.pid, resolveFailedCount, stackDepth)

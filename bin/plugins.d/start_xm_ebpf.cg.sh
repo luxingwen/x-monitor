@@ -20,7 +20,7 @@ if [[ "$cgroup_version" == "cgroup V1" ]]; then
     cgcreate -g memory,cpu:/user.slice/x-monitor.ebpf
 
     # 限制内存使用为1G
-    cgset -r memory.limit_in_bytes=1024M /user.slice/x-monitor.ebpf
+    cgset -r memory.limit_in_bytes=2048M /user.slice/x-monitor.ebpf
     # 限制cpu的使用为1core
     cgset -r cpu.cfs_period_us=100000 /user.slice/x-monitor.ebpf
     cgset -r cpu.cfs_quota_us=100000 /user.slice/x-monitor.ebpf
@@ -33,7 +33,7 @@ elif [[ "$cgroup_version" == "cgroup V2" ]]; then
 
     # 限制cpu的使用为1core
     cgxset -2 -r cpu.max='100000 100000' /user.slice/x-monitor.ebpf
-    # 限制memory上限，1G
+    # 限制memory上限，2G
     cgxset -2 -r memory.max=2147483648 /user.slice/x-monitor.ebpf
     # 不使用swap
     cgxset -2 -r memory.swap.max=0 /user.slice/x-monitor.ebpf
