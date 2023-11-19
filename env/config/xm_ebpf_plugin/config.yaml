@@ -16,22 +16,22 @@ eBPF:
       enabled: false
       args:
         private:
-          gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
+          gather_interval: 3 # 收集 kernel prog 数据时间间隔，单位秒
     - name: cpusched
       enabled: false
       args:
         private:
-          gather_interval: 3 # 收集kernel prog数据时间间隔，单位秒
+          gather_interval: 3 # 收集 kernel prog 数据时间间隔，单位秒
         metrcs:
           - runq_latency
           - offcpu_duration
           - hang_process
         ebpf_prog:
-          filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
+          filter_scope_type: 1 # 1: os, 2: namespace, 4: PID, 5: PGID
           filter_scope_value: 0
           offcpu_min_millsecs: 5000 # 单位：毫秒
           offcpu_max_millsecs: 50000 #
-          offcpu_task_type: 1 # 0: all，1：user，2：kernel
+          offcpu_task_type: 1 # 0: all, 1: user, 2: kernel
         exclude_comms:
         include_comms:
           - "xm_vm_test"
@@ -53,9 +53,9 @@ eBPF:
         metrcs:
           - privanon_share_pages
         private:
-          object_count: 10 # gather_interval时间内虚拟地址扩张最大的进程对象
+          object_count: 10 # gather_interval 时间内虚拟地址扩张最大的进程对象
         ebpf_prog:
-          filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
+          filter_scope_type: 1 # 1: os, 2: namespace, 4: PID, 5: PGID
           filter_scope_value: 0
         include_comms:
           - "xm_vm_test"
@@ -79,22 +79,34 @@ eBPF:
       enabled: true
       args:
         private:
-          gather_interval: 5 # 收集kernel prog数据时间间隔，单位秒
+          gather_interval: 5 # 收集 kernel prog 数据时间间隔，单位秒
           sample_rate: 97
           pyroscope_server_addr: "http://127.0.0.1:4040/"
           targets:
             - name: "xmonitor" # 指标名称
               match: "MatchTargetComm" # 匹配应用程序名
               val: "x-monitor"
-              labels: #自定义label
+              labels: #自定义 label
                 - l_name: "app"
                   l_val: "x-monitor"
-            - name: "grafana_server"
-              match: "MatchTargetPidNS" # 匹配pid namespace
+            - name: "grafana"
+              match: "MatchTargetPidNS" # 匹配 pid namespace
               val: "4026532197"
               labels:
                 - l_name: "app"
-                  l_val: "grafana_server"
+                  l_val: "grafana"
+            - name: "xmonitorBPF"
+              match: "MatchTargetComm" # 匹配 匹配应用程序名
+              val: "x-monitor.eBPF"
+              labels:
+                - l_name: "app"
+                  l_val: "x-monitor.eBPF"
+            - name: "pytoscope"
+              match: "MatchTargetPidNS" # 匹配 pid namespace
+              val: "4026532259"
+              labels:
+                - l_name: "app"
+                  l_val: "pytoscope"
         ebpf_prog:
-          filter_scope_type: 1 # 1: os，2：namespace，4：PID，5：PGID
+          filter_scope_type: 1 # 1: os, 2: namespace, 4: PID, 5: PGID
           filter_scope_value: 0

@@ -40,9 +40,9 @@
         prom_collector_add_metric(collector, metric);                          \
     } while (0)
 
-// app_stat列表
+// app_stat 列表
 static LIST_HEAD(__app_status_list);
-// app关联的进程列表
+// app 关联的进程列表
 static CC_HashTable *__app_assoc_process_table = NULL;
 //
 struct xm_mempool_s *__process_status_xmp = NULL;
@@ -114,7 +114,7 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name,
     struct app_status *as = NULL;
     struct list_head *iter = NULL;
 
-    // ** 判断这个pid对应的应用是否存在，相同的规则只能存在一个进程对应应用
+    // ** 判断这个 pid 对应的应用是否存在，相同的规则只能存在一个进程对应应用
     __list_for_each(iter, &__app_status_list) {
         as = list_entry(iter, struct app_status, l_member);
         if (likely(0 == strcmp(as->app_name, app_name) && as->app_pid == pid)) {
@@ -123,7 +123,7 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name,
                   app_name, pid);
             return as;
         } else if (0 == strcmp(as->app_name, app_name)) {
-            // ** app_name是唯一的
+            // ** app_name 是唯一的
             error("[PLUGIN_APPSTATUS] the app '%s' is already exists with pid: "
                   "%d, so new pid: %d "
                   "cannot be bound to the same app",
@@ -138,7 +138,7 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name,
         as->app_pid = pid;
         // ** 初始化应用指标
         as->app_prom_collector = prom_collector_new(app_name);
-        // 注册collector到默认registry
+        // 注册 collector 到默认 registry
         if (unlikely(
                 0
                 != prom_collector_registry_register_collector(
@@ -152,7 +152,7 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name,
             return NULL;
         }
 
-        // 构造应用指标对象并添加到collector
+        // 构造应用指标对象并添加到 collector
         as->metrics.metric_majflt = prom_gauge_new(
             TO_STRING(APP_METRIC_PREFIX) "_major_page_faults_total",
             __app_metric_majflt_help, 2,
@@ -300,7 +300,7 @@ static void __del_app_assoc_process(struct app_assoc_process *aap,
                                     bool remove_from_hashtable) {
     if (likely(aap)) {
         if (remove_from_hashtable) {
-            // 从hashtable中删除
+            // 从 hashtable 中删除
             cc_hashtable_remove(__app_assoc_process_table,
                                 (void *)&aap->ps_target->pid, NULL);
         }
@@ -331,10 +331,10 @@ static struct app_assoc_process *__get_app_assoc_process(struct app_status *as,
     // debug("[PLUGIN_APPSTATUS] There are %lu processes being collected",
     //       cc_hashtable_size(__app_assoc_process_table));
 
-    // ** 判断这个pid对应的关联对象是否存在
+    // ** 判断这个 pid 对应的关联对象是否存在
     if (unlikely(cc_hashtable_get(__app_assoc_process_table, &pid, (void *)&aap)
                  == CC_OK)) {
-        // 如果存在，判断对应的app_status是否和当前的一致
+        // 如果存在，判断对应的 app_status 是否和当前的一致
         if (likely(NULL != aap->as_target && aap->as_target->app_pid == app_pid
                    && 0 == strcmp(aap->as_target->app_name, app_name))) {
             debug("the app_assoc_process already exists. pid: %d, app_pid: %d "
@@ -404,7 +404,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
     __list_for_each(iter, &afr->rule_list_head) {
         rule = list_entry(iter, struct app_process_filter_rule, l_member);
         if (!rule->enable || rule->is_matched) {
-            // 没有enable，或已经匹配过，跳过
+            // 没有 enable，或已经匹配过，跳过
             continue;
         }
 
@@ -412,7 +412,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
         app_process_is_matched = 0;
 
         for (uint16_t k_i = 0; k_i < rule->key_count; k_i++) {
-            //** strstr在cmd_line中查找rule->key[k_i]
+            //** strstr 在 cmd_line 中查找 rule->key[k_i]
             if (strstr(cmd_line, rule->keys[k_i])) {
                 must_match_count--;
             } else {
@@ -421,7 +421,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
         }
 
         if (0 == must_match_count) {
-            // ** 所有的key都匹配成功
+            // ** 所有的 key 都匹配成功
             info("[PLUGIN_APPSTATUS] the pid:%d match all of keys with rule "
                  "'%s'",
                  pid, rule->app_name);
@@ -454,7 +454,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
             return -1;
         }
 
-        // 匹配成功，判断rule的assign_type
+        // 匹配成功，判断 rule 的 assign_type
         if (rule->assign_type == APP_BIND_PROCESSTREE) {
             struct process_descendant_pids pd_pids = { NULL, 0 };
 
@@ -537,7 +537,7 @@ int32_t update_app_collection(struct app_filter_rules *afr) {
     // **https://stackoverflow.com/questions/36023562/is-glob-using-a-unique-prefix-faster-than-readdir
     while ((de = readdir(dir))) {
         char *endptr = de->d_name;
-        // 跳过非/proc/pid目录
+        // 跳过非/proc/pid 目录
         if (unlikely(de->d_type != DT_DIR || de->d_name[0] < '0'
                      || de->d_name[0] > '9')) {
             continue;
@@ -661,7 +661,7 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
                   "aggregated  on app '%s'.",
                   key_pid, app_name);
         } else {
-            // app累计进程资源
+            // app 累计进程资源
             if (likely(
                     ps->pid == key_pid && NULL != aap->as_target
                     && (ps->pid == as->app_pid || ps->ppid == as->app_pid))) {
@@ -715,7 +715,7 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
         }
     }
 
-    // **先清理进程，update = 0表明进程不存在
+    // **先清理进程，update = 0 表明进程不存在
     cc_hashtable_iter_init(&iter_hash, __app_assoc_process_table);
     while (cc_hashtable_iter_next(&iter_hash, &next_entry) != CC_ITER_END) {
         key_pid = *(pid_t *)next_entry->key;

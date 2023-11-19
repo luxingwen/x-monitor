@@ -24,11 +24,11 @@ static const char *__config_name = "collector_plugin_appstatus";
 
 struct collector_appstat {
     volatile int32_t exit_flag;
-    pthread_t thread_id; // routine执行的线程ids
+    pthread_t thread_id; // routine 执行的线程 ids
     int32_t update_every; // 指标采集时间间隔
     int32_t update_every_for_app; // 应用更新时间间隔
     int32_t update_every_for_filter_rules; // 过滤规则更新时间间隔
-    int32_t update_every_for_app_sock_diag; // 应用sock诊断更新时间间隔
+    int32_t update_every_for_app_sock_diag; // 应用 sock 诊断更新时间间隔
 
     usec_t last_update_for_app_usec;
     usec_t last_update_for_filter_rules_usecs;
@@ -111,7 +111,7 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
 
     while (!__collector_appstat.exit_flag) {
         usec_t now_usecs = now_monotonic_usec();
-        //等到下一个update周期
+        //等到下一个 update 周期
         heartbeat_next(&hb, step_usecs);
 
         // 定时更新过滤规则
@@ -136,12 +136,12 @@ void *appstat_collector_routine_start(void *UNUSED(arg)) {
                    >= step_usecs_for_app) {
             // 清理规则匹配标志，更新应用
             clean_filter_rules(afr);
-            // 匹配进程cmdline，找到应用对应进程，更新应用集合
+            // 匹配进程 cmdline，找到应用对应进程，更新应用集合
             update_app_collection(afr);
             __collector_appstat.last_update_for_app_usec = now_usecs;
         }
 
-        // 定时采集系统sock诊断信息
+        // 定时采集系统 sock 诊断信息
         if (!__collector_appstat.exit_flag
             && now_usecs
                        - __collector_appstat.last_update_for_app_sock_diag_usecs

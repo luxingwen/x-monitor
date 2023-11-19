@@ -395,7 +395,9 @@ static __always_inline __s32 __get_user_stack(
                     //            uwind_usi->e_st.len, rbp);
                 }
             } else {
-                reached_bottom = true;
+                // !! 这里不应该标识为达到 bottom
+                // reached_bottom = true;
+                bpf_printk("\t   rbp_cfa_offset is INT_MAX");
             }
 
             if (row->ra_cfa_offset != INT_MAX) {

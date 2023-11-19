@@ -386,7 +386,7 @@ github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.4
 ## explicit; go 1.17
 github.com/vishvananda/netns
-# github.com/wubo0067/calmwu-go v0.0.0-20231030031850-7b45545dc0ed
+# github.com/wubo0067/calmwu-go v0.0.0-20231117135330-9ba1e034fbd1
 ## explicit; go 1.18
 github.com/wubo0067/calmwu-go/utils
 # github.com/xyproto/ainur v1.3.3-0.20230327065817-db855584e31b

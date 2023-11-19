@@ -258,7 +258,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 	entries := bp.objs.XmBioInfoMap.Iterate()
 	for entries.Next(&bioInfoMapKey, &bioInfoMapData) {
 		keys = append(keys, bioInfoMapKey)
-		// 开始计算bio采集数据
+		// 开始计算 bio 采集数据
 		dev = unix.Mkdev(uint32(bioInfoMapKey.Major), uint32(bioInfoMapKey.FirstMinor))
 		// 查找设备名
 		devName := pfnFindDevName(dev)
@@ -290,13 +290,13 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 			sampleCount += uint64(slot)          // 统计本周期的样本总数
 			sampleSum += float64(slot) * bucket  // * 0.6 // 估算样本的总和
 			latencyBuckets[bucket] = sampleCount // 每个桶的样本数，下层包括上层统计数量
-			glog.Infof("\tbio request in queue latency usecs(%d -> %d) count: %d", func() int {
-				if i == 0 {
-					return 0
-				} else {
-					return int(__powerOfTwo[i-1]) + 1
-				}
-			}(), int(bucket), slot)
+			// glog.Infof("\tbio request in queue latency usecs(%d -> %d) count: %d", func() int {
+			// 	if i == 0 {
+			// 		return 0
+			// 	} else {
+			// 		return int(__powerOfTwo[i-1]) + 1
+			// 	}
+			// }(), int(bucket), slot)
 		}
 
 		ch <- prometheus.MustNewConstHistogram(bp.bioRequestInQueueLatencyDesc,
@@ -354,7 +354,7 @@ func (bp *bioProgram) Update(ch chan<- prometheus.Metric) error {
 		}
 	}
 
-	// 读取req latency事件
+	// 读取 req latency 事件
 	overThresholdFilter := hashset.New()
 L:
 	for {
@@ -375,7 +375,7 @@ L:
 					glog.Infof("eBPFProgram:'%s', %s, latency_us:%d",
 						bp.name, tag, reqLatencyEvtData.ReqLatencyUs)
 
-					// !!这里在fio压测的时候，标签可能重复，导致Prometheus报内部错误
+					// !! 这里在 fio 压测的时候，标签可能重复，导致 Prometheus 报内部错误
 					ch <- prometheus.MustNewConstMetric(bp.bioRequestLatencyOverThresholdDesc,
 						prometheus.GaugeValue, float64(reqLatencyEvtData.ReqLatencyUs),
 						devName, comm,

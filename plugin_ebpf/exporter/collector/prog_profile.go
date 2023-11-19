@@ -48,6 +48,7 @@ const (
 	__labelServiceName                     = "service_name"
 	__defaultMatricValue                   = "host"
 	__defaultUnwindTablesOpChanSize        = (1 << 7)
+	__maxResolvePCFailureRate              = 0.30
 )
 
 type profileMatchTargetType uint32
@@ -494,17 +495,15 @@ func (pp *profileProgram) collectProfiles() {
 		psis = append(psis, psi)
 	}
 
-	pfnWalkStack := func(stack []byte, pid int32, comm string, sb *stackBuilder) (stackDepth, resolveFailedCount int) {
+	pfnWalkStack := func(stack []byte, pid int32, comm string, sb *stackBuilder) (resolveFailedCount int) {
 		if len(stack) == 0 {
-			return 0, 0
+			return -1
 		}
 
 		var stacks Stacks
 		if err := binary.Read(bytes.NewBuffer(stack), binary.LittleEndian, stacks[:__perf_max_stack_depth]); err != nil {
-			return 0, 0
+			return -1
 		}
-
-		stackDepth = len(stacks)
 
 		var frames []string
 		// for i := 0; i < len(stack); i += __stackFrameSize {
@@ -518,6 +517,7 @@ func (pp *profileProgram) collectProfiles() {
 			if err == nil {
 				if pid > 0 {
 					symStr := fmt.Sprintf("%s+0x%x [%s]", sym.Name, sym.Offset, sym.Module)
+					//symStr := fmt.Sprintf("%s [%s]", sym.Name, sym.Module)
 					frames = append(frames, symStr)
 				} else {
 					frames = append(frames, sym.Name) //fmt.Sprintf("%s+0x%x", sym.Name, sym.Offset))
@@ -536,16 +536,16 @@ func (pp *profileProgram) collectProfiles() {
 		return
 	}
 
-	pfnWalkEhframeUserStack := func(ehFrameUserStackId uint32, pid int32, comm string, sb *stackBuilder) (stackDepth, resolveFailedCount int) {
+	pfnWalkEhframeUserStack := func(ehFrameUserStackId uint32, pid int32, comm string, sb *stackBuilder) (resolveFailedCount int) {
 		// 查询
 		var eus bpfmodule.XMProfileXmEhframeUserStack
 		if err := profileEhframeUserStackMap.Lookup(ehFrameUserStackId, &eus); err != nil {
 			glog.Errorf("eBPFProgram:'%s' comm:'%s' lookup xm_profile_ehframe_user_stack_map failed. err:%s", pp.name, comm, err.Error())
-			return 0, 0
+			return -1
 		}
 
 		ehFrameStackIDSet[ehFrameUserStackId] = struct{}{}
-		stackDepth = int(eus.Len)
+		stackDepth := int(eus.Len)
 
 		var frames []string
 		for i := 0; i < stackDepth && i < 127; i++ {
@@ -558,6 +558,7 @@ func (pp *profileProgram) collectProfiles() {
 			if err == nil {
 				if pid > 0 {
 					symStr := fmt.Sprintf("%s+0x%x [%s]", sym.Name, sym.Offset, sym.Module)
+					//symStr := fmt.Sprintf("%s [%s]", sym.Name, sym.Module)
 					frames = append(frames, symStr)
 				} else {
 					frames = append(frames, sym.Name) //fmt.Sprintf("%s+0x%x", sym.Name, sym.Offset))
@@ -576,6 +577,7 @@ func (pp *profileProgram) collectProfiles() {
 		return
 	}
 
+	var resolvePCFailureRate float32
 	builders := pprof.NewProfileBuilders(__profilePrivateArgs.SampleRate)
 	// 解析堆栈
 	sb := stackBuilder{}
@@ -585,20 +587,31 @@ func (pp *profileProgram) collectProfiles() {
 
 		// 解析用户态堆栈
 		if psi.ehFrameUserStackId == 0 {
-			stackDepth, resolveFailedCount := pfnWalkStack(psi.uStackBytes, psi.pid, psi.comm, &sb)
-			if stackDepth > 0 && (resolveFailedCount > stackDepth/2 || resolveFailedCount >= 3) {
-				// ** 如果堆栈解析失败操过一半深度 使用 DWARF-based Stack Walking，
-				glog.Warningf("eBPFProgram:'%s' comm:'%s', pid:%d Stack walking fails:'%d' beyond half of the stack depth:'%d'",
-					pp.name, psi.comm, psi.pid, resolveFailedCount, stackDepth)
-				pp.unwindTablesOperEvtChan.SafeSend(&UnwindTablesOperEvt{pid: psi.pid, opType: createUnwindTables}, true)
-				continue
+			resolveFailedCount := pfnWalkStack(psi.uStackBytes, psi.pid, psi.comm, &sb)
+			stackDepth := len(sb.stack)
+			// glog.Infof("eBPFProgram:'%s' comm:'%s' pid:%d stackDepth:%d resolveFailedCount:%d",
+			// 	pp.name, psi.comm, psi.pid, stackDepth, resolveFailedCount)
+
+			resolvePCFailureRate = float32(resolveFailedCount) / float32(stackDepth)
+
+			if resolveFailedCount > 0 && stackDepth > 0 && resolvePCFailureRate >= __maxResolvePCFailureRate {
+				// ** 只有原生语言才会走这个分支
+				if modules, err := frame.GetProcModules(psi.pid); err == nil {
+					if len(modules) > 0 && modules[0].LangType == calmutils.NativeLangType {
+						glog.Warningf("eBPFProgram:'%s' comm:'%s' pid:%d stack depth:'%d' resolveFailedCount:'%d' try using ehframe unwind stack",
+							pp.name, psi.comm, psi.pid, stackDepth, resolveFailedCount)
+						pp.unwindTablesOperEvtChan.SafeSend(&UnwindTablesOperEvt{pid: psi.pid, opType: createUnwindTables}, true)
+						continue
+					}
+				}
 			}
 		} else {
 			// 解析 ehFrame User Stack
-			stackDepth, resolveFailedCount := pfnWalkEhframeUserStack(psi.ehFrameUserStackId, psi.pid, psi.comm, &sb)
-			glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d ehFrameUserStackId:%d stackDepth:%d resolveFailedCount:%d",
-				pp.name, psi.comm, psi.pid, psi.ehFrameUserStackId, stackDepth, resolveFailedCount)
+			resolveFailedCount := pfnWalkEhframeUserStack(psi.ehFrameUserStackId, psi.pid, psi.comm, &sb)
+			glog.Infof("eBPFProgram:'%s' comm:'%s' pid:%d ehFrameUserStackId:%d stackDepth:%d resolveFailedCount:%d",
+				pp.name, psi.comm, psi.pid, psi.ehFrameUserStackId, len(sb.stack), resolveFailedCount)
 		}
+
 		// 解析内核堆栈
 		pfnWalkStack(psi.kStackBytes, 0, "kernel", &sb)
 
