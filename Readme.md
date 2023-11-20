@@ -12,6 +12,8 @@
 
 - eBPF 内核状态指标
 
+- 进程的Profiling，CPU Flame Graphs
+
 ## 详情
 
 1. [编译、运行](doc/编译、运行.md)
