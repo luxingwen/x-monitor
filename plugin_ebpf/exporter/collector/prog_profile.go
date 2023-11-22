@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -48,7 +49,7 @@ const (
 	__labelServiceName                     = "service_name"
 	__defaultMatricValue                   = "host"
 	__defaultUnwindTablesOpChanSize        = (1 << 7)
-	__maxResolvePCFailureRate              = 0.30
+	__maxResolvePCFailureRate              = 0.2
 )
 
 type profileMatchTargetType uint32
@@ -495,15 +496,17 @@ func (pp *profileProgram) collectProfiles() {
 		psis = append(psis, psi)
 	}
 
-	pfnWalkStack := func(stack []byte, pid int32, comm string, sb *stackBuilder) (resolveFailedCount int) {
+	pfnWalkStack := func(stack []byte, pid int32, comm string, sb *stackBuilder) (int, error) {
 		if len(stack) == 0 {
-			return -1
+			return 0, errors.New("stack is empty")
 		}
 
 		var stacks Stacks
 		if err := binary.Read(bytes.NewBuffer(stack), binary.LittleEndian, stacks[:__perf_max_stack_depth]); err != nil {
-			return -1
+			return 0, errors.Wrap(err, "binary.Read data from stack")
 		}
+
+		resolveFailedCount := 0
 
 		var frames []string
 		// for i := 0; i < len(stack); i += __stackFrameSize {
@@ -523,6 +526,10 @@ func (pp *profileProgram) collectProfiles() {
 					frames = append(frames, sym.Name) //fmt.Sprintf("%s+0x%x", sym.Name, sym.Offset))
 				}
 			} else {
+				if os.IsNotExist(errors.Cause(err)) {
+					return 0, err
+				}
+				// 如果 error 是打开/proc/pid/maps 文件失败，那么不要继续了
 				frames = append(frames, "[unknown]")
 				glog.Errorf("eBPFProgram:'%s' comm:'%s' err:%s", pp.name, comm, err.Error())
 				resolveFailedCount++
@@ -533,19 +540,20 @@ func (pp *profileProgram) collectProfiles() {
 		for _, f := range frames {
 			sb.append(f)
 		}
-		return
+		return resolveFailedCount, nil
 	}
 
-	pfnWalkEhframeUserStack := func(ehFrameUserStackId uint32, pid int32, comm string, sb *stackBuilder) (resolveFailedCount int) {
+	pfnWalkEhframeUserStack := func(ehFrameUserStackId uint32, pid int32, comm string, sb *stackBuilder) (int, error) {
 		// 查询
 		var eus bpfmodule.XMProfileXmEhframeUserStack
 		if err := profileEhframeUserStackMap.Lookup(ehFrameUserStackId, &eus); err != nil {
 			glog.Errorf("eBPFProgram:'%s' comm:'%s' lookup xm_profile_ehframe_user_stack_map failed. err:%s", pp.name, comm, err.Error())
-			return -1
+			return 0, err
 		}
 
 		ehFrameStackIDSet[ehFrameUserStackId] = struct{}{}
 		stackDepth := int(eus.Len)
+		resolveFailedCount := 0
 
 		var frames []string
 		for i := 0; i < stackDepth && i < 127; i++ {
@@ -564,6 +572,9 @@ func (pp *profileProgram) collectProfiles() {
 					frames = append(frames, sym.Name) //fmt.Sprintf("%s+0x%x", sym.Name, sym.Offset))
 				}
 			} else {
+				if os.IsNotExist(errors.Cause(err)) {
+					return 0, err
+				}
 				frames = append(frames, "[unknown]")
 				glog.Errorf("eBPFProgram:'%s' comm:'%s' err:%s", pp.name, comm, err.Error())
 				resolveFailedCount++
@@ -574,7 +585,7 @@ func (pp *profileProgram) collectProfiles() {
 		for _, f := range frames {
 			sb.append(f)
 		}
-		return
+		return resolveFailedCount, nil
 	}
 
 	var resolvePCFailureRate float32
@@ -587,17 +598,18 @@ func (pp *profileProgram) collectProfiles() {
 
 		// 解析用户态堆栈
 		if psi.ehFrameUserStackId == 0 {
-			resolveFailedCount := pfnWalkStack(psi.uStackBytes, psi.pid, psi.comm, &sb)
-			stackDepth := len(sb.stack)
-			// glog.Infof("eBPFProgram:'%s' comm:'%s' pid:%d stackDepth:%d resolveFailedCount:%d",
-			// 	pp.name, psi.comm, psi.pid, stackDepth, resolveFailedCount)
+			if resolveFailedCount, err := pfnWalkStack(psi.uStackBytes, psi.pid, psi.comm, &sb); err != nil {
+				continue
+			} else {
+				stackDepth := len(sb.stack)
+				// glog.Infof("eBPFProgram:'%s' comm:'%s' pid:%d stackDepth:%d resolveFailedCount:%d",
+				// 	pp.name, psi.comm, psi.pid, stackDepth, resolveFailedCount)
 
-			resolvePCFailureRate = float32(resolveFailedCount) / float32(stackDepth)
+				resolvePCFailureRate = float32(resolveFailedCount) / float32(stackDepth)
 
-			if resolveFailedCount > 0 && stackDepth > 0 && resolvePCFailureRate >= __maxResolvePCFailureRate {
-				// ** 只有原生语言才会走这个分支
-				if modules, err := frame.GetProcModules(psi.pid); err == nil {
-					if len(modules) > 0 && modules[0].LangType == calmutils.NativeLangType {
+				if resolveFailedCount > 0 && stackDepth > 0 && resolvePCFailureRate >= __maxResolvePCFailureRate {
+					// ** 只有原生语言才会走这个分支
+					if frame.GetLangType(psi.pid) == calmutils.NativeLangType {
 						glog.Warningf("eBPFProgram:'%s' comm:'%s' pid:%d stack depth:'%d' resolveFailedCount:'%d' try using ehframe unwind stack",
 							pp.name, psi.comm, psi.pid, stackDepth, resolveFailedCount)
 						pp.unwindTablesOperEvtChan.SafeSend(&UnwindTablesOperEvt{pid: psi.pid, opType: createUnwindTables}, true)
@@ -607,9 +619,12 @@ func (pp *profileProgram) collectProfiles() {
 			}
 		} else {
 			// 解析 ehFrame User Stack
-			resolveFailedCount := pfnWalkEhframeUserStack(psi.ehFrameUserStackId, psi.pid, psi.comm, &sb)
-			glog.Infof("eBPFProgram:'%s' comm:'%s' pid:%d ehFrameUserStackId:%d stackDepth:%d resolveFailedCount:%d",
-				pp.name, psi.comm, psi.pid, psi.ehFrameUserStackId, len(sb.stack), resolveFailedCount)
+			if resolveFailedCount, err := pfnWalkEhframeUserStack(psi.ehFrameUserStackId, psi.pid, psi.comm, &sb); err != nil {
+				continue
+			} else {
+				glog.Infof("eBPFProgram:'%s' comm:'%s' pid:%d ehFrameUserStackId:%d stackDepth:%d resolveFailedCount:%d",
+					pp.name, psi.comm, psi.pid, psi.ehFrameUserStackId, len(sb.stack), resolveFailedCount)
+			}
 		}
 
 		// 解析内核堆栈

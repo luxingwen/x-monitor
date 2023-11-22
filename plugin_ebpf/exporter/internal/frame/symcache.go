@@ -159,3 +159,22 @@ func GetProcModules(pid int32) ([]*calmutils.ProcMapsModule, error) {
 	}
 	return nil, errors.Errorf("get pid:%d map modules failed.", pid)
 }
+
+func GetLangType(pid int32) calmutils.ProcLangType {
+	if __instance != nil {
+		__instance.lock.Lock()
+		defer __instance.lock.Unlock()
+
+		procSyms, ok := __instance.lc.Get(pid)
+		if ok && procSyms != nil {
+			return procSyms.LangType
+		} else {
+			procSyms, err := calmutils.NewProcSyms(int(pid))
+			if err == nil {
+				__instance.lc.Add(pid, procSyms)
+				return procSyms.LangType
+			}
+		}
+	}
+	return calmutils.NativeLangType
+}
