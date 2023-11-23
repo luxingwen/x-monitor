@@ -6,6 +6,7 @@
  */
 
 #include <vmlinux.h>
+#include <linux/version.h>
 #include "../bpf_and_user.h"
 #include "xm_bpf_helpers_common.h"
 #include "xm_bpf_helpers_maps.h"
@@ -160,7 +161,8 @@ __s32 BPF_KPROBE(kprobe__blk_account_io_start, struct request *rq) {
 
 /*
     基本 insert -- issue -- complete 基本完整
-    但也有 bypass, 调用 blk_mq_try_issue_list_directly, 直接 issue -- complete 的
+    但也有 bypass, 调用 blk_mq_try_issue_list_directly, 直接 issue -- complete
+   的
  */
 // SEC("kprobe/blk_mq_sched_insert_requests")
 // __s32 BPF_KPROBE(kprobe__blk_mq_sched_insert_requests,
@@ -188,15 +190,17 @@ __s32 BPF_KPROBE(kprobe__blk_account_io_start, struct request *rq) {
 
     2: e->type->ops.insert_requests(hctx, &list, at_head);
    --->如果有调度器/sys/block/sdc/queue/scheduler，就会走这条路
-   ，在有电梯算法的时候，例如 mq_deadline，会做 request 的合并，那么就不会重新插入了
-   例如这个函数返回 blk_mq_sched_try_insert_merge true。
-   所以要用 kretprobe:blk_mq_sched_try_insert_merge，来做 insert
+   ，在有电梯算法的时候，例如 mq_deadline，会做 request
+   的合并，那么就不会重新插入了 例如这个函数返回 blk_mq_sched_try_insert_merge
+   true。所以要用 kretprobe:blk_mq_sched_try_insert_merge，来做 insert
 
     3: __blk_mq_insert_request，实际中只有走这条路才会触发该 tracepoint
    --->没有调度器/sys/block/sdc/queue/scheduler，就会走这条路
 */
 SEC("tp_btf/block_rq_insert") __s32 xm_tp_btf__block_rq_insert(__u64 *ctx) {
-    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0)) {
+    // ** 在这里判断内核版本
+    if ((LINUX_KERNEL_VERSION <= KERNEL_VERSION(4, 18, 0))
+        && (RHEL_MAJOR <= 8 && RHEL_MINOR < 6)) {
         // !! 这里这样写导致了 bpf_load 失败
         // rq = (struct request *)ctx[1];
         xm_trace_request((struct request *)ctx[1], true);

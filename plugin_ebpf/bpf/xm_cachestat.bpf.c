@@ -54,9 +54,9 @@ __s32 BPF_KPROBE(xm_kp_cs_fad) {
     return 0;
 }
 
-// 这个函数在Linux 5.0版本中被移除了2。取而代之的是account_page_dirtied_in_file函数3。
-// 所以，如果你的内核版本是5.0或更高，你就不能使用account_page_dirtied函数了。
-// 需要在加载是进行判断
+// 这个函数在 Linux 5.0 版本中被移除了 2。取而代之的是
+// account_page_dirtied_in_file 函数 3。 所以，如果你的内核版本是 5.0
+// 或更高，你就不能使用 account_page_dirtied 函数了。 需要在加载是进行判断
 SEC("kprobe/account_page_dirtied")
 __s32 BPF_KPROBE(xm_kp_cs_apd) {
     __u64 ip = PT_REGS_IP(ctx);

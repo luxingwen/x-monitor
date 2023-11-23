@@ -34,7 +34,8 @@ struct {
     __uint(max_entries, 1 << 24); // 16M
 } xm_processvm_event_ringbuf_map SEC(".maps");
 
-//**如果 type 是__u32，整个结构会有空洞，如果不 memset，加载器会报错，导致加载失败
+//**如果 type 是__u32，整个结构会有空洞，如果不
+//memset，加载器会报错，导致加载失败
 struct vm_op_info {
     enum xm_processvm_evt_type type;
     __u64 addr;
@@ -162,7 +163,8 @@ __s32 kprobe__xm_do_mmap(struct pt_regs *ctx) {
         struct file *pf = (struct file *)PT_REGS_PARM1_CORE(ctx);
         __u64 addr = (__u64)PT_REGS_PARM2_CORE(ctx);
         __u64 len = (__u64)PT_REGS_PARM3_CORE(ctx);
-        // 表示映射区域的保护权限，可以是 PROT_NONE、PROT_READ、PROT_WRITE、PROT_EXEC，或它们的组合
+        // 表示映射区域的保护权限，可以是
+        // PROT_NONE、PROT_READ、PROT_WRITE、PROT_EXEC，或它们的组合
         //__u64 prot = (__u64)PT_REGS_PARM4_CORE(ctx);
         // flags：表示映射区域的标志，可以是
         // MAP_SHARED、MAP_PRIVATE、MAP_FIXED、MAP_ANONYMOUS、MAP_LOCKED 等。

@@ -13,8 +13,9 @@
 #include "xm_bpf_helpers_math.h"
 
 // 从 task 状态设置为 TASK_RUNNING 插入运行队列，到被调度上 CPU，统计等待时间
-// 检查系统中 CPU 调度器延迟（运行队列的延迟，rbtree）。在需求超过供给，CPU 资源处于饱和状态时，runqlat 统计的信息是每个线程等待 CPU 的耗时
-// 这里使用 btf raw tracepoint，其和常规的 raw tracepoint 有一定的差别
+// 检查系统中 CPU 调度器延迟（运行队列的延迟，rbtree）。在需求超过供给，CPU
+// 资源处于饱和状态时，runqlat 统计的信息是每个线程等待 CPU 的耗时 这里使用 btf
+// raw tracepoint，其和常规的 raw tracepoint 有一定的差别
 // https://mozillazg.com/2022/06/ebpf-libbpf-btf-powered-enabled-raw-tracepoint-common-questions.html#hidsec
 
 // 1: os，2：namespace，3：CGroup，4：PID，5：PGID，暂时不支持 cg

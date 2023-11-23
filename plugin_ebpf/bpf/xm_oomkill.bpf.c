@@ -69,7 +69,8 @@ __s32 BPF_KPROBE(kprobe__xm_oom_kill_process, struct oom_control *oc,
         if (memcg) {
             // get cgroup
             BPF_CORE_READ_INTO(&cg, memcg, css.cgroup);
-            // 获取 cgroup id，这里因为内核版本不同，结构都不通，需要 co-re 的适配
+            // 获取 cgroup id，这里因为内核版本不同，结构都不通，需要 co-re
+            // 的适配
             evt->memcg_id = (__u32)__xm_get_cgroup_id(cg);
             // 获取物理内存分配的 page 数量
             evt->memcg_page_counter =
@@ -78,7 +79,8 @@ __s32 BPF_KPROBE(kprobe__xm_oom_kill_process, struct oom_control *oc,
             //            "memcg_page_counter:%lu",
             //            evt->memcg_id, evt->memcg_page_counter);
         }
-        // oom_badness 函数计算中 rss 的计算，包括 MM_FILEPAGES,MM_ANONPAGES,MM_SHMEMPAGES
+        // oom_badness 函数计算中 rss 的计算，包括
+        // MM_FILEPAGES,MM_ANONPAGES,MM_SHMEMPAGES
         evt->rss_filepages =
             BPF_CORE_READ(ts, mm, rss_stat.count[MM_FILEPAGES].counter);
         evt->rss_anonpages =

@@ -15,11 +15,11 @@
 
 const volatile char target_name[16] = { 0 };
 
-// ip协议包数量统计
+// ip 协议包数量统计
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __type(key, __u32); // 这里我是用__u8的时候，创建map会报错，libbpf: Error in
-                        // bpf_create_map_xattr(ipproto_rx_cnt_map):Invalid
+    __type(key, __u32); // 这里我是用__u8 的时候，创建 map 会报错，libbpf: Error
+                        // in bpf_create_map_xattr(ipproto_rx_cnt_map):Invalid
                         // argument(-22). Retrying without BTF.
     __type(value, __u64);
     __uint(max_entries, 256);
@@ -45,13 +45,13 @@ SEC("xdp") __s32 xdp_prog_simple(struct xdp_md *ctx) {
     if (__xm_proto_is_vlan(h_proto)) {
         // 判断是否是 VLAN 包
         struct vlan_hdr *vhdr;
-        vhdr = (struct vlan_hdr *)(data + nh_off); // vlan是二次打包的
-        // 修改数据偏移，跳过vlan hdr，指向实际的数据包头
+        vhdr = (struct vlan_hdr *)(data + nh_off); // vlan 是二次打包的
+        // 修改数据偏移，跳过 vlan hdr，指向实际的数据包头
         nh_off += sizeof(struct vlan_hdr);
         if (data + nh_off > data_end) {
             return XDP_DROP;
         }
-        // network-byte-order 这才是实际的协议，被vlan承载的
+        // network-byte-order 这才是实际的协议，被 vlan 承载的
         h_proto = vhdr->h_vlan_encapsulated_proto;
     }
 
@@ -65,10 +65,10 @@ SEC("xdp") __s32 xdp_prog_simple(struct xdp_md *ctx) {
 
     /* Extract L4 protocol */
     if (h_proto == bpf_htons(ETH_P_IP)) {
-        // 返回ipv4包承载的协议类型
+        // 返回 ipv4 包承载的协议类型
         ip_proto = (__u32)__xm_parse_ip4hdr(&nh, data_end, &iphdr);
     } else if (h_proto == bpf_htons(ETH_P_IPV6)) {
-        // 返回ipv6包承载的协议类型
+        // 返回 ipv6 包承载的协议类型
         ip_proto = (__u32)__xm_parse_ip6hdr(&nh, data_end, &ipv6hdr);
     } else {
         // 其他协议

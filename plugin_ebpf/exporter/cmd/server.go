@@ -83,7 +83,7 @@ func registerPromCollectors() {
 	version.Branch = _BranchName
 	version.BuildDate = _BuildTime
 
-	// 注册collectors
+	// 注册 collectors
 	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"))
 
 	var err error
@@ -138,14 +138,14 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	//
 	eventcenter.InitDefault()
 
-	// 注册prometheus collectors
+	// 注册 prometheus collectors
 	registerPromCollectors()
 
-	// 启动web服务
+	// 启动 web 服务
 	bind, _ = config.APISrvBindAddr()
 	_apiSrv = net.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
 
-	// 注册router
+	// 注册 router
 	metricsPath := config.PromMetricsPath()
 	_apiSrv.Handle(http.MethodGet, metricsPath, prometheusHandler())
 	_apiSrv.Handle(http.MethodGet, "/", func(c *gin.Context) {

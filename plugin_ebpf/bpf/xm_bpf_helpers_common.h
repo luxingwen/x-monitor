@@ -5,7 +5,7 @@
  * @Last Modified time: 2023-08-16 15:10:59
  */
 
-// #include <linux/bpf.h> // uapi这个头文件和vmlinux.h不兼容啊，类型重复定义
+// #include <linux/bpf.h> // uapi 这个头文件和 vmlinux.h 不兼容啊，类型重复定义
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
@@ -18,7 +18,7 @@
 #define TASK_WAKEKILL 0x0100
 #define __TASK_STOPPED 0x0004
 
-// 查询clang预定义宏，clang -dM -E - </dev/null > macro.txt
+// 查询 clang 预定义宏，clang -dM -E - </dev/null > macro.txt
 #ifdef __TARGET_ARCH_x86
 
 #define PAGE_SIZE 4096
@@ -59,9 +59,10 @@
 #endif
 
 #ifdef __TARGET_ARCH_x86
-// KPROBE_REGS_IP_FIX这个宏是用来修正kprobe的上下文结构（struct
-// pt_regs）中的指令指针（ip）的值的。因为在x86架构下，当kprobe被触发时，ip会指向被替换的原始指令，
-// 而不是被探测的函数的地址。所以需要用KPROBE_REGS_IP_FIX宏来获取正确的函数地址，并存储在一个u64变量中。
+// KPROBE_REGS_IP_FIX 这个宏是用来修正 kprobe 的上下文结构（struct
+// pt_regs）中的指令指针（ip）的值的。因为在 x86 架构下，当 kprobe 被触发时，ip
+// 会指向被替换的原始指令，而不是被探测的函数的地址。所以需要用
+// KPROBE_REGS_IP_FIX 宏来获取正确的函数地址，并存储在一个 u64 变量中。
 #define KPROBE_REGS_IP_FIX(ip) (ip - sizeof(kprobe_opcode_t))
 #else
 #define KPROBE_REGS_IP_FIX(ip) ip
@@ -135,12 +136,12 @@ static __always_inline void __xm_update_u64(__u64 *res, __u64 value) {
     }
 }
 
-// 进程id
+// 进程 id
 static __always_inline __u32 __xm_get_pid() {
     return bpf_get_current_pid_tgid() >> 32;
 }
 
-// 线程id
+// 线程 id
 static __always_inline __u32 __xm_get_tid() {
     return bpf_get_current_pid_tgid() & 0xFFFFFFFF;
 }
@@ -192,7 +193,7 @@ static __u32 __xm_get_task_pidns(struct task_struct *task) {
     //
     BPF_CORE_READ_INTO(&upid, thread_pid, numbers[level]);
     // bpf_core_read(&upid, sizeof(upid), &thread_pid->numbers[level]);
-    // 如果是对象，必须写在一起，用.分割，如果是指针，必须用->分割
+    // 如果是对象，必须写在一起，用。分割，如果是指针，必须用->分割
     BPF_CORE_READ_INTO(&ns_num, upid.ns, ns.inum);
     return ns_num;
 }
@@ -252,23 +253,23 @@ static __always_inline __u64 __xm_get_cgroup_id(struct cgroup *cg) {
 
     void *kn = (void *)READ_KERN(cg->kn);
     if (bpf_core_type_exists(struct kernfs_node___418)) {
-        // 如果存在union kernfs_node_id___old，那么kernel是4.18 or 5.4
-        // 尝试从4.18内核结构中读取
+        // 如果存在 union kernfs_node_id___old，那么 kernel 是 4.18 or 5.4
+        // 尝试从 4.18 内核结构中读取
         struct kernfs_node___418 *kn_418 = (struct kernfs_node___418 *)kn;
         err = bpf_core_read(&id, sizeof(__u64), &kn_418->id);
         if (0 == err) {
-            // 如果读取成功，返回id
+            // 如果读取成功，返回 id
             return id;
         }
     } else if (bpf_core_type_exists(struct kernfs_node___54x)) {
-        // 尝试从5.4内核读取
+        // 尝试从 5.4 内核读取
         struct kernfs_node___54x *kn_54 = (struct kernfs_node___54x *)kn;
         // **如果不加这个判断，加载失败
         // if (bpf_core_field_exists(kn_54->id)) {
         return BPF_CORE_READ(kn_54, id.id);
         // }
     } else if (bpf_core_type_exists(struct kernfs_node___514x)) {
-        // 如果不存在union kernfs_node_id___old，那么kernel可能是5.14
+        // 如果不存在 union kernfs_node_id___old，那么 kernel 可能是 5.14
         struct kernfs_node___514x *kn_514 = (struct kernfs_node___514x *)kn;
         err = bpf_core_read(&id, sizeof(__u64), &kn_514->id);
         if (0 == err) {
@@ -290,7 +291,7 @@ static __u64 __xm_get_task_cgid_by_subsys(struct task_struct *task,
     return __xm_get_cgroup_id(cg);
 }
 
-// 获取进程的进程组ID，PIDTYPE_PGID
+// 获取进程的进程组 ID，PIDTYPE_PGID
 static pid_t __xm_get_task_pgid(struct task_struct *task) {
     struct signal_struct *signal;
     struct pid *pgid;
@@ -302,7 +303,7 @@ static pid_t __xm_get_task_pgid(struct task_struct *task) {
     return session_upid.nr;
 }
 
-// 获取进程的session id，PIDTYPE_SID
+// 获取进程的 session id，PIDTYPE_SID
 static pid_t __xm_get_task_sessionid(struct task_struct *task) {
     struct signal_struct *signal;
     struct pid *session_pid;
@@ -377,7 +378,7 @@ static __always_inline struct gendisk *__xm_get_disk(void *rq) {
 static __always_inline bool in_kernel_space(__u64 ip) {
     /* Make sure we are in vmalloc area: */
     // if (ip >= VMALLOC_START && ip < VMALLOC_END)
-    // PAGE_OFFSET代表的是内核空间和用户空间对虚拟地址空间的划分
+    // PAGE_OFFSET 代表的是内核空间和用户空间对虚拟地址空间的划分
     if (ip > PAGE_OFFSET)
         return true;
     return false;

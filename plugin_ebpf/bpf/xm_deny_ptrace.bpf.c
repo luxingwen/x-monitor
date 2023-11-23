@@ -24,13 +24,13 @@ struct syscalls_enter_ptrace_args {
     __u64 data;
 };
 
-// 拒绝ptrace的pid
+// 拒绝 ptrace 的 pid
 const volatile __s64 target_pid = 0;
 
 SEC("tracepoint/syscalls/sys_enter_ptrace")
 __s32 xm_bpf_deny_ptrace(struct syscalls_enter_ptrace_args *ctx) {
     // long ret = 0;
-    // // strace的pid
+    // // strace 的 pid
     // pid_t pid = __xm_get_pid();
 
     // if (target_pid != 0) {

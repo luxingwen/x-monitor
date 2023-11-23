@@ -5,11 +5,10 @@
  * @Last Modified time: 2023-03-22 16:05:45
  */
 
-// 使用 BPF_PROG_TYPE_BTF_RAW_TRACEPOINT 来追踪进程的系统调用，对于 btf_raw_tracepoint，使用 BPF_PROG 封装
-// 1: 统计进程的系统调用次数
-// 2: 统计进程的系统调用累积耗时
-// 3: 统计进程的系统调用耗时分布
-// 4: 过滤进程的系统调用
+// 使用 BPF_PROG_TYPE_BTF_RAW_TRACEPOINT 来追踪进程的系统调用，对于
+// btf_raw_tracepoint，使用 BPF_PROG 封装 1: 统计进程的系统调用次数 2:
+// 统计进程的系统调用累积耗时 3: 统计进程的系统调用耗时分布 4:
+// 过滤进程的系统调用
 
 // https://sysdig.com/blog/the-art-of-writing-ebpf-programs-a-primer/
 
@@ -131,7 +130,8 @@ __s32 BPF_PROG(xm_trace_tp_btf__sys_exit, struct pt_regs *regs, __s64 ret) {
     return 0;
 }
 
-// !! 获取的堆栈栈帧地址不对，是不是不能使用 btf_raw_tracepoint，试试 raw_tracepoint
+// !! 获取的堆栈栈帧地址不对，是不是不能使用 btf_raw_tracepoint，试试
+// raw_tracepoint
 
 #define XM_TRACE_KPROBE_PROG(name)                                             \
     __s32 xm_trace_kp__##name(struct pt_regs *ctx) {                           \

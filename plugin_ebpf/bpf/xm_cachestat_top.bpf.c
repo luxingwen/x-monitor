@@ -35,13 +35,13 @@ int BPF_KPROBE(kprobe__xm_add_to_page_cache_lru) {
     __u32 pid;
     struct cachestat_top_statistics *fill;
 
-    // 得到进程ID
+    // 得到进程 ID
     pid = __xm_get_pid();
 
     fill = bpf_map_lookup_elem(&xm_cachestat_top_map, &pid);
     if (fill) {
         __xm_update_u64(&fill->add_to_page_cache_lru, 1);
-        // 有可能因为execve导致comm改变
+        // 有可能因为 execve 导致 comm 改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
         bpf_printk("kprobe__xm_add_to_page_cache_lru pcomm: '%s' pid: %d "
                    "value: %lu",
@@ -73,13 +73,13 @@ int BPF_KPROBE(kprobe__xm_mark_page_accessed) {
     __u32 pid;
     struct cachestat_top_statistics *fill;
 
-    // 得到进程ID
+    // 得到进程 ID
     pid = __xm_get_pid();
 
     fill = bpf_map_lookup_elem(&xm_cachestat_top_map, &pid);
     if (fill) {
         __xm_update_u64(&fill->mark_page_accessed, 1);
-        // 有可能因为execve导致comm改变
+        // 有可能因为 execve 导致 comm 改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
         bpf_printk("kprobe__xm_mark_page_accessed comm: '%s' pid: %d "
                    "value: %lu",
@@ -111,7 +111,7 @@ int BPF_KPROBE(kprobe__xm_account_page_dirtied) {
     __u32 pid;
     struct cachestat_top_statistics *fill;
 
-    // 得到进程ID
+    // 得到进程 ID
     pid = __xm_get_pid();
 
     fill = bpf_map_lookup_elem(&xm_cachestat_top_map, &pid);
@@ -148,13 +148,13 @@ int BPF_KPROBE(kprobe__xm_mark_buffer_dirty) {
     __u32 pid;
     struct cachestat_top_statistics *fill;
 
-    // 得到进程ID
+    // 得到进程 ID
     pid = __xm_get_pid();
 
     fill = bpf_map_lookup_elem(&xm_cachestat_top_map, &pid);
     if (fill) {
         __xm_update_u64(&fill->mark_buffer_dirty, 1);
-        // 有可能因为execve导致comm改变
+        // 有可能因为 execve 导致 comm 改变
         bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
         bpf_printk("kprobe__xm_mark_buffer_dirty comm: '%s' pid: %d "
                    "value: %lu",

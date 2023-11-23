@@ -11,7 +11,7 @@
 #include "xm_bpf_helpers_maps.h"
 #include "xm_bpf_helpers_net.h"
 
-// 用来设置尾调函数句柄的map
+// 用来设置尾调函数句柄的 map
 BPF_PROG_ARRAY(xm_filter_sock_jmp_table, 8);
 
 #define PARSE_VLAN 1
@@ -21,7 +21,7 @@ BPF_PROG_ARRAY(xm_filter_sock_jmp_table, 8);
 
 struct flow_key_record {
     __be32 src; // BIG
-                // ENDIAN，UDP/TCP/IP协议规定:把接收到的第一个字节当作高位字节看待
+                // ENDIAN，UDP/TCP/IP 协议规定：把接收到的第一个字节当作高位字节看待
     __be32 dst;
     union {
         __be32 ports;
@@ -74,7 +74,7 @@ SEC("socket/0")
 __s32 xmonitor_main_socket_prog(struct __sk_buff *skb) {
     __u32 nhoff = ETH_HLEN;
 
-    // 读取eth_hdr信息
+    // 读取 eth_hdr 信息
     struct ethhdr eth_hdr;
     if (bpf_skb_load_bytes(skb, 0, &eth_hdr, sizeof(eth_hdr)) < 0) {
         bpf_printk("xmonitor read eth_hdr failed.");
