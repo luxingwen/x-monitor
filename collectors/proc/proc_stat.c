@@ -36,7 +36,7 @@ static prom_counter_t *__metric_node_cpu_jiffies = NULL,
                       *__metric_node_interrupts_from_boot = NULL;
 
 int32_t init_collector_proc_stat() {
-    // 设置prom指标
+    // 设置 prom 指标
     if (unlikely(!__metric_node_interrupts_from_boot)) {
         __metric_node_interrupts_from_boot =
             prom_collector_registry_must_register_metric(
@@ -102,20 +102,20 @@ static void __do_cpu_utilization(size_t line, const char *cpu_label,
     // debug("[PLUGIN_PROC:proc_stat] /proc/stat line: %lu, core_index: %d",
     // line, core_index);
 
-    // sysconf(_SC_CLK_TCK)一般地定义为jiffies(一般地等于10ms)
-    // CPU时间 = user + system + nice + idle + iowait + irq + softirq
+    // sysconf(_SC_CLK_TCK) 一般地定义为 jiffies(一般地等于 10ms)
+    // CPU 时间 = user + system + nice + idle + iowait + irq + softirq
 
     uint64_t user_jiffies, // 用户态时间
-        nice_jiffies, // nice用户态时间
+        nice_jiffies, // nice 用户态时间
         system_jiffies, // 系统态时间
-        idle_jiffies, // 空闲时间, 不包含IO等待时间
-        io_wait_jiffies, // IO等待时间
+        idle_jiffies, // 空闲时间，不包含 IO 等待时间
+        io_wait_jiffies, // IO 等待时间
         irq_jiffies, // 硬中断时间
         soft_irq_jiffies, // 软中断时间
         steal_jiffies, // 虚拟化环境中运行其他操作系统上花费的时间（since
                        // Linux 2.6.11）
-        guest_jiffies, // 操作系统运行虚拟CPU花费的时间（since Linux 2.6.24）
-        guest_nice_jiffies; // 运行一个带nice值的guest花费的时间（since
+        guest_jiffies, // 操作系统运行虚拟 CPU 花费的时间（since Linux 2.6.24）
+        guest_nice_jiffies; // 运行一个带 nice 值的 guest 花费的时间（since
                             // Linux 2.6.24）
 
     struct proc_cpu_rdset *cpu_rdset = NULL;
@@ -141,7 +141,7 @@ static void __do_cpu_utilization(size_t line, const char *cpu_label,
     user_jiffies -= guest_jiffies;
     nice_jiffies -= guest_nice_jiffies;
 
-    // 单位是jiffies
+    // 单位是 jiffies
     prom_counter_add(__metric_node_cpu_jiffies,
                      (double)(user_jiffies - cpu_rdset->user),
                      (const char *[]){ cpu_label, "user" });
@@ -203,7 +203,7 @@ static void __do_cpu_utilization(size_t line, const char *cpu_label,
           io_wait_jiffies, irq_jiffies, soft_irq_jiffies, steal_jiffies,
           guest_jiffies, guest_nice_jiffies);
 
-    // 节点cpu时间总和，单位是jiffies
+    // 节点 cpu 时间总和，单位是 jiffies
     uint64_t node_cpus_jiffies_total = 0;
     node_cpus_jiffies_total = user_jiffies + nice_jiffies + system_jiffies
                               + idle_jiffies + io_wait_jiffies + irq_jiffies

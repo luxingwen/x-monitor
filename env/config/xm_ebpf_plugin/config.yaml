@@ -106,7 +106,7 @@ eBPF:
               val: "4026532259"
               labels:
                 - l_name: "app"
-                  l_val: "pytoscope"
+                  l_val: "pyroscope"
         ebpf_prog:
           filter_scope_type: 1 # 1: os, 2: namespace, 4: PID, 5: PGID
           filter_scope_value: 0
