@@ -20,8 +20,10 @@
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
-// linux kernel的ARRAY_SIZE
-// macro為了預防傳入的變數是pointer而不是真正的array，背後其實花了很多心力來防範這件事，使得如果發生問題就會在編譯時期就失敗，避免了因為誤用而在run-time才發生問題的狀況。
+// linux kernel 的 ARRAY_SIZE
+// macro 為了預防傳入的變數是 pointer 而不是真正的
+// array，背後其實花了很多心力來防範這件事，使得如果發生問題就會在編譯時期就失敗，避免了因為誤用而在
+// run-time 才發生問題的狀況。
 // /* Are two types/vars the same type (ignoring qualifiers)? */
 #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
 
@@ -131,3 +133,11 @@ macro 結果為 true ，則可以在 compile-time 的時候被告知有錯
 #ifndef __hidden
 #define __hidden __attribute__((visibility("hidden")))
 #endif
+
+/*
+ * This returns a constant expression while determining if an argument is
+ * a constant expression, most importantly without evaluating the argument.
+ * Glory to Martin Uecker <Martin.Uecker@med.uni-goettingen.de>
+ */
+#define __is_constexpr(x) \
+    (sizeof(int) == sizeof(*(8 ? ((void *)((long)(x)*0l)) : (int *)8)))

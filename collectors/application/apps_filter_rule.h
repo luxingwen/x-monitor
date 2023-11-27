@@ -20,8 +20,8 @@ struct app_process_filter_rule {
     char app_type_name[XM_APP_NAME_SIZE];
     char app_name[XM_APP_NAME_SIZE];
     enum app_bind_process_type assign_type;
-    char **keys; // 多个匹配key
-    uint16_t key_count; // 匹配key的个数
+    char **keys; // 多个匹配 key
+    uint16_t key_count; // 匹配 key 的个数
     uint8_t is_matched; // 是否匹配过
 };
 
@@ -30,7 +30,7 @@ struct app_filter_rules {
     int16_t rule_count;
 };
 
-// 通过配置文件生成app实例的过滤规则，返回规则的个数
+// 通过配置文件生成 app 实例的过滤规则，返回规则的个数
 extern struct app_filter_rules *create_filter_rules(const char *config_path);
 
 extern void clean_filter_rules(struct app_filter_rules *rules);

@@ -14,14 +14,29 @@
    docker network create xm-calmwu
    ```
 
-3. 安装grafana
+3. 安装Prometheus
+
+   ```
+   docker rm -f prom
+   docker run --rm -d --restart always \
+       --name prom -p 9090:9090 --network=xm-calmwu \
+       -v /root/prometheus/datastore:/prometheus -v /root/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml \
+       prom/prometheus \
+       --storage.tsdb.retention.time=1y \
+       --config.file=/etc/prometheus/prometheus.yml \
+       --storage.tsdb.path=/prometheus \
+       --web.console.libraries=/usr/share/prometheus/console_libraries \
+       --web.console.templates=/usr/share/prometheus/consoles
+   ```
+
+4. 安装grafana
 
    ```
    docker pull grafana/grafana:main
    docker run --rm --name=grafana -d -p 3000:3000 -e "GF_FEATURE_TOGGLES_ENABLE=flameGraph" --network=xm-calmwu  grafana/grafana:main
    ```
 
-4. 安装pyroscope
+5. 安装pyroscope
 
    ```
    docker pull grafana/pyroscope:1.0.0
@@ -34,7 +49,7 @@
    curl localhost:4040/ready
    ```
 
-5. 配置
+6. 配置
 
    - 查看容器ip
 

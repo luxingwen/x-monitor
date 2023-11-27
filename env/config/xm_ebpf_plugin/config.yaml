@@ -75,6 +75,7 @@ eBPF:
         ebpf_prog:
           filter_per_cmd_flag: true
           request_min_latency_millsecs: 10 # 单位：毫秒
+          is_old_api: true # rhel8.5 是老 api，8.6 是新 api，可是 kernel version 相同
     - name: profile
       enabled: true
       args:

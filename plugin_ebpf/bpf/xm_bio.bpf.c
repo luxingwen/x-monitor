@@ -21,6 +21,7 @@ extern int LINUX_KERNEL_VERSION __kconfig;
 // 是否按每个 request 的 cmd_flags 进行过滤
 const volatile bool __filter_per_cmd_flag = false;
 const volatile __s64 __request_min_latency_ns = 1000000; // 1ms
+const volatile bool __is_old_api = true;
 
 struct bio_req_stage {
     __u64 insert;
@@ -198,9 +199,11 @@ __s32 BPF_KPROBE(kprobe__blk_account_io_start, struct request *rq) {
    --->没有调度器/sys/block/sdc/queue/scheduler，就会走这条路
 */
 SEC("tp_btf/block_rq_insert") __s32 xm_tp_btf__block_rq_insert(__u64 *ctx) {
-    // ** 在这里判断内核版本
-    if ((LINUX_KERNEL_VERSION <= KERNEL_VERSION(4, 18, 0))
-        && (RHEL_MAJOR <= 8 && RHEL_MINOR < 6)) {
+    // ** 判断内核版本这里不行，实际中 rhel8.5 和 8.6 都是 4.18.0，后面的 extra
+    // ** 版本好不同，但是 8.6 的函数已经更新了
+    // if ((LINUX_KERNEL_VERSION <= KERNEL_VERSION(4, 18, 0))
+    //     && (RHEL_MAJOR <= 8 && RHEL_MINOR < 6)) {
+    if (__is_old_api) {
         // !! 这里这样写导致了 bpf_load 失败
         // rq = (struct request *)ctx[1];
         xm_trace_request((struct request *)ctx[1], true);
@@ -219,7 +222,7 @@ SEC("tp_btf/block_rq_insert") __s32 xm_tp_btf__block_rq_insert(__u64 *ctx) {
 
 SEC("tp_btf/block_rq_issue")
 __s32 xm_tp_btf__block_rq_issue(__u64 *ctx) {
-    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0)) {
+    if (__is_old_api) {
         xm_trace_request((struct request *)ctx[1], false);
         // rq = (struct request *)ctx[1];
     } else {

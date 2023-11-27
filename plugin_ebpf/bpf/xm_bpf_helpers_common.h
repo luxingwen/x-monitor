@@ -125,7 +125,7 @@
 
 // Kernel addresses have the top bits set.
 // example: if (in_kernel(PT_REGS_IP(regs))) {
-static __always_inline bool in_kernel(u64 ip) {
+static __always_inline bool __in_kernel(u64 ip) {
     return ip & (1UL << 63);
 }
 

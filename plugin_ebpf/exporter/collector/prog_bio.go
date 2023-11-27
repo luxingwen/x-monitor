@@ -40,6 +40,7 @@ const (
 type bioProgEBpfArgs struct {
 	FilterPerCmdFlag          bool `mapstructure:"filter_per_cmd_flag"`
 	RequestMinLatencyMillSecs int  `mapstructure:"request_min_latency_millsecs"`
+	IsOldApi                  bool `mapstructure:"is_old_api"`
 }
 
 type bioProgram struct {
@@ -103,6 +104,7 @@ func loadToRunBIOProg(name string, prog *bioProgram) error {
 		err = spec.RewriteConstants(map[string]interface{}{
 			"__filter_per_cmd_flag":    __bioEBpfArgs.FilterPerCmdFlag,
 			"__request_min_latency_ns": int64(time.Duration(__bioEBpfArgs.RequestMinLatencyMillSecs) * time.Millisecond),
+			"__is_old_api":             __bioEBpfArgs.IsOldApi,
 		})
 
 		if err != nil {

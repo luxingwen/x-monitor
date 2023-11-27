@@ -24,7 +24,7 @@ __fill_filter_rule(int32_t enable, const char *content, struct xm_regex *re,
     int32_t rc = 0;
     struct app_process_filter_rule *rule = NULL;
 
-    // 匹配app_name，或包含key
+    // 匹配 app_name，或包含 key
     rc = regex_match_values(re, content);
     if (unlikely(rc < 2)) {
         // warn("[PLUGIN_APPSTATUS] '%s' regex matching result count:%d < 2",
@@ -42,7 +42,7 @@ __fill_filter_rule(int32_t enable, const char *content, struct xm_regex *re,
     debug("[PLUGIN_APPSTATUS] '%s' regex matching result count: %d", content,
           rc);
 
-    // 构造filter_rule
+    // 构造 filter_rule
     rule = calloc(1, sizeof(struct app_process_filter_rule));
     if (unlikely(!rule)) {
         error("[PLUGIN_APPSTATUS] calloc struct app_process_filter_rule "
@@ -65,7 +65,7 @@ __fill_filter_rule(int32_t enable, const char *content, struct xm_regex *re,
     char **additional_keys =
         strsplit_count(additional_filter_keywords, ",", &additional_key_count);
 
-    // 匹配出key数量, 排除自己和appname
+    // 匹配出 key 数量，排除自己和 appname
     rule->keys = (char **)calloc(rc - 2 + additional_key_count, sizeof(char *));
     for (int32_t l = 1; l < rc; l++) {
         if (unlikely(l == appname_match_index)) {
@@ -77,7 +77,7 @@ __fill_filter_rule(int32_t enable, const char *content, struct xm_regex *re,
               re->values[l]);
     }
 
-    // 添加附加key
+    // 添加附加 key
     if (likely(additional_keys && additional_key_count > 0)) {
         for (size_t t = 0; t < additional_key_count; t++) {
             rule->keys[rule->key_count] = strdup(additional_keys[t]);
@@ -118,7 +118,7 @@ static int32_t __generate_filter_rules(
         return -1;
     }
 
-    // 解析source，用,分隔多个文件
+    // 解析 source，用，分隔多个文件
     filter_source_list = strsplit(filter_sources_str, ",");
     if (likely(filter_source_list)) {
         for (int32_t i = 0; filter_source_list[i]; i++) {
@@ -127,7 +127,7 @@ static int32_t __generate_filter_rules(
                   filter_source);
             // 判断文件是否存在
             if (likely(file_exists(filter_source))) {
-                // 文件存在, 打开文件，按行过滤匹配
+                // 文件存在，打开文件，按行过滤匹配
                 fp_filter = fopen(filter_source, "r");
                 if (unlikely(!fp_filter)) {
                     error("[PLUGIN_APPSTATUS] open filter_source_%d '%s' "
@@ -214,7 +214,7 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
     const char *app_bind_process_type = NULL;
     struct app_filter_rules *filter_rules = NULL;
 
-    // 获取配置文件中的app过滤规则
+    // 获取配置文件中的 app 过滤规则
     config_setting_t *cs = appconfig_lookup(config_path);
     if (unlikely(!cs)) {
         error("[PLUGIN_APPSTATUS] config lookup path:'%s' failed", config_path);
@@ -268,7 +268,7 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
                       "failed",
                       config_path, index);
             } else {
-                // 开始构造规则，从文件中过滤出appname和关键字
+                // 开始构造规则，从文件中过滤出 appname 和关键字
                 __generate_filter_rules(enable, filter_sources_str,
                                         app_type_name, filter_regex_pattern,
                                         appname_match_index,
