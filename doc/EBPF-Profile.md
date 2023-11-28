@@ -14,7 +14,7 @@
    docker network create xm-calmwu
    ```
 
-3. 安装Prometheus
+3. 安装Prometheus，chmod +777 /root/prometheus/datastore
 
    ```
    docker rm -f prom

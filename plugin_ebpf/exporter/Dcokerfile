@@ -1,0 +1,15 @@
+FROM alpine
+
+# 变量重新声明，必须如此
+#ARG app
+
+WORKDIR /x-monitor
+RUN mkdir -p bin
+RUN mkdir -p config
+
+COPY ../../bin/plugins.d/x-monitor.eBPF /x-monitor/bin/
+COPY ../../env/config/xm_ebpf_plugin/config.yaml /x-monitor/config/
+
+RUN chmod +x /x-monitor/bin/* && ls -R ./ && pwd
+
+CMD ["./x-monitor.ebpf", "--config=../config/xm_ebpf_plugin/config.yaml", "--log_dir=/var/log", "--pyroscope=http://127.0.0.1:4040/", "--logtostderr=false", "--v=5", ">/dev/null", "2>&1"]

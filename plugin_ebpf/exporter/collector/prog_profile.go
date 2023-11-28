@@ -241,10 +241,9 @@ func (ptf *profileTargetFinder) TargetCount() int {
 }
 
 type profilePrivateArgs struct {
-	SampleRate       int                 `mapstructure:"sample_rate"`
-	PyroscopeSvrAddr string              `mapstructure:"pyroscope_server_addr"`
-	GatherInterval   time.Duration       `mapstructure:"gather_interval"`
-	Targets          []profileTargetConf `mapstructure:"targets"`
+	SampleRate     int                 `mapstructure:"sample_rate"`
+	GatherInterval time.Duration       `mapstructure:"gather_interval"`
+	Targets        []profileTargetConf `mapstructure:"targets"`
 }
 
 type profileProgram struct {
@@ -313,7 +312,7 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 	}
 	glog.Infof("eBPFProgram:'%s' profileTarget count:%d", name, profileProg.tf.TargetCount())
 
-	if profileProg.pyroExporter, err = pyrostub.NewPyroscopeExporter(__profilePrivateArgs.PyroscopeSvrAddr,
+	if profileProg.pyroExporter, err = pyrostub.NewPyroscopeExporter(config.PyroscopeSvrAddr(),
 		prometheus.DefaultRegisterer); err != nil {
 		profileProg.finalizer()
 		err = errors.Wrapf(err, "eBPFProgram:'%s' NewPyroscopeExporter failed.", name)
