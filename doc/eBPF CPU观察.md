@@ -133,7 +133,7 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 | TASK_KILLABLE        | 新可中断睡眠状态                                             |
 | TASK_PARKED          | kthread_park使用的特殊状态                                   |
 | TASK_NEW             | 创建任务临时状态                                             |
-| TASK_DEAD            | 被唤醒状态                                                   |
+| TASK_DEAD            | 表示进程已经退出，但是还没有被父进程回收，也就是僵尸进程     |
 | TASK_IDLE            | 任务空闲状态                                                 |
 | TASK_WAKING          | 被唤醒状态                                                   |
 

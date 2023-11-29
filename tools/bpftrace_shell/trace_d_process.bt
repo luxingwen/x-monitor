@@ -1,0 +1,50 @@
+#!/usr/bin/env bpftrace
+
+#ifndef BPFTRACE_HAVE_BTF
+#include <linux/sched.h>
+#endif
+
+#define TASK_UNINTERRUPTIBLE 0x0002
+#define __TASK_STOPPED 0x0004
+#define TASK_PARKED 0x0040
+#define TASK_DEAD 0x0080
+#define TASK_WAKEKILL 0x0100
+#define TASK_WAKING 0x0200
+#define TASK_NOLOAD 0x0400
+#define TASK_NEW 0x0800
+#define TASK_STATE_MAX 0x1000
+
+#define TASK_STOPPED (TASK_WAKEKILL | __TASK_STOPPED)
+
+BEGIN {
+    @task_state_name_map[TASK_STOPPED] = "TASK_STOPPED";
+    @task_state_name_map[TASK_UNINTERRUPTIBLE] = "TASK_UNINTERRUPTIBLE";
+    @task_state_name_map[TASK_WAKING] = "TASK_WAKING";
+
+    printf("Sampling task TASK_STOPPED/TASK_UNINTERRUPTIBLE state at 99 Hertz... Hit Ctrl-C to end.\n");
+}
+
+kprobe:finish_task_switch {
+    $prev = (struct task_struct*)arg0;
+    $state = $prev->state;
+    if($state == TASK_UNINTERRUPTIBLE) {
+        printf("comm:'%s', pid:%d, switch state to:'%s'\n", $prev->comm, $prev->pid, @task_state_name_map[$prev->state]);
+        @watch_task[$prev->pid] = 1
+    } else if($state == TASK_DEAD) {
+        delete(@watch_task[$prev->pid])
+    }
+}
+
+
+profile:hz:99 {
+    $task = (struct task_struct *)curtask;
+    if(@watch_task[$task->pid] == 1) {
+        //$state = $task->state;
+        printf("comm:'%s', pid:%d, %s%s\n", comm, pid, kstack(perf), ustack(perf));
+    }
+}
+
+END {
+    clear(@watch_task);
+}
+

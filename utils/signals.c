@@ -49,7 +49,7 @@ static void __signal_handler(int32_t signo) {
 
 void signals_init(void) {
     struct sigaction sa;
-    // sa_flags 字段指定对信号进行处理的各个选项。例如SA_NOCLDWAIT
+    // sa_flags 字段指定对信号进行处理的各个选项。例如 SA_NOCLDWAIT
     sa.sa_flags = 0;
     sigfillset(&sa.sa_mask); // 调用信号处理函数时，要屏蔽所有的信号。
 
