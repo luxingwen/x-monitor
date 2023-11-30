@@ -14,21 +14,12 @@
    docker network create xm-calmwu
    ```
 
-3. 安装Prometheus，chmod +777 /root/prometheus/datastore
+3. 安装Prometheus，chmod +777 /root/prometheus/datastore，以下是命令example，具体根据环境修改
 
    ```
-   docker rm -f prom
-   docker run --rm -d --restart always \
-       --name prom -p 9090:9090 --network=xm-calmwu \
-       -v /root/prometheus/datastore:/prometheus -v /root/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml \
-       prom/prometheus \
-       --storage.tsdb.retention.time=1y \
-       --config.file=/etc/prometheus/prometheus.yml \
-       --storage.tsdb.path=/prometheus \
-       --web.console.libraries=/usr/share/prometheus/console_libraries \
-       --web.console.templates=/usr/share/prometheus/consoles
+   docker run -d --name prom -p 9090:9090 --network=xm-calmwu  -v /home/pingan/Program/prometheus-2.43.0-rc.1.linux-amd64/data:/prometheus -v /home/pingan/Program/prometheus-2.43.0-rc.1.linux-amd64/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus --storage.tsdb.retention.time=3d --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus
    ```
-
+   
 4. 安装grafana
 
    ```

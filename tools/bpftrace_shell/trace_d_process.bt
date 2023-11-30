@@ -35,7 +35,6 @@ kprobe:finish_task_switch {
     }
 }
 
-
 profile:hz:99 {
     $task = (struct task_struct *)curtask;
     if(@watch_task[$task->pid] == 1) {
