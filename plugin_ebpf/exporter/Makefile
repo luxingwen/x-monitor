@@ -1,10 +1,10 @@
-APP := x-monitor.eBPF
+APP := x-monitor.ebpf
 
 GIT_COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 GIT_BRANCH_NAME ?= $(shell git symbolic-ref --short -q HEAD)
 BUILD_TIME ?= $(shell date -u '+%Y-%m-%d_%H:%M:%S')
-VersionMajor ?= 1
-VersionMinor ?= 0
+VersionMajor ?= 0
+VersionMinor ?= 1
 
 WORKDIR=$(shell pwd)
 ADDX=$(shell sh -c chmod +x ./hack/*)
@@ -58,6 +58,11 @@ build-version:
 
 swagger:
 	swag i
+
+image:
+	-docker rmi docker.io/littlebull/$(APP):$(VersionMajor).$(VersionMinor)
+	-docker images | grep "<none>" | awk '{print $3}' | xargs docker rmi
+	VERSION=$(VersionMajor).$(VersionMinor) ./docker.sh $(APP)
 
 generate:
 	go generate -v -x ./...

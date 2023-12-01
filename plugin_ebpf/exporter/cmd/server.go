@@ -42,8 +42,10 @@ var (
 	_CommitHash string
 	// _BuildTime string.
 	_BuildTime string
-	//
+	// 配置文件
 	_configFile string
+	// pyroscope 服务器地址
+	_pyroscope string
 	// Defining the root command for the CLI.
 	_rootCmd = &cobra.Command{
 		Use:  "x-monitor.eBPF application",
@@ -63,6 +65,7 @@ var (
 
 func init() {
 	_rootCmd.Flags().StringVar(&_configFile, "config", "", "env/config/xm_ebpf_plugin/config.json")
+	_rootCmd.Flags().StringVar(&_pyroscope, "pyroscope", "", "pyroscope server address")
 	_rootCmd.Flags().AddGoFlagSet(goflag.CommandLine)
 	_rootCmd.Flags().Parse(os.Args[1:])
 }
@@ -118,6 +121,8 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	if err := config.InitConfig(_configFile); err != nil {
 		glog.Fatal(err.Error())
 	}
+
+	config.PyroscopeSrvAddr(_pyroscope)
 
 	if err := rlimit.RemoveMemlock(); err != nil {
 		glog.Fatalf("failed to remove memlock limit: %v", err.Error())

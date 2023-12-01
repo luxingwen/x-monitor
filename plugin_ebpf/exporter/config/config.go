@@ -64,8 +64,9 @@ type ProgramConfig struct {
 }
 
 var (
-	programConfigs []*ProgramConfig
-	mu             sync.RWMutex
+	programConfigs   []*ProgramConfig
+	mu               sync.RWMutex
+	pyroscopeSrvAddr string
 )
 
 func InitConfig(cfgFile string) error {
@@ -121,7 +122,7 @@ func getIP(assignType string) (string, error) {
 		} else {
 			for _, route := range routeList {
 				if route.Dst == nil {
-					// Dst == nil是默认路由
+					// Dst == nil 是默认路由
 					link, err := netlink.LinkByIndex(route.LinkIndex)
 					if err == nil {
 						addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
@@ -211,7 +212,7 @@ func ProgramCommFilter(progName, comm string) bool {
 	defer mu.RUnlock()
 
 	if progCfg := ProgramConfigByName(progName); progCfg != nil {
-		// 只要存在include就不会处理exclude
+		// 只要存在 include 就不会处理 exclude
 		if len(progCfg.Args.IncludeComms) > 0 {
 			for _, includeComm := range progCfg.Args.IncludeComms {
 				if includeComm == comm {
@@ -231,4 +232,17 @@ func ProgramCommFilter(progName, comm string) bool {
 	}
 	// 默认都是保留
 	return true
+}
+
+func PyroscopeSrvAddr(srvAddr string) {
+	pyroscopeSrvAddr = srvAddr
+}
+
+func PyroscopeSvrAddr() string {
+	if len(pyroscopeSrvAddr) == 0 {
+		mu.RLock()
+		defer mu.RUnlock()
+		return viper.GetString("net.pyroscope")
+	}
+	return pyroscopeSrvAddr
 }

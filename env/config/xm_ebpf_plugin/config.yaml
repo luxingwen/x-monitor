@@ -6,6 +6,7 @@ net:
     # 地址赋值类型：default_route, ip, itf_name
     assignType: default_route
     value: 0.0.0.0
+  pyroscope: "http://127.0.0.1:4040/"
 api:
   path:
     metric: "/metrics"
@@ -82,7 +83,6 @@ eBPF:
         private:
           gather_interval: 5 # 收集 kernel prog 数据时间间隔，单位秒
           sample_rate: 97
-          pyroscope_server_addr: "http://127.0.0.1:4040/"
           targets:
             - name: "xmonitor" # 指标名称
               match: "MatchTargetComm" # 匹配应用程序名
@@ -90,24 +90,24 @@ eBPF:
               labels: #自定义 label
                 - l_name: "app"
                   l_val: "x-monitor"
-            - name: "grafana"
-              match: "MatchTargetPidNS" # 匹配 pid namespace
-              val: "4026532197"
-              labels:
-                - l_name: "app"
-                  l_val: "grafana"
+            #- name: "grafana"
+            #  match: "MatchTargetPidNS" # 匹配 pid namespace
+            #  val: "4026532197"
+            #  labels:
+            #    - l_name: "app"
+            #      l_val: "grafana"
             - name: "xmonitorBPF"
               match: "MatchTargetComm" # 匹配 匹配应用程序名
               val: "x-monitor.eBPF"
               labels:
                 - l_name: "app"
                   l_val: "x-monitor.eBPF"
-            - name: "pytoscope"
-              match: "MatchTargetPidNS" # 匹配 pid namespace
-              val: "4026532259"
-              labels:
-                - l_name: "app"
-                  l_val: "pyroscope"
+            #- name: "pyroscope"
+            #  match: "MatchTargetPidNS" # 匹配 pid namespace
+            #  val: "4026532259"
+            #  labels:
+            #    - l_name: "app"
+            #      l_val: "pyroscope"
         ebpf_prog:
           filter_scope_type: 1 # 1: os, 2: namespace, 4: PID, 5: PGID
           filter_scope_value: 0
