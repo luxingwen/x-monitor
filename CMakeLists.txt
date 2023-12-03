@@ -6,6 +6,12 @@ set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 
 execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
                 OUTPUT_VARIABLE GCC_VERSION)
+string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
+list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
+list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
+set(GCC_VERSION, "${GCC_MAJOR}.${GCC_MINOR}")
+message(STATUS "GCC_VERSION: ${GCC_VERSION}")
+message(STATUS "cmake version: ${CMAKE_VERSION}")
 
 SET(COMMIT_HASH "")
 SET(BRANCH_NAME "")
@@ -63,8 +69,8 @@ if(STATIC_LINKING)
 endif(STATIC_LINKING)
 
 # debug、release 版本
-set(CMAKE_C_FLAGS_DEBUG "-Wall -g -ggdb3")
-set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
+set(CMAKE_C_FLAGS_DEBUG "-Wall -Wformat=2 -g -ggdb3")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall -Wformat=2")
 
 if(${CMAKE_BUILD_TYPE} MATCHES "Release")
   set(BuildType "Release")
@@ -82,6 +88,16 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpointer-arith -Werror-implicit-function-de
 
 # -Wredundant-decls 如果在同一个可见域某定义多次声明，编译器就发出警告，即使这些重复声明有效并且毫无差别.
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wnested-externs")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wconversion -Wtrampolines -Wimplicit-fallthrough")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FORTIFY_SOURCE=2")
+
+if (GCC_VERSION VERSION_GREATER_EQUAL 12.0)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstrict-flex-arrays=3")
+endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstack-clash-protection -fstack-protector-strong")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-z,nodlopen -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now")
 
 # -Wcast-qual 一旦某个指针强制类型转换以便移除类型修饰符时，编译器就发出警告。例如，如果把 const char * 强制转换为普通的 char *时，警告就会出现。
 # -Wshadow 一旦某个局部变量屏蔽了另一个局部变量，编译器就发出警

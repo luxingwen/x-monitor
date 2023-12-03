@@ -64,7 +64,7 @@ var (
 )
 
 func init() {
-	_rootCmd.Flags().StringVar(&_configFile, "config", "", "env/config/xm_ebpf_plugin/config.json")
+	_rootCmd.Flags().StringVar(&_configFile, "config", "", "config.yaml")
 	_rootCmd.Flags().StringVar(&_pyroscope, "pyroscope", "", "pyroscope server address")
 	_rootCmd.Flags().AddGoFlagSet(goflag.CommandLine)
 	_rootCmd.Flags().Parse(os.Args[1:])

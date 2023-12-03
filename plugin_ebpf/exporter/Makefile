@@ -61,7 +61,7 @@ swagger:
 
 image:
 	-docker rmi docker.io/littlebull/$(APP):$(VersionMajor).$(VersionMinor)
-	-docker images | grep "<none>" | awk '{print $3}' | xargs docker rmi
+	#-docker images | grep "<none>" | awk '{print $3}' | xargs docker rmi
 	VERSION=$(VersionMajor).$(VersionMinor) ./docker.sh $(APP)
 
 generate:

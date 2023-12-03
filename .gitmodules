@@ -34,3 +34,6 @@
 [submodule "extra/vendor/elfutils"]
 	path = extra/vendor/elfutils
 	url = git://sourceware.org/git/elfutils.git
+[submodule "extra/vendor/cwisstable"]
+	path = extra/vendor/cwisstable
+	url = https://github.com/google/cwisstable.git
