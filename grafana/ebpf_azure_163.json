@@ -111,14 +111,14 @@
             "uid": "Dx9ZNVfVz"
           },
           "editorMode": "code",
-          "expr": "cpu_schedule_runq_latency_bucket{instance=~\"$instance.*\",le!=\"+Inf\"}",
+          "expr": "cpu_schedule_runq_latency{instance=~\"$instance.*\",le!=\"+Inf\"}",
           "format": "heatmap",
           "legendFormat": "{{le}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "cpu_schedule_runq_latency_bucket",
+      "title": "cpu_schedule_runq_latency",
       "type": "heatmap"
     },
     {

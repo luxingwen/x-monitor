@@ -24,14 +24,14 @@
 
    ```
    docker pull grafana/grafana:main
-   docker run --rm --name=grafana -d -p 3000:3000 -e "GF_FEATURE_TOGGLES_ENABLE=flameGraph" --network=xm-calmwu  grafana/grafana:main
+   docker run --name=grafana -d -p 3000:3000 -e "GF_FEATURE_TOGGLES_ENABLE=flameGraph" --network=xm-calmwu  grafana/grafana:main
    ```
 
 5. 安装pyroscope
 
    ```
    docker pull grafana/pyroscope:1.0.0
-   docker run --rm --name pyroscope -d --network=xm-calmwu -p 4040:4040 grafana/pyroscope:1.0.0
+   docker run -d --name pyroscope -d --network=xm-calmwu -p 4040:4040 grafana/pyroscope:1.0.0
    ```
 
    验证

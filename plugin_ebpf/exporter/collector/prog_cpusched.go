@@ -32,9 +32,9 @@ import (
 
 type cpuSchedEBpfProgArgs struct {
 	config.EBpfProgBaseArgs
-	OffCPUMinDurationMillsecs int `mapstructure:"offcpu_min_millsecs"` // offcpu状态的持续时间阈值，毫秒
-	OffCPUMaxDurationMillsecs int `mapstructure:"offcpu_max_millsecs"` // offcpu状态的持续时间阈值，毫秒
-	OffCPUTaskType            int `mapstructure:"offcpu_task_type"`    // offcpu状态的任务类型
+	OffCPUMinDurationMillsecs int `mapstructure:"offcpu_min_millsecs"` // offcpu 状态的持续时间阈值，毫秒
+	OffCPUMaxDurationMillsecs int `mapstructure:"offcpu_max_millsecs"` // offcpu 状态的持续时间阈值，毫秒
+	OffCPUTaskType            int `mapstructure:"offcpu_task_type"`    // offcpu 状态的任务类型
 }
 
 type cpuSchedPrivateArgs struct {
@@ -183,7 +183,7 @@ func (csp *cpuSchedProgram) Update(ch chan<- prometheus.Metric) error {
 	)
 	csp.guard.Unlock()
 
-	// 将cpu schedule event数据转换为Prometheus指标
+	// 将 cpu schedule event 数据转换为 Prometheus 指标
 L:
 	for {
 		select {
@@ -191,7 +191,7 @@ L:
 			if ok {
 				//glog.Infof("eBPFProgram:'%s' cpuSchedEvtData:%s", csp.name, litter.Sdump(cpuSchedEvtData))
 				if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_OFFCPU {
-					// 输出进程offcpu的时间
+					// 输出进程 offcpu 的时间
 					comm := utils.CommToString(cpuSchedEvtData.Comm[:])
 					if config.ProgramCommFilter(csp.name, comm) {
 						if !csp.metricsUpdateFilter.Contains(cpuSchedEvtData.Pid) {
@@ -206,7 +206,7 @@ L:
 						}
 					}
 				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HANG {
-					// 输出hang的进程pid
+					// 输出 hang 的进程 pid
 					ch <- prometheus.MustNewConstMetric(csp.hangProcessDesc,
 						prometheus.GaugeValue, float64(cpuSchedEvtData.Pid),
 						strconv.FormatInt(int64(cpuSchedEvtData.Pid), 10),
@@ -235,7 +235,7 @@ L:
 
 func (csp *cpuSchedProgram) Stop() {
 	if csp.scEvtRD != nil {
-		// 关闭ringbuf
+		// 关闭 ringbuf
 		csp.scEvtRD.Close()
 	}
 

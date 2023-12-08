@@ -373,11 +373,11 @@ __s32 BPF_PROG(xm_tp_btf__block_rq_complete, struct request *rq, __s32 error,
                 }
                 evt->req_latency_us = complete_delta;
 
-                bpf_printk("xm_ebpf_exporter bio request latency comm:'%s'"
-                           "req_in_queue_latency_us:%lld us, "
-                           "req_latency_us:%lld us",
-                           evt->comm, evt->req_in_queue_latency_us,
-                           evt->req_latency_us);
+                // bpf_printk("xm_ebpf_exporter bio request latency comm:'%s'"
+                //            "req_in_queue_latency_us:%lld us, "
+                //            "req_latency_us:%lld us",
+                //            evt->comm, evt->req_in_queue_latency_us,
+                //            evt->req_latency_us);
 
                 bpf_ringbuf_submit(evt, 0);
             }

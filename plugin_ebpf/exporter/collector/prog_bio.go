@@ -170,7 +170,7 @@ func newBIOProgram(name string) (eBPFProgram, error) {
 		[]string{"device", "operation"}, prometheus.Labels{"from": "xm_ebpf"})
 
 	bioProg.bioRequestLatencyOverThresholdDesc = prometheus.NewDesc(prometheus.BuildFQName("bio", "request", "latency_over_threshold"),
-		"Latency of bio request over threshold, unit us.", []string{"device", "comm", "pid", "operation", "bytes", "in_queue_latency_us"}, prometheus.Labels{"from": "xm_ebpf"})
+		"Latency of bio request over threshold, unit us.", []string{"device", "comm", "pid", "tid", "operation", "bytes", "in_queue_latency_us"}, prometheus.Labels{"from": "xm_ebpf"})
 
 	mapstructure.Decode(config.ProgramConfigByName(name).Args.EBpfProg, &__bioEBpfArgs)
 	glog.Infof("eBPFProgram:'%s' ebpfProgArgs:%s", name, litter.Sdump(__bioEBpfArgs))
@@ -382,6 +382,7 @@ L:
 						prometheus.GaugeValue, float64(reqLatencyEvtData.ReqLatencyUs),
 						devName, comm,
 						strconv.FormatInt(int64(reqLatencyEvtData.Pid), 10),
+						strconv.FormatInt(int64(reqLatencyEvtData.Tid), 10),
 						opName, strconv.FormatInt(int64(reqLatencyEvtData.Len), 10),
 						strconv.FormatInt(int64(reqLatencyEvtData.ReqInQueueLatencyUs), 10))
 

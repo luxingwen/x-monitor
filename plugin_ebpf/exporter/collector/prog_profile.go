@@ -530,7 +530,7 @@ func (pp *profileProgram) collectProfiles() {
 				}
 				// 如果 error 是打开/proc/pid/maps 文件失败，那么不要继续了
 				frames = append(frames, "[unknown]")
-				glog.Errorf("eBPFProgram:'%s' comm:'%s' err:%s", pp.name, comm, err.Error())
+				//glog.Errorf("eBPFProgram:'%s' comm:'%s' err:%s", pp.name, comm, err.Error())
 				resolveFailedCount++
 			}
 		}

@@ -19,11 +19,11 @@ if [[ "$cgroup_version" == "cgroup V1" ]]; then
     echo "system cgroup version is v1"
     cgcreate -g memory,cpu:/user.slice/x-monitor.ebpf
 
-    # 限制内存使用为1G
+    # 限制内存使用为2G
     cgset -r memory.limit_in_bytes=2048M /user.slice/x-monitor.ebpf
     # 限制cpu的使用为1core
-    cgset -r cpu.cfs_period_us=100000 /user.slice/x-monitor.ebpf
-    cgset -r cpu.cfs_quota_us=100000 /user.slice/x-monitor.ebpf
+    cgset -r cpu.cfs_period_us=200000 /user.slice/x-monitor.ebpf
+    cgset -r cpu.cfs_quota_us=200000 /user.slice/x-monitor.ebpf
     cgget -g memory,cpu:/user.slice/x-monitor.ebpf
 
     cgexec -g memory,cpu:/user.slice/x-monitor.ebpf nohup ./x-monitor.ebpf --config=../../env/config/xm_ebpf_plugin/config.yaml --pyroscope=http://127.0.0.1:4040/ --log_dir=/var/log/x-monitor/ --logtostderr=false --v=5 >/dev/null 2>&1 &
