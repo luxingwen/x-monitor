@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-08-18 15:34:32
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-10-24 15:24:10
+ * @Last Modified time: 2023-12-13 15:28:22
  */
 
 package collector
@@ -11,7 +11,6 @@ package collector
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -23,7 +22,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/golang/glog"
-	"github.com/grafana/agent/component/pyroscope"
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -34,7 +32,7 @@ import (
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
+	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/frame"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/pyrostub"
@@ -52,8 +50,9 @@ const (
 	__maxResolvePCFailureRate              = 0.2
 )
 
-type profileMatchTargetType uint32
 type Stacks [__perf_max_stack_depth]uint64
+
+type profileMatchTargetType uint32
 
 const (
 	MatchTargetNone profileMatchTargetType = iota
@@ -249,8 +248,7 @@ type profilePrivateArgs struct {
 type profileProgram struct {
 	*eBPFBaseProgram
 	objs                    *bpfmodule.XMProfileObjects
-	perfLink                *bpfprog.PerfEvent
-	pyroExporter            pyroscope.Appendable
+	perfLink                *bpfutils.PerfEvent
 	tf                      profileTargetFinderItf
 	unwindTablesOperEvtChan *UnwindTablesOperEvtChannel
 }
@@ -312,13 +310,6 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 	}
 	glog.Infof("eBPFProgram:'%s' profileTarget count:%d", name, profileProg.tf.TargetCount())
 
-	if profileProg.pyroExporter, err = pyrostub.NewPyroscopeExporter(config.PyroscopeSvrAddr(),
-		prometheus.DefaultRegisterer); err != nil {
-		profileProg.finalizer()
-		err = errors.Wrapf(err, "eBPFProgram:'%s' NewPyroscopeExporter failed.", name)
-		return nil, err
-	}
-
 	// 加载 eBPF 对象
 	if err = bpfmodule.LoadXMProfileObjects(profileProg.objs, nil); err != nil {
 		profileProg.finalizer()
@@ -345,7 +336,7 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 	// attach eBPF 程序
-	profileProg.perfLink, err = bpfprog.AttachPerfEventProg(-1, __profilePrivateArgs.SampleRate, profileProg.objs.XmDoPerfEvent)
+	profileProg.perfLink, err = bpfutils.AttachPerfEventProg(-1, __profilePrivateArgs.SampleRate, profileProg.objs.XmDoPerfEvent)
 	if err != nil {
 		profileProg.Stop()
 		err = errors.Wrapf(err, "eBPFProgram:'%s' AttachPerfEventProg failed.", name)
@@ -611,7 +602,10 @@ func (pp *profileProgram) collectProfiles() {
 					if frame.GetLangType(psi.pid) == calmutils.NativeLangType {
 						glog.Warningf("eBPFProgram:'%s' comm:'%s' pid:%d stack depth:'%d' resolveFailedCount:'%d' try using ehframe unwind stack",
 							pp.name, psi.comm, psi.pid, stackDepth, resolveFailedCount)
-						pp.unwindTablesOperEvtChan.SafeSend(&UnwindTablesOperEvt{pid: psi.pid, opType: createUnwindTables}, true)
+						pp.unwindTablesOperEvtChan.SafeSend(&UnwindTablesOperEvt{
+							pid:    psi.pid,
+							comm:   psi.comm,
+							opType: createUnwindTables}, true)
 						continue
 					}
 				}
@@ -642,7 +636,7 @@ func (pp *profileProgram) collectProfiles() {
 		glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d count:%d build depth:%d stacks:\n\t%s", pp.name, psi.comm, psi.pid, psi.count, len(sb.stack), strings.Join(sb.stack, "\n\t"))
 	}
 	// 上报 ebpf profile 结果到 pyroscope
-	pp.submitEBPFProfile(builders)
+	pyrostub.SubmitEBPFProfile(pp.name, builders)
 
 	// 清理 profileSample map
 	for i := range keys {
@@ -668,29 +662,29 @@ func (pp *profileProgram) collectProfiles() {
 	glog.Infof("eBPFProgram:'%s' symCache size:%d", pp.name, frame.CachePidCount())
 }
 
-func (pp *profileProgram) submitEBPFProfile(builders *pprof.ProfileBuilders) {
-	//glog.Infof("eBPFProgram:'%s' start submitEBPFProfile, profiles count:%d", pp.name, len(builders.Builders))
+// func (pp *profileProgram) submitEBPFProfile(builders *pprof.ProfileBuilders) {
+// 	//glog.Infof("eBPFProgram:'%s' start submitEBPFProfile, profiles count:%d", pp.name, len(builders.Builders))
 
-	bytesSend := 0
-	for _, builder := range builders.Builders {
-		buf := bytes.NewBuffer(nil)
-		// 写入缓冲区
-		if _, err := builder.Write(buf); err != nil {
-			glog.Errorf("eBPFProgram:'%s' ebpf profile encode failed. err:%s", pp.name, err.Error())
-			continue
-		}
+// 	bytesSend := 0
+// 	for _, builder := range builders.Builders {
+// 		buf := bytes.NewBuffer(nil)
+// 		// 写入缓冲区
+// 		if _, err := builder.Write(buf); err != nil {
+// 			glog.Errorf("eBPFProgram:'%s' ebpf profile encode failed. err:%s", pp.name, err.Error())
+// 			continue
+// 		}
 
-		rawProfile := buf.Bytes()
-		bytesSend += len(rawProfile)
-		samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
-		err := pp.pyroExporter.Appender().Append(context.Background(), builder.Labels, samples)
-		if err != nil {
-			glog.Errorf("eBPFProgram:'%s' ebpf profile append failed. err:%s", pp.name, err.Error())
-			continue
-		}
-	}
-	glog.Infof("eBPFProgram:'%s' submit epbf profiles done, send '%d' bytes", pp.name, bytesSend)
-}
+// 		rawProfile := buf.Bytes()
+// 		bytesSend += len(rawProfile)
+// 		samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
+// 		err := pp.pyroExporter.Appender().Append(context.Background(), builder.Labels, samples)
+// 		if err != nil {
+// 			glog.Errorf("eBPFProgram:'%s' ebpf profile append failed. err:%s", pp.name, err.Error())
+// 			continue
+// 		}
+// 	}
+// 	glog.Infof("eBPFProgram:'%s' submit epbf profiles done, send '%d' bytes", pp.name, bytesSend)
+// }
 
 type stackBuilder struct {
 	stack []string
@@ -715,6 +709,7 @@ const (
 
 type UnwindTablesOperEvt struct {
 	pid    int32
+	comm   string
 	opType unwindTablesOperType
 }
 
@@ -746,11 +741,13 @@ loop:
 						pidsFilter.Add(opEvt.pid)
 
 						if pidModulesMapData, modules, err := frame.CreatePidMaps(opEvt.pid); err == nil {
-							glog.Infof("eBPFProgram:'%s' pid:%d create xm_profile_pid_modules_map data successed.", pp.name, opEvt.pid)
+							glog.Infof("eBPFProgram:'%s' comm:'%s' pid:%d create xm_profile_pid_modules_map data successed.",
+								pp.name, opEvt.comm, opEvt.pid)
 
 							// 更新到表 xm_profile_pid_modules_map 中
 							if err = pp.objs.XmProfilePidModulesMap.Update(opEvt.pid, pidModulesMapData, 0); err == nil {
-								glog.Infof("eBPFProgram:'%s' pid:%d update xm_profile_pid_modules_map successed.", pp.name, opEvt.pid)
+								glog.Infof("eBPFProgram:'%s' comm:'%s' pid:%d update xm_profile_pid_modules_map successed.",
+									pp.name, opEvt.comm, opEvt.pid)
 
 								// 为每个 modules 创建 FDEtable
 								for i, m := range modules {
@@ -799,10 +796,11 @@ loop:
 								}
 							} else {
 								glog.Errorf("eBPFProgram:'%s' pid:%d update xm_profile_pid_modules_map failed, err:%s",
-									pp.name, err.Error())
+									pp.name, opEvt.pid, err.Error())
 							}
 						} else {
-							glog.Errorf("eBPFProgram:'%s' pid:%d create xm_profile_pid_modules_map data failed. err:%s", pp.name, opEvt.pid, err.Error())
+							glog.Errorf("eBPFProgram:'%s' comm:'%s' pid:%d create xm_profile_pid_modules_map data failed. err:%s",
+								pp.name, opEvt.comm, opEvt.pid, err.Error())
 						}
 					}
 				case deleteUnwindTables:

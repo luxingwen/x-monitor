@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-22 14:01:14
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-03-02 15:59:04
+ * @Last Modified time: 2023-12-13 14:44:24
  */
 
 // https://github.com/wubo0067/x-monitor/blob/feature-xm-ebpf-collector/doc/cachestat.md
@@ -55,8 +55,8 @@ __s32 BPF_KPROBE(xm_kp_cs_fad) {
 }
 
 // 这个函数在 Linux 5.0 版本中被移除了 2。取而代之的是
-// account_page_dirtied_in_file 函数 3。 所以，如果你的内核版本是 5.0
-// 或更高，你就不能使用 account_page_dirtied 函数了。 需要在加载是进行判断
+// account_page_dirtied_in_file 函数 3。所以，如果你的内核版本是 5.0
+// 或更高，你就不能使用 account_page_dirtied 函数了。需要在加载是进行判断
 SEC("kprobe/account_page_dirtied")
 __s32 BPF_KPROBE(xm_kp_cs_apd) {
     __u64 ip = PT_REGS_IP(ctx);

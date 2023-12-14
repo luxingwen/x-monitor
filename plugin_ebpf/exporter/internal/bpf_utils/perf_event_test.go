@@ -5,7 +5,7 @@
  * @Last Modified time: 2023-08-18 17:24:48
  */
 
-package bpfprog
+package bpfutils
 
 import (
 	"testing"

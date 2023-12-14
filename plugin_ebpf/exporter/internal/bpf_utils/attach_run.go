@@ -2,10 +2,10 @@
  * @Author: CALM.WU
  * @Date: 2023-08-18 14:45:53
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-18 14:48:04
+ * @Last Modified time: 2023-12-13 10:21:29
  */
 
-package bpfprog
+package bpfutils
 
 import (
 	"reflect"

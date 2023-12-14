@@ -66,7 +66,7 @@ var fnlookup = map[byte]instruction{
 	dlvFrame.DW_CFA_val_expression:     valexpression,
 	dlvFrame.DW_CFA_lo_user:            louser,
 	dlvFrame.DW_CFA_hi_user:            hiuser,
-	__DW_CFA_GNU_args_size:             gnuargsize,
+	//__DW_CFA_GNU_args_size:             gnuargsize,
 }
 
 const low_6_offset = 0x3f

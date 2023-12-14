@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-06 11:39:12
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-09-06 14:33:15
+ * @Last Modified time: 2023-12-13 11:25:45
  */
 
 package cmd
@@ -29,6 +29,7 @@ import (
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/frame"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/net"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/pyrostub"
 )
 
 var (
@@ -123,6 +124,9 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	config.PyroscopeSrvAddr(_pyroscope)
+	if err := pyrostub.InitPyroscopeExporter(config.PyroscopeSvrAddr()); err != nil {
+		glog.Fatalf("Init Pytoscope export failed, reason:%s", err.Error())
+	}
 
 	if err := rlimit.RemoveMemlock(); err != nil {
 		glog.Fatalf("failed to remove memlock limit: %v", err.Error())

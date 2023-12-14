@@ -29,7 +29,7 @@ import (
 	"golang.org/x/sys/unix"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
+	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
@@ -100,7 +100,7 @@ func loadToRunBIOProg(name string, prog *bioProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMBioObjects)
-	prog.links, err = bpfprog.AttachToRun(name, prog.objs, bpfmodule.LoadXMBio, func(spec *ebpf.CollectionSpec) error {
+	prog.links, err = bpfutils.AttachToRun(name, prog.objs, bpfmodule.LoadXMBio, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
 			"__filter_per_cmd_flag":    __bioEBpfArgs.FilterPerCmdFlag,
 			"__request_min_latency_ns": int64(time.Duration(__bioEBpfArgs.RequestMinLatencyMillSecs) * time.Millisecond),

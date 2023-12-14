@@ -21,7 +21,7 @@ import (
 	"go.uber.org/atomic"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
+	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils"
 )
 
 func init() {
@@ -88,7 +88,7 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 
-	if links, err := bpfprog.AttachObjPrograms(csp.objs.XMCacheStatPrograms, spec.Programs); err != nil {
+	if links, err := bpfutils.AttachObjPrograms(csp.objs.XMCacheStatPrograms, spec.Programs); err != nil {
 		err = errors.Wrapf(err, "eBPFProgram:'%s' AttachObjPrograms failed.", name)
 		glog.Error(err.Error())
 		return nil, err
@@ -132,10 +132,10 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 			case <-csp.gatherTimer.Chan():
 				// glog.Infof("eBPFProgram:'%s' gather data", csp.name)
 
-				// 迭代xm_page_cache_ops_count hash map
+				// 迭代 xm_page_cache_ops_count hash map
 				entries := csp.objs.XMCacheStatMaps.XmPageCacheOpsCount.Iterate()
 				for entries.Next(&ip, &count) {
-					// 解析ip，判断对应的内核函数
+					// 解析 ip，判断对应的内核函数
 					// glog.Infof("ip:0x%08x, count:%d", ip, count)
 					if funcName, err := calmutils.FindKsym(ip); err == nil {
 						switch {

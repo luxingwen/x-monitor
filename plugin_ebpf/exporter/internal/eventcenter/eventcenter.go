@@ -115,7 +115,7 @@ func (ec *EBPFEventCenter) Subscribe(progName string, focusEvents EBPFEventType)
 	if evtProg, ok = ec.eBPFEventProgramMap[progName]; ok {
 		glog.Infof("eBPFEventCenter eBPFProg:'%s' change focus eBPF Events from %064b ===> %064b",
 			progName, evtProg.focusEvents, focusEvents)
-		// 更新evtTyes
+		// 更新 evtTyes
 		evtProg.focusEvents = focusEvents
 	} else {
 		evtProg = new(eBPFEventProgram)

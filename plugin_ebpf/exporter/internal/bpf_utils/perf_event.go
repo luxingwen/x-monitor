@@ -5,7 +5,7 @@
  * @Last Modified time: 2023-08-18 14:49:04
  */
 
-package bpfprog
+package bpfutils
 
 import (
 	"runtime"
@@ -62,7 +62,7 @@ func (pel *perfEventLink) openPerfEvent(pid int, cpu int, sampleRate uint64) err
 		Config: unix.PERF_COUNT_SW_CPU_CLOCK,
 		Sample: sampleRate, // 采样频率，每秒采样的次数
 		Size:   uint32(unsafe.Sizeof(unix.PerfEventAttr{})),
-		Bits:   unix.PerfBitFreq, // 表示是否使用采样频率而不是采样周期，默认为0，即使用采样周期
+		Bits:   unix.PerfBitFreq, // 表示是否使用采样频率而不是采样周期，默认为 0，即使用采样周期
 	}
 
 	if fd, err := unix.PerfEventOpen(&attr, pid /* pid */, cpu /* cpu id */, -1 /* group */, unix.PERF_FLAG_FD_CLOEXEC); err != nil {

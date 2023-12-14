@@ -96,12 +96,12 @@ eBPF:
             #  labels:
             #    - l_name: "app"
             #      l_val: "grafana"
-            - name: "xmonitorBPF"
+            - name: "xmonitorebpf"
               match: "MatchTargetComm" # 匹配 匹配应用程序名
-              val: "x-monitor.eBPF"
+              val: "x-monitor.ebpf"
               labels:
                 - l_name: "app"
-                  l_val: "x-monitor.eBPF"
+                  l_val: "x-monitor.ebpf"
             #- name: "pyroscope"
             #  match: "MatchTargetPidNS" # 匹配 pid namespace
             #  val: "4026532259"

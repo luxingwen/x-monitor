@@ -27,9 +27,9 @@ import (
 	"github.com/sanity-io/litter"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
+	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
-	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
+	xmutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
 const (
@@ -72,7 +72,7 @@ func loadToRunProcessVMMProg(name string, prog *processVMProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMProcessVMObjects)
-	prog.links, err = bpfprog.AttachToRun(name, prog.objs, bpfmodule.LoadXMProcessVM, func(spec *ebpf.CollectionSpec) error {
+	prog.links, err = bpfutils.AttachToRun(name, prog.objs, bpfmodule.LoadXMProcessVM, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
 			"__filter_scope_type":  int32(__pvmEBpfArgs.FilterScopeType),
 			"__filter_scope_value": int64(__pvmEBpfArgs.FilterScopeValue),
@@ -189,7 +189,7 @@ loop:
 			}
 		case data, ok := <-pvp.processVMEvtDataChan.C:
 			if ok {
-				comm := bpfutils.CommToString(data.Comm[:])
+				comm := xmutils.CommToString(data.Comm[:])
 				if config.ProgramCommFilter(pvp.name, comm) {
 
 					pvp.processVMMapGuard.Lock()
@@ -207,7 +207,7 @@ loop:
 							fallthrough
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_MMAP_SHARED:
 							pvm.mmapSize = (int64)(data.Len)
-							// 将地址加入set
+							// 将地址加入 set
 							pvm.mmapAddrSet.Add(data.Addr)
 						case bpfmodule.XMProcessVMXmProcessvmEvtTypeXM_PROCESSVM_EVT_TYPE_BRK:
 							pvm.brkSize = (int64)(data.Len)
@@ -307,7 +307,7 @@ func (pvp *processVMProgram) Update(ch chan<- prometheus.Metric) error {
 		// glog.Infof("eBPFProgram:'%s' pid:%d, comm:'%s', mmapSize:%d, brkSize:%d",
 		// 	pvp.name, pvm.pid, pvm.comm, pvm.mmapSize, pvm.brkSize)
 		pidStr := strconv.FormatInt(int64(pvm.pid), 10)
-		// 指标值是page数量
+		// 指标值是 page 数量
 		ch <- prometheus.MustNewConstMetric(pvp.addressSpaceExpandDesc,
 			prometheus.GaugeValue, float64(pvm.mmapSize>>pageShift),
 			pidStr, pvm.comm, "mmap", __pvmEBpfArgs.FilterScopeType.String(), strconv.Itoa(__pvmEBpfArgs.FilterScopeValue))

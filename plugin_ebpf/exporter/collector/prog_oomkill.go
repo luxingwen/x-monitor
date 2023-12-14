@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
-	bpfprog "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog"
+	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
@@ -44,7 +44,7 @@ func loadToRunOomKillProg(name string, prog *oomKillProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMOomKillObjects)
-	prog.links, err = bpfprog.AttachToRun(name, prog.objs, bpfmodule.LoadXMOomKill, func(spec *ebpf.CollectionSpec) error {
+	prog.links, err = bpfutils.AttachToRun(name, prog.objs, bpfmodule.LoadXMOomKill, func(spec *ebpf.CollectionSpec) error {
 		return nil
 	})
 
@@ -130,7 +130,7 @@ loop:
 				shmemRssKB := data.RssShmepages << 2
 				memoryLimitKB := data.TotalPages << 2
 				if data.MemcgId != 0 {
-					// memcgid就是inode，通过类似命令可以找到对应的cg目录，find / -inum 140451 -print
+					// memcgid 就是 inode，通过类似命令可以找到对应的 cg 目录，find / -inum 140451 -print
 					memcgKB := data.MemcgPageCounter << 2
 					glog.Infof("eBPFProgram:'%s' Process pid:%d, tid:%d, comm:'%s' happens OOMKill, in MemCgroup:%d, MemCgroup alloc:%dkB, badness points:%d, file-rss:%dkB, anon-rss:%dkB, shmem-rss:%dkB, memoryLimit:%dkB, Msg:%s",
 						okp.name, data.Pid, data.Tid, comm, data.MemcgId, memcgKB, data.Points, fileRssKB, anonRssKB, shmemRssKB, memoryLimitKB, oomMsg)
