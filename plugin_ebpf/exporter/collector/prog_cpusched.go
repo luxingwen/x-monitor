@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-25 12:43:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-12-13 16:17:06
+ * @Last Modified time: 2023-12-15 16:17:35
  */
 
 package collector
@@ -10,9 +10,7 @@ package collector
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -20,18 +18,15 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/golang/glog"
-	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/model/labels"
 	"github.com/sanity-io/litter"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
-	"xmonitor.calmwu/plugin_ebpf/exporter/internal/pyrostub"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
@@ -219,38 +214,7 @@ L:
 						__cpuSchedEBpfArgs.FilterScopeType.String(),
 						strconv.Itoa(__cpuSchedEBpfArgs.FilterScopeValue))
 
-					glog.Infof("eBPFProgram:'%s' process pid:%d, comm:'%s' is hang, userStackID:%d, kernelStackID:%d",
-						csp.name, cpuSchedEvtData.Pid, comm, cpuSchedEvtData.UserStackId, cpuSchedEvtData.KernelStackId)
-
-					// todo 对 pyroscope 输出堆栈
-					userStackBytes := bpfutils.ConvertStackID2Bytes(int32(cpuSchedEvtData.UserStackId), csp.objs.XmCsStackMap)
-					kernelStackBytes := bpfutils.ConvertStackID2Bytes(int32(cpuSchedEvtData.KernelStackId), csp.objs.XmCsStackMap)
-					sb := pyrostub.StackBuilder{}
-					sb.Append(comm)
-					pyrostub.WalkStack(userStackBytes, cpuSchedEvtData.Pid, comm, &sb)
-					pyrostub.WalkStack(kernelStackBytes, 0, "kernel", &sb)
-
-					if sb.Len() > 1 {
-						sb.Reverse()
-
-						glog.Infof("eBPFProgram:'%s' comm:'%s', pid:%d build depth:%d stacks:\n\t%s", csp.name, comm, cpuSchedEvtData.Pid, sb.Len(), strings.Join(sb.Stack(), "\n\t"))
-
-						labelSet := make(map[string]string)
-						labelSet[__defaultMetricName] = "xm_hang_process"
-						labelSet[__labelServiceName] = fmt.Sprintf("xm_host_%s", func() string {
-							ip, _ := config.APISrvBindAddr()
-							return ip
-						}())
-
-						l := labels.FromMap(labelSet)
-						builders := pprof.NewProfileBuilders(99)
-						builder := builders.BuilderForTarget(l.Hash(), l)
-						builder.AddSample(sb.Stack(), 1)
-						pyrostub.SubmitEBPFProfile(csp.name, builders)
-					}
-
-					csp.objs.XmCsStackMap.Delete(cpuSchedEvtData.UserStackId)
-					csp.objs.XmCsStackMap.Delete(cpuSchedEvtData.KernelStackId)
+					glog.Infof("eBPFProgram:'%s' process pid:%d, comm:'%s' is hang", csp.name, cpuSchedEvtData.Pid, comm)
 
 				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_PROCESS_EXIT {
 					evtInfo := new(eventcenter.EBPFEventInfo)
