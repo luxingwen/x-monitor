@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-03-23 10:30:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-16 16:05:39
+ * @Last Modified time: 2023-12-15 16:08:58
  */
 
 // Observation of CPU scheduling status
@@ -39,13 +39,6 @@ struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 1 << 24); // 16M
 } xm_cs_event_ringbuf_map SEC(".maps");
-// task 堆栈
-struct {
-    __uint(type, BPF_MAP_TYPE_STACK_TRACE);
-    __uint(key_size, sizeof(__u32));
-    __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64));
-    __uint(max_entries, 1024);
-} xm_cs_stack_map SEC(".maps");
 
 // ** 类型标识，为了 bpf2go 程序生成 golang 类型
 static struct xm_runqlat_hist __zero_hist = {
@@ -266,10 +259,6 @@ __s32 BPF_PROG(btf_tracepoint__xm_sched_process_hang, struct task_struct *ts) {
         evt->tid = pid;
         evt->pid = tgid;
         bpf_probe_read_str(&evt->comm, sizeof(evt->comm), ts->comm);
-        evt->kernel_stack_id =
-            bpf_get_stackid(ctx, &xm_cs_stack_map, KERN_STACKID_FLAGS);
-        evt->user_stack_id =
-            bpf_get_stackid(ctx, &xm_cs_stack_map, USER_STACKID_FLAGS);
         bpf_ringbuf_submit(evt, 0);
     }
 

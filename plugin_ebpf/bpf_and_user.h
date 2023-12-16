@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-15 14:06:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-11-14 15:54:47
+ * @Last Modified time: 2023-12-15 16:08:07
  */
 
 #pragma once
@@ -73,8 +73,6 @@ enum xm_cpu_sched_evt_type {
 // 结构体成员按字节大小从大到小排列
 struct xm_cpu_sched_evt_data {
     __u64 offcpu_duration_millsecs; // offcpu 时间，毫秒
-    __u32 kernel_stack_id; // 调用堆栈
-    __u32 user_stack_id;
     enum xm_cpu_sched_evt_type evt_type;
     pid_t tid; // 线程 id
     pid_t pid; // 进程 id
