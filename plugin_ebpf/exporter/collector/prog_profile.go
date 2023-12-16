@@ -546,11 +546,17 @@ func (pp *profileProgram) collectProfiles() {
 		resolveFailedCount := 0
 
 		var frames []string
+		var prevPC uint64
+
 		for i := 0; i < stackDepth && i < 127; i++ {
 			pc := eus.PcLst[i]
 			if pc == 0 {
 				break
 			}
+			if pc == prevPC {
+				continue
+			}
+
 			// 解析 pc
 			sym, err = frame.Resolve(pid, pc)
 			if err == nil {
@@ -569,6 +575,7 @@ func (pp *profileProgram) collectProfiles() {
 				glog.Errorf("eBPFProgram:'%s' comm:'%s' err:%s", pp.name, comm, err.Error())
 				resolveFailedCount++
 			}
+			prevPC = pc
 		}
 		// 将堆栈反转
 		lo.Reverse(frames)
@@ -653,6 +660,7 @@ func (pp *profileProgram) collectProfiles() {
 			}
 		}
 	}
+
 	for ehframeUserStackID := range ehFrameStackIDSet {
 		if err = profileEhframeUserStackMap.Delete(ehframeUserStackID); err != nil {
 			glog.Errorf("eBPFProgram:'%s' profileEhframeUserStackMap.Delete('stackID=%d)' failed, err:%s", pp.name, ehframeUserStackID, err.Error())
