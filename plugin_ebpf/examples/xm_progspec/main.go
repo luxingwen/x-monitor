@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-01-16 11:06:19
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-10-07 16:13:27
+ * @Last Modified time: 2023-12-21 14:48:35
  */
 
 package main
@@ -22,7 +22,7 @@ func init() {
 }
 
 func __generate_asm_insns() {
-	// 翻译llvm-objdump -d -s --no-show-raw-insn  --symbolize-operands xm_trace.bpf.o导出的指令，**但这不能被cilium ebpf加载
+	// 翻译 llvm-objdump -d -s --no-show-raw-insn  --symbolize-operands xm_trace.bpf.o 导出的指令，**但这不能被 cilium ebpf 加载
 	insns := asm.Instructions{
 		// 0:	*(u64 *)(r10 - 16) = r1, StXMemDW dst: rfp src: r1 off: -16 imm: 0     rfp = r10
 		asm.StoreMem(asm.RFP, -16, asm.R1, asm.DWord),

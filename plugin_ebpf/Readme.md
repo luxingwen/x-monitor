@@ -57,7 +57,7 @@
 
    5. 70% 的读，30% 的写
    
-      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=randrw -rwmixread=70 -ioengine=libaio -bs=16k -size=1G -numjobs=1 -runtime=300 -group_reporting -name=mytest -time_based
+      fio -filename=fio_test -direct=1 -iodepth 1 -thread -rw=randrw -rwmixread=70 -ioengine=libaio -bs=16k -size=1G -numjobs=2 -runtime=300 -group_reporting -name=mytest -time_based
    
 2. **cpu_runqlatency 测试**
 

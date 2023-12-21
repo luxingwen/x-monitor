@@ -2,8 +2,10 @@
  * @Author: CALM.WU
  * @Date: 2023-08-16 15:15:40
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-12-15 16:06:04
+ * @Last Modified time: 2023-12-21 16:45:22
  */
+
+#pragma GCC diagnostic ignored "-Wint-conversion"
 
 #include <vmlinux.h>
 #include "../bpf_and_user.h"
@@ -153,13 +155,15 @@ __xm_get_task_userspace_regs(struct task_struct *task,
     }
 }
 
+#define BINARY_SEARCH_DEFAULT_RESULT 0xABABABABABABABAB
+
 // int element = sortedArray[index];
 // !!R8 unbounded memory access, make sure to bounds check any such access
 static __always_inline __s32
-__bsearch_fde_table_row(const struct xm_profile_fde_table_row *rows, __s32 left,
-                        __s32 right, __u64 address) {
-    __s32 result = -1;
-    __s32 mid = 0;
+__bsearch_fde_table_row(const struct xm_profile_fde_table_row *rows, __u64 left,
+                        __u64 right, __u64 address) {
+    __u64 result = BINARY_SEARCH_DEFAULT_RESULT;
+    __u64 mid = 0;
     // 最大深度限制查找 rows 的范围
     for (__u32 i = 0; i < MAX_FDE_TABLE_ROW_BIN_SEARCH_DEPTH; i++) {
         if (left > right) {
@@ -185,10 +189,10 @@ static __always_inline const struct xm_profile_fde_table_info *
 __find_fde_table_info_in_module(
     const struct xm_profile_module_fde_tables *module_tables, __u64 address) {
     if (module_tables->fde_table_count < XM_PER_MODULE_FDE_TABLE_COUNT) {
-        __s32 left = 0;
-        __s32 right = module_tables->fde_table_count - 1;
-        __s32 result = -1;
-        __s32 mid = 0;
+        __u64 left = 0;
+        __u64 right = module_tables->fde_table_count - 1;
+        __u64 result = BINARY_SEARCH_DEFAULT_RESULT;
+        __u64 mid = 0;
         const struct xm_profile_fde_table_info *fde_table_infos =
             module_tables->fde_infos;
 
@@ -211,7 +215,7 @@ __find_fde_table_info_in_module(
             }
         }
 
-        if (result >= 0) {
+        if (result != BINARY_SEARCH_DEFAULT_RESULT) {
             return &module_tables->fde_infos[result];
         }
     }
@@ -273,22 +277,21 @@ __find_fde_table_row_by_pc(const struct xm_profile_pid_maps *pid_maps,
     // 根据 rip 查找对应的 module
     module = __find_module_in_maps(pid_maps, pc);
     if (module) {
-        // bpf_printk("find module-{start:0x%lx...end:0x%lx}, type:%d",
-        //            module->start_addr, module->end_addr, module->type);
+        bpf_printk("\tfind module-{start:0x%lx...end:0x%lx}, type:%d",
+                   module->start_addr, module->end_addr, module->type);
 
         if (module->type == so) {
             addr -= module->start_addr;
-            // bpf_printk("module type is 'so', adjust
-            // (addr-=module->start_addr) "
-            //            "==> 0x%lx",
-            //            addr);
+            bpf_printk("\tmodule type is 'so', adjust(addr -= "
+                       "module->start_addr) ==> 0x%lx",
+                       addr);
         }
         // 根据 module 的 build_id_hash 查找对应的 module
         module_fde_tables = bpf_map_lookup_elem(
             &xm_profile_module_fdetables_map, &(module->build_id_hash));
 
         if (module_fde_tables) {
-            // bpf_printk("module build_id_hash:'%llu' in "
+            // bpf_printk("\t\tmodule build_id_hash:'%llu' in "
             //            "xm_profile_module_fde_tables",
             //            module->build_id_hash);
 
@@ -296,10 +299,10 @@ __find_fde_table_row_by_pc(const struct xm_profile_pid_maps *pid_maps,
             module_fde_table_info =
                 __find_fde_table_info_in_module(module_fde_tables, addr);
             if (module_fde_table_info) {
-                // bpf_printk("addr:0x%lx in "
-                //            "fde_table-{start:0x%lx...end:0x%lx}",
-                //            addr, module_fde_table_info->start,
-                //            module_fde_table_info->end);
+                bpf_printk("\taddr:0x%lx in "
+                           "fde_table-{start:0x%lx...end:0x%lx}",
+                           addr, module_fde_table_info->start,
+                           module_fde_table_info->end);
 
                 // 根据 addr 查找对应的 fde table row
                 if ((module_fde_table_info->row_pos
@@ -311,27 +314,34 @@ __find_fde_table_row_by_pc(const struct xm_profile_pid_maps *pid_maps,
                         module_fde_table_info->row_pos
                             + module_fde_table_info->row_count - 1,
                         addr);
-                    if (find_row_pos >= 0
+                    if (find_row_pos != BINARY_SEARCH_DEFAULT_RESULT
+                        && find_row_pos >= 0
                         && find_row_pos < XM_PER_MODULE_FDE_ROWS_COUNT) {
-                        // bpf_printk("addr:0x%lx at fde_table %d row.", addr,
-                        //            find_row_pos
-                        //                - module_fde_table_info->row_pos);
+                        bpf_printk("\taddr:0x%lx at fde_table %d row.", addr,
+                                   find_row_pos
+                                       - module_fde_table_info->row_pos);
                         return &module_fde_tables->fde_rows[find_row_pos];
                     } else {
-                        // bpf_printk("addr:0x%lx does not have a corresponding
-                        // "
-                        //            "row in the fde_table. table row
-                        //            count:%d", addr,
-                        //            module_fde_table_info->row_count);
+                        bpf_printk("\t[err] addr:0x%lx does not have a "
+                                   "corresponding row in the fde_table. table "
+                                   "row count:%d ",
+                                   addr, module_fde_table_info->row_count);
                     }
                 }
+            } else {
+                bpf_printk("\t[err] addr:0x%lx not found in the corresponding "
+                           "fde_table",
+                           addr);
             }
         } else {
-            // bpf_printk("module-{start:0x%lx...end:0x%lx}, build_id_hash:%d "
-            //            "not in xm_profile_module_fde_tables",
-            //            module->start_addr, module->end_addr,
-            //            module->build_id_hash);
+            bpf_printk("\t[err] module-{start:0x%lx...end:0x%lx}, "
+                       "build_id_hash:%d not in xm_profile_module_fde_tables",
+                       module->start_addr, module->end_addr,
+                       module->build_id_hash);
         }
+    } else {
+        bpf_printk("\t[err] addr:0x%lx not found in the corresponding module.",
+                   pc);
     }
     return 0;
 }
@@ -349,8 +359,9 @@ static __always_inline __s32 __get_user_stack(
     bool reached_bottom = false;
 
     for (__s32 i = 0; i < XM_MAX_STACK_DEPTH_PER_PROGRAM; i++) {
-        // bpf_printk("\t*** walk to previous frame:%d, current rip:0x%lx ***",
-        //            uwind_usi->e_st.len, rip);
+        bpf_printk("\twalk to frame:%d, current rip:0x%lx", uwind_usi->e_st.len,
+                   rip);
+
         row = __find_fde_table_row_by_pc(pid_maps, rip);
         if (row) {
             // 找到 pc 在 FDETables 中对应的 row
@@ -369,52 +380,61 @@ static __always_inline __s32 __get_user_stack(
                 cfa = rbp + row->cfa.offset;
             } else {
                 ret = -1;
-                bpf_printk("   loc:0x%lx, cfa reg:%d not support.", row->loc,
-                           row->cfa.reg);
+                bpf_printk("\t[err] loc:0x%lx, cfa reg:%d not support.",
+                           row->loc, row->cfa.reg);
                 break;
             }
-            // bpf_printk("\t   previous frame:%d cfa:0x%lx",
-            // uwind_usi->e_st.len,
-            //            cfa);
+            bpf_printk("\tframe:%d cfa:0x%lx", uwind_usi->e_st.len, cfa);
 
             if (row->rbp_cfa_offset != INT_MAX) {
                 // 通过 cfa + rbp_cfa_offset 来计算 上一帧 rbp
                 // 在栈空间的地址
                 prev_rbp_addr = cfa + row->rbp_cfa_offset;
-                // bpf_printk("\t   previous frame:%d rbp addr:0x%lx",
+                // bpf_printk("\t   frame:%d rbp addr:0x%lx",
                 //            uwind_usi->e_st.len, prev_rbp_addr);
                 // 读取上一帧 rbp 的值
                 ret = bpf_probe_read_user(&rbp, 8, (void *)prev_rbp_addr);
                 if (ret < 0) {
-                    bpf_printk("\t   [error] read previous frame:%d rbp at "
+                    bpf_printk("\t[err] read frame:%d rbp at "
                                "prev_rbp_addr:0x%lx failed. err:%d",
                                uwind_usi->e_st.len, prev_rbp_addr, ret);
                     break;
                 } else {
-                    // bpf_printk("\t   previous frame:%d rbp:0x%lx",
-                    //            uwind_usi->e_st.len, rbp);
+                    bpf_printk("\tframe:%d prev_rbp_addr:0x%lx, rbp:0x%lx",
+                               uwind_usi->e_st.len, prev_rbp_addr, rbp);
+                    // TODO: 如果 rbp == 0，说明到了最低的 call frame
+                    if (rbp == 0) {
+                        bpf_printk("\t[warn] rbp value is 0, reached bottom");
+                        reached_bottom = true;
+                    }
                 }
             } else {
                 // !! 这里不应该标识为达到 bottom
                 // reached_bottom = true;
-                bpf_printk("\t   rbp_cfa_offset is INT_MAX");
+                bpf_printk("\t[warn] rbp_cfa_offset is INT_MAX");
             }
 
             if (row->ra_cfa_offset != INT_MAX) {
                 // 通过 cfa + ra_cfa_offset 来计算上一帧 rip
                 prev_rip_addr = cfa + row->ra_cfa_offset;
-                // bpf_printk("\t   previous frame:%d rip addr:0x%lx",
-                //            uwind_usi->e_st.len, prev_rip_addr);
+                // bpf_printk("\tframe:%d rip addr:0x%lx", uwind_usi->e_st.len,
+                //            prev_rip_addr);
                 // 读取上一帧 rip 的值
                 ret = bpf_probe_read_user(&rip, 8, (void *)prev_rip_addr);
                 if (ret < 0) {
-                    bpf_printk("\t   [error] read previous frame:%d rip at "
-                               "previous frame rip addr:0x%lx failed. err:%d",
+                    bpf_printk("\t[err] read frame:%d rip at "
+                               "prev_rip_addr:0x%lx failed. err:%d",
                                uwind_usi->e_st.len, prev_rip_addr, ret);
                     break;
                 } else {
-                    // bpf_printk("\t   previous frame:%d rip:0x%lx",
-                    //            uwind_usi->e_st.len, rip);
+                    bpf_printk("\tframe:%d prev_rip_addr:0x%lx, rip:0x%lx",
+                               uwind_usi->e_st.len, prev_rip_addr, rip);
+
+                    if (rip == 0) {
+                        bpf_printk("\t[warn] rip should not be zero");
+                        ret = -1;
+                        break;
+                    }
                 }
             } else {
                 reached_bottom = true;
@@ -436,12 +456,12 @@ static __always_inline __s32 __get_user_stack(
                 rsp = cfa;
             } else {
                 // 到了最低的 call frame
-                // bpf_printk("\t   reached bottom, stack depth:%d",
-                //            uwind_usi->e_st.len);
+                bpf_printk("\treached bottom, stack depth:%d",
+                           uwind_usi->e_st.len);
                 break;
             }
         } else {
-            bpf_printk("\t    current rip:0x%lx is invalid, stack depth:%d",
+            bpf_printk("\t[err] current rip:0x%lx is invalid, stack depth:%d",
                        rip, uwind_usi->e_st.len);
             ret = -1;
             break;
@@ -451,9 +471,9 @@ static __always_inline __s32 __get_user_stack(
     if (ret == 0 && !reached_bottom
         && uwind_usi->e_st.len < PERF_MAX_STACK_DEPTH
         && uwind_usi->tail_call_count < MX_MAX_TAIL_CALL_COUNT - 1) {
-        // bpf_printk("\t   Continue tail "
-        //            "call:'xm_walk_user_stacktrace':times(%d) for pid:%d--->",
-        //            uwind_usi->tail_call_count, uwind_usi->pid);
+        bpf_printk("\t   Continue tail "
+                   "call:'xm_walk_user_stacktrace':times(%d) for pid:%d--->",
+                   uwind_usi->tail_call_count, uwind_usi->pid);
         // !!misaligned value access off (0x0; 0x0)+0+1052 size 8
         //__xm_update_u64(&uwind_usi->tail_call_count, 1);
         uwind_usi->tail_call_count++;
@@ -468,17 +488,14 @@ __s32 xm_walk_user_stacktrace(struct bpf_perf_event_data *ctx) {
     struct xm_unwind_user_stack_resolve_data *uwind_usi =
         bpf_map_lookup_elem(&xm_unwind_user_stack_data_heap, &__zero);
     if (uwind_usi) {
-        // bpf_printk("--->Enter tail call:'xm_walk_user_stacktrace':times(%d) "
-        //            "for pid:%d",
-        //            uwind_usi->tail_call_count, uwind_usi->pid);
+        bpf_printk("--->Enter tail call:'xm_walk_user_stacktrace':times(%d) "
+                   "for pid:%d",
+                   uwind_usi->tail_call_count, uwind_usi->pid);
         struct xm_profile_pid_maps *pid_maps =
             bpf_map_lookup_elem(&xm_profile_pid_modules_map, &(uwind_usi->pid));
         if (pid_maps) {
             struct task_struct *ts =
                 (struct task_struct *)bpf_get_current_task();
-            // pid_t tgid = READ_KERN(ts->tgid);
-            // same as uwind_usi->pid
-            // bpf_printk("current task pid:%d", tgid);
 
             __s32 ret = __get_user_stack(ctx, pid_maps, ts, uwind_usi);
             if (ret == 0) {
@@ -586,15 +603,13 @@ SEC("perf_event") __s32 xm_do_perf_event(struct bpf_perf_event_data *ctx) {
         bpf_map_lookup_elem(&xm_unwind_user_stack_data_heap, &__zero);
 
     if (pid_maps && uwind_usi) {
-        // bpf_printk("---> start traversing user stack by section .eh_frame
-        // data "
-        //            " <---");
         // 初始化 uwind user stack 数据对象
         uwind_usi->pid = pid;
         // 获取当前的寄存器，这是 top frame 当前执行的指令地址
         __xm_get_task_userspace_regs(ts, &ctx->regs, &uwind_usi->regs);
-        // bpf_printk("rip:0x%lx, rsp:0x%lx, rbp:0x%x", uwind_usi->regs.rip,
-        //            uwind_usi->regs.rsp, uwind_usi->regs.rbp);
+        bpf_printk("start unwind stack rip:0x%lx, rsp:0x%lx, rbp:0x%x",
+                   uwind_usi->regs.rip, uwind_usi->regs.rsp,
+                   uwind_usi->regs.rbp);
         // 初始化所有程序计数器
         for (__s32 i = 0; i < PERF_MAX_STACK_DEPTH; i++) {
             uwind_usi->e_st.pcLst[i] = 0;

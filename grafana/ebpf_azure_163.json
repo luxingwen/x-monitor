@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": 2,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -95,6 +95,7 @@
         },
         "tooltip": {
           "show": true,
+          "showColorScale": false,
           "yHistogram": true
         },
         "yAxis": {
@@ -108,12 +109,13 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
-          "expr": "cpu_schedule_runq_latency{instance=~\"$instance.*\",le!=\"+Inf\"}",
+          "expr": "cpu_schedule_runq_latency_bucket{instance=~\"$instance.*\",le!=\"+Inf\"}",
           "format": "heatmap",
-          "legendFormat": "{{le}}",
+          "instant": false,
+          "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
@@ -171,7 +173,7 @@
             "properties": [
               {
                 "id": "unit",
-                "value": "µs"
+                "value": "ms"
               }
             ]
           },
@@ -210,7 +212,7 @@
         "sortBy": [
           {
             "desc": true,
-            "displayName": "Value"
+            "displayName": "Time"
           }
         ]
       },
@@ -219,7 +221,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -231,7 +233,7 @@
           "refId": "A"
         }
       ],
-      "title": "cpu_schedule_offcpu_duration",
+      "title": "cpu_schedule_offcpu",
       "transformations": [
         {
           "id": "organize",
@@ -242,20 +244,25 @@
               "instance": true,
               "job": true
             },
+            "includeByName": {},
             "indexByName": {
               "Time": 0,
-              "Value": 10,
+              "Value": 8,
               "__name__": 1,
               "comm": 2,
               "from": 5,
               "instance": 6,
               "job": 7,
               "pid": 3,
-              "res_type": 8,
-              "res_value": 9,
-              "tgid": 4
+              "res_type": 9,
+              "res_value": 10,
+              "tid": 4
             },
-            "renameByName": {}
+            "renameByName": {
+              "Value": "",
+              "res_type": "filter type",
+              "res_value": "filter value"
+            }
           }
         }
       ],
@@ -327,6 +334,7 @@
         },
         "tooltip": {
           "show": true,
+          "showColorScale": false,
           "yHistogram": false
         },
         "yAxis": {
@@ -340,17 +348,18 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_latency_bucket{instance=~\"$instance.*\",device=\"$device\", operation=\"read\", le!=\"+Inf\"}",
           "format": "heatmap",
-          "legendFormat": "{{le}}",
+          "instant": false,
+          "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "bio_request_latency_bucket read",
+      "title": "bio_request_latency read",
       "type": "heatmap"
     },
     {
@@ -406,6 +415,7 @@
         },
         "tooltip": {
           "show": true,
+          "showColorScale": false,
           "yHistogram": false
         },
         "yAxis": {
@@ -419,7 +429,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_latency_bucket{instance=~\"$instance.*\",device=\"$device\", operation=\"write\", le!=\"+Inf\"}",
@@ -429,7 +439,7 @@
           "refId": "A"
         }
       ],
-      "title": "bio_request_latency_bucket write",
+      "title": "bio_request_latency write",
       "type": "heatmap"
     },
     {
@@ -485,6 +495,7 @@
         },
         "tooltip": {
           "show": true,
+          "showColorScale": false,
           "yHistogram": false
         },
         "yAxis": {
@@ -498,7 +509,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_in_queue_latency_bucket{instance=~\"$instance.*\",device=\"$device\", operation=\"read\", le!=\"+Inf\"}",
@@ -508,7 +519,7 @@
           "refId": "A"
         }
       ],
-      "title": "bio_request_in_queue_latency_bucket read",
+      "title": "bio_request_in_queue_latency read",
       "type": "heatmap"
     },
     {
@@ -564,6 +575,7 @@
         },
         "tooltip": {
           "show": true,
+          "showColorScale": false,
           "yHistogram": false
         },
         "yAxis": {
@@ -577,7 +589,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_in_queue_latency_bucket{instance=~\"$instance.*\",device=\"$device\", operation=\"write\", le!=\"+Inf\"}",
@@ -587,7 +599,7 @@
           "refId": "A"
         }
       ],
-      "title": "bio_request_in_queue_latency_bucket write",
+      "title": "bio_request_in_queue_latency write",
       "type": "heatmap"
     },
     {
@@ -669,7 +681,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_randomized_ratio{instance=~\"$instance.*\",device=\"$device\",operation=\"read\"}",
@@ -680,7 +692,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_sequential_ratio{instance=~\"$instance.*\",device=\"$device\",operation=\"read\"}",
@@ -772,7 +784,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_randomized_ratio{instance=~\"$instance.*\",device=\"$device\",operation=\"write\"}",
@@ -783,7 +795,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_sequential_ratio{instance=~\"$instance.*\",device=\"$device\",operation=\"write\"}",
@@ -877,7 +889,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -890,7 +902,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_total_kbytes{instance=~\"$instance.*\",device=\"$device\",operation=\"write\"}",
@@ -902,7 +914,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_total_kbytes{instance=~\"$instance.*\",device=\"$device\",operation=\"flush\"}",
@@ -995,7 +1007,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1008,7 +1020,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1022,7 +1034,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1150,7 +1162,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "b8f70f86-a2f5-4202-9763-d539205f8860"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_latency_over_threshold{instance=~\"$instance.*\"}",
@@ -1171,19 +1183,21 @@
               "instance": true,
               "job": true
             },
+            "includeByName": {},
             "indexByName": {
               "Time": 0,
-              "Value": 11,
+              "Value": 12,
               "__name__": 1,
-              "bytes": 7,
+              "bytes": 8,
               "comm": 2,
-              "device": 4,
-              "from": 6,
-              "in_queue_latency_us": 10,
-              "instance": 8,
-              "job": 9,
-              "operation": 5,
-              "pid": 3
+              "device": 5,
+              "from": 7,
+              "in_queue_latency_us": 11,
+              "instance": 9,
+              "job": 10,
+              "operation": 6,
+              "pid": 3,
+              "tid": 4
             },
             "renameByName": {
               "Time": "",
@@ -1210,7 +1224,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "Dx9ZNVfVz"
+        "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
       },
       "fieldConfig": {
         "defaults": {
@@ -1290,7 +1304,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1303,7 +1317,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_error_count{instance=~\"$instance.*\",device=\"$device\",operation=\"write\"}",
@@ -1315,7 +1329,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "bio_request_error_count{instance=~\"$instance.*\",device=\"$device\",operation=\"flush\"}",
@@ -1425,7 +1439,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "filesystem_pagecache_ratio{instance=~\"$instance.*\"}",
@@ -1435,7 +1449,7 @@
           "refId": "B"
         }
       ],
-      "title": "PageCache Ratio",
+      "title": "PageCacheRatio",
       "type": "timeseries"
     },
     {
@@ -1520,7 +1534,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "filesystem_pagecache_hits{instance=~\"$instance.*\"}",
@@ -1532,7 +1546,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "filesystem_pagecache_misses{instance=~\"$instance.*\"}",
@@ -1641,7 +1655,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "expr": "process_address_space_privanon_share_pages",
@@ -1770,7 +1784,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Dx9ZNVfVz"
+            "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1822,7 +1836,7 @@
       "type": "table"
     }
   ],
-  "refresh": "10s",
+  "refresh": "5s",
   "revision": 1,
   "schemaVersion": 38,
   "tags": [],
@@ -1836,7 +1850,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "b8f70f86-a2f5-4202-9763-d539205f8860"
+          "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
         },
         "definition": "label_values(instance)",
         "hide": 0,
@@ -1863,7 +1877,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "b8f70f86-a2f5-4202-9763-d539205f8860"
+          "uid": "a9ac4ff4-652f-49bd-ad94-c8a933ef7f7e"
         },
         "definition": "label_values(bio_request_total_kbytes,device)",
         "hide": 0,
@@ -1890,8 +1904,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "ebpf",
+  "title": "ebpf-163",
   "uid": "bd5cbc8d-760f-4cf3-b38a-a77808412920",
-  "version": 11,
+  "version": 1,
   "weekStart": ""
 }

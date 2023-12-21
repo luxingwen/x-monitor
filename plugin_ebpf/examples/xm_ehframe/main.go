@@ -84,7 +84,7 @@ func printFDETable(fde *dlvFrame.FrameDescriptionEntry, order binary.ByteOrder) 
 		case dlvFrame.RuleOffset:
 			strBuilder.WriteString(fmt.Sprintf("RBP:c%-5d ", rbp.Offset))
 		default:
-			strBuilder.WriteString(fmt.Sprintf("%-10s ", "RBP:[u]"))
+			strBuilder.WriteString(fmt.Sprintf("%-10s ", fmt.Sprintf("RBP:[U-%d]", rbp.Rule)))
 		}
 
 		// ra
@@ -93,7 +93,7 @@ func printFDETable(fde *dlvFrame.FrameDescriptionEntry, order binary.ByteOrder) 
 		case dlvFrame.RuleOffset:
 			strBuilder.WriteString(fmt.Sprintf("RA:c%-5d", ra.Offset))
 		default:
-			strBuilder.WriteString("RA:[u]")
+			strBuilder.WriteString(fmt.Sprintf("%-10s ", fmt.Sprintf("RA:[U-%d]", ra.Rule)))
 		}
 		glog.Info(strBuilder.String())
 		strBuilder.Reset()
@@ -156,7 +156,7 @@ func printFDETables(entry *procMapEntry) {
 		glog.Fatal(err.Error())
 	}
 
-	// 得到所有的fde
+	// 得到所有的 fde
 
 	fdes, err := dlvFrame.Parse(data, f.ByteOrder, 0, pointerSize(f.Machine), section.Addr)
 	if err != nil {
@@ -170,12 +170,12 @@ func printFDETables(entry *procMapEntry) {
 					}
 				}
 			} else {
-				// 打印全部的fde table
+				// 打印全部的 fde table
 				printFDETable(fde, f.ByteOrder)
 			}
 		}
 
-		// 打印指定rip的fde table
+		// 打印指定 rip 的 fde table
 		var pc uint64
 		if entry.elfType == elf.ET_EXEC {
 			pc = entry.rip
