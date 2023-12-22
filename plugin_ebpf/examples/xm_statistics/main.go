@@ -70,6 +70,6 @@ func main() {
 			glog.Infof("module:%s fde table count:%d", k, v)
 		}
 	} else {
-		glog.Errorf("open /proc/%d/maps. err:%s", err.Error())
+		glog.Errorf("open /proc/%d/maps. err:%s", __pid, err.Error())
 	}
 }

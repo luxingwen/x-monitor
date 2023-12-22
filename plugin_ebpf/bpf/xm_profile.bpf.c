@@ -201,7 +201,6 @@ __find_fde_table_info_in_module(
                 break;
             }
             mid = left + (right - left) / 2;
-
             // **fix:math between map_value pointer and register with unbounded
             // **min value is not allowed
             if (mid < 0 || mid >= XM_PER_MODULE_FDE_TABLE_COUNT) {
@@ -291,7 +290,7 @@ __find_fde_table_row_by_pc(const struct xm_profile_pid_maps *pid_maps,
             &xm_profile_module_fdetables_map, &(module->build_id_hash));
 
         if (module_fde_tables) {
-            // bpf_printk("\t\tmodule build_id_hash:'%llu' in "
+            // bpf_printk("\tmodule build_id_hash:'%llu' in "
             //            "xm_profile_module_fde_tables",
             //            module->build_id_hash);
 
