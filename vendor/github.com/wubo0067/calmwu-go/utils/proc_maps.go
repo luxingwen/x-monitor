@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-01-10 14:20:15
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-12-21 15:03:05
+ * @Last Modified time: 2023-10-26 14:41:55
  */
 
 package utils
@@ -285,15 +285,15 @@ func parseProcMapsEntry(line string, pss *ProcMaps) error {
 	pmm.Dev = unix.Mkdev(uint32(devMajor), uint32(devMinor))
 
 	if err = pmm.loadProcModule(); err != nil {
-		if errors.Is(err, ErrProcModuleNotSupport) || errors.Is(err, ErrProcModuleHasNoSymbols) {
-			// 不加入，忽略，继续
-			pmm = nil
-			return nil
+		if !errors.Is(err, ErrProcModuleNotSupport) && !errors.Is(err, ErrProcModuleHasNoSymbols) {
+			return errors.Wrapf(err, "load module:'%s' failed.", pmm.Pathname)
 		}
-		return errors.Wrapf(err, "load module:'%s' failed.", pmm.Pathname)
 	}
 
-	pss.ModuleList = append(pss.ModuleList, pmm)
+	if err == nil || errors.Is(err, ErrProcModuleHasNoSymbols) {
+		// 如果 module 没有符号表，也将其加入到 ModuleList 中，因为可以从模块中读取到 eh_frame 信息
+		pss.ModuleList = append(pss.ModuleList, pmm)
+	}
 
 	return nil
 }
