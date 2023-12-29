@@ -58,3 +58,28 @@
 #endif /* CMOBALL_H_ */
 
 // 用已实现 c 语言的函数默认值，也模拟了函数重载
+
+// #include <stdio.h>
+// #include "cmoball.h"
+
+// int foo(int a, int b, int c)
+// {
+//     return a + b + c;
+// }
+
+// #define foo(...) CMOBALL(FOO, __VA_ARGS__)
+// #define FOO_3(x,y,z) foo(x,y,z)
+// #define FOO_2(x,y)   FOO_3(x,y,2)
+// #define FOO_1(x)     FOO_2(x,2)
+// #define FOO_0()      FOO_1(2)
+
+// int main()
+// {
+//     printf("%d\n", foo());      // 6
+//     printf("%d\n", foo(1));     // 5
+//     printf("%d\n", foo(1,1,1)); // 3
+
+//     return 0;
+// }
+
+// https://github.com/Jorengarenar/CMObALL

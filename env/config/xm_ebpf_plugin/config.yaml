@@ -61,7 +61,7 @@ eBPF:
         include_comms:
           - "xm_vm_test"
           - "x-monitor"
-          - "x-monitor.eBPF"
+          - "x-monitor.ebpf"
           - "prometheus"
           - "top"
           - "pmlogger"

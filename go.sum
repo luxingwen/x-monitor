@@ -79,8 +79,6 @@ github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWR
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
 github.com/cilium/ebpf v0.7.0/go.mod h1:/oI2+1shJiTGAMgl6/RgJr36Eo1jzrRcAWbcXO2usCA=
-github.com/cilium/ebpf v0.12.2 h1:cP3qL4kkl19kr/F+hKqUo9F9pPMVz1oms8C7Qj0AwWk=
-github.com/cilium/ebpf v0.12.2/go.mod h1:u9H29/Iq+8cy70YqI6p5pfADkFl3vdnV2qXDg5JL0Zo=
 github.com/cilium/ebpf v0.12.3 h1:8ht6F9MquybnY97at+VDZb3eQQr8ev79RueWeVaEcG4=
 github.com/cilium/ebpf v0.12.3/go.mod h1:TctK1ivibvI3znr66ljgi4hqOT8EYQjz1KWBfb1UVgM=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
@@ -533,18 +531,6 @@ github.com/weaveworks/common v0.0.0-20230511094633-334485600903 h1:ph7R2CS/0o1gB
 github.com/weaveworks/common v0.0.0-20230511094633-334485600903/go.mod h1:rgbeLfJUtEr+G74cwFPR1k/4N0kDeaeSv/qhUNE4hm8=
 github.com/weaveworks/promrus v1.2.0 h1:jOLf6pe6/vss4qGHjXmGz4oDJQA+AOCqEL3FvvZGz7M=
 github.com/weaveworks/promrus v1.2.0/go.mod h1:SaE82+OJ91yqjrE1rsvBWVzNZKcHYFtMUyS1+Ogs/KA=
-github.com/wubo0067/calmwu-go v0.0.0-20231030031850-7b45545dc0ed h1:OLF2sMrws4mpstxY/rx+/c3HTSPmsfDjBFQJ47QiH74=
-github.com/wubo0067/calmwu-go v0.0.0-20231030031850-7b45545dc0ed/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
-github.com/wubo0067/calmwu-go v0.0.0-20231117081035-c6b4d836896f h1:00435sv9zOSyZf0Xx8Jlc9mQj3nPr9vUn90DOrP3hAE=
-github.com/wubo0067/calmwu-go v0.0.0-20231117081035-c6b4d836896f/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
-github.com/wubo0067/calmwu-go v0.0.0-20231117135330-9ba1e034fbd1 h1:ZWjKqAOhoSdVfL3pZw0Z1jaWNrzsAVnT4hjZUifUeOk=
-github.com/wubo0067/calmwu-go v0.0.0-20231117135330-9ba1e034fbd1/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
-github.com/wubo0067/calmwu-go v0.0.0-20231121084007-92de8c09f2bf h1:wWmx/7/+gvPFoGeO9fySCSBFJcPH85xrlsjAf18u8fE=
-github.com/wubo0067/calmwu-go v0.0.0-20231121084007-92de8c09f2bf/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
-github.com/wubo0067/calmwu-go v0.0.0-20231122025940-4e29b75e3fb7 h1:T3wRnzcACUd5dE9LwaQ1dDdFhUfAH2R220+q65v0+vo=
-github.com/wubo0067/calmwu-go v0.0.0-20231122025940-4e29b75e3fb7/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
-github.com/wubo0067/calmwu-go v0.0.0-20231122064653-0f2c31cfc5bb h1:wWDYQq7nvaRVmYnH8MMlkTJ103RqvvYUMY8jhAMzm30=
-github.com/wubo0067/calmwu-go v0.0.0-20231122064653-0f2c31cfc5bb/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
 github.com/wubo0067/calmwu-go v0.0.0-20231223044839-f50f7d5f2550 h1:xqYFzdRVPyrPBY8I6DdHSx0xUWMXT8KvTkN0297/O+Q=
 github.com/wubo0067/calmwu-go v0.0.0-20231223044839-f50f7d5f2550/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
@@ -742,8 +728,6 @@ golang.org/x/sys v0.0.0-20220908164124-27713097b956/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.1.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.5.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.12.0 h1:CM0HF96J0hcLAwsHPJZjfdNzs0gftsLfgKt57wWHJ0o=
-golang.org/x/sys v0.12.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.14.1-0.20231108175955-e4099bfacb8c h1:3kC/TjQ+xzIblQv39bCOyRk8fbEeJcDHwbyxPUU2BpA=
 golang.org/x/sys v0.14.1-0.20231108175955-e4099bfacb8c/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
