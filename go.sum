@@ -533,6 +533,8 @@ github.com/weaveworks/promrus v1.2.0 h1:jOLf6pe6/vss4qGHjXmGz4oDJQA+AOCqEL3FvvZG
 github.com/weaveworks/promrus v1.2.0/go.mod h1:SaE82+OJ91yqjrE1rsvBWVzNZKcHYFtMUyS1+Ogs/KA=
 github.com/wubo0067/calmwu-go v0.0.0-20231223044839-f50f7d5f2550 h1:xqYFzdRVPyrPBY8I6DdHSx0xUWMXT8KvTkN0297/O+Q=
 github.com/wubo0067/calmwu-go v0.0.0-20231223044839-f50f7d5f2550/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
+github.com/wubo0067/calmwu-go v0.0.0-20240104082854-cc885bb3b53b h1:2SKMzCNAwfTC9ELdEZM8Rr9iybn0bik+rD/jylb5NkI=
+github.com/wubo0067/calmwu-go v0.0.0-20240104082854-cc885bb3b53b/go.mod h1:z40kB3CWJYzVxLVRp5LlQQ1uqTlLF3fCVkHDpbgyE2A=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xyproto/ainur v1.3.3-0.20230327065817-db855584e31b h1:WCn7EjjM1ID/zqwJsEV16NOh8sab7vHkNIo1j35Fuq0=
 github.com/xyproto/ainur v1.3.3-0.20230327065817-db855584e31b/go.mod h1:jZ/u2tXHoZ9GpCeeOUE6hKh/Z+JyrbpGebAFd51m9kw=
