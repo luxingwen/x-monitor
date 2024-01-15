@@ -61,7 +61,7 @@ const (
 	defaultReadChanSize    = (1 << 9)
 )
 
-func InitDefault() (EBPFEventCenterInterface, error) {
+func Init() (EBPFEventCenterInterface, error) {
 	var err error
 
 	initOnce.Do(func() {
@@ -79,13 +79,13 @@ func InitDefault() (EBPFEventCenterInterface, error) {
 	return DefInstance, err
 }
 
-func StopDefault() {
+func Stop() {
 	if DefInstance != nil {
-		DefInstance.Stop()
+		DefInstance.__stop()
 	}
 }
 
-func (ec *EBPFEventCenter) Stop() {
+func (ec *EBPFEventCenter) __stop() {
 	// Close the stop channel
 	close(DefInstance.stopCh)
 	// Wait for the waitgroup to finish and recover from any panics

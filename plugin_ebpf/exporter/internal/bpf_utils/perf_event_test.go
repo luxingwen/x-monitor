@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-08-18 17:24:20
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-08-18 17:24:48
+ * @Last Modified time: 2024-01-15 17:13:42
  */
 
 package bpfutils
@@ -18,7 +18,7 @@ const (
 	mapKey uint32 = 0
 )
 
-// go test  -timeout 30s -run ^TestPerfEventProg$ xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_prog -v -logtostderr
+// go test  -timeout 30s -run ^TestPerfEventProg$ xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils -v -logtostderr
 func TestPerfEventProg(t *testing.T) {
 	objs := bpfmodule.XMProfileObjects{}
 

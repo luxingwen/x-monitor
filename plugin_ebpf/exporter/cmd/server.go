@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-02-06 11:39:12
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-12-13 11:25:45
+ * @Last Modified time: 2024-01-15 16:08:35
  */
 
 package cmd
@@ -58,10 +58,9 @@ var (
 		Run: rootCmdRun,
 	}
 
-	_apiSrv        *net.WebSrv
-	_eBPFCollector *collector.EBPFCollector
-
-	_gf = singleflight.Group{}
+	_APIHttp       *net.WebSrv
+	_EBPFCollector *collector.EBPFCollector
+	_gf            = singleflight.Group{}
 )
 
 func init() {
@@ -92,12 +91,12 @@ func registerPromCollectors() {
 
 	var err error
 
-	_eBPFCollector, err = collector.New()
+	_EBPFCollector, err = collector.New()
 	if err != nil {
 		glog.Fatalf("Couldn't create eBPF collector: %s", err.Error())
 	}
 
-	if err = prometheus.Register(_eBPFCollector); err != nil {
+	if err = prometheus.Register(_EBPFCollector); err != nil {
 		glog.Fatalf("Couldn't register eBPF collector: %s", err.Error())
 	}
 }
@@ -145,19 +144,19 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	calmutils.InstallPProf(bind)
 
 	//
-	eventcenter.InitDefault()
+	eventcenter.Init()
 
 	// 注册 prometheus collectors
 	registerPromCollectors()
 
 	// 启动 web 服务
 	bind, _ = config.APISrvBindAddr()
-	_apiSrv = net.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
+	_APIHttp = net.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
 
 	// 注册 router
 	metricsPath := config.PromMetricsPath()
-	_apiSrv.Handle(http.MethodGet, metricsPath, prometheusHandler())
-	_apiSrv.Handle(http.MethodGet, "/", func(c *gin.Context) {
+	_APIHttp.Handle(http.MethodGet, metricsPath, prometheusHandler())
+	_APIHttp.Handle(http.MethodGet, "/", func(c *gin.Context) {
 		name := c.Request.URL.Query().Get("name")
 		response, _, _ := _gf.Do(name, func() (interface{}, error) {
 			b := bytes.NewBuffer([]byte(`<html>
@@ -176,15 +175,15 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 		}
 	})
 
-	_apiSrv.Start()
+	_APIHttp.Start()
 
 	<-ctx.Done()
 
-	_apiSrv.Stop()
+	_APIHttp.Stop()
 
-	_eBPFCollector.Stop()
+	_EBPFCollector.Stop()
 
-	eventcenter.StopDefault()
+	eventcenter.Stop()
 
 	glog.Info("xm-monitor.eBPF exporter exit!")
 }
