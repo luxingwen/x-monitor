@@ -32,7 +32,7 @@ import (
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/bpfutil"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/frame"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/pyrostub"
@@ -248,7 +248,7 @@ type profilePrivateArgs struct {
 type profileProgram struct {
 	*eBPFBaseProgram
 	objs                    *bpfmodule.XMProfileObjects
-	perfLink                *bpfutils.PerfEvent
+	perfLink                *bpfutil.PerfEvent
 	tf                      profileTargetFinderItf
 	unwindTablesOperEvtChan *UnwindTablesOperEvtChannel
 }
@@ -336,7 +336,7 @@ func newProfileProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 	// attach eBPF 程序
-	profileProg.perfLink, err = bpfutils.AttachPerfEventProg(-1, __profilePrivateArgs.SampleRate, profileProg.objs.XmDoPerfEvent)
+	profileProg.perfLink, err = bpfutil.AttachPerfEventProg(-1, __profilePrivateArgs.SampleRate, profileProg.objs.XmDoPerfEvent)
 	if err != nil {
 		profileProg.Stop()
 		err = errors.Wrapf(err, "eBPFProgram:'%s' AttachPerfEventProg failed.", name)

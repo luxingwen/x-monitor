@@ -5,7 +5,7 @@
  * @Last Modified time: 2023-12-13 10:21:29
  */
 
-package bpfutils
+package bpfutil
 
 import (
 	"reflect"

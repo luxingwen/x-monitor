@@ -5,7 +5,7 @@
  * @Last Modified time: 2024-01-15 18:24:04
  */
 
-package log
+package clean
 
 import (
 	"context"
@@ -15,20 +15,20 @@ import (
 	"github.com/golang/glog"
 )
 
-// go test  -timeout 30s -run ^TestArchiveLogs$ xmonitor.calmwu/plugin_ebpf/exporter/internal/log -v -logtostderr
-func TestArchiveLogs(t *testing.T) {
+// go test -run ^TestCleanLogs$ xmonitor.calmwu/plugin_ebpf/exporter/internal/clean -v -logtostderr
+func TestCleanLogs(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 
 	options := DefaultOptions()
-	options.LogFullPath = "/home/pingan/Program/x-monitor/log"
+	options.LogFullPath = "/var/log/x-monitor"
 	options.Period = time.Minute
 
-	glog.Info("TestArchiveLogs start")
+	glog.Info("TestCleanLogs start")
 
 	Start(ctx, options)
 
 	<-ctx.Done()
 
-	glog.Info("TestArchiveLogs done")
+	glog.Info("TestCleanLogs done")
 }

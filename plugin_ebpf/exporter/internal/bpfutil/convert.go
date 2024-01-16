@@ -5,7 +5,7 @@
  * @Last Modified time: 2023-12-13 14:49:32
  */
 
-package bpfutils
+package bpfutil
 
 import (
 	"github.com/cilium/ebpf"

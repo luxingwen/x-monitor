@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
-	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/bpfutil"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
 
@@ -44,7 +44,7 @@ func loadToRunOomKillProg(name string, prog *oomKillProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMOomKillObjects)
-	prog.links, err = bpfutils.AttachToRun(name, prog.objs, bpfmodule.LoadXMOomKill, func(spec *ebpf.CollectionSpec) error {
+	prog.links, err = bpfutil.AttachToRun(name, prog.objs, bpfmodule.LoadXMOomKill, func(spec *ebpf.CollectionSpec) error {
 		return nil
 	})
 

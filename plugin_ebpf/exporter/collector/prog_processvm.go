@@ -27,7 +27,7 @@ import (
 	"github.com/sanity-io/litter"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/bpfutil"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
 	xmutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/utils"
 )
@@ -72,7 +72,7 @@ func loadToRunProcessVMMProg(name string, prog *processVMProgram) error {
 	var err error
 
 	prog.objs = new(bpfmodule.XMProcessVMObjects)
-	prog.links, err = bpfutils.AttachToRun(name, prog.objs, bpfmodule.LoadXMProcessVM, func(spec *ebpf.CollectionSpec) error {
+	prog.links, err = bpfutil.AttachToRun(name, prog.objs, bpfmodule.LoadXMProcessVM, func(spec *ebpf.CollectionSpec) error {
 		err = spec.RewriteConstants(map[string]interface{}{
 			"__filter_scope_type":  int32(__pvmEBpfArgs.FilterScopeType),
 			"__filter_scope_value": int64(__pvmEBpfArgs.FilterScopeValue),

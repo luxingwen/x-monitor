@@ -21,7 +21,7 @@ import (
 	"go.uber.org/atomic"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector/bpfmodule"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
-	bpfutils "xmonitor.calmwu/plugin_ebpf/exporter/internal/bpf_utils"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/bpfutil"
 )
 
 func init() {
@@ -88,7 +88,7 @@ func newCacheStatProgram(name string) (eBPFProgram, error) {
 		return nil, err
 	}
 
-	if links, err := bpfutils.AttachObjPrograms(csp.objs.XMCacheStatPrograms, spec.Programs); err != nil {
+	if links, err := bpfutil.AttachObjPrograms(csp.objs.XMCacheStatPrograms, spec.Programs); err != nil {
 		err = errors.Wrapf(err, "eBPFProgram:'%s' AttachObjPrograms failed.", name)
 		glog.Error(err.Error())
 		return nil, err

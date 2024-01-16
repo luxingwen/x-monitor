@@ -26,6 +26,7 @@ import (
 	"golang.org/x/sync/singleflight"
 	"xmonitor.calmwu/plugin_ebpf/exporter/collector"
 	"xmonitor.calmwu/plugin_ebpf/exporter/config"
+	"xmonitor.calmwu/plugin_ebpf/exporter/internal/clean"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/eventcenter"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/frame"
 	"xmonitor.calmwu/plugin_ebpf/exporter/internal/net"
@@ -138,6 +139,18 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 
 	// Signal
 	ctx := calmutils.SetupSignalHandler()
+
+	// log clean
+	opts := clean.DefaultOptions()
+	flag := goflag.CommandLine.Lookup("log_dir")
+	if flag != nil {
+		val := flag.Value.String()
+		if val != "" {
+			opts.LogFullPath = val
+		}
+	}
+	//opts.LogFullPath =
+	clean.Start(ctx, opts)
 
 	// Install pprof
 	bind, _ := config.PProfBindAddr()
