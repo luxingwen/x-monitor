@@ -60,7 +60,7 @@ func __fillGetCallStackInstructions(progSpec *ebpf.ProgramSpec) {
 		asm.LoadMem(asm.R2, asm.R1, 0, asm.Word),
 		// 8:	if r2 == 0 goto +36 <LBB1_8>, JEqImm dst: r2 off: 36 imm: 0
 		func() asm.Instruction {
-			ins := asm.JEq.Imm(asm.R2, 0, "") // !! 实际中不需要加上Label，只需要填写Offset
+			ins := asm.JEq.Imm(asm.R2, 0, "") // !! 实际中不需要加上 Label，只需要填写 Offset
 			ins.Offset = 36
 			return ins
 		}(),
@@ -208,9 +208,9 @@ func main() {
 		glog.Fatal("kprobe funcs is empty")
 	}
 
-	// 加载kernel、进程的符号
+	// 加载 kernel、进程的符号
 	calmutils.LoadKallSyms()
-	procSyms, _ := calmutils.NewProcSyms(__pid)
+	procSyms, _ := calmutils.NewProcMaps(__pid)
 
 	if err := rlimit.RemoveMemlock(); err != nil {
 		glog.Fatalf("failed to remove memlock limit: %v", err)
@@ -218,7 +218,7 @@ func main() {
 
 	//-------------------------------------------------------------------------
 
-	// 加载字节码，生成ebpf.CollectionSpec，包括MapSpec和ProgramSpec
+	// 加载字节码，生成 ebpf.CollectionSpec，包括 MapSpec 和 ProgramSpec
 	spec, err := bpfmodule.LoadXMTrace()
 	if err != nil {
 		glog.Fatalf("failed to invoke LoadXMTrace, err: %v", err)
@@ -227,8 +227,8 @@ func main() {
 	//-------------------------------------------------------------------------
 
 	// rewrite .rodata, bpftool btf dump file xm_trace_syscalls.bpf.o
-	// const变量会放到.rodata section中
-	// !! 如果不把提前修改.rodata数据，加载的指令就会被优化掉，直接return了，使用bpftool prog dump xlated id 2563只能看到部分指令
+	// const 变量会放到.rodata section 中
+	// !! 如果不把提前修改.rodata 数据，加载的指令就会被优化掉，直接 return 了，使用 bpftool prog dump xlated id 2563 只能看到部分指令
 	err = spec.RewriteConstants(map[string]interface{}{
 		"xm_trace_syscall_filter_pid": int32(__pid),
 	})
@@ -237,12 +237,12 @@ func main() {
 	}
 
 	//-------------------------------------------------------------------------
-	// 输出spec中所有的map
+	// 输出 spec 中所有的 map
 	for mapK := range spec.Maps {
 		glog.Infof("map name: %s", mapK)
 	}
 
-	// 构造.rodata ebpf.Map对象
+	// 构造.rodata ebpf.Map 对象
 	rodataMap, err := ebpf.NewMap(spec.Maps[".rodata"])
 	if err != nil {
 		glog.Fatalf("failed to create .rodata map, err: %v", err)
@@ -250,7 +250,7 @@ func main() {
 	defer rodataMap.Close()
 
 	//-------------------------------------------------------------------------
-	// 通过spec构造program和map
+	// 通过 spec 构造 program 和 map
 	objs := bpfmodule.XMTraceObjects{}
 	err = spec.LoadAndAssign(&objs, nil)
 	if err != nil {
@@ -263,7 +263,7 @@ func main() {
 
 	//-------------------------------------------------------------------------
 
-	// 通过reflect来获取objs.Programs的所有成员，统一ebpf Program的attach
+	// 通过 reflect 来获取 objs.Programs 的所有成员，统一 ebpf Program 的 attach
 	var ebpfLinks []link.Link
 
 	bpfProgs := reflect.Indirect(reflect.ValueOf(objs.XMTracePrograms))
@@ -306,7 +306,7 @@ func main() {
 					ebpfLinks = append(ebpfLinks, linkRawTP)
 				}
 			// case ebpf.TracePoint:
-			// 要获取group、name
+			// 要获取 group、name
 			// tp, err := link.Tracepoint("syscalls", "sys_enter_openat", prog, nil)
 			case ebpf.Tracing:
 				linkTracing, err := link.AttachTracing(link.TracingOptions{Program: bpfProg})
@@ -323,9 +323,9 @@ func main() {
 	}
 	//-------------------------------------------------------------------------
 
-	// 创建自定义的ebpf.Program
+	// 创建自定义的 ebpf.Program
 	// kprobeStackProgSpec := __generateKprobeProgramSpecsForGetCallStack("sys_close", "kprobe/sys_close")
-	// // 借用现有program的指令
+	// // 借用现有 program 的指令
 	// // kprobeStackProgSpec.Instructions = make([]asm.Instruction, len(spec.Programs["xm_trace_kp__sys_readlinkat"].Instructions))
 	// // copy(kprobeStackProgSpec.Instructions, spec.Programs["xm_trace_kp__sys_readlinkat"].Instructions)
 	// // glog.Info("\n", kprobeStackProgSpec.Instructions.String())

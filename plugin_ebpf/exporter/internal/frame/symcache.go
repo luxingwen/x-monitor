@@ -23,8 +23,8 @@ type Symbol struct {
 }
 
 type SystemSymbolsCache struct {
-	lc   *lru.Cache[int32, *calmutils.ProcMaps]
-	lock sync.RWMutex
+	cache *lru.Cache[int32, *calmutils.ProcMaps]
+	lock  sync.RWMutex
 }
 
 var (
@@ -36,10 +36,10 @@ func InitSystemSymbolsCache(size int) error {
 	var err error
 
 	once.Do(func() {
-		calmutils.InitModuleSymbolTblMgr(size * 8)
+		calmutils.InitModuleSymbolTblMgr(size * 12)
 
 		__instance = &SystemSymbolsCache{}
-		__instance.lc, err = lru.NewWithEvict[int32, *calmutils.ProcMaps](size, func(key int32, v *calmutils.ProcMaps) {
+		__instance.cache, err = lru.NewWithEvict[int32, *calmutils.ProcMaps](size, func(key int32, v *calmutils.ProcMaps) {
 			glog.Warningf("pid:%d symbols cache object evicted by lru", key)
 			// ** 从 symbletblMgr 中删除自己的 symbolTable，获取第一个 ProcMapsModule 的 buildID 去释放
 			// 用了 LRU，就不要在对 module 引用计数了，module 数量会有一个上限
@@ -73,7 +73,7 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 		err      error
 		ok       bool
 		sym      = new(Symbol)
-		procSyms *calmutils.ProcMaps
+		procMaps *calmutils.ProcMaps
 	)
 
 	if __instance != nil {
@@ -82,25 +82,25 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 
 		if pid > 0 {
 			// user, find pid symbols
-			procSyms, ok = __instance.lc.Get(pid)
-			if ok && procSyms != nil {
+			procMaps, ok = __instance.cache.Get(pid)
+			if ok && procMaps != nil {
 				// resolve
-				sym.Name, sym.Offset, sym.Module, err = procSyms.ResolvePC(addr)
+				sym.Name, sym.Offset, sym.Module, err = procMaps.ResolvePC(addr)
 				if err != nil {
 					err = errors.Wrapf(err, "resolve pc from pid:%d.", pid)
 					return nil, err
 				}
 			} else {
 				// no exist, add
-				procSyms, err = calmutils.NewProcSyms(int(pid))
+				procMaps, err = calmutils.NewProcMaps(int(pid))
 				if err != nil {
 					err = errors.Wrapf(err, "new pid:%d symbols", pid)
 					return nil, err
 				} else {
-					__instance.lc.Add(pid, procSyms)
-					glog.Infof("add pid:'%d' symbols cache object to lru, module count:'%d'", procSyms.Pid, len(procSyms.Modules()))
+					__instance.cache.Add(pid, procMaps)
+					glog.Infof("add pid:'%d' symbols cache object to lru, module count:'%d'", procMaps.Pid, len(procMaps.Modules()))
 
-					sym.Name, sym.Offset, sym.Module, err = procSyms.ResolvePC(addr)
+					sym.Name, sym.Offset, sym.Module, err = procMaps.ResolvePC(addr)
 					if err != nil {
 						err = errors.Wrapf(err, "resolve pc from pid:%d.", pid)
 						return nil, err
@@ -122,14 +122,14 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 // RemoveByPid removes the symbol cache for a given process ID.
 func RemoveByPid(pid int32) {
 	if __instance != nil && pid > 0 {
-		__instance.lc.Remove(pid)
+		__instance.cache.Remove(pid)
 	}
 }
 
 // CachePidCount returns the number of cached PIDs in the symbol cache.
 func CachePidCount() int {
 	if __instance != nil {
-		return __instance.lc.Len()
+		return __instance.cache.Len()
 	}
 	return -1
 }
@@ -142,14 +142,14 @@ func GetProcModules(pid int32) ([]*calmutils.ProcMapsModule, error) {
 		__instance.lock.Lock()
 		defer __instance.lock.Unlock()
 
-		procSyms, ok := __instance.lc.Get(pid)
-		if ok && procSyms != nil {
-			return procSyms.Modules(), nil
+		procMaps, ok := __instance.cache.Get(pid)
+		if ok && procMaps != nil {
+			return procMaps.Modules(), nil
 		} else {
-			procSyms, err := calmutils.NewProcSyms(int(pid))
+			procMaps, err := calmutils.NewProcMaps(int(pid))
 			if err == nil {
-				__instance.lc.Add(pid, procSyms)
-				return procSyms.Modules(), nil
+				__instance.cache.Add(pid, procMaps)
+				return procMaps.Modules(), nil
 			}
 		}
 	}
@@ -161,14 +161,14 @@ func GetLangType(pid int32) calmutils.ProcLangType {
 		__instance.lock.Lock()
 		defer __instance.lock.Unlock()
 
-		procSyms, ok := __instance.lc.Get(pid)
-		if ok && procSyms != nil {
-			return procSyms.LangType
+		procMaps, ok := __instance.cache.Get(pid)
+		if ok && procMaps != nil {
+			return procMaps.LangType
 		} else {
-			procSyms, err := calmutils.NewProcSyms(int(pid))
+			procMaps, err := calmutils.NewProcMaps(int(pid))
 			if err == nil {
-				__instance.lc.Add(pid, procSyms)
-				return procSyms.LangType
+				__instance.cache.Add(pid, procMaps)
+				return procMaps.LangType
 			}
 		}
 	}

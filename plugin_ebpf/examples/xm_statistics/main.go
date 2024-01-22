@@ -44,7 +44,7 @@ func main() {
 
 	calmutils.InitModuleSymbolTblMgr(128)
 
-	if procSyms, err := calmutils.NewProcSyms(__pid); err == nil {
+	if procSyms, err := calmutils.NewProcMaps(__pid); err == nil {
 		modules := procSyms.Modules()
 
 		glog.Infof("pid:%d have %d modules", __pid, len(modules))
