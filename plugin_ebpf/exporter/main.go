@@ -8,12 +8,16 @@
 package main
 
 import (
+	"runtime/debug"
+
 	"go.uber.org/automaxprocs/maxprocs"
 	"xmonitor.calmwu/plugin_ebpf/exporter/cmd"
 )
 
 // Main is the entry point for the command
 func main() {
+	debug.SetGCPercent(50)
+
 	undo, _ := maxprocs.Set()
 	defer undo()
 	cmd.Main()

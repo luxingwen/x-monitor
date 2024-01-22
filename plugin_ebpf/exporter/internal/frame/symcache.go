@@ -36,12 +36,13 @@ func InitSystemSymbolsCache(size int) error {
 	var err error
 
 	once.Do(func() {
-		calmutils.InitModuleSymbolTblMgr(size * 16)
+		calmutils.InitModuleSymbolTblMgr(size * 8)
 
 		__instance = &SystemSymbolsCache{}
 		__instance.lc, err = lru.NewWithEvict[int32, *calmutils.ProcMaps](size, func(key int32, v *calmutils.ProcMaps) {
 			glog.Warningf("pid:%d symbols cache object evicted by lru", key)
 			// ** 从 symbletblMgr 中删除自己的 symbolTable，获取第一个 ProcMapsModule 的 buildID 去释放
+			// 用了 LRU，就不要在对 module 引用计数了，module 数量会有一个上限
 			if len(v.Modules()) > 0 {
 				calmutils.DeleteModuleSymbolTbl(v.Modules()[0].BuildID)
 			} else {
@@ -80,16 +81,17 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 		defer __instance.lock.Unlock()
 
 		if pid > 0 {
-			// user
+			// user, find pid symbols
 			procSyms, ok = __instance.lc.Get(pid)
 			if ok && procSyms != nil {
+				// resolve
 				sym.Name, sym.Offset, sym.Module, err = procSyms.ResolvePC(addr)
 				if err != nil {
 					err = errors.Wrapf(err, "resolve pc from pid:%d.", pid)
 					return nil, err
 				}
 			} else {
-				// add
+				// no exist, add
 				procSyms, err = calmutils.NewProcSyms(int(pid))
 				if err != nil {
 					err = errors.Wrapf(err, "new pid:%d symbols", pid)
@@ -120,9 +122,6 @@ func Resolve(pid int32, addr uint64) (*Symbol, error) {
 // RemoveByPid removes the symbol cache for a given process ID.
 func RemoveByPid(pid int32) {
 	if __instance != nil && pid > 0 {
-		__instance.lock.Lock()
-		defer __instance.lock.Unlock()
-
 		__instance.lc.Remove(pid)
 	}
 }
@@ -130,17 +129,14 @@ func RemoveByPid(pid int32) {
 // CachePidCount returns the number of cached PIDs in the symbol cache.
 func CachePidCount() int {
 	if __instance != nil {
-		__instance.lock.RLock()
-		defer __instance.lock.RUnlock()
-
 		return __instance.lc.Len()
 	}
 	return -1
 }
 
-// GetProcModules returns the symbol information for all modules loaded by the process with the given PID.
-// If the information is already cached, it is returned from the cache. Otherwise, it is fetched and cached.
-// Returns a slice of ProcSymsModule and an error if any.
+// GetProcModules retrieves the process modules for a given process ID.
+// It returns a slice of *calmutils.ProcMapsModule representing the modules,
+// and an error if any occurred during the retrieval process.
 func GetProcModules(pid int32) ([]*calmutils.ProcMapsModule, error) {
 	if __instance != nil {
 		__instance.lock.Lock()
