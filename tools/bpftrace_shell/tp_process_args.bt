@@ -1,4 +1,4 @@
-#!/usr/bin/env bpftrace
+#!/usr/bin/env /usr/local/bin/bpftrace
 
 #ifndef BPFTRACE_HAVE_BTF
 #include <linux/sched.h>
@@ -13,7 +13,7 @@ END {
     clear(@process_args);
 }
 
-tracepoint:syscalls:sys_enter_execve 
+tracepoint:syscalls:sys_enter_execve
 {
 	$arg = (uint8**)(args->argv);
 	//printf("%s called %s, pid: %d\n", comm, str(args->filename), pid);
@@ -76,7 +76,7 @@ tracepoint:sched:sched_process_exec
 				}
 			}
 		}
-	}	
+	}
 	printf("\n");
 }
 
