@@ -377,37 +377,114 @@
 1. 这是设备calmveth2收包的内核函数踪迹，可见它是按照协议注册一层一层向上传递skb包了。
 
    ```
-              <...>-1054946 [003] 4744773.710152: function:             _raw_spin_lock
-              <...>-1054946 [003] 4744773.710152: function:             __netif_receive_skb
-              <...>-1054946 [003] 4744773.710153: function:             __netif_receive_skb_core
-              <...>-1054946 [003] 4744773.710155: function:                ip_rcv
-              <...>-1054946 [003] 4744773.710157: function:                   ip_rcv_finish
-              <...>-1054946 [003] 4744773.710158: function:                      tcp_v4_early_demux
-              <...>-1054946 [003] 4744773.710159: function:                         __inet_lookup_established
-              <...>-1054946 [003] 4744773.710161: function:                            inet_ehashfn
-              <...>-1054946 [003] 4744773.710163: function:                         ipv4_dst_check
-              <...>-1054946 [003] 4744773.710164: function:                   ip_local_deliver
-              <...>-1054946 [003] 4744773.710164: function:                      ip_local_deliver_finish
-              <...>-1054946 [003] 4744773.710166: function:                         ip_protocol_deliver_rcu
-              <...>-1054946 [003] 4744773.710168: function:                            raw_local_deliver
-              <...>-1054946 [003] 4744773.710169: function:                            tcp_v4_rcv
-              <...>-1054946 [003] 4744773.710171: function:                               tcp_v4_inbound_md5_hash
-              <...>-1054946 [003] 4744773.710172: function:                                  tcp_md5_do_lookup
-              <...>-1054946 [003] 4744773.710172: function:                                  tcp_parse_md5sig_option
-              <...>-1054946 [003] 4744773.710173: function:                               sk_filter_trim_cap
-              <...>-1054946 [003] 4744773.710174: function:                                  security_sock_rcv_skb
-              <...>-1054946 [003] 4744773.710177: function:                                     selinux_socket_sock_rcv_skb
-              <...>-1054946 [003] 4744773.710178: function:                                        selinux_peerlbl_enabled
-              <...>-1054946 [003] 4744773.710178: function:                                           netlbl_enabled
-              <...>-1054946 [003] 4744773.710179: function:                                     bpf_lsm_socket_sock_rcv_skb
-              <...>-1054946 [003] 4744773.710180: function:                               tcp_v4_fill_cb
-              <...>-1054946 [003] 4744773.710181: function:                               _raw_spin_lock
-              <...>-1054946 [003] 4744773.710183: function:                               tcp_v4_do_rcv
-              <...>-1054946 [003] 4744773.710184: function:                                  ipv4_dst_check
-              <...>-1054946 [003] 4744773.710185: function:                                  tcp_rcv_established
-              <...>-1054946 [003] 4744773.710186: function:                                     tcp_mstamp_refresh
-              <...>-1054946 [003] 4744773.710188: function:                                        ktime_get
-              <...>-1054946 [003] 4744773.710189: function:                                     tcp_validate_incoming
+        netif_receive_skb_internal
+           skb_defer_rx_timestamp
+           __netif_receive_skb
+           __netif_receive_skb_core
+              ip_rcv
+                 skb_clone
+                    kmem_cache_alloc
+                       should_failslab
+                 __skb_clone
+                    __copy_skb_header
+                 consume_skb
+                 pskb_trim_rcsum_slow
+                 nf_hook_slow
+                    ip_sabotage_in
+                    ipv4_conntrack_defrag
+                    ipv4_conntrack_in
+                    nf_conntrack_in
+                       get_l4proto
+                       nf_ct_get_tuple
+                       hash_conntrack_raw
+                       __nf_conntrack_find_get
+                       nf_conntrack_tcp_packet
+                          nf_checksum
+                          nf_ip_checksum
+                          _raw_spin_lock_bh
+                          tcp_in_window
+                             nf_ct_seq_offset
+                          _raw_spin_unlock_bh
+                          __local_bh_enable_ip
+                          __nf_ct_refresh_acct
+                          nf_ct_acct_add
+                    nf_nat_ipv4_in
+                       nf_nat_ipv4_fn
+                       nf_nat_inet_fn
+                       nf_nat_packet
+                 ip_rcv_finish
+                    tcp_v4_early_demux
+                       __inet_lookup_established
+                          inet_ehashfn
+                       ipv4_dst_check
+                 ip_local_deliver
+                    nf_hook_slow
+                       nft_do_chain_ipv4
+                          nft_do_chain
+                             nft_update_chain_stats.isra.6
+                       nf_nat_ipv4_fn
+                       nf_nat_inet_fn
+                       nf_nat_packet
+                       nft_do_chain_ipv4
+                          nft_do_chain
+                             nft_update_chain_stats.isra.6
+                       ipv4_helper
+                       ipv4_confirm
+                          nf_ct_deliver_cached_events
+                    ip_local_deliver_finish
+                       ip_protocol_deliver_rcu
+                          raw_local_deliver
+                          tcp_v4_rcv
+                             tcp_v4_inbound_md5_hash
+                                tcp_md5_do_lookup
+                                tcp_parse_md5sig_option
+                             sk_filter_trim_cap
+                                security_sock_rcv_skb
+                                   selinux_socket_sock_rcv_skb
+                                      selinux_peerlbl_enabled
+                                         netlbl_enabled
+                                   bpf_lsm_socket_sock_rcv_skb
+                             tcp_v4_fill_cb
+                             _raw_spin_lock
+                             tcp_v4_do_rcv
+                                ipv4_dst_check
+                                tcp_rcv_established
+                                   tcp_mstamp_refresh
+                                      ktime_get
+                                   tcp_ack
+                                      tcp_clean_rtx_queue
+                                         tcp_rack_advance
+                                         tcp_rate_skb_delivered
+                                         __kfree_skb
+                                            skb_release_all
+                                               skb_release_head_state
+                                            skb_release_data
+                                            skb_free_head
+                                            kfree
+                                            __slab_free
+                                         kfree_skbmem
+                                         kmem_cache_free
+                                            __slab_free
+                                         tcp_chrono_stop
+                                         tcp_ack_update_rtt.isra.52
+                                            __usecs_to_jiffies
+                                         bictcp_acked
+                                      tcp_rack_update_reo_wnd
+                                      tcp_schedule_loss_probe
+                                      tcp_rearm_rto
+                                      tcp_newly_delivered
+                                      tcp_rate_gen
+                                      bictcp_cong_avoid
+                                      tcp_update_pacing_rate
+                                   __kfree_skb
+                                      skb_release_all
+                                         skb_release_head_state
+                                      skb_release_data
+                                   kfree_skbmem
+                                   kmem_cache_free
+                                   tcp_check_space
+              packet_rcv
+                 consume_skb
    ```
 
    
