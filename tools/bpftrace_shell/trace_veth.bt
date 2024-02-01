@@ -11,7 +11,7 @@ kprobe:netif_rx_internal {
     $skb = (struct sk_buff *)arg0;
     if (strncmp("calmveth", $skb->dev->name, 8) == 0 ) {
         // 到这里是ip层的长度了
-        printf("netif_rx_internal skbdev=%s received skblen=%d\n", $skb->dev->name, $skb->len);
+        printf("netif_rx_internal skbdev=%s received skb=%x skblen=%d\n", $skb->dev->name, $skb, $skb->len);
         printf("\t%s\n", kstack(perf))
     }
 }
@@ -21,7 +21,16 @@ kprobe:veth_xmit {
     $netdev = (struct net_device *)arg1;
     if (strncmp("calmveth", $skb->dev->name, 8) == 0 ) {
         $veth_peer = *((struct net_device **)((uint8*)$netdev + sizeof(struct net_device)));
-        printf("veth_xmit skblen=%d bytes skbdev=%s ===> peer_skbdev=%s\n", $skb->len, $skb->dev->name, $veth_peer->name);
+        printf("veth_xmit skb=%x skblen=%d bytes skbdev=%s ===> peer_skbdev=%s\n", $skb, $skb->len, $skb->dev->name, $veth_peer->name);
+        printf("\t%s\n", kstack(perf))
+    }
+}
+
+kprobe:__br_forward {
+    $to = (struct net_bridge_port *)arg0;
+    $skb = (struct sk_buff *)arg1;
+    if (strncmp("calmveth", $skb->dev->name, 8) == 0 ) {
+        printf("__br_forward skb=%x skblen=%d from %s ===> %s\n", $skb, $skb->len, $skb->dev->name, $to->dev->name);
         printf("\t%s\n", kstack(perf))
     }
 }
