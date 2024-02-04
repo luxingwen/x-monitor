@@ -8,6 +8,7 @@
 #endif
 
 kprobe:netif_rx_internal {
+    // veth_xmit调用该函数
     $skb = (struct sk_buff *)arg0;
     if (strncmp("calmveth", $skb->dev->name, 8) == 0 ) {
         // 到这里是ip层的长度了
@@ -36,15 +37,30 @@ kprobe:__br_forward {
 }
 
 /*
-kprobe:ip_rcv {
+kprobe:tcp_v4_rcv {
     $skb = (struct sk_buff *)arg0;
     $skblen = $skb->len;
-    $netdev = (struct net_device *)arg1;
-    $packet_type = (int32)arg2;
-    $origdev = (struct net_device *)arg3;
-    printf("ip_rcv skbdev=%s skblen=%d skbdata='%s' netdev=%s packet_type=%d origdev=%s\n", $skb->dev->name, $skblen, str($skb->data), $netdev->name, $packet_type, $origdev->name);
+
+    if (strncmp("calmveth", $skb->dev->name, 8) == 0 ) {
+        printf("tcp_v4_rcv skb=%x skblen=%d skbdev=%s \n", $skb, $skblen, $skb->dev->name);
+        printf("\t%s\n", kstack(perf))
+    }
+}*/
+
+kprobe:tcp_queue_rcv {
+    $sock = (struct sock *)arg0;
+    $skb = (struct sk_buff *)arg1;
+    $skblen = $skb->len;
+    $daaddr = ntop($sock->__sk_common.skc_daddr);
+    // 10.0.78.78，从calmveth1返回的数据包
+    if ($sock->__sk_common.skc_daddr == 167792206) {
+        // 应该是skb_clone后，到了tcp层，就不需要dev设备信息了
+        printf("tcp_queue_rcv skb=%x skblen=%d skbdev='%s' dstip=%s from daddr=%d\n", $skb, $skblen, $skb->dev->name, $daaddr, $sock->__sk_common.skc_daddr);
+        printf("\t%s\n", kstack(perf))
+    }
 }
 
+/*
 kprobe:__dev_queue_xmit {
     $skb = (struct sk_buff *)arg0;
     $skbdev_name = $skb->dev->name;

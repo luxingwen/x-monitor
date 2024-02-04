@@ -60,7 +60,7 @@
    iptables -A FORWARD -i calmbr -j ACCEP
    ```
 
-   注意，**在iptables中加上放通策略非常重要，否则是不通的**。
+   注意，**在iptables中加上放通策略非常重要，否则是不通的**，因为我的主机是有容器环境的。
 
 6. 联通测试
 
@@ -79,7 +79,7 @@
      hello
      ```
 
-### 交互流程
+### SKB包的传递流程
 
 #### calmveth1发出请求
 
@@ -214,7 +214,7 @@
    
    netif_rx_internal skbdev=calmveth2_peer received skb=a90d6080 skblen=131
    	
-   	ffffffff98fbd371 netif_rx_internal+1
+   	ffffffff98fbd371 netif_rx_internal+1                    ****将skb插入插入cpu队列中，触发软中断。然calmveth1_peer来读取
    	ffffffffc06b5830 veth_xmit+432
    	ffffffff98fbffe6 dev_hard_start_xmit+150
    	ffffffff98fc0ab4 __dev_queue_xmit+2260
@@ -233,118 +233,46 @@
    	ffffffff992000ad entry_SYSCALL_64_after_hwframe+101
    ```
 
-   可以看到veth_xmit后面，skb的dev从veth一端改为另一端了。
+   可以看到veth_xmit会调用eth_type_trans，将skb的calmveth2改为calmveth2_peer
+   
+   ```
+   __be16 eth_type_trans(struct sk_buff *skb, struct net_device *dev)
+   {
+   	unsigned short _service_access_point;
+   	const unsigned short *sap;
+   	const struct ethhdr *eth;
+   	// 这里会改变 skb 的归属的 dev，如果是 veth，从 veth_xmit 过来，这里会将发送的 dev 改变为 peer_dev
+   	skb->dev = dev;
+   	skb_reset_mac_header(skb);
+   ```
 
 #### calmveth1_peer-->bridge-->calmveth2_peer的转发
 
-1. 这是calmveth1_peer的一个收包过程，veth收包逻辑在__netif_receive_skb_core函数中，应该调用dev->rx_handler函数将包传递给bridge
+1. 这是calmveth1_peer的一个收包过程，由软中断触发，veth收包逻辑在__netif_receive_skb_core函数中，应该调用dev->rx_handler函数将包传递给bridge
 
    ```
-              <...>-1054946 [003] 4744773.708698: function:             __do_softirq
-              <...>-1054946 [003] 4744773.708700: function:                irqtime_account_irq
-              <...>-1054946 [003] 4744773.708701: function:                net_rx_action
-              <...>-1054946 [003] 4744773.708703: function:                   __usecs_to_jiffies
-              <...>-1054946 [003] 4744773.708704: function:                   __napi_poll
-              <...>-1054946 [003] 4744773.708704: function:                      process_backlog
-              <...>-1054946 [003] 4744773.708707: function:                         _raw_spin_lock
-              <...>-1054946 [003] 4744773.708708: function:                         __netif_receive_skb
-              <...>-1054946 [003] 4744773.708709: function:                         __netif_receive_skb_core
-              <...>-1054946 [003] 4744773.708711: function:                            br_handle_frame
-              <...>-1054946 [003] 4744773.708714: function:                               nf_hook_slow
+   static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
+   {
+   	rx_handler = rcu_dereference(skb->dev->rx_handler);
+   	if (rx_handler) {
+   		if (pt_prev) {
+   			ret = deliver_skb(skb, pt_prev, orig_dev);
+   			pt_prev = NULL;
+   		}
+   		// 这里交给br_handle_frame处理
+   		switch (rx_handler(&skb)) {
+   		case RX_HANDLER_CONSUMED:
+   			ret = NET_RX_SUCCESS;
+   			goto out;
+   }
    ```
 
 2. 这是在bridge中的处理逻辑，可以看到br确定了转发端口后的发包逻辑，最终是发送到calmveth1的收包队列中，触发了中断
 
    ```
-              <...>-1054946 [003] 4744773.710004: function:             br_dev_queue_push_xmit
-              <...>-1054946 [003] 4744773.710119: function:                skb_push
-              <...>-1054946 [003] 4744773.710120: function:                is_skb_forwardable
-              <...>-1054946 [003] 4744773.710121: function:                dev_queue_xmit
-              <...>-1054946 [003] 4744773.710122: function:                __dev_queue_xmit
-              <...>-1054946 [003] 4744773.710124: function:                   netdev_pick_tx
-              <...>-1054946 [003] 4744773.710126: function:                   validate_xmit_skb
-              <...>-1054946 [003] 4744773.710127: function:                      netif_skb_features
-              <...>-1054946 [003] 4744773.710129: function:                         passthru_features_check
-              <...>-1054946 [003] 4744773.710130: function:                         skb_network_protocol
-              <...>-1054946 [003] 4744773.710132: function:                      skb_csum_hwoffload_help
-              <...>-1054946 [003] 4744773.710135: function:                   validate_xmit_xfrm
-              <...>-1054946 [003] 4744773.710135: function:                   dev_hard_start_xmit
-              <...>-1054946 [003] 4744773.710136: function:                      veth_xmit
-              <...>-1054946 [003] 4744773.710139: function:                         skb_clone_tx_timestamp
-              <...>-1054946 [003] 4744773.710141: function:                         __dev_forward_skb
-              <...>-1054946 [003] 4744773.710142: function:                            is_skb_forwardable
-              <...>-1054946 [003] 4744773.710144: function:                            skb_scrub_packet
-              <...>-1054946 [003] 4744773.710145: function:                            eth_type_trans
-              <...>-1054946 [003] 4744773.710147: function:                         netif_rx
-              <...>-1054946 [003] 4744773.710148: function:                         netif_rx_internal
-              <...>-1054946 [003] 4744773.710149: function:                            enqueue_to_backlog
-              <...>-1054946 [003] 4744773.710150: function:                               _raw_spin_lock
-   ```
-
-3. 可以看到调用bridge处理函数br_handle_frame，通过上面的bt脚本，我们可以看到当br收到skb包后直行br_handle_frame的逻辑。
-
-   skb从veth发送到peer
-
-   ```
-   veth_xmit skb=a90d6080 skblen=74 bytes skbdev=calmveth2 ===> peer_skbdev=calmveth2_peer
-   	
-   	ffffffffc06b5681 veth_xmit+1
-   	ffffffff98fbffe6 dev_hard_start_xmit+150
-   	ffffffff98fc0ab4 __dev_queue_xmit+2260
-   	ffffffff99057ca6 ip_finish_output2+406
-   	ffffffff99059700 ip_output+112
-   	ffffffff9905912d __ip_queue_xmit+349
-   	ffffffff99075662 __tcp_transmit_skb+1362
-   	ffffffff990766c1 tcp_connect+2753
-   	ffffffff9907d168 tcp_v4_connect+1112
-   	ffffffff99098401 __inet_stream_connect+209
-   	ffffffff990986d6 inet_stream_connect+54
-   	ffffffff98f9b0ca __sys_connect+154
-   	ffffffff98f9b116 __x64_sys_connect+22
-   	ffffffff988042bb do_syscall_64+91
-   	ffffffff992000ad entry_SYSCALL_64_after_hwframe+101
-   ```
-
-   __br_forward将skb的dev从calmveth1_peer改为calmveth2_peer，这里可以看到
-
-   ```
-   __br_forward skb=a90d6080 skblen=60 from calmveth2_peer ===> calmveth1_peer
-   	
-   	ffffffffc0654561 __br_forward+1
-   	ffffffffc0656103 br_handle_frame_finish+339
-   	ffffffffc069108b br_nf_hook_thresh+219
-   	ffffffffc0691a10 br_nf_pre_routing_finish+304
-   	ffffffffc0691fe5 br_nf_pre_routing+837
-   	ffffffff99047204 nf_hook_slow+68
-   	ffffffffc06565e1 br_handle_frame+497
-   	ffffffff98fc153a __netif_receive_skb_core+714
-   	ffffffff98fc38da process_backlog+170
-   	ffffffff98fc326d __napi_poll+45
-   	ffffffff98fc3763 net_rx_action+595
-   	ffffffff994000d7 __softirqentry_text_start+215
-   	ffffffff99200f4a do_softirq_own_stack+42
-   	ffffffff988f226f do_softirq.part.14+79
-   	ffffffff988f22cb __local_bh_enable_ip+75
-   	ffffffff99057cba ip_finish_output2+426
-   	ffffffff99059700 ip_output+112
-   	ffffffff9905912d __ip_queue_xmit+349
-   	ffffffff99075662 __tcp_transmit_skb+1362
-   	ffffffff990766c1 tcp_connect+2753
-   	ffffffff9907d168 tcp_v4_connect+1112
-   	ffffffff99098401 __inet_stream_connect+209
-   	ffffffff990986d6 inet_stream_connect+54
-   	ffffffff98f9b0ca __sys_connect+154
-   	ffffffff98f9b116 __x64_sys_connect+22
-   	ffffffff988042bb do_syscall_64+91
-   	ffffffff992000ad entry_SYSCALL_64_after_hwframe+101
-   ```
-
-   然后calmveth1_peer将包发送给calmveth1，下面这个堆栈是接着上面的。
-
-   ```
    veth_xmit skb=a90d6080 skblen=74 bytes skbdev=calmveth1_peer ===> peer_skbdev=calmveth1
    	
-   	ffffffffc06b5681 veth_xmit+1                    ****和发送一样，会调用enqueue_to_backlog，然后触发中断，让对端设备去读取
+   	ffffffffc06b5681 veth_xmit+1                    ****和发送一样，会调用eth_type_trans将skb的dev从calmveth1_peer改为calmveth1，最后调用netif_rx_internal-->enqueue_to_backlog，然后触发中断，让calmveth1设备去读取
    	ffffffff98fbffe6 dev_hard_start_xmit+150
    	ffffffff98fc0ab4 __dev_queue_xmit+2260
    	ffffffffc06543a0 br_dev_queue_push_xmit+160
@@ -355,13 +283,13 @@
    	ffffffffc06911a6 br_nf_forward_finish+262
    	ffffffffc069154c br_nf_forward_ip+780
    	ffffffff99047204 nf_hook_slow+68
-   	ffffffffc0654622 __br_forward+194                     ****这个函数主要负责将数据包从一个网桥端口转发到另一个网桥端口。当接收到的报文找到了转发表项后，就需要从指定的转发端口将报文转发出去。主要逻辑包括判断是否可以从端口中转发，根据需要判断是否需要复制一份报文再进行发送
+   	ffffffffc0654622 __br_forward+194                     ****这个函数主要负责将数据包从一个网桥端口转发到另一个网桥端口。当接收到的报文找到了转发表项后，就需要从指定的转发端口将报文转发出去。主要逻辑包括判断是否可以从端口中转发，根据需要判断是否需要复制一份报文再进行发送，__br_forward将skb的dev从calmveth2_peer改为calmveth1_peer，精确的转到另一个veth。
    	ffffffffc0656103 br_handle_frame_finish+339                     ****函数主要负责决定将不同类别的数据包做不同的分发路径4。它会根据数据包的类型和目标地址，以及网桥和网桥端口的状态，来决定如何处理这个数据包2。例如，它会检查数据包是否是广播或多播，是否是本地地址，是否需要进行学习等
    	ffffffffc069108b br_nf_hook_thresh+219
    	ffffffffc0691a10 br_nf_pre_routing_finish+304
    	ffffffffc0691fe5 br_nf_pre_routing+837
    	ffffffff99047204 nf_hook_slow+68
-   	ffffffffc06565e1 br_handle_frame+497                     ****调用calmveth2_peer的rx_handler函数
+   	ffffffffc06565e1 br_handle_frame+497                     ****调用calmveth2_peer的__netif_receive_skb_core函数中调用网桥的rx_handler函数
    	ffffffff98fc153a __netif_receive_skb_core+714                     ****在网卡calmveth2_peer的收包函数中
    	ffffffff98fc38da process_backlog+170
    	ffffffff98fc326d __napi_poll+45
@@ -370,130 +298,113 @@
    	ffffffff99200f4a do_softirq_own_stack+42
    ```
 
-   可以看到通过calmveth1_peer一个收包行为，在br中找到合适转发接口，设置目的dev为calmveth_peer1，然后调用calmveth_peer1的veth_xmit将数据发送给目的namespace空间中的calmveth2设备，这样就完成了链路层的转发
-
 #### calmveth2收包
 
-1. 这是设备calmveth2收包的内核函数踪迹，可见它是按照协议注册一层一层向上传递skb包了。
+收包路径是一个异步过程，内核从网卡收到数据包和调用recv/recvfrom/recvmsg是两个不同的过程。以下是内核从veth收包向上推送到socket的过程。
+
+1. 这是bt脚本获取的收包下半部分的堆栈，由软中断触发，下面的堆栈是建立连接之后，calmveth1收到http请求的下半部分堆栈
 
    ```
-        netif_receive_skb_internal
-           skb_defer_rx_timestamp
-           __netif_receive_skb
-           __netif_receive_skb_core
-              ip_rcv
-                 skb_clone
-                    kmem_cache_alloc
-                       should_failslab
-                 __skb_clone
-                    __copy_skb_header
-                 consume_skb
-                 pskb_trim_rcsum_slow
-                 nf_hook_slow
-                    ip_sabotage_in
-                    ipv4_conntrack_defrag
-                    ipv4_conntrack_in
-                    nf_conntrack_in
-                       get_l4proto
-                       nf_ct_get_tuple
-                       hash_conntrack_raw
-                       __nf_conntrack_find_get
-                       nf_conntrack_tcp_packet
-                          nf_checksum
-                          nf_ip_checksum
-                          _raw_spin_lock_bh
-                          tcp_in_window
-                             nf_ct_seq_offset
-                          _raw_spin_unlock_bh
-                          __local_bh_enable_ip
-                          __nf_ct_refresh_acct
-                          nf_ct_acct_add
-                    nf_nat_ipv4_in
-                       nf_nat_ipv4_fn
-                       nf_nat_inet_fn
-                       nf_nat_packet
-                 ip_rcv_finish
-                    tcp_v4_early_demux
-                       __inet_lookup_established
-                          inet_ehashfn
-                       ipv4_dst_check
-                 ip_local_deliver
-                    nf_hook_slow
-                       nft_do_chain_ipv4
-                          nft_do_chain
-                             nft_update_chain_stats.isra.6
-                       nf_nat_ipv4_fn
-                       nf_nat_inet_fn
-                       nf_nat_packet
-                       nft_do_chain_ipv4
-                          nft_do_chain
-                             nft_update_chain_stats.isra.6
-                       ipv4_helper
-                       ipv4_confirm
-                          nf_ct_deliver_cached_events
-                    ip_local_deliver_finish
-                       ip_protocol_deliver_rcu
-                          raw_local_deliver
-                          tcp_v4_rcv
-                             tcp_v4_inbound_md5_hash
-                                tcp_md5_do_lookup
-                                tcp_parse_md5sig_option
-                             sk_filter_trim_cap
-                                security_sock_rcv_skb
-                                   selinux_socket_sock_rcv_skb
-                                      selinux_peerlbl_enabled
-                                         netlbl_enabled
-                                   bpf_lsm_socket_sock_rcv_skb
-                             tcp_v4_fill_cb
-                             _raw_spin_lock
-                             tcp_v4_do_rcv
-                                ipv4_dst_check
-                                tcp_rcv_established
-                                   tcp_mstamp_refresh
-                                      ktime_get
-                                   tcp_ack
-                                      tcp_clean_rtx_queue
-                                         tcp_rack_advance
-                                         tcp_rate_skb_delivered
-                                         __kfree_skb
-                                            skb_release_all
-                                               skb_release_head_state
-                                            skb_release_data
-                                            skb_free_head
-                                            kfree
-                                            __slab_free
-                                         kfree_skbmem
-                                         kmem_cache_free
-                                            __slab_free
-                                         tcp_chrono_stop
-                                         tcp_ack_update_rtt.isra.52
-                                            __usecs_to_jiffies
-                                         bictcp_acked
-                                      tcp_rack_update_reo_wnd
-                                      tcp_schedule_loss_probe
-                                      tcp_rearm_rto
-                                      tcp_newly_delivered
-                                      tcp_rate_gen
-                                      bictcp_cong_avoid
-                                      tcp_update_pacing_rate
-                                   __kfree_skb
-                                      skb_release_all
-                                         skb_release_head_state
-                                      skb_release_data
-                                   kfree_skbmem
-                                   kmem_cache_free
-                                   tcp_check_space
-              packet_rcv
-                 consume_skb
+   tcp_queue_rcv skb=a90d5300 skblen=149 skbdev='' dstip=78.78.0.10 from daddr=167792206
+   	
+   	ffffffff9906a611 tcp_queue_rcv+1             ****用于将接收到的数据包加入到接收队列receive_queue中，在Linux内核中，每一个网络数据包，都被切分为一个个的skb（Socket Buffer），这些skb先被内核接收，然后投递到对应的进程处理，进程把skb拷贝到本TCP连接的sk_receive_queue中，然后应答ACK，总的来说，receive_queue是用于存储接收到的网络数据包，等待上层应用程序进行处理的队列
+   	ffffffff990719cd tcp_rcv_established+1149
+   	ffffffff9907e05a tcp_v4_do_rcv+298
+   	ffffffff990803b3 tcp_v4_rcv+2883
+   	ffffffff99053b8c ip_protocol_deliver_rcu+44
+   	ffffffff99053d7d ip_local_deliver_finish+77
+   	ffffffff99053e70 ip_local_deliver+224
+   	ffffffff990540fb ip_rcv+635
+   	ffffffff98fc1e03 __netif_receive_skb_core+2963
+   	ffffffff98fc38da process_backlog+170
+   	ffffffff98fc326d __napi_poll+45
+   	ffffffff98fc3763 net_rx_action+595
+   	ffffffff994000d7 __softirqentry_text_start+215
+   	ffffffff99200f4a do_softirq_own_stack+42
+   	ffffffff988f226f do_softirq.part.14+79                    ****由calmveth1_peer触发的软中断到来，开始执行
+   	ffffffff988f22cb __local_bh_enable_ip+75
+   	ffffffff99057cba ip_finish_output2+426
+   	ffffffff99059700 ip_output+112
+   	ffffffff9905912d __ip_queue_xmit+349
+   	ffffffff99075662 __tcp_transmit_skb+1362
+   	ffffffff99076f85 tcp_write_xmit+1077
+   	ffffffff99077e32 __tcp_push_pending_frames+50
+   	ffffffff99063d38 tcp_sendmsg_locked+3128
+   	ffffffff99063ec7 tcp_sendmsg+39
+   	ffffffff98f9a13e sock_sendmsg+62
+   	ffffffff98f9b43e __sys_sendto+238
+   	ffffffff98f9b4d4 __x64_sys_sendto+36
+   	ffffffff988042bb do_syscall_64+91
+   	ffffffff992000ad entry_SYSCALL_64_after_hwframe+101
    ```
 
-   
+2. 跟踪下ksoftirqd进程，来看看calmveth2收包的下半段(bottom half)的大致踪迹
 
-veth收包过程比较复杂，核心函数是**__netif_receive_skb_core**，内部逻辑决定了包是否传递给tap（pcap），是否被dev注册的rx_handler函数处理，如何按注册的协议将skb向上传递。
+   ```
+   trace-cmd record -p function  -P 10 -P 18 -P 24 -P 3
+   ```
 
-net_rx_action：函数是软中断处理函数，它的作用是从poll_list中去除一个napi_struct结构，并调用process_backlog来处理输入队列中的skb。
+   ```
+   __netif_receive_skb
+   __netif_receive_skb_core
+      ip_rcv
+         nf_hook_slow
+            ipv4_conntrack_defrag
+            ipv4_conntrack_in
+            nf_conntrack_in
+            nf_nat_ipv4_in
+               nf_nat_ipv4_fn
+               nf_nat_inet_fn
+               nf_nat_packet
+         ip_rcv_finish
+         ip_local_deliver
+            nf_hook_slow
+               nf_nat_ipv4_fn
+               nf_nat_inet_fn
+               nf_nat_packet
+               ipv4_helper
+               ipv4_confirm
+                  nf_ct_deliver_cached_events
+            ip_local_deliver_finish
+               ip_protocol_deliver_rcu
+                  raw_local_deliver
+                  tcp_v4_rcv
+                     __inet_lookup_established
+                        inet_ehashfn
+                     tcp_v4_inbound_md5_hash
+                        tcp_md5_do_lookup
+                        tcp_parse_md5sig_option
+                     sk_filter_trim_cap
+                        security_sock_rcv_skb
+                           selinux_socket_sock_rcv_skb
+                              selinux_peerlbl_enabled
+                                 netlbl_enabled
+                           bpf_lsm_socket_sock_rcv_skb
+                     tcp_v4_fill_cb
+                     _raw_spin_lock
+                     tcp_v4_do_rcv
+                        ipv4_dst_check
+                        tcp_rcv_established
+                           tcp_mstamp_refresh
+                              ktime_get
+                           ktime_get_seconds
+                           tcp_queue_rcv
+                           tcp_event_data_recv
+                           __tcp_ack_snd_check
+                           tcp_send_delayed_ack
+   ```
 
-process_backlog：是默认的skb包poll函数，从输入队列中取出一个skb，并调用netif_receive_skb函数，将其传递给协议栈。
+3. 问题
+
+   1. 什么时候skb共享？skb可以被多个地方共享，例如被克隆时，__skb_clone会调用refcount_set(&n->users, 1)增加计数。skb需要被多个处理流程或者协议层处理时。skb->users就是一个计数来跟踪当前有多少个地方正在引用或者共享这个skb。
+
+      **当skb->users的值大于1时，如果要进行修改，通常会使用skb_clone创建一个新的skb，然后对这个新的skb进行修改，以避免影响其他共享这个skb的地方**。
+
+   2. 函数br_forward和br_pass_frame_up的区别
+
+### 资料
+
+1. [Tour Around Kernel Stack | Tao Wang (wtao0221.github.io)](https://wtao0221.github.io/2019/04/11/Tour-Around-Kernel-Stack/)
 
 
 
