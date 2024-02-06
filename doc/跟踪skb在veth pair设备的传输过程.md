@@ -651,11 +651,63 @@ nodisplay-graph
 nostacktrace
 notest_nop_accept
 notest_nop_refuse
+
 root@centos8-03 /s/k/d/tracing# echo sym-offset > trace_options
 root@centos8-03 /s/k/d/tracing# echo sym-addr > trace_options
 ```
 
+执行，输出
 
+```
+root@centos8-03 /s/k/d/tracing# trace-cmd start -p function -l '*_xmit'
+  plugin 'function'
+root@centos8-03 /s/k/d/tracing# trace-cmd show
+# tracer: function
+#
+#                              _-----=> irqs-off
+#                             / _----=> need-resched
+#                            | / _---=> hardirq/softirq
+#                            || / _--=> preempt-depth
+#                            ||| /     delay
+#           TASK-PID   CPU#  ||||    TIMESTAMP  FUNCTION
+#              | |       |   ||||       |         |
+           <...>-1867565 [000] .... 3706479.498498: tcp_write_xmit+0x0/0x12b0 <ffffffffb4276b50> <-__tcp_push_pending_frames+0x32/0xf0 <ffffffffb4277e32>
+           <...>-1867565 [000] .... 3706479.498510: __ip_queue_xmit+0x0/0x430 <ffffffffb4258fd0> <-__tcp_transmit_skb+0x552/0xaf0 <ffffffffb4275662>
+           <...>-1867565 [000] .... 3706479.498517: dev_queue_xmit+0x0/0x10 <ffffffffb41c0be0> <-ip_finish_output2+0x2e2/0x430 <ffffffffb4257df2>
+
+```
+
+#### 定位ftrace函数对应的内核代码
+
+- 如下可以看到__tcp_transmit_skb+0x552在这里调用了函数 `_ip_queue_xmit`，函数地址是ffffffffb4275662--->ffffffffb4258fd0
+
+  ```
+  <...>-1867565 [000] .... 3706479.498510: __ip_queue_xmit+0x0/0x430 <ffffffffb4258fd0> <-__tcp_transmit_skb+0x552/0xaf0 <ffffffffb4275662>
+  ```
+
+- nm -A vmlinux输出的是函数静态链接的地址.
+
+  ```
+  root@centos8-03 /h/pingan [1|1]# nm -A /usr/lib/debug/lib/modules/4.18.0-348.7.1.el8_5.x86_64+debug/vmlinux |grep __ip_queue_xmit
+  /usr/lib/debug/lib/modules/4.18.0-348.7.1.el8_5.x86_64+debug/vmlinux:ffffffff82bed8c0 T __ip_queue_xmit
+  ```
+
+- 获得内核代码的基地址，通过/boot/System.map
+
+  ```
+  oot@centos8-03 /s/k/d/tracing# cat /boot/System.map-4.18.0-348.7.1.el8_5.x86_64|grep startup_64
+  ffffffff81000000 T startup_64
+  ```
+
+**可以发现ftrace获得内核函数地址和nm -A获取的函数地址是不同的**，
+
+- 没法通过地址去找到对应的内核代码，只有使用内核脚本faddr2line来定位代码了
+
+  ```
+  root@centos8-03 /h/pingan# ./faddr2line  /usr/lib/debug/lib/modules/4.18.0-348.7.1.el8_5.x86_64+debug/vmlinux __tcp_transmit_skb+0x552
+  __tcp_transmit_skb+0x552/0x38e0:
+  __tcp_transmit_skb at net/ipv4/tcp_output.c:1329
+  ```
 
 ### 资料
 
