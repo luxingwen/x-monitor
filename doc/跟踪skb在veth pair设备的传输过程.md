@@ -18,7 +18,11 @@
 
 由于需要跟踪内核运行时的逻辑，主要是基于kprobe来实现。
 
-1. 安装debug版本的内核，由于veth是一个内核模块，也需要安装debug版本
+1. 安装debug版本的内核，由于veth是一个内核模块，也需要安装debug版本。
+
+   ```
+   dnf -y install kernel-debug-debuginfo.x86_64 kernel-debuginfo.x86_64 kernel-debuginfo-common-x86_64.x86_64
+   ```
 
    ![image-20240131111830022](./img/debug-kernel.img)
 
@@ -298,6 +302,109 @@
    	ffffffff99200f4a do_softirq_own_stack+42
    ```
 
+3. 使用ftrace来看看这个详细的内核函数执行踪迹，使用命令。**使用ftrace查看内核函数的子调用一定要加上参数“-g func_name"**。
+
+   ```
+   trace-cmd record -p function_graph -g net_rx_action --max-graph-depth 27
+   trace-cmd report
+   ```
+
+   输出结果，进过适当的裁剪
+
+   ```
+      net_rx_action() {             ****
+        __usecs_to_jiffies();
+        smp_irq_work_interrupt() {
+          }
+          hv_apic_eoi_write();
+          }
+        __napi_poll() {             ****
+          process_backlog() {             ****
+            _raw_spin_lock();
+            __netif_receive_skb() {
+              __netif_receive_skb_core() {             ****
+                br_handle_frame() {             ****
+                  nf_hook_slow() {
+                    br_nf_pre_routing();
+                  }
+                  br_handle_frame_finish() {             ****
+                    br_allowed_ingress();
+                    nbp_switchdev_frame_mark();
+                    br_fdb_update() {
+                      fdb_find_rcu();
+                    }
+                    br_do_proxy_suppress_arp() {
+                      neigh_lookup() {
+                        arp_hash();
+                        __local_bh_enable_ip();
+                      }
+                    }
+                    br_fdb_find_rcu() {
+                      fdb_find_rcu();             ****
+                    }
+                    br_forward() {             ****
+                      br_allowed_egress();
+                      nbp_switchdev_allowed_egress();
+                      __br_forward() {             ****
+                        br_handle_vlan();
+                        nf_hook_slow() {
+                          br_nf_forward_ip();
+                          br_nf_forward_arp() {
+                            br_nf_forward_finish() {
+                              skb_push();
+                              br_nf_hook_thresh() {
+                                nf_hook_slow();
+                                br_forward_finish() {             ****
+                                  nf_hook_slow() {
+                                    br_nf_post_routing();
+                                  }
+                                  br_dev_queue_push_xmit() {             ****
+                                    skb_push();
+                                    is_skb_forwardable();             ****
+                                    dev_queue_xmit() {             ****
+                                      __dev_queue_xmit() {             ****
+                                        netdev_pick_tx();
+                                        validate_xmit_skb() {
+                                          netif_skb_features() {
+                                            passthru_features_check();
+                                            skb_network_protocol();
+                                          }
+                                          validate_xmit_xfrm();
+                                        }
+                                        dev_hard_start_xmit() {             ****
+                                          veth_xmit() {
+                                            skb_clone_tx_timestamp();
+                                            __dev_forward_skb() {             ****
+                                              is_skb_forwardable();
+                                              skb_scrub_packet();
+                                              eth_type_trans();             ****这里改变skb的dev，到了挂在bridge挂的另一个veth
+                                            }
+                                            netif_rx() {
+                                              netif_rx_internal() {
+                                                enqueue_to_backlog() {             ****
+                                                  _raw_spin_lock();
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                        __local_bh_enable_ip();             ****
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+   ```
+
 #### calmveth2收包
 
 收包路径是一个异步过程，内核从网卡收到数据包和调用recv/recvfrom/recvmsg是两个不同的过程。以下是内核从veth收包向上推送到socket的过程。
@@ -338,77 +445,223 @@
    	ffffffff992000ad entry_SYSCALL_64_after_hwframe+101
    ```
 
-2. 跟踪下ksoftirqd进程，来看看calmveth2收包的下半段(bottom half)的大致踪迹
+2. 使用trace-cmd来观察在veth收包下半段的内核处理流程，由上面的命令观察得到，细节经过一定的裁剪
 
    ```
-   trace-cmd record -p function  -P 10 -P 18 -P 24 -P 3
-   ```
-
-   ```
-   __netif_receive_skb
-   __netif_receive_skb_core
-      ip_rcv
-         nf_hook_slow
-            ipv4_conntrack_defrag
-            ipv4_conntrack_in
-            nf_conntrack_in
-            nf_nat_ipv4_in
-               nf_nat_ipv4_fn
-               nf_nat_inet_fn
-               nf_nat_packet
-         ip_rcv_finish
-         ip_local_deliver
-            nf_hook_slow
-               nf_nat_ipv4_fn
-               nf_nat_inet_fn
-               nf_nat_packet
-               ipv4_helper
-               ipv4_confirm
-                  nf_ct_deliver_cached_events
-            ip_local_deliver_finish
-               ip_protocol_deliver_rcu
-                  raw_local_deliver
-                  tcp_v4_rcv
-                     __inet_lookup_established
-                        inet_ehashfn
-                     tcp_v4_inbound_md5_hash
-                        tcp_md5_do_lookup
-                        tcp_parse_md5sig_option
-                     sk_filter_trim_cap
-                        security_sock_rcv_skb
-                           selinux_socket_sock_rcv_skb
-                              selinux_peerlbl_enabled
-                                 netlbl_enabled
-                           bpf_lsm_socket_sock_rcv_skb
-                     tcp_v4_fill_cb
-                     _raw_spin_lock
-                     tcp_v4_do_rcv
-                        ipv4_dst_check
-                        tcp_rcv_established
-                           tcp_mstamp_refresh
-                              ktime_get
-                           ktime_get_seconds
-                           tcp_queue_rcv
-                           tcp_event_data_recv
-                           __tcp_ack_snd_check
-                           tcp_send_delayed_ack
-   ```
-
-3. 问题
-
-   1. 什么时候skb共享？skb可以被多个地方共享，例如被克隆时，__skb_clone会调用refcount_set(&n->users, 1)增加计数。skb需要被多个处理流程或者协议层处理时。skb->users就是一个计数来跟踪当前有多少个地方正在引用或者共享这个skb。
-
-      **当skb->users的值大于1时，如果要进行修改，通常会使用skb_clone创建一个新的skb，然后对这个新的skb进行修改，以避免影响其他共享这个skb的地方**。
-
-   2. 函数br_forward和br_pass_frame_up的区别：
+     net_rx_action() {
+       __usecs_to_jiffies();
+       __napi_poll() {                    ****
+         process_backlog() {
+           _raw_spin_lock();
+           __netif_receive_skb() {                    ****
+             __netif_receive_skb_core() {                    ****
+               ip_rcv() {                    ****
+                 nf_hook_slow() {
+                   ipv4_conntrack_defrag();
+                   ipv4_conntrack_in() {
+                     nf_conntrack_in();
+                   }
+                   nf_nat_ipv4_in() {
+                     nf_nat_ipv4_fn() {
+                       nf_nat_inet_fn() {
+                         nf_nat_packet();
+                       }
+                     }
+                   }
+                 }
+                 ip_rcv_finish() {                    ****
+                   ip_local_deliver() {
+                     nf_hook_slow() {
+                       nf_nat_ipv4_fn() {
+                         nf_nat_inet_fn() {
+                           nf_nat_packet();
+                         }
+                       }
+                       ipv4_helper();
+                       ipv4_confirm() {
+                         nf_ct_deliver_cached_events();
+                       }
+                     }
+                     ip_local_deliver_finish() {                    ****
+                       ip_protocol_deliver_rcu() {
+                         raw_local_deliver();
+                         tcp_v4_rcv() {                    ****
+                           __inet_lookup_established() {                    ****
+                             inet_ehashfn();
+                           }
+                           tcp_v4_inbound_md5_hash() {
+                             tcp_md5_do_lookup();
+                             tcp_parse_md5sig_option();
+                           }
+                           sk_filter_trim_cap() {
+                             security_sock_rcv_skb() {
+                               selinux_socket_sock_rcv_skb() {
+                                 selinux_peerlbl_enabled() {
+                                   netlbl_enabled();
+                                 }
+                               }
+                               bpf_lsm_socket_sock_rcv_skb();
+                             }
+                           }
+                           tcp_v4_fill_cb();                    ****
+                           _raw_spin_lock();
+                           tcp_v4_do_rcv() {                    ****
+                             ipv4_dst_check();
+                             tcp_rcv_established() {                    ****
+                               tcp_mstamp_refresh() {
+                                 ktime_get();
+                               }
+                               ktime_get_seconds();
+                               tcp_queue_rcv();                    ****
+                               tcp_event_data_recv();
+                               __tcp_ack_snd_check() {
+                                 tcp_send_ack() {
+                                   __tcp_send_ack.part.53() {
+                                     __alloc_skb() {
+                                       kmem_cache_alloc_node() {
+                                         should_failslab();
+                                       }
+                                       __kmalloc_reserve.isra.54() {
+                                         __kmalloc_node_track_caller() {
+                                           kmalloc_slab();
+                                           should_failslab();
+                                         }
+                                       }
+                                       ksize() {
+                                         __ksize();
+                                       }
+                                     }
+                                     __tcp_transmit_skb() {
+                                       tcp_established_options();
+                                       skb_push();
+                                       __tcp_select_window();
+                                       tcp_options_write();
+                                       bpf_skops_write_hdr_opt.isra.45();
+                                       tcp_v4_send_check() {
+                                         __tcp_v4_send_check();
+                                       }
+                                       __ip_queue_xmit() {
+                                         __sk_dst_check() {
+                                           ipv4_dst_check();
+                                         }
+                                         skb_push();
+                                         ip_copy_addrs();
+                                         ip_local_out() {
+                                           __ip_local_out() {
+                                             }
+                                           }
+                                           ip_output() {
+                                           }
+                                             ip_finish_output() {
+                                               __ip_finish_output() {
+                                                 ipv4_mtu();
+                                                 ip_finish_output2() {
+                                                   dev_queue_xmit() {
+                                                     __dev_queue_xmit() {
+                                                       netdev_pick_tx();
+                                                       validate_xmit_skb() {
+                                                         netif_skb_features();
+                                                         skb_csum_hwoffload_help();
+                                                         validate_xmit_xfrm();
+                                                       }
+                                                       dev_hard_start_xmit() {
+                                                         loopback_xmit();
+                                                       }
+                                                       __local_bh_enable_ip();
+                                                     }
+                                                   }
+                                                   __local_bh_enable_ip();
+                                                 }
+                                               }
+                                             }
+                                           }
+                                         }
+                                       }
+                                     }
+                                   }
+                                 }
+                               }
+     							。。。。。。
+                             }
+                           }
+                         }
+                       }
+                     }
+                   }
+                 }
+               }
+             }
+           }
    
-      1.  `br_forward` 函数用于在桥接设备上执行数据帧的转发操作。具体而言，它用于将数据包从一个接口（端口）转发到另一个接口（端口）。
-      2.  `br_pass_frame_up` 函数用于将接收到的数据帧向上传递到网络协议栈中。当一个数据帧到达桥接设备，但桥表中找不到匹配项时，需要将数据帧向上传递到网络协议栈中进行处理。
-   
+   ```
+
+### 内核函数
+
+1. 什么时候skb共享？skb可以被多个地方共享，例如被克隆时，__skb_clone会调用refcount_set(&n->users, 1)增加计数。skb需要被多个处理流程或者协议层处理时。skb->users就是一个计数来跟踪当前有多少个地方正在引用或者共享这个skb。
+
+   **当skb->users的值大于1时，如果要进行修改，通常会使用skb_clone创建一个新的skb，然后对这个新的skb进行修改，以避免影响其他共享这个skb的地方**。
+
+2. 函数br_forward和br_pass_frame_up的区别：
+
+   1.  `br_forward` 函数用于在桥接设备上执行数据帧的转发操作。具体而言，它用于将数据包从一个接口（端口）转发到另一个接口（端口）。
+   2.  `br_pass_frame_up` 函数用于将接收到的数据帧向上传递到网络协议栈中。当一个数据帧到达桥接设备，但桥表中找不到匹配项时，需要将数据帧向上传递到网络协议栈中进行处理。
+
+3. __local_bh_enable_ip()函数，是 Linux 内核中的一个函数，它用于在禁用软中断（Soft Interrupts）后重新启用它们。每个处理器都有一个软中断线程 ksoftirqd_CPUn，当执行时，它也会处理软中断。
+
+   **在处理软中断时禁用软中断的主要原因是为了防止中断嵌套，即避免在处理一个中断的过程中被另一个中断打断，这样可以保证数据包处理的完整性和系统的稳定性。当网络接口接收到“数据到达中断”时，它会禁用中断并通知内核开始轮询接口。此外，禁用软中断也有助于减少上下文切换的开销。**
+
+4. __napi_poll()函数，。当一个软中断到来时，启用 `napi_poll` 轮询可以提高数据包的处理能力。`napi_poll` 是一种机制，它允许驱动程序在一次中断中处理多个数据包，从而减少了中断的数量，提高了处理效率。这种机制也有助于减少 CPU 的负载，因为它减少了上下文切换的次数。所以，通过优化 `napi_poll` 轮询，可以有效地提高网络数据包的处理能力。 
+
+5. tcp_v4_fill_cb()函数，填写tcp的控制块。
+
+### 定位内核函数
+
+#### ftrace options
+
+- **`sym-offset`:**不仅显示函数名称，还显示函数中的偏移量
+- **`sym-addr:`** 这也将显示函数地址和函数名称，地址是个准确的地址。
+
+```
+root@centos8-03 /s/k/d/tracing# cat trace_options
+print-parent
+nosym-offset
+nosym-addr
+noverbose
+noraw
+nohex
+nobin
+noblock
+trace_printk
+annotate
+nouserstacktrace
+nosym-userobj
+noprintk-msg-only
+context-info
+nolatency-format
+record-cmd
+norecord-tgid
+overwrite
+nodisable_on_free
+irq-info
+markers
+noevent-fork
+function-trace
+nofunction-fork
+nodisplay-graph
+nostacktrace
+notest_nop_accept
+notest_nop_refuse
+root@centos8-03 /s/k/d/tracing# echo sym-offset > trace_options
+root@centos8-03 /s/k/d/tracing# echo sym-addr > trace_options
+```
+
+
 
 ### 资料
 
 1. [Tour Around Kernel Stack | Tao Wang (wtao0221.github.io)](https://wtao0221.github.io/2019/04/11/Tour-Around-Kernel-Stack/)
+1. [notes/kernel/trace/ftrace.md at master · freelancer-leon/notes (github.com)](https://github.com/freelancer-leon/notes/blob/master/kernel/trace/ftrace.md)
+1. [【原创】Ftrace使用及实现机制 - 沐多 - 博客园 (cnblogs.com)](https://www.cnblogs.com/wsg1100/p/17020703.html#2-关键文件介绍)
 
 
 
