@@ -119,3 +119,32 @@ static bool __xm_parse_eth(struct ethhdr *eth, void *data_end,
     *eth_type = eth->h_proto;
     return true;
 }
+
+static __s32 __xm_get_ip(struct sk_buff *skb) {
+    char *hdr_hdr;
+    __u16 mac_hdr;
+    __u16 net_hdr;
+
+    bpf_core_read(&hdr_hdr, sizeof(hdr_hdr), &skb->head);
+    bpf_core_read(&mac_hdr, sizeof(mac_hdr), &skb->mac_header);
+    bpf_core_read(&net_hdr, sizeof(net_hdr), &skb->network_header);
+
+    if (net_hdr == 0) {
+        net_hdr = mac_hdr + 14 /* MAC header size */;
+    }
+
+    char *ipaddr = hdr_hdr + net_hdr;
+
+    __u8 ip_vers;
+    bpf_core_read(&ip_vers, sizeof(ip_vers), ipaddr);
+    ip_vers = ip_vers >> 4 & 0xf;
+
+    if (ip_vers == 4) {
+        struct iphdr iph_hdr;
+        bpf_core_read(&iph_hdr, sizeof(iph_hdr), ipaddr);
+
+        return iph_hdr.daddr;
+    }
+
+    return -1;
+}

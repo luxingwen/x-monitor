@@ -200,7 +200,7 @@ int32_t main(int32_t argc, char *argv[]) {
                 if (appconfig_load(optarg) < 0) {
                     return -1;
                 } else {
-                    // 初始化log
+                    // 初始化 log
                     const char *log_config_file =
                         appconfig_get_str("application.log_config_file", NULL);
                     if (log_init(log_config_file, "xmonitor") < 0) {
@@ -261,7 +261,7 @@ int32_t main(int32_t argc, char *argv[]) {
     struct xmonitor_static_routine *routine =
         __xmonitor_static_routine_list.root;
     for (; routine; routine = routine->next) {
-        // 判断是否enable
+        // 判断是否 enable
         if (routine->config_name) {
             routine->enabled =
                 appconfig_get_member_bool(routine->config_name, "enable", 0);
@@ -285,7 +285,7 @@ int32_t main(int32_t argc, char *argv[]) {
             debug("xmonitor-static-routine '%s' is disabled.", routine->name);
         }
     }
-    // 给http注册registry
+    // 给 http 注册 registry
     promhttp_set_active_collector_registry(NULL);
 
     // 守护进程
@@ -298,7 +298,7 @@ int32_t main(int32_t argc, char *argv[]) {
     // 计算密集型调度策略
     sched_setscheduler(getpid(), SCHED_BATCH, NULL);
 
-    // 启动metrics http exporter
+    // 启动 metrics http exporter
     uint16_t metrics_http_export_port = (uint16_t)appconfig_get_int(
         "application.metrics_http_exporter.port", 8000);
     __promhttp_daemon = promhttp_start_daemon(
