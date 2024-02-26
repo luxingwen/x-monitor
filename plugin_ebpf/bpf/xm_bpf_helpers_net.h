@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-10 16:37:40
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-12-15 16:05:27
+ * @Last Modified time: 2024-02-22 10:35:30
  */
 
 #include <vmlinux.h>
@@ -88,7 +88,7 @@ static __u8 __xm_parse_ip6hdr(struct hdr_cursor *nh, void *data_end,
     return ip6h->nexthdr;
 }
 
-static __s32 __get_dport(void *trans_data, void *data_end, __u8 protocol) {
+static __s32 __xm_get_dport(void *trans_data, void *data_end, __u8 protocol) {
     struct tcphdr *th;
     struct udphdr *uh;
 

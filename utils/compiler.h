@@ -178,3 +178,18 @@ macro 結果為 true ，則可以在 compile-time 的時候被告知有錯
                               __x < 0 ? -__x : __x;                            \
                           }),                                                  \
                           other)
+
+// use example: typecheck(typeof(ring->size), next);
+#define typecheck(type, x)             \
+    ({                                 \
+        type __dummy;                  \
+        typeof(x) __dummy2;            \
+        (void)(&__dummy == &__dummy2); \
+        1;                             \
+    })
+
+#define typecheck_fn(type, function)   \
+    ({                                 \
+        typeof(type) __tmp = function; \
+        (void)__tmp;                   \
+    })

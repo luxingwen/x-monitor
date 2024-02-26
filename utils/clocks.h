@@ -18,10 +18,10 @@ typedef uint64_t usec_t;
 
 // 微秒
 #ifndef USEC_PER_SEC
-#define USEC_PER_SEC 1000000ULL   // 一秒钟的微秒数
+#define USEC_PER_SEC 1000000ULL // 一秒钟的微秒数
 #endif
 #ifndef NSEC_PER_USEC
-#define NSEC_PER_USEC 1000ULL   // 一微秒的纳秒数
+#define NSEC_PER_USEC 1000ULL // 一微秒的纳秒数
 #endif
 
 // 毫秒
@@ -30,20 +30,21 @@ typedef uint64_t usec_t;
 #endif
 struct heartbeat {
     // 单调时间，字面意思是单调时间，实际上它指的是系统启动以后流逝的时间，
-    // 这是由变量jiffies来记录的。系统每次启动时jiffies初始化为0，每来一个timer
-    // interrupt，jiffies加1，也就是说它代表系统启动后流逝的tick数
+    // 这是由变量 jiffies 来记录的。系统每次启动时 jiffies 初始化为 0，每来一个
+    // timer interrupt，jiffies 加 1，也就是说它代表系统启动后流逝的 tick 数
     usec_t monotonic;
-    // 实际上就是指的是现实的时间，这是由变量xtime来记录的。系统每次启动时将CMOS上的RTC时间读入xtime，这个值是"自1970-01-01起经历的秒数
+    // 实际上就是指的是现实的时间，这是由变量 xtime 来记录的。系统每次启动时将
+    // CMOS 上的 RTC 时间读入 xtime，这个值是"自 1970-01-01 起经历的秒数
     usec_t realtime;
 };
 
-// wall时间
+// wall 时间
 extern time_t now_realtime_sec();
-// wall时间，微秒
+// wall 时间，微秒
 extern usec_t now_realtime_usec();
 
 extern time_t now_monotonic_sec();
-// jiffies时间，微秒
+// jiffies 时间，微秒
 extern usec_t now_monotonic_usec();
 
 extern void heartbeat_init(struct heartbeat *hb);
@@ -65,5 +66,5 @@ extern void test_clock_monotonic_coarse();
 extern int32_t sleep_usec(usec_t usec);
 
 //
-int64_t mktime64(const uint32_t year0, const uint32_t mon0, const uint32_t day, const uint32_t hour,
-                 const uint32_t min, const uint32_t sec);
+int64_t mktime64(const uint32_t year0, const uint32_t mon0, const uint32_t day,
+                 const uint32_t hour, const uint32_t min, const uint32_t sec);

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-08-11 11:01:21
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-04-25 15:42:58
+ * @Last Modified time: 2024-02-22 10:41:17
  */
 
 #include <vmlinux.h>
@@ -21,7 +21,8 @@ BPF_PROG_ARRAY(xm_filter_sock_jmp_table, 8);
 
 struct flow_key_record {
     __be32 src; // BIG
-                // ENDIAN，UDP/TCP/IP 协议规定：把接收到的第一个字节当作高位字节看待
+                // ENDIAN，UDP/TCP/IP
+                // 协议规定：把接收到的第一个字节当作高位字节看待
     __be32 dst;
     union {
         __be32 ports;
@@ -85,3 +86,6 @@ __s32 xmonitor_main_socket_prog(struct __sk_buff *skb) {
     }
     return 0;
 }
+
+// ** GPL
+char LICENSE[] SEC("license") = "Dual BSD/GPL";

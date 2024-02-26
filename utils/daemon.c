@@ -10,12 +10,12 @@
 #include "files.h"
 #include "log.h"
 
-//#include "app_config/app_config.h"
+// #include "app_config/app_config.h"
 
 const int32_t process_nice_level = 19;
 const int32_t process_oom_score = 1000;
 
-// 设置oom_socre_adj为-1000，表示禁止oom killer杀死该进程
+// 设置 oom_socre_adj 为 -1000，表示禁止 oom killer 杀死该进程
 static void oom_score_adj(void) {
     int64_t old_oom_score = 0;
     int32_t ret = 0;
@@ -33,12 +33,14 @@ static void oom_score_adj(void) {
 
     ret = write_int64_to_file("/proc/self/oom_score_adj", process_oom_score);
     if (unlikely(ret < 0)) {
-        error("failed to adjust Out-Of-Memory (OOM) score to %d. run with %ld, ret: %d",
+        error("failed to adjust Out-Of-Memory (OOM) score to %d. run with %ld, "
+              "ret: %d",
               process_oom_score, old_oom_score, ret);
         return;
     }
 
-    info("adjust Out-Of-Memory (OOM) score from %ld to %d.", old_oom_score, process_oom_score);
+    info("adjust Out-Of-Memory (OOM) score from %ld to %d.", old_oom_score,
+         process_oom_score);
     return;
 }
 
@@ -70,7 +72,7 @@ static void chown_open_file(int32_t fd, uid_t uid, gid_t gid) {
 }
 
 int32_t become_user(const char *user, int32_t pid_fd, const char *pid_file) {
-    // 获取ruid
+    // 获取 ruid
     // int32_t is_root = ((getuid() == 0) ? 1 : 0);
 
     struct passwd *pw = getpwnam(user);
@@ -79,45 +81,49 @@ int32_t become_user(const char *user, int32_t pid_fd, const char *pid_file) {
         return -1;
     }
 
-    // 得到用户的ruid和rgid
+    // 得到用户的 ruid 和 rgid
     uid_t ruid = pw->pw_uid;
     gid_t rgid = pw->pw_gid;
 
     if (pid_file[0] != '\0') {
-        // 修改pid文件的所有者
+        // 修改 pid 文件的所有者
         if (chown(pid_file, ruid, rgid) < 0) {
-            error("chown pid_file: %s to %u:%u failed.", pid_file, (uint32_t)ruid, (uint32_t)rgid);
+            error("chown pid_file: %s to %u:%u failed.", pid_file,
+                  (uint32_t)ruid, (uint32_t)rgid);
         }
     }
 
     chown_open_file(pid_fd, ruid, rgid);
 
     if (setgid(rgid) < 0) {
-        error("setgid failed, user: %s, ruid: %u, rgid: %u, error: %s", user, (uint32_t)ruid,
-              (uint32_t)rgid, strerror(errno));
+        error("setgid failed, user: %s, ruid: %u, rgid: %u, error: %s", user,
+              (uint32_t)ruid, (uint32_t)rgid, strerror(errno));
         return -1;
     }
 
     if (setegid(rgid) < 0) {
-        error("setegid failed, user: %s, ruid: %u, rgid: %u, error: %s", user, (uint32_t)ruid,
-              (uint32_t)rgid, strerror(errno));
+        error("setegid failed, user: %s, ruid: %u, rgid: %u, error: %s", user,
+              (uint32_t)ruid, (uint32_t)rgid, strerror(errno));
         return -1;
     }
 
     if (setuid(ruid) < 0) {
-        error("setuid failed, user: %s, ruid: %u, rgid: %u", user, (uint32_t)ruid, (uint32_t)rgid);
+        error("setuid failed, user: %s, ruid: %u, rgid: %u", user,
+              (uint32_t)ruid, (uint32_t)rgid);
         return -1;
     }
 
     if (seteuid(ruid) < 0) {
-        error("seteuid failed, user: %s, ruid: %u, rgid: %u", user, (uint32_t)ruid, (uint32_t)rgid);
+        error("seteuid failed, user: %s, ruid: %u, rgid: %u", user,
+              (uint32_t)ruid, (uint32_t)rgid);
         return -1;
     }
 
     return 0;
 }
 
-int32_t become_daemon(int32_t dont_fork, const char *pid_file, const char *user) {
+int32_t become_daemon(int32_t dont_fork, const char *pid_file,
+                      const char *user) {
     if (!dont_fork) {
         int32_t i = fork();
         if (i == -1) {
@@ -151,7 +157,7 @@ int32_t become_daemon(int32_t dont_fork, const char *pid_file, const char *user)
 
     info("run as user:'%s', pid file:'%s'", user, pid_file);
 
-    // 生成pid文件
+    // 生成 pid 文件
     int32_t pid_fd = -1;
 
     if (pid_file != NULL && pid_file[0] != '\0') {
@@ -208,7 +214,8 @@ int32_t kill_pid(pid_t pid, int32_t signo) {
             // We wanted the process to exit so just let the caller handle.
             return ret;
         case EPERM:
-            error("Cannot kill pid %d, but I do not have enough permissions.", pid);
+            error("Cannot kill pid %d, but I do not have enough permissions.",
+                  pid);
             break;
         default:
             error("Cannot kill pid %d, but I received an error.", pid);
