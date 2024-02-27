@@ -42,7 +42,7 @@ struct hdr_cursor {
     void *pos;
 };
 
-static __s32 __xm_proto_is_vlan(__u16 h_proto) {
+static __always_inline __s32 __xm_proto_is_vlan(__u16 h_proto) {
     return !!(h_proto == bpf_htons(ETH_P_8021Q)
               || h_proto == bpf_htons(ETH_P_8021AD));
 }

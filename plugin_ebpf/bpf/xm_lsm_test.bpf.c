@@ -10,6 +10,7 @@
 #include "xm_bpf_helpers_common.h"
 #include "xm_bpf_helpers_maps.h"
 #include "xm_bpf_helpers_net.h"
+#include "xm_bpf_helpers_string.h"
 
 #define EPERM 1 /* Operation not permitted */
 #define AF_INET 2

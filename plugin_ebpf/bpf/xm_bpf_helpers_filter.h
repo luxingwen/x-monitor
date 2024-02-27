@@ -69,3 +69,38 @@ static __always_inline bool filter_ts(void *arg_map, struct task_struct *ts,
     }
     return false;
 }
+
+/**
+ * Check if the current task is in the host mount namespace.
+ *
+ * @return 1 if the current task is in the host mount namespace, 0 otherwise.
+ */
+static __always_inline __s32 __xm_is_host_mntns() {
+    struct task_struct *current_task;
+    struct nsproxy *nsproxy;
+    struct mnt_namespace *mnt_ns;
+    __u32 inum;
+
+    current_task = (struct task_struct *)bpf_get_current_task();
+
+    BPF_CORE_READ_INTO(&nsproxy, current_task, nsproxy);
+    BPF_CORE_READ_INTO(&mnt_ns, nsproxy, mnt_ns);
+    BPF_CORE_READ_INTO(&inum, mnt_ns, ns.inum);
+
+    if (inum == 0xF0000000) {
+        return 1;
+    }
+    return 0;
+}
+
+/**
+ * @brief Check if the current process is running inside a container.
+ *
+ * This function checks if the current process is running inside a container
+ * by calling the __xm_is_host_mntns() function and negating its result.
+ *
+ * @return 1 if the current process is running inside a container, 0 otherwise.
+ */
+static __always_inline __s32 __xm_is_container() {
+    return !__xm_is_host_mntns();
+}
