@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-10-31 15:52:09
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-02-27 10:32:00
+ * @Last Modified time: 2024-03-04 15:12:53
  */
 
 #pragma once
@@ -20,6 +20,10 @@
 
 #define BPF_HASH(_name, _key_type, _value_type, _max_entries) \
     BPF_MAP(_name, BPF_MAP_TYPE_HASH, _key_type, _value_type, _max_entries)
+
+#define BPF_PERCPU_HASH(_name, _key_type, _value_type, _max_entries) \
+    BPF_MAP(_name, BPF_MAP_TYPE_PERCPU_HASH, _key_type, _value_type, \
+            _max_entries)
 
 #define BPF_LRU_HASH(_name, _key_type, _value_type, _max_entries) \
     BPF_MAP(_name, BPF_MAP_TYPE_LRU_HASH, _key_type, _value_type, _max_entries)

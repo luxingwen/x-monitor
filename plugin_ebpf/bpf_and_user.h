@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-15 14:06:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-12-15 16:08:07
+ * @Last Modified time: 2024-03-04 15:49:57
  */
 
 #pragma once
@@ -285,4 +285,34 @@ struct __attribute__((__packed__)) xm_profile_pid_maps {
     struct xm_profile_proc_maps_module
         modules[XM_PER_PROCESS_ASSOC_MODULE_COUNT];
     __u32 module_count;
+};
+
+//------------------------ nfs
+// nfs 操作统计类型
+enum xm_nfs_op_type {
+    XM_NFS_OP_TYPE_NONE = 0,
+    XM_NFS_OP_TYPE_READ,
+    XM_NFS_OP_TYPE_WRITE,
+    XM_NFS_OP_TYPE_OPEN,
+    XM_NFS_OP_TYPE_SYNC,
+    XM_NFS_OP_TYPE_MAX,
+};
+
+// nfs 每个操作统计槽数量
+#define XM_NFS_OP_STAT_SLOT_COUNT 24
+// nfs 每个操作统计槽位最大下标
+#define XM_NFS_OP_STAT_SLOT_MAX_IDX (XM_NFS_OP_STAT_SLOT_COUNT - 1)
+// nfs 操作统计表总槽数量
+#define XM_NFS_OP_STAT_TABLE_TOTAL_SLOT_COUNT \
+    ((XM_NFS_OP_TYPE_MAX - 1) * XM_NFS_OP_STAT_SLOT_COUNT)
+
+// 块设备的设备号
+struct xm_blk_num {
+    __s32 major;
+    __s32 minor;
+};
+
+// nfs 操作延迟的统计，包括了所枚举的操作类型的所有 slot
+struct xm_nfs_oplat_stat {
+    __u32 slots[XM_NFS_OP_STAT_TABLE_TOTAL_SLOT_COUNT];
 };

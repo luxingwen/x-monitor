@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2024-02-27 10:31:50
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-02-27 10:45:05
+ * @Last Modified time: 2024-03-04 16:02:04
  */
 
 #pragma once
@@ -31,8 +31,8 @@ static __always_inline __s32 __xm_strncmp(const unsigned char *cs,
     size_t i;
 
     for (i = 0; i < len; i++) {
-        c1 = (unsigned char)a[i];
-        c2 = (unsigned char)b[i];
+        c1 = (unsigned char)cs[i];
+        c2 = (unsigned char)ct[i];
 
         if (c1 != c2 || c1 == '\0' || c2 == '\0') {
             return 1;

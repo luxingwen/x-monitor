@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-12-28 10:42:19
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-10-24 15:01:30
+ * @Last Modified time: 2024-03-04 18:05:31
  */
 
 package main
@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	_perf_max_stack_depth = 20
+	_perf_max_stack_depth = 127
 )
 
 var (
@@ -209,6 +209,7 @@ func main() {
 	}
 
 	// 加载 kernel、进程的符号
+	calmutils.InitModuleSymbolTblMgr(128)
 	calmutils.LoadKallSyms()
 	procSyms, _ := calmutils.NewProcMaps(__pid)
 
