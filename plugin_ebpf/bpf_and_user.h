@@ -291,10 +291,10 @@ struct __attribute__((__packed__)) xm_profile_pid_maps {
 // nfs 操作统计类型
 enum xm_nfs_op_type {
     XM_NFS_OP_TYPE_NONE = 0,
+    XM_NFS_OP_TYPE_OPEN,
     XM_NFS_OP_TYPE_READ,
     XM_NFS_OP_TYPE_WRITE,
-    XM_NFS_OP_TYPE_OPEN,
-    XM_NFS_OP_TYPE_SYNC,
+    XM_NFS_OP_TYPE_GETATTR,
     XM_NFS_OP_TYPE_MAX,
 };
 

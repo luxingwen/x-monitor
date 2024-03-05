@@ -383,3 +383,6 @@ static __always_inline bool in_kernel_space(__u64 ip) {
         return true;
     return false;
 }
+
+#define ENUM_TO_STR_HELPER(x) #x
+#define ENUM_TO_STR(x) ENUM_TO_STR_HELPER(x)
