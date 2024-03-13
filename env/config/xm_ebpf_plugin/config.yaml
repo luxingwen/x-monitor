@@ -1,10 +1,15 @@
+resource:
+  limits:
+    memory: 2147483648 # 2G
+    process_count: 32
+    symbol_table_count: 384
 net:
   port:
     pprof: 30001
     api: 31080
   ip:
     # 地址赋值类型：default_route, ip, itf_name
-    assignType: default_route
+    assign_type: default_route
     value: 0.0.0.0
   pyroscope: "http://127.0.0.1:4040/"
 api:
@@ -14,15 +19,15 @@ eBPF:
   enabled: true
   programs:
     - name: cachestat
-      enabled: false
+      enabled: true
       args:
         private:
-          gather_interval: 3 # 收集 kernel prog 数据时间间隔，单位秒
+          gather_interval: 5 # 收集 kernel prog 数据时间间隔，单位秒
     - name: cpusched
-      enabled: false
+      enabled: true
       args:
         private:
-          gather_interval: 3 # 收集 kernel prog 数据时间间隔，单位秒
+          gather_interval: 5 # 收集 kernel prog 数据时间间隔，单位秒
         metrcs:
           - runq_latency
           - offcpu_duration
@@ -49,7 +54,7 @@ eBPF:
           - "dd"
           - "fio"
     - name: processvm
-      enabled: false
+      enabled: true
       args:
         metrcs:
           - privanon_share_pages
@@ -111,3 +116,8 @@ eBPF:
         ebpf_prog:
           filter_scope_type: 1 # 1: os, 2: namespace, 4: PID, 5: PGID
           filter_scope_value: 0
+    - name: nfs
+      enabled: true
+      args:
+        private:
+          gather_interval: 5 # 收集 kernel prog 数据时间间隔，单位秒

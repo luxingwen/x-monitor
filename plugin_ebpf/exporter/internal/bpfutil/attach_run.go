@@ -18,8 +18,8 @@ import (
 	calmutils "github.com/wubo0067/calmwu-go/utils"
 )
 
-type __load func() (*ebpf.CollectionSpec, error)
-type __rewriteConstVars func(*ebpf.CollectionSpec) error
+type loadFunc func() (*ebpf.CollectionSpec, error)
+type rewriteConstVarsType func(*ebpf.CollectionSpec) error
 
 // AttachObjPrograms attaches the eBPF programs described by progSpecs to the
 // interfaces described by progs.
@@ -157,7 +157,7 @@ func AttachObjPrograms(progs interface{}, progSpecs map[string]*ebpf.ProgramSpec
 	return links, nil
 }
 
-func AttachToRun(name string, objs interface{}, loadF __load, rewriteConstVarsF __rewriteConstVars) ([]link.Link, error) {
+func AttachToRun(name string, objs interface{}, loadF loadFunc, rewriteConstVarsF rewriteConstVarsType) ([]link.Link, error) {
 	spec, err := loadF()
 	if err != nil {
 		err = errors.Wrapf(err, "eBPFProgram:'%s' load spec failed.", name)

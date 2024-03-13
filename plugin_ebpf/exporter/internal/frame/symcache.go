@@ -14,6 +14,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/pkg/errors"
 	calmutils "github.com/wubo0067/calmwu-go/utils"
+	"xmonitor.calmwu/plugin_ebpf/exporter/config"
 )
 
 type Symbol struct {
@@ -32,14 +33,19 @@ var (
 	once       sync.Once
 )
 
-func InitSystemSymbolsCache(size int) error {
+func InitSystemSymbolsCache() error {
 	var err error
 
+	procCountLimit := config.ProcessCountLimit()
+	symbolTableCountLimit := config.SymbolTableCountLimit()
+
+	glog.Infof("procCountLimit:%d, symbolTableCountLimit:%d", procCountLimit, symbolTableCountLimit)
+
 	once.Do(func() {
-		calmutils.InitModuleSymbolTblMgr(size * 12)
+		calmutils.InitModuleSymbolTblMgr(symbolTableCountLimit)
 
 		__instance = &SystemSymbolsCache{}
-		__instance.cache, err = lru.NewWithEvict[int32, *calmutils.ProcMaps](size, func(key int32, v *calmutils.ProcMaps) {
+		__instance.cache, err = lru.NewWithEvict[int32, *calmutils.ProcMaps](procCountLimit, func(key int32, v *calmutils.ProcMaps) {
 			glog.Warningf("pid:%d symbols cache object evicted by lru", key)
 			// ** 从 symbletblMgr 中删除自己的 symbolTable，获取第一个 ProcMapsModule 的 buildID 去释放
 			// 用了 LRU，就不要在对 module 引用计数了，module 数量会有一个上限

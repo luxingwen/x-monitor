@@ -299,7 +299,7 @@ enum xm_nfs_op_type {
 };
 
 // nfs 每个操作统计槽数量
-#define XM_NFS_OP_STAT_SLOT_COUNT 24
+#define XM_NFS_OP_STAT_SLOT_COUNT 20
 // nfs 每个操作统计槽位最大下标
 #define XM_NFS_OP_STAT_SLOT_MAX_IDX (XM_NFS_OP_STAT_SLOT_COUNT - 1)
 // nfs 操作统计表总槽数量

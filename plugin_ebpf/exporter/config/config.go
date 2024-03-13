@@ -144,9 +144,9 @@ func getIP(assignType string) (string, error) {
 }
 
 // PProfBindAddr returns the IP address and port that the pprof endpoint is configured to listen on.
-// The IP address is determined by the net.ip.assignType configuration value.
+// The IP address is determined by the net.ip.assign_type configuration value.
 func PProfBindAddr() (string, error) {
-	assignType := viper.GetString("net.ip.assignType")
+	assignType := viper.GetString("net.ip.assign_type")
 	ip, err := getIP(assignType)
 	if err != nil {
 		return "", err
@@ -159,7 +159,7 @@ func PProfBindAddr() (string, error) {
 // user-specified bind address, if one was provided, or it uses an IP address
 // assigned by the user-specified IP assignment method.
 func APISrvBindAddr() (string, error) {
-	assignType := viper.GetString("net.ip.assignType")
+	assignType := viper.GetString("net.ip.assign_type")
 	ip, err := getIP(assignType)
 	if err != nil {
 		return "", err
@@ -234,15 +234,27 @@ func ProgramCommFilter(progName, comm string) bool {
 	return true
 }
 
-func PyroscopeSrvAddr(srvAddr string) {
+func SetPyroscopeSrvAddr(srvAddr string) {
 	pyroscopeSrvAddr = srvAddr
 }
 
-func PyroscopeSvrAddr() string {
+func PyroscopeSrvAddr() string {
 	if len(pyroscopeSrvAddr) == 0 {
 		mu.RLock()
 		defer mu.RUnlock()
 		return viper.GetString("net.pyroscope")
 	}
 	return pyroscopeSrvAddr
+}
+
+func MemoryLimit() int64 {
+	return viper.GetInt64("resource.limits.memory")
+}
+
+func ProcessCountLimit() int {
+	return viper.GetInt("resource.limits.process_count")
+}
+
+func SymbolTableCountLimit() int {
+	return viper.GetInt("resource.limits.symbol_table_count")
 }

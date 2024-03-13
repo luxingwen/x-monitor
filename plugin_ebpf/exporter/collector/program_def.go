@@ -15,6 +15,7 @@ const (
 	oomKillProgName     = "oomkill"
 	bioProgName         = "bio"
 	profileProgName     = "profile"
+	nfsProgName         = "nfs"
 )
 
 var (

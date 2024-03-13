@@ -603,5 +603,9 @@ func CreateModuleFDETables(modulePath string) (*bpfmodule.XMProfileXmProfileModu
 		func(a, b bpfmodule.XMProfileXmProfileFdeTableInfo) bool { return a.Start < b.Start })
 
 	glog.Infof("module:'%s' have %d FDETables, %d FDERows", modulePath, procModuleFDETables.FdeTableCount, moduleAssocFDERowCount)
+
+	fdes = nil
+	data = nil
+
 	return procModuleFDETables, nil
 }

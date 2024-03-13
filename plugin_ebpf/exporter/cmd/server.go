@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime/debug"
 
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/fatih/color"
@@ -35,45 +36,45 @@ import (
 
 var (
 	// Version Major string
-	_VersionMajor string
-	// _VersionMinor string version
-	_VersionMinor string
+	VersionMajor string
+	// VersionMinor string version
+	VersionMinor string
 	// Branch name.
-	_BranchName string
-	// _CommitHash hash string
-	_CommitHash string
-	// _BuildTime string.
-	_BuildTime string
+	BranchName string
+	// CommitHash hash string
+	CommitHash string
+	// BuildTime string.
+	BuildTime string
 	// 配置文件
-	_configFile string
+	configFile string
 	// pyroscope 服务器地址
-	_pyroscope string
+	pyroscope string
 	// Defining the root command for the CLI.
-	_rootCmd = &cobra.Command{
+	rootCmd = &cobra.Command{
 		Use:  "x-monitor.eBPF application",
 		Long: "x-monitor plugin application for eBPF metrics collector",
 		Version: func() string {
 			return fmt.Sprintf("\n\tVersion: %s.%s\n\tGit: %s:%s\n\tBuild Time: %s\n",
-				_VersionMajor, _VersionMinor, _BranchName, _CommitHash, _BuildTime)
+				VersionMajor, VersionMinor, BranchName, CommitHash, BuildTime)
 		}(),
 		Run: rootCmdRun,
 	}
 
-	_APIHttp       *net.WebSrv
-	_EBPFCollector *collector.EBPFCollector
-	_gf            = singleflight.Group{}
+	apiHttp       *net.WebSrv
+	eBPFCollector *collector.EBPFCollector
+	gf            = singleflight.Group{}
 )
 
 func init() {
-	_rootCmd.Flags().StringVar(&_configFile, "config", "", "config.yaml")
-	_rootCmd.Flags().StringVar(&_pyroscope, "pyroscope", "", "pyroscope server address")
-	_rootCmd.Flags().AddGoFlagSet(goflag.CommandLine)
-	_rootCmd.Flags().Parse(os.Args[1:])
+	rootCmd.Flags().StringVar(&configFile, "config", "", "config.yaml")
+	rootCmd.Flags().StringVar(&pyroscope, "pyroscope", "", "pyroscope server address")
+	rootCmd.Flags().AddGoFlagSet(goflag.CommandLine)
+	rootCmd.Flags().Parse(os.Args[1:])
 }
 
 // Main is the entry point for the application.
 func Main() {
-	if err := _rootCmd.Execute(); err != nil {
+	if err := rootCmd.Execute(); err != nil {
 		glog.Fatal("%s %v\n\n", color.RedString("Error:"), err)
 	}
 }
@@ -82,22 +83,22 @@ func Main() {
 // metrics endpoint. It sets the metrics version to the application version,
 // and also registers the standard Go and Process collectors.
 func registerPromCollectors() {
-	version.Version = fmt.Sprintf("%s.%s", _VersionMajor, _VersionMinor)
-	version.Revision = _CommitHash
-	version.Branch = _BranchName
-	version.BuildDate = _BuildTime
+	version.Version = fmt.Sprintf("%s.%s", VersionMajor, VersionMinor)
+	version.Revision = CommitHash
+	version.Branch = BranchName
+	version.BuildDate = BuildTime
 
 	// 注册 collectors
 	prometheus.MustRegister(version.NewCollector("xmonitor_eBPF"))
 
 	var err error
 
-	_EBPFCollector, err = collector.New()
+	eBPFCollector, err = collector.New()
 	if err != nil {
 		glog.Fatalf("Couldn't create eBPF collector: %s", err.Error())
 	}
 
-	if err = prometheus.Register(_EBPFCollector); err != nil {
+	if err = prometheus.Register(eBPFCollector); err != nil {
 		glog.Fatalf("Couldn't register eBPF collector: %s", err.Error())
 	}
 }
@@ -119,12 +120,16 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	glog.Info("Hi~~~, xm-monitor.eBPF metrics collector.")
 
 	// Config
-	if err := config.InitConfig(_configFile); err != nil {
+	if err := config.InitConfig(configFile); err != nil {
 		glog.Fatal(err.Error())
 	}
 
-	config.PyroscopeSrvAddr(_pyroscope)
-	if err := pyrostub.InitPyroscopeExporter(config.PyroscopeSvrAddr()); err != nil {
+	memoryLimit := config.MemoryLimit()
+	priorMemoryLimit := debug.SetMemoryLimit(memoryLimit)
+	glog.Infof("Set memory limit to %d bytes, prior memory limit %d bytes", memoryLimit, priorMemoryLimit)
+
+	config.SetPyroscopeSrvAddr(pyroscope)
+	if err := pyrostub.InitPyroscopeExporter(config.PyroscopeSrvAddr()); err != nil {
 		glog.Fatalf("Init Pytoscope export failed, reason:%s", err.Error())
 	}
 
@@ -133,7 +138,7 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	// init symbols
-	if err := frame.InitSystemSymbolsCache(32); err != nil {
+	if err := frame.InitSystemSymbolsCache(); err != nil {
 		glog.Fatalf("Init Symbols Cache failed. %s", err.Error())
 	}
 
@@ -164,14 +169,14 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 
 	// 启动 web 服务
 	bind, _ = config.APISrvBindAddr()
-	_APIHttp = net.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
+	apiHttp = net.NewWebSrv("x-monitor.eBPF", ctx, bind, false, "", "")
 
 	// 注册 router
 	metricsPath := config.PromMetricsPath()
-	_APIHttp.Handle(http.MethodGet, metricsPath, prometheusHandler())
-	_APIHttp.Handle(http.MethodGet, "/", func(c *gin.Context) {
+	apiHttp.Handle(http.MethodGet, metricsPath, prometheusHandler())
+	apiHttp.Handle(http.MethodGet, "/", func(c *gin.Context) {
 		name := c.Request.URL.Query().Get("name")
-		response, _, _ := _gf.Do(name, func() (interface{}, error) {
+		response, _, _ := gf.Do(name, func() (interface{}, error) {
 			b := bytes.NewBuffer([]byte(`<html>
 			<head><title>x-monitor.eBPF</title></head>
 			<body>
@@ -188,13 +193,13 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 		}
 	})
 
-	_APIHttp.Start()
+	apiHttp.Start()
 
 	<-ctx.Done()
 
-	_APIHttp.Stop()
+	apiHttp.Stop()
 
-	_EBPFCollector.Stop()
+	eBPFCollector.Stop()
 
 	eventcenter.Stop()
 

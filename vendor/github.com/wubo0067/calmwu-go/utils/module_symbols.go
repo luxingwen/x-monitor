@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2023-10-26 14:32:43
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-10-26 14:46:33
+ * @Last Modified time: 2024-02-28 11:23:23
  */
 
 package utils
@@ -162,7 +162,7 @@ func (gomst *GoModuleSymbolTbl) GenerateTbl(goSymTabSec *elf.Section, elfF *elf.
 	if sec := elfF.Section(".gopclntab"); sec != nil {
 		if sec.Type == elf.SHT_NOBITS {
 			// 如果没有 meta 数据，返回
-			return errors.Wrapf(err, ".gopclntab section has no bits", gomst.moduleName)
+			return errors.Wrapf(err, "%s .gopclntab section has no bits", gomst.moduleName)
 		}
 
 		gopclntabData, err = sec.Data()
@@ -224,15 +224,15 @@ func InitModuleSymbolTblMgr(capacity int) error {
 			switch t := v.(type) {
 			case *GoModuleSymbolTbl:
 				if t != nil {
-					glog.Warningf("GoModule symbol table:'%s', buildID:'%s' is evicted.",
-						v.ModuleName(), k)
 					t.symIndex = nil
 					t = nil
+					glog.Warningf("GoModule symbol table:'%s', buildID:'%s' evicted.",
+						v.ModuleName(), k)
 				}
 			case *NativeModuleSymbolTbl:
-				glog.Warningf("evicted NativeModule symbol table:'%s', buildID:'%s'", v.ModuleName(), k)
 				t.symbolTable = nil
 				t = nil
+				glog.Warningf("NativeModule symbol table:'%s', buildID:'%s' evicted", v.ModuleName(), k)
 			}
 		})
 
@@ -318,9 +318,6 @@ func createModuleSymbolTbl(buildID string, moduleName string, appRootFS string, 
 func DeleteModuleSymbolTbl(buildID string) {
 	if __singleModuleSymbolTblMgr != nil {
 		// Remove is thread safe
-		if __singleModuleSymbolTblMgr.lc.Remove(buildID) {
-			glog.Infof("delete module symbol table by buildID:'%s'. current have %d modules in LRUCache",
-				buildID, __singleModuleSymbolTblMgr.lc.Len())
-		}
+		__singleModuleSymbolTblMgr.lc.Remove(buildID)
 	}
 }

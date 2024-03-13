@@ -26,7 +26,7 @@ if [[ "$cgroup_version" == "cgroup V1" ]]; then
     cgset -r cpu.cfs_quota_us=200000 /user.slice/x-monitor.ebpf
     cgget -g memory,cpu:/user.slice/x-monitor.ebpf
 
-    cgexec -g memory,cpu:/user.slice/x-monitor.ebpf nohup ./x-monitor.ebpf --config=../../env/config/xm_ebpf_plugin/config.yaml --pyroscope=http://127.0.0.1:4040/ --log_dir=/var/log/x-monitor/ --logtostderr=false --v=5 >/dev/null 2>&1 &
+    GOMEMLIMIT=2GiB cgexec -g memory,cpu:/user.slice/x-monitor.ebpf nohup ./x-monitor.ebpf --config=../../env/config/xm_ebpf_plugin/config.yaml --pyroscope=http://127.0.0.1:4040/ --log_dir=/var/log/x-monitor/ --logtostderr=false --v=5 >/dev/null 2>&1 &
 elif [[ "$cgroup_version" == "cgroup V2" ]]; then
     echo "system cgroup version is v2"
     cgcreate -g memory,cpu:/user.slice/x-monitor.ebpf
@@ -39,7 +39,7 @@ elif [[ "$cgroup_version" == "cgroup V2" ]]; then
     cgxset -2 -r memory.swap.max=0 /user.slice/x-monitor.ebpf
     cgxget -g memory,cpu:/user.slice/x-monitor.ebpf
 
-    cgexec -g memory,cpu:/user.slice/x-monitor.ebpf nohup ./x-monitor.ebpf --config=../../env/config/xm_ebpf_plugin/config.yaml --pyroscope=http://127.0.0.1:4040/ --log_dir=/var/log/x-monitor/ --logtostderr=false --v=5 >/dev/null 2>&1 &
+    GOMEMLIMIT=2GiB cgexec -g memory,cpu:/user.slice/x-monitor.ebpf nohup ./x-monitor.ebpf --config=../../env/config/xm_ebpf_plugin/config.yaml --pyroscope=http://127.0.0.1:4040/ --log_dir=/var/log/x-monitor/ --logtostderr=false --v=5 >/dev/null 2>&1 &
 else
     echo "system cgroup version is unknown"
 fi
