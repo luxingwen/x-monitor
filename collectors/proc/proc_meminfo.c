@@ -30,20 +30,20 @@ static const char *__cfg_proc_meminfo_filename = NULL;
 static struct proc_file *__pf_meminfo = NULL;
 static ARL_BASE *__arl_base = NULL;
 
-// 单位KB
+// 单位 KB
 static uint64_t
-    // 所有可用的内存大小，物理内存减去预留位和内核使用。系统从加电开始到引导完成，firmware/BIOS要预留一些内存，内核本身要占用一些内存，
-    // 最后剩下可供内核支配的内存就是MemTotal。这个值在系统运行期间一般是固定不变的，重启会改变
+    // 所有可用的内存大小，物理内存减去预留位和内核使用。系统从加电开始到引导完成，firmware/BIOS 要预留一些内存，内核本身要占用一些内存，
+    // 最后剩下可供内核支配的内存就是 MemTotal。这个值在系统运行期间一般是固定不变的，重启会改变
     __mem_total = 0,
     // 表示系统尚未使用的内存
     __mem_free = 0,
-    // 真正的系统可用内存，系统中有些内存虽然已被使用但是可以回收的，比如cache/buffer、slab都有一部分可以回收，所以这部分可回收的内存加上MemFree才是系统可用的内存
+    // 真正的系统可用内存，系统中有些内存虽然已被使用但是可以回收的，比如 cache/buffer、slab 都有一部分可以回收，所以这部分可回收的内存加上 MemFree 才是系统可用的内存
     __mem_available = 0,
     // 用来给块设备做缓存的内存，(文件系统的 metadata、pages)
     __buffers = 0,
-    // 分配给文件缓冲区的内存,例如vi一个文件，就会将未保存的内容写到该缓冲区
+    // 分配给文件缓冲区的内存，例如 vi 一个文件，就会将未保存的内容写到该缓冲区
     __cached = 0,
-    // 被高速缓冲存储用的交换空间（硬盘的swap）的大小，属于一个交换过程中cache，
+    // 被高速缓冲存储用的交换空间（硬盘的 swap）的大小，属于一个交换过程中 cache，
     __swap_cached = 0,
     // 经常使用的高速缓冲存储器页面文件大小
     __active = 0,
@@ -60,7 +60,7 @@ static uint64_t
     // 不能被释放的内存页
     __unevictable = 0,
     // 系统调用 mlock
-    // 家族允许程序在物理内存上锁住它的部分或全部地址空间。这将阻止Linux
+    // 家族允许程序在物理内存上锁住它的部分或全部地址空间。这将阻止 Linux
     // 将这个内存页调度到交换空间（swap space），即使该程序已有一段时间没有访问这段空间
     __mlocked = 0,
     // 交换空间总内存
@@ -79,9 +79,9 @@ static uint64_t
     __shmem = 0,
     // 内核数据结构缓存
     __slab = 0,
-    // 可收回slab内存
+    // 可收回 slab 内存
     __slab_reclaimble = 0,
-    // 不可收回slab内存
+    // 不可收回 slab 内存
     __slab_unreclaim = 0,
     // 内核消耗的内存
     __kernel_stack = 0,
@@ -89,9 +89,9 @@ static uint64_t
     __page_tables = 0,
     // 不稳定页表的大小
     __nfs_unstable = 0,
-    // 在低端内存中分配一个临时buffer作为跳转，把位于高端内存的缓存数据复制到此处消耗的内存
+    // 在低端内存中分配一个临时 buffer 作为跳转，把位于高端内存的缓存数据复制到此处消耗的内存
     __bounce = 0,
-    // FUSE用于临时写回缓冲区的内存
+    // FUSE 用于临时写回缓冲区的内存
     __writeback_tmp = 0,
     // 系统实际可分配内存
     __commit_limit = 0,
@@ -127,11 +127,11 @@ static uint64_t
     __huge_pages_surp = 0;
 // 单个大页内存的大小
 // __huge_pages_size = 0,
-// 映射TLB为4kB的内存数量
+// 映射 TLB 为 4kB 的内存数量
 // __direct_map_4k = 0,
-// 映射TLB为2M的内存数量
+// 映射 TLB 为 2M 的内存数量
 // __direct_map_2M = 0,
-// 映射TLB为1G的内存数量
+// 映射 TLB 为 1G 的内存数量
 // __direct_map_1G = 0;
 
 // 指标

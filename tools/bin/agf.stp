@@ -1,0 +1,17 @@
+#!/usr/bin/env stap
+
+probe begin {
+	printf("xfs_agf_write_verify start...\n")
+}
+
+probe end {
+	printf("xfs_agf_write_verify exit...\n")
+}
+
+probe module("xfs").function("xfs_agf_write_verify") {
+	dev = $bp->b_mount->m_super->s_dev
+	agf_magic = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
+	bli_item_li_lsn = $bp->b_log_item->bli_item->li_lsn
+	printf("dev: %d, agf_magic: 0x%x, lsn: 0x%x\n", dev, htonl(agf_magic), bli_item_li_lsn)
+	print_backtrace()
+}

@@ -12,7 +12,7 @@ RssShmem) RssAnon                     size of resident anonymous memory RssFile
 size of resident file mappings RssShmem                    size of resident
 shmem memory (includes SysV shm, mapping of tmpfs and shared anonymous mappings)
 
-/proc/<pid>/statm  单位是PAGE
+/proc/<pid>/statm  单位是 PAGE
  Field    Content
  size     total program size (pages)            (same as VmSize in status)
  resident size of memory portions (pages)       (same as VmRSS in status)
@@ -31,17 +31,24 @@ vss>=rss>=pss>=uss
 
 USS = Private_Clean + Private_Dirty
 PSS = USS + (Shared_Clean + Shared_Dirty)/n
-是平摊计算后的实际物理使用内存(有些内存会和其他进程共享，例如mmap进来的)。实际上包含下面private_clean+private_dirty，和按比例均分的shared_clean、shared_dirty。
-RSS = Private_Clean + Private_Dirty + Shared_Clean + Shared_Dirty
+是平摊计算后的实际物理使用内存 (有些内存会和其他进程共享，例如 mmap
+进来的)。实际上包含下面 private_clean+private_dirty，和按比例均分的
+shared_clean、shared_dirty。 RSS = Private_Clean + Private_Dirty + Shared_Clean
++ Shared_Dirty
 
-VSS是单个进程全部可访问的虚拟地址空间，其大小可能包括还尚未在内存中驻留的部分。对于确定单个进程实际内存使用大小，VSS用处不大。
-RSS是单个进程实际占用的内存大小，RSS不太准确的地方在于它包括该进程所使用共享库全部内存大小。对于一个共享库，可能被多个进程使用，实际该共享库只会被装入内存一次。
-进而引出了PSS，PSS相对于RSS计算共享库内存大小是按比例的。N个进程共享，该库对PSS大小的贡献只有1/N。
-USS是单个进程私有的内存大小，即该进程独占的内存部分。USS揭示了运行一个特定进程在的真实内存增量大小。如果进程终止，USS就是实际被返还给系统的内存大小。
+VSS
+是单个进程全部可访问的虚拟地址空间，其大小可能包括还尚未在内存中驻留的部分。对于确定单个进程实际内存使用大小，VSS
+用处不大。 RSS 是单个进程实际占用的内存大小，RSS
+不太准确的地方在于它包括该进程所使用共享库全部内存大小。对于一个共享库，可能被多个进程使用，实际该共享库只会被装入内存一次。
+进而引出了 PSS，PSS 相对于 RSS 计算共享库内存大小是按比例的。N
+个进程共享，该库对 PSS 大小的贡献只有 1/N。 USS
+是单个进程私有的内存大小，即该进程独占的内存部分。USS
+揭示了运行一个特定进程在的真实内存增量大小。如果进程终止，USS
+就是实际被返还给系统的内存大小。
 */
 
 #include "process_status.h"
-//#include "pagemap/pagemap.h"
+// #include "pagemap/pagemap.h"
 
 #include "utils/common.h"
 #include "utils/compiler.h"
@@ -75,7 +82,7 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
         error("[PROCESS:mem] process_status is NULL or pid <= 0");
         return -1;
     }
-    // 通过读取smaps文件获取rss pss uss信息
+    // 通过读取 smaps 文件获取 rss pss uss 信息
     ps->smaps.rss = ps->smaps.uss = ps->smaps.pss = ps->smaps.pss_anon =
         ps->smaps.pss_file = ps->smaps.pss_shmem = 0;
 

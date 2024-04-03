@@ -314,6 +314,12 @@ PID: 3370   TASK: ffff8d03f6c717c0  CPU: 3   COMMAND: "zsh"
 
   CS: 0033，Seemingly, we crashed the kernel in user mode。这里有4个数字组合，为了解释需要先了解下特权级别。特权级别有4种：0~3，0是最高级别，就是kernel mode。3就是最低级别，是User mode。大多数系统忽略中间两个级别，包括linux在内只有0和3。读取寄存器最低两位是CPU当前的**特权等级**（CPL），这里是33。通过3可以判断是用户态bug导致内核崩溃的。
 
+**在堆栈中有些函数是以问号开始的，它的意思是这个栈信息并不是100%可靠，所以可以从没有问号的函数开始入手，不过后期实际解决问题会用到带问号的堆栈信息**，举例。
+
+![image-20240315103839521](./img/image-20240315103839521.png)
+
+资料：[深度解析内核panic调用栈 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/659509758)
+
 #### dmesg - log
 
 显示内核log_buf中的内容，也就是崩溃时的log。
