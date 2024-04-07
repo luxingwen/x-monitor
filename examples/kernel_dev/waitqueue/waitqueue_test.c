@@ -15,17 +15,21 @@
 #include <linux/wait.h> // for wait_queue
 #include <linux/err.h>
 #include <linux/slab.h> // for kmalloc()
+#include <linux/pid.h>
 
 #ifndef INIT_BY_DYN
-static DECLARE_WAIT_QUEUE_HEAD(wq);
+static DECLARE_WAIT_QUEUE_HEAD(__cw_wq);
 #else
-static wait_queue_head_t wq;
+static wait_queue_head_t __cw_wq;
 #endif
 
 static dev_t __cw_dev = 0;
 static struct cdev __cw_cdev;
 static struct class *__cw_cdev_class;
 static int32_t __cw_wait_queue_flag = 0;
+
+static uint32_t __cw_read_count = 0;
+static struct task_struct *__cw_wait_thread;
 
 static int32_t __cw_cdev_open(struct inode *inode, struct file *filp);
 static int32_t __cw_cdev_release(struct inode *inode, struct file *filp);
@@ -43,6 +47,31 @@ static struct file_operations __cw_cdev_fops = {
     .release = __cw_cdev_release,
 };
 
+static int32_t __cw_wait_thread_func(void *unused) {
+    for (;;) {
+        if (kthread_should_stop()) {
+            // 但是 kthread_stop 不会自行终止线程，它会等待线程调用 do_exit
+            // 或自行终止。kthread_stop 只确保如果线程调用函数
+            // kthread_should_stop，则 kthread_should_stop 返回 true。
+            pr_info("cw_wait_thread:%d Stopping...\n", current->pid);
+            do_exit(0);
+        }
+        pr_info("cw_wait_thread:%d, Waiting for Event...\n", current->pid);
+        wait_event_interruptible(__cw_wq, __cw_wait_queue_flag != 0);
+        if (__cw_wait_queue_flag == 2) {
+            pr_info("Event came from Exit function\n");
+        } else {
+            pr_info("cw_wait_thread:%d, Event came from Read function - %d\n",
+                    current->pid, ++__cw_read_count);
+            // 继续等待
+            __cw_wait_queue_flag = 0;
+        }
+    }
+    // 结束当前正在执行的线程，释放占用的 CPU 资源，参数是 error_code
+    do_exit(0);
+    return 0;
+}
+
 static int32_t __cw_cdev_open(struct inode *inode, struct file *filp) {
     pr_info("Device '/dev/cw_waitqueue_test' Opened...!!!\n");
     return 0;
@@ -57,6 +86,8 @@ static ssize_t __cw_cdev_read(struct file *filp, char __user *buf, size_t lbuf,
                               loff_t *ppos) {
     pr_info("Read from Device '/dev/cw_waitqueue_test'\n");
     __cw_wait_queue_flag = 1;
+    // 唤醒
+    wake_up_interruptible(&__cw_wq);
     return 0;
 }
 
@@ -109,6 +140,15 @@ static int __init cw_waitqueue_test_init(void) {
 #endif
 
     // will create kernel thread
+    __cw_wait_thread =
+        kthread_create(__cw_wait_thread_func, NULL, "cw_wait_thread");
+    if (!IS_ERR(__cw_wait_thread)) {
+        // 新创建的线程是不会立即执行的，需要唤醒它
+        wake_up_process(__cw_wait_thread);
+        pr_info("cw_wait_thread: %d created\n", __cw_wait_thread->pid);
+    } else {
+        pr_err("cw_wait_thread create failed\n");
+    }
 
     pr_info("waitqueue test device '/dev/cw_waitqueue_test' created\n");
     return 0;
@@ -122,8 +162,18 @@ un_class:
 }
 
 static void __exit cw_waitqueue_test_exit(void) {
+    pid_t pid = 0;
+    int32_t ret = 0;
+
     __cw_wait_queue_flag = 2;
+    pid = task_pid_nr(__cw_wait_thread);
     // wake up the kernel thread
+    wake_up_interruptible(&__cw_wq);
+    // ret = 0 表示成功
+    ret = kthread_stop(__cw_wait_thread);
+    if (!ret) {
+        pr_info("cw_wait_thread:%d stopped\n", pid);
+    }
 
     device_destroy(__cw_cdev_class, __cw_dev);
     class_destroy(__cw_cdev_class);
