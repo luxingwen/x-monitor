@@ -26,10 +26,13 @@ static wait_queue_head_t __cw_wq;
 static dev_t __cw_dev = 0;
 static struct cdev __cw_cdev;
 static struct class *__cw_cdev_class;
-static int32_t __cw_wait_queue_flag = 0;
 
+static int32_t __cw_wait_queue_flag = 0;
 static uint32_t __cw_read_count = 0;
 static struct task_struct *__cw_wait_thread;
+
+#define DEV_BUF_SIZE 1024
+static char *__cw_dev_buf;
 
 static int32_t __cw_cdev_open(struct inode *inode, struct file *filp);
 static int32_t __cw_cdev_release(struct inode *inode, struct file *filp);
@@ -73,27 +76,39 @@ static int32_t __cw_wait_thread_func(void *unused) {
 }
 
 static int32_t __cw_cdev_open(struct inode *inode, struct file *filp) {
-    pr_info("Device '/dev/cw_waitqueue_test' Opened...!!!\n");
+    pr_info("Device file '/dev/cw_waitqueue_test' Opened...!!!\n");
     return 0;
 }
 
 static int32_t __cw_cdev_release(struct inode *inode, struct file *filp) {
-    pr_info("Device '/dev/cw_waitqueue_test' Closed...!!!\n");
+    pr_info("Device file '/dev/cw_waitqueue_test' Closed...!!!\n");
     return 0;
 }
 
 static ssize_t __cw_cdev_read(struct file *filp, char __user *buf, size_t lbuf,
                               loff_t *ppos) {
-    pr_info("Read from Device '/dev/cw_waitqueue_test'\n");
+    ssize_t read_len = DEV_BUF_SIZE - 1;
+    // 将数据从内核空间拷贝到用户空间
+    if (copy_to_user(buf, __cw_dev_buf, read_len)) {
+        pr_err("Device file '/dev/cw_waitqueue_test' read failed\n");
+    } else {
+        pr_info("Device file '/dev/cw_waitqueue_test' read Done\n");
+    }
+
     __cw_wait_queue_flag = 1;
     // 唤醒
     wake_up_interruptible(&__cw_wq);
-    return 0;
+    return read_len;
 }
 
 static ssize_t __cw_cdev_write(struct file *filp, const char __user *buf,
                                size_t len, loff_t *f_pos) {
-    pr_info("Write to Device '/dev/cw_waitqueue_test'\n");
+    memset(__cw_dev_buf, 0, DEV_BUF_SIZE);
+    if (copy_from_user(__cw_dev_buf, buf, len)) {
+        pr_err("Device file '/dev/cw_waitqueue_test' write failed\n");
+    } else {
+        pr_info("Device file '/dev/cw_waitqueue_test' write Done\n");
+    }
     return len;
 }
 
@@ -131,6 +146,17 @@ static int __init cw_waitqueue_test_init(void) {
         goto un_device;
     }
 
+    // allocate memory for device buffer
+    // 创建小于 1 个 page 的内存，而且物理地址是连续的
+    // 中断中分配内存一般用 GFP_ATOMIC，内核自己使用的内存一般用
+    // GFP_KERNEL，为用户空间分配内存一般用 GFP_HIGHUSER_MOVABLE
+    if ((__cw_dev_buf = kmalloc(DEV_BUF_SIZE, GFP_KERNEL)) == 0) {
+        pr_err("Cannot allocate memory in kernel\n");
+        goto un_device;
+    }
+
+    strncpy(__cw_dev_buf, "Hello from kernel world\n", (DEV_BUF_SIZE - 1));
+
     // initialize waitqueue
 #ifndef INIT_BY_DNY
     pr_info("use static waitqueue initialization\n");
@@ -164,6 +190,8 @@ un_class:
 static void __exit cw_waitqueue_test_exit(void) {
     pid_t pid = 0;
     int32_t ret = 0;
+
+    kfree(__cw_dev_buf);
 
     __cw_wait_queue_flag = 2;
     pid = task_pid_nr(__cw_wait_thread);
