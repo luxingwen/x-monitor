@@ -24,6 +24,8 @@
 #include <linux/fs.h>
 #include <linux/seq_file.h>
 #include <linux/random.h>
+#include <linux/sysfs.h>
+#include <linux/kobject.h>
 
 // 如果编译没有代入版本信息
 #ifndef LINUX_VERSION_CODE
@@ -47,6 +49,8 @@
 #define PROCFS_TEST_DBG_LEVEL_PERMS 0644
 #define PROCFS_TEST_SHOW_PGOFF "show_pgoff"
 #define PROCFS_TEST_SHOW_PGOFF_PERMS 0444
+#define PROCFS_TEST_SHOW_DRVCTX "show_drvctx"
+#define PROCFS_TEST_SHOW_DRVCTX_PERMS 0440
 
 #define PROC_TEST_DIRNAME "cw_procfs_test"
 #define KEY_SIZE 128
@@ -65,6 +69,28 @@ struct cw_drv_ctx {
     char key[KEY_SIZE];
 };
 static struct cw_drv_ctx *__cw_drv_ctx;
+
+/***************** sysfs /sys/kernel/cw_test *****************/
+#define SYSFS_TEST_DIRNAME "cw_test"
+static int32_t cw_num = 0;
+static ssize_t __cw_sysfs_num_show(struct kobject *kobj,
+                                   struct kobj_attribute *attr, char *buf) {
+    pr_info("/sys/kernel/cw_test/cw_num read\n");
+    return sprintf(buf, "%d\n", cw_num);
+}
+
+static ssize_t __cw_sysfs_num_store(struct kobject *kobj,
+                                    struct kobj_attribute *attr,
+                                    const char *buf, size_t count) {
+    pr_info("/sys/kernel/cw_test/cw_num write\n");
+    sscanf(buf, "%du", &cw_num);
+    return count;
+}
+
+static struct kobj_attribute __cw_num_attr =
+    __ATTR(cw_num, 0660, __cw_sysfs_num_show, __cw_sysfs_num_store);
+
+static struct kobject *__cw_test_kobj = NULL;
 
 //--------------------------------------------------------
 static struct cw_drv_ctx *__alloc_cw_drv_ctx(void) {
@@ -86,6 +112,42 @@ static struct cw_drv_ctx *__alloc_cw_drv_ctx(void) {
 
     return dc;
 }
+
+//--------------------------------------------------------
+// for /proc/cw_procfs_test/show_drvctx
+static int32_t __cw_show_drvctx(struct seq_file *seq, void *data) {
+    if (mutex_lock_interruptible(&__mutex))
+        return -ERESTARTSYS;
+
+    seq_printf(seq, "tx:%d, rx:%d, word:%d, power:%d, dbg_level:%d, key:‘%s’\n",
+               __cw_drv_ctx->tx, __cw_drv_ctx->rx, __cw_drv_ctx->word,
+               __cw_drv_ctx->power, __cw_drv_ctx->debug_level,
+               __cw_drv_ctx->key);
+    __cw_drv_ctx->rx++;
+    mutex_unlock(&__mutex);
+    return 0;
+}
+
+static int32_t __cw_open_drvctx(struct inode *in, struct file *f) {
+    return single_open(f, __cw_show_drvctx, NULL);
+}
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
+static struct file_operations __cw_fops_show_drvctx = {
+    .owner = THIS_MODULE,
+    .open = __cw_open_drvctx,
+    .read = seq_read,
+    .llseek = seq_lseek,
+    .release = single_release,
+};
+#else
+static struct proc_fops __cw_fops_show_drvctx = {
+    .proc_open = __cw_open_drvctx,
+    .proc_read = seq_read,
+    .proc_lseek = seq_lseek,
+    .proc_release = single_release,
+};
+#endif
 
 //--------------------------------------------------------
 // for /proc/cw_procfs_test/dbg_level
@@ -129,6 +191,7 @@ static ssize_t __cw_write_dbg_level(struct file *f, const char __user *ubuf,
         goto out;
     }
 
+    __cw_drv_ctx->tx++;
     ret = count;
 out:
     mutex_unlock(&__mutex);
@@ -141,6 +204,7 @@ static int32_t __cw_show_dbg_level(struct seq_file *seq, void *data) {
         // 被信号中断，返回 -ERESTARTSYS，调用方应该重新调用
         return -ERESTARTSYS;
     seq_printf(seq, "debug_level:%d\n", __cw_drv_ctx->debug_level);
+    __cw_drv_ctx->rx++;
     mutex_unlock(&__mutex);
     return 0;
 }
@@ -174,6 +238,7 @@ static struct proc_fops __cw_fops_dbg_level = {
 static int32_t __cw_show_pgoff(struct seq_file *seq, void *data) {
     seq_printf(seq, "%s: PAGE_OFFSET:0x%px, PAGE_SIZE:%lu\n", PROC_TEST_DIRNAME,
                (void *)PAGE_OFFSET, PAGE_SIZE);
+    __cw_drv_ctx->rx++;
     return 0;
 }
 
@@ -198,38 +263,76 @@ static int32_t __init cw_procfs_test_init(void) {
     // 创建/proc 下的 parent dir
     __cw_procfs_dir = proc_mkdir(PROC_TEST_DIRNAME, NULL);
     if (unlikely(!__cw_procfs_dir)) {
-        pr_err("proc_mkdir: '/proc/%s' failed.\n", PROC_TEST_DIRNAME);
+        pr_err("[module]:procfs_test mkdir '/proc/%s' failed.\n",
+               PROC_TEST_DIRNAME);
         // 设置返回码
         ret = -ENOMEM;
         goto init_fail_1;
     }
-    pr_info("procfs dir: '/proc/%s' created.\n", PROC_TEST_DIRNAME);
+    pr_info("[module]:procfs_test Successfully created the procfs dir: "
+            "'/proc/%s'.\n",
+            PROC_TEST_DIRNAME);
 
     // 创建 dbg_level entry
     if (!proc_create(PROCFS_TEST_DBG_LEVEL, PROCFS_TEST_DBG_LEVEL_PERMS,
                      __cw_procfs_dir, &__cw_fops_dbg_level)) {
-        pr_err("proc_create /proc/%s/%s failed.\n", PROC_TEST_DIRNAME,
-               PROCFS_TEST_DBG_LEVEL);
+        pr_err("[module]:procfs_test failed to create /proc/%s/%s\n",
+               PROC_TEST_DIRNAME, PROCFS_TEST_DBG_LEVEL);
         ret = -ENOMEM;
         goto init_fail_2;
     }
-    pr_info("procfs file: '/proc/%s/%s' created.\n", PROC_TEST_DIRNAME,
-            PROCFS_TEST_DBG_LEVEL);
+    pr_info("[module]:procfs_test Successfully created the '/proc/%s/%s'.\n",
+            PROC_TEST_DIRNAME, PROCFS_TEST_DBG_LEVEL);
 
     // 创建 show_pgoff
     if (!proc_create_single_data(PROCFS_TEST_SHOW_PGOFF,
                                  PROCFS_TEST_SHOW_PGOFF_PERMS, __cw_procfs_dir,
                                  __cw_show_pgoff, 0)) {
-        pr_err("proc_create /proc/%s/%s failed.\n", PROC_TEST_DIRNAME,
-               PROCFS_TEST_SHOW_PGOFF);
+        pr_err("[module]:procfs_test failed to create /proc/%s/%s\n",
+               PROC_TEST_DIRNAME, PROCFS_TEST_SHOW_PGOFF);
         ret = -ENOMEM;
         goto init_fail_2;
     }
-    pr_info("procfs file: '/proc/%s/%s' created.\n", PROC_TEST_DIRNAME,
-            PROCFS_TEST_SHOW_PGOFF);
+    pr_info("[module]:procfs_test Successfully created the '/proc/%s/%s'.\n",
+            PROC_TEST_DIRNAME, PROCFS_TEST_SHOW_PGOFF);
+
+    // 创建 show_drvctx
+    if (!proc_create(PROCFS_TEST_SHOW_DRVCTX, PROCFS_TEST_SHOW_DRVCTX_PERMS,
+                     __cw_procfs_dir, &__cw_fops_show_drvctx)) {
+        pr_err("[module]:procfs_test failed to create /proc/%s/%s.\n",
+               PROC_TEST_DIRNAME, PROCFS_TEST_SHOW_DRVCTX);
+        ret = -ENOMEM;
+        goto init_fail_2;
+    }
+    pr_info("[module]:procfs_test Successfully created the '/proc/%s/%s'.\n",
+            PROC_TEST_DIRNAME, PROCFS_TEST_SHOW_DRVCTX);
+
+    // create a directory in /sys/kernel
+    __cw_test_kobj = kobject_create_and_add(SYSFS_TEST_DIRNAME, kernel_kobj);
+    if (!__cw_test_kobj) {
+        pr_err("[module] procfs_test: Failed to create kernel kobj\n");
+        ret = -ENOMEM;
+        goto init_fail_3;
+    }
+    pr_info("[module] procfs_test: Successfully created the /sys/kernel/%s.\n",
+            SYSFS_TEST_DIRNAME);
+    // create a file in /sys/kernel/cw_test
+    ret = sysfs_create_file(__cw_test_kobj, &__cw_num_attr.attr);
+    if (ret) {
+        pr_err("[module] procfs_test: Failed to create /sys/kernel/%s/cw_num\n",
+               SYSFS_TEST_DIRNAME);
+        goto init_fail_3;
+    }
+    pr_info("[module] procfs_test: Successfully created the "
+            "/sys/kernel/%s/cw_num.\n",
+            SYSFS_TEST_DIRNAME);
 
     pr_info("[module] procfs_test init ok!!!\n");
     return 0;
+
+init_fail_3:
+    kobject_put(__cw_test_kobj);
+    sysfs_remove_file(kernel_kobj, &__cw_num_attr.attr);
 
 init_fail_2:
     // 删除/proc/cw_procfs_test 目录
@@ -241,6 +344,8 @@ init_fail_1:
 }
 
 static void __exit cw_procfs_test_exit(void) {
+    kobject_put(__cw_test_kobj);
+    sysfs_remove_file(kernel_kobj, &__cw_num_attr.attr);
     // 上次/proc/cw_procfs_test 目录树
     remove_proc_subtree(PROC_TEST_DIRNAME, NULL);
     if (!IS_ERR(__cw_drv_ctx))
