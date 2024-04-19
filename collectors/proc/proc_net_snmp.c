@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-21 11:10:03
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-08-11 14:45:10
+ * @Last Modified time: 2024-04-19 17:30:05
  */
 
 // https://www.codeleading.com/article/87784845826/
@@ -22,7 +22,7 @@
 // https://www.rfc-editor.org/rfc/rfc1213
 // https://www.ibm.com/docs/sl/zvm/7.1?topic=objects-ip-group
 // https://www.cnblogs.com/lovemyspring/articles/5087895.html
-// RtoAlgorithm: 默认为1，RTO算法与RFC2698一致
+// RtoAlgorithm: 默认为 1，RTO 算法与 RFC2698 一致
 // netstat -st
 // ip -s -s link
 // https://wiki.nix-pro.com/view/Linux_networking_stats
@@ -35,67 +35,75 @@ static ARL_BASE *__arl_ip = NULL, *__arl_tcp = NULL, *__arl_udp = NULL;
 
 static ssize_t __tcp_MaxConn = 0;
 
-static uint64_t
-    __ip_DefaultTTL = 0,
-    __ip_InReceives = 0, __ip_InHdrErrors = 0, __ip_InAddrErrors = 0,
-    __ip_ForwDatagrams = 0, __ip_InUnknownProtos = 0, __ip_InDiscards = 0,
-    __ip_InDelivers = 0, __ip_OutRequests = 0, __ip_OutDiscards = 0,
-    __ip_OutNoRoutes = 0, __ip_ReasmTimeout = 0, __ip_ReasmReqds = 0,
-    __ip_ReasmOKs = 0, __ip_ReasmFails = 0, __ip_FragOKs = 0,
-    __ip_FragFails = 0, __ip_FragCreates = 0, __tcp_ActiveOpens = 0,
-    // 被动建连次数，RFC原意是LISTEN =>
-    // SYN-RECV次数，但Linux选择在三次握手成功后才加1
-    // tcp_create_openreq_child(), 被动三路握手完成，加１
+static uint64_t __ip_DefaultTTL = 0, __ip_InReceives = 0, __ip_InHdrErrors = 0,
+                __ip_InAddrErrors = 0, __ip_ForwDatagrams = 0,
+                __ip_InUnknownProtos = 0, __ip_InDiscards = 0,
+                __ip_InDelivers = 0, __ip_OutRequests = 0, __ip_OutDiscards = 0,
+                __ip_OutNoRoutes = 0, __ip_ReasmTimeout = 0,
+                __ip_ReasmReqds = 0, __ip_ReasmOKs = 0, __ip_ReasmFails = 0,
+                __ip_FragOKs = 0, __ip_FragFails = 0, __ip_FragCreates = 0,
+                __tcp_ActiveOpens = 0,
+                // 被动建连次数，RFC 原意是 LISTEN =>
+                // SYN-RECV 次数，但 Linux 选择在三次握手成功后才加 1
+                // tcp_create_openreq_child(), 被动三路握手完成，加 1
     __tcp_PassiveOpens = 0,
-    // 建连失败次数 tcp_done():如果在SYN_SENT/SYN_RECV状态下结束一个连接，加１;
-    // tcp_check_req():被动三路握手最后一个阶段中的输入包中如果有RST|SYN标志，加１
+                // 建连失败次数 tcp_done():如果在 SYN_SENT/SYN_RECV
+                // 状态下结束一个连接，加 1;
+                // tcp_check_req():被动三路握手最后一个阶段中的输入包中如果有
+                // RST|SYN 标志，加 1
     __tcp_AttemptFails = 0,
-    // tcp_set_state()，新状态为TCP_CLOSE，如果旧状态是ESTABLISHED／TCP_CLOSE_WAIT就加１,
-    // 连接被reset次数，ESTABLISHED => CLOSE次数 + CLOSE-WAIT => CLOSE次数
+                // tcp_set_state()，新状态为 TCP_CLOSE，如果旧状态是
+                // ESTABLISHED／TCP_CLOSE_WAIT 就加 1, 连接被 reset
+                // 次数，ESTABLISHED => CLOSE 次数 + CLOSE-WAIT => CLOSE 次数
     __tcp_EstabResets = 0,
-    // 当前TCP连接数，ESTABLISHED个数 + CLOSE-WAIT个数,
-    // tcp_set_state()，根据ESTABLISHED是新／旧状态，分别加减一。
+                // 当前 TCP 连接数，ESTABLISHED 个数 + CLOSE-WAIT 个数，
+                // tcp_set_state()，根据 ESTABLISHED 是新／旧状态，分别加减一。
     __tcp_CurrEstab = 0,
-    // !tcp_v4_rcv(),收到一个skb，加１, 收到的数据包个数，包括有错误的包个数
+                // !tcp_v4_rcv(),收到一个 skb，加 1,
+                // 收到的数据包个数，包括有错误的包个数
     __tcp_InSegs = 0,
-    // 发送的数据包个数 tcp_v4_send_reset(), tcp_v4_send_ack()，加１,
-    // tcp_transmit_skb(),
-    // tcp_make_synack()，加tcp_skb_pcount(skb)(见TCP_COOKIE_TRANSACTIONS)
+                // 发送的数据包个数 tcp_v4_send_reset(), tcp_v4_send_ack()，加
+                // 1, tcp_transmit_skb(), tcp_make_synack()，加
+                // tcp_skb_pcount(skb)(见 TCP_COOKIE_TRANSACTIONS)
     __tcp_OutSegs = 0,
-    // 重传的包个数, 包括RTO
-    // timer和常规重传，即tcp_retransmit_skb()中调用tcp_transmit_skb()，成功返回即＋１。
+                // 重传的包个数，包括 RTO
+                // timer 和常规重传，即 tcp_retransmit_skb() 中调用
+                // tcp_transmit_skb()，成功返回即＋1。
     __tcp_RetransSegs = 0,
-    // 收到的有问题的包个数,
-    // tcp_rcv_established()->tcp_validate_incoming()：如果有SYN且seq >=
-    // rcv_nxt，加１, 以下函数内，如果checksum错误或者包长度小于TCP
-    // header，加１：tcp_v4_do_rcv() tcp_rcv_established() tcp_v4_rcv()
+                // 收到的有问题的包个数，
+                // tcp_rcv_established()->tcp_validate_incoming()：如果有 SYN 且
+                // seq >= rcv_nxt，加 1, 以下函数内，如果 checksum
+                // 错误或者包长度小于 TCP header，加 1：tcp_v4_do_rcv()
+                // tcp_rcv_established() tcp_v4_rcv()
     __tcp_InErrs = 0,
-    // 发送的带reset标记的包个数 tcp_v4_send_reset(),
-    // tcp_send_active_reset()加１
+                // 发送的带 reset 标记的包个数 tcp_v4_send_reset(),
+                // tcp_send_active_reset() 加 1
     __tcp_OutRsts = 0,
-    // 收到的checksum有问题的包个数，InErrs中应该只有*小部分*属于该类型
+                // 收到的 checksum 有问题的包个数，InErrs
+                // 中应该只有*小部分*属于该类型
     __tcp_InCsumErrors = 0,
-    // udp收包量
+                // udp 收包量
     __udp_InDatagrams = 0,
-    // packets to unknown port received
+                // packets to unknown port received
     __udp_NoPorts = 0,
-    // 本机端口未监听之外的其他原因引起的UDP入包无法送达(应用层)目前主要包含如下几类原因:
-    // 1.收包缓冲区满 2.入包校验失败 3.其他
-    // Incremented when sock_queue_rcv_skb reports that no memory is available;
-    // this happens if sk->sk_rmem_alloc is greater than or equal to
-    // sk->sk_rcvbuf.
+                // 本机端口未监听之外的其他原因引起的 UDP 入包无法送达 (应用层)
+                // 目前主要包含如下几类原因：
+                // 1.收包缓冲区满 2.入包校验失败 3.其他
+                // Incremented when sock_queue_rcv_skb reports that no memory is
+                // available; this happens if sk->sk_rmem_alloc is greater than
+                // or equal to sk->sk_rcvbuf.
     __udp_InErrors = 0,
-    // udp發包量
+                // udp 發包量
     __udp_OutDatagrams = 0,
-    // 接收緩衝區溢位的包量 Incremented when sock_queue_rcv_skb reports that no
-    // memory is available; this happens if sk->sk_rmem_alloc is greater than or
-    // equal to sk->sk_rcvbuf.
+                // 接收緩衝區溢位的包量 Incremented when sock_queue_rcv_skb
+                // reports that no memory is available; this happens if
+                // sk->sk_rmem_alloc is greater than or equal to sk->sk_rcvbuf.
     __udp_RcvbufErrors = 0,
-    // 傳送緩衝區溢位的包
+                // 傳送緩衝區溢位的包
     __udp_SndbufErrors = 0,
-    //
+                //
     __udp_InCsumErrors = 0,
-    //
+                //
     __udp_IgnoredMulti = 0;
 
 static prom_gauge_t *__metric_netstat_ip_defaultttl = NULL,
@@ -528,8 +536,8 @@ int32_t collector_proc_net_snmp(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                 }
             }
 
-            //设置指标值
-            // ip
+            // 设置指标值
+            //  ip
             prom_gauge_set(__metric_netstat_ip_defaultttl, __ip_DefaultTTL,
                            (const char *[]){ "Ip" });
             prom_gauge_set(__metric_netstat_ip_inreceives, __ip_InReceives,
