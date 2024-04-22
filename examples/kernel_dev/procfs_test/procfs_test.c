@@ -14,6 +14,8 @@
  *      |---config
  */
 
+#define pr_fmt(fmt) "%s:%s():%d: " fmt, KBUILD_MODNAME, __func__, __LINE__
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
