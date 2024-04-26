@@ -8,7 +8,13 @@
    kernel.hung_task_warnings = 10
    ```
 
-2. 运行hung task，可见状态为D，信号9无法kill
+2. 编译
+
+   ```
+   make CFLAGS_EXTRA="-ggdb -DDEBUG" modules_install
+   ```
+
+3. 运行hung task，可见状态为D，信号9无法kill
 
    ```
     ⚡ root@localhost  ~  ps -aux|grep 114923

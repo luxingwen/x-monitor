@@ -72,7 +72,7 @@ modules_install: default
 # during early boot.
 install: modules_install
 	$(call cmd_depmod)
-	$(call cmd_initramfs)
+	#$(call cmd_initramfs)
 
 modules_uninstall:
 	rm -f ${INSTALL_MOD_PATH}/lib/modules/${KVER}/${INSTALL_MOD_DIR}/${DRIVER}.ko;

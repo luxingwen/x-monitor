@@ -6,16 +6,19 @@
 
 ## 计划进度
 
-| 子模块                    | 描述                                                         | 状态                                             |
-| ------------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
-| x-monitor.eBPF 服务框架    | 1：golang 实现的 web 服务，服务框实现各个 eBPF-Program 的注册，注销，退出。<br />2：提供/metrics 接口供 Prometheus 采集数据，服务导出 Prometheus 支持类型的指标。<br />3：配置管理，yaml 格式，每个独立 ebpf 功能都有独立的配置项。<br />4：公共功能，事件中心，日志，信号，进程的 pprof，内核/proc/kallsyms 的读取。 | 完成。根据后续业务需求持续补充，增强、优化、改进 |
-| x-monitor.eBPF-Base       | 1：cilium-ebpf 库的封装，支持 kprobe，kretprobe，tracepoint，rawtracepoint，btf-rawtracepoint 类型的 eBPF program 自动加载。<br />2：eBPF kernel Part 通用编译。使用 go generate 自动化编译 c 代码<br />3：eBPF kernel Part 公共代码，log、kernel struct/field read、helper_map、helper_net、helper_math、kernel struct/field CO-RE support。 | 完成。根据后续业务需求持续补充，增强、优化、改进 |
-| x-monitor.eBPF-CacheStat  | 1：watch kprobe 的 add_to_page_cache_lru、mark_page_accessed、account_page_dirtied、mark_buffer_dirty 记录进程在这三个函数的调用计数<br />2：使用 BPF_HASH_MAP。<br />3：用户态代码读取 HashMap 数据，计算出 pagecache.hits、pagecache.misses、pagecache.ratio，对外导出 Prometheus Counter 类型指标。 | 完成。                                           |
-| x-monitor.eBPF-CPUSched   | 1：支持按 os、namespace、cgroup、pid、pgid 进行进程过滤<br />2：使用 btf_rawtracepoint 提升内核数据访问效率<br />3：记录 task_struct 插入运行队列的时间、调度上 cpu 的时间、离开 cpu 的时间。<br />4：使用 ringbuf 与用户态交互。<br />5：使用 hash 直方图来统计 task_struct 在 cpu 运行队列中等待时间的分布。<br />6：用户态代码输出 CPU 运行队列延时 Prometheus 直方图、<br />7：用户态代码输出超过阈值 Off-cpu 状态的进程，<br />8：用户态代码输出输出 ProcessHand 状态的进程。 | 完成。                                           |
-| x-monitor.eBPF-ProcessVM  | 1：观察进程的 private-anon 和 share 地址空间的分配。<br />2：统计进程 brk 堆地址空间的分配。<br />3：进程私有地址空间、堆空间的释放<br />4：用户态代码到处 Prometheus 指标，显示过滤进程的 private-anon+share 地址空间大小，brk 堆分配空间。 | 完成。                                           |
-| x-monitor.eBPF-OOMKill    | 1：收集系统触发的 oomkill 的进程信息，包括 comm，pid，tid<br />2：区分进程是否在 memory-cgroup 限制环境中，如果是，获取 memcg 的 inode<br />，获取 memcg 的 memory-limit。如果不是获取系统物理内存大小<br />3：获取内核 badness 函数计算出的 points。<br />4：获取 oomkill 进程的 file-rss,anon-rss,shmem-rss 的信息<br />5：获取系统 ommkill 的 msg<br />6：Prometheus 输出展示 | 完成                                             |
-| x-monitor.eBPF.BioLatency | 1：按设备号进行分类统计<br />2：设备的随机读取的比例<br />3：设备顺序读取的比例<br />4：设备读取的次数<br />5：设备读取的字节 kB 数<br />6：request 在 request->blk_mq_ctx->rq_lists[type]等待耗时分布，2 的指数分布<br />7：request 执行的耗时分布，2 的指数分布<br />8：超过阈值的 request | 完成                                             |
-| x-monitor.eBPF.NAPI       | 1：NAPI 机制在高速网络环境下的状态                            | 待实现                                           |
+| 子模块                  | 描述                                                         | 状态                                             |
+| ----------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
+| x-monitor.eBPF 服务框架 | 1：golang 实现的 web 服务，服务框实现各个 eBPF-Program 的注册，注销，退出。<br />2：提供/metrics 接口供 Prometheus 采集数据，服务导出 Prometheus 支持类型的指标。<br />3：配置管理，yaml 格式，每个独立 ebpf 功能都有独立的配置项。<br />4：公共功能，事件中心，日志，信号，进程的 pprof，内核/proc/kallsyms 的读取。 | 完成。根据后续业务需求持续补充，增强、优化、改进 |
+| x-monitor.eBPF-Base     | 1：cilium-ebpf 库的封装，支持 kprobe，kretprobe，tracepoint，rawtracepoint，btf-rawtracepoint 类型的 eBPF program 自动加载。<br />2：eBPF kernel Part 通用编译。使用 go generate 自动化编译 c 代码<br />3：eBPF kernel Part 公共代码，log、kernel struct/field read、helper_map、helper_net、helper_math、kernel struct/field CO-RE support。 | 完成。根据后续业务需求持续补充，增强、优化、改进 |
+| CacheState              | 1：watch kprobe 的 add_to_page_cache_lru、mark_page_accessed、account_page_dirtied、mark_buffer_dirty 记录进程在这三个函数的调用计数<br />2：使用 BPF_HASH_MAP。<br />3：用户态代码读取 HashMap 数据，计算出 pagecache.hits、pagecache.misses、pagecache.ratio，对外导出 Prometheus Counter 类型指标。 | 完成。                                           |
+| CPUSched                | 1：支持按 os、namespace、cgroup、pid、pgid 进行进程过滤<br />2：使用 btf_rawtracepoint 提升内核数据访问效率<br />3：记录 task_struct 插入运行队列的时间、调度上 cpu 的时间、离开 cpu 的时间。<br />4：使用 ringbuf 与用户态交互。<br />5：使用 hash 直方图来统计 task_struct 在 cpu 运行队列中等待时间的分布。<br />6：用户态代码输出 CPU 运行队列延时 Prometheus 直方图、<br />7：用户态代码输出超过阈值 Off-cpu 状态的进程，<br />8：用户态代码输出输出 ProcessHand 状态的进程。 | 完成。                                           |
+| ProcessVM               | 1：观察进程的 private-anon 和 share 地址空间的分配。<br />2：统计进程 brk 堆地址空间的分配。<br />3：进程私有地址空间、堆空间的释放<br />4：用户态代码到处 Prometheus 指标，显示过滤进程的 private-anon+share 地址空间大小，brk 堆分配空间。 | 完成。                                           |
+| OOMKill                 | 1：收集系统触发的 oomkill 的进程信息，包括 comm，pid，tid<br />2：区分进程是否在 memory-cgroup 限制环境中，如果是，获取 memcg 的 inode<br />，获取 memcg 的 memory-limit。如果不是获取系统物理内存大小<br />3：获取内核 badness 函数计算出的 points。<br />4：获取 oomkill 进程的 file-rss,anon-rss,shmem-rss 的信息<br />5：获取系统 ommkill 的 msg<br />6：Prometheus 输出展示 | 完成                                             |
+| BioLatency              | 1：按设备号进行分类统计<br />2：设备的随机读取的比例<br />3：设备顺序读取的比例<br />4：设备读取的次数<br />5：设备读取的字节 kB 数<br />6：request 在 request->blk_mq_ctx->rq_lists[type]等待耗时分布，2 的指数分布<br />7：request 执行的耗时分布，2 的指数分布<br />8：超过阈值的 request | 完成                                             |
+| NAPI                    | 1：NAPI 机制在高速网络环境下的状态                           | 待实现                                           |
+| SoftLockup              |                                                              | 待实现                                           |
+| HungTask                |                                                              | 待实现                                           |
+| XFS                     |                                                              | 待实现                                           |
 
 ## Tools
 
