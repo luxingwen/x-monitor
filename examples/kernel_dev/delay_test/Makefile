@@ -1,11 +1,11 @@
 ifneq ($(KERNELRELEASE),)
 
 EXTRA_CFLAGS += -I$(src)
-obj-m += kthread_signal_test.o
+obj-m += delay_test.o
 
 else # ifneq($(KERNELRELEASE),)
 
-DRIVER := kthread_signal_test
+DRIVER := delay_test
 
 ifneq ($(MAKECMDGOALS),help)
 include ../common.mk
