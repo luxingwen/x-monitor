@@ -124,3 +124,10 @@ MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("calmwu <wubo0067@hotmail.com>");
 MODULE_DESCRIPTION("delay function Example");
 MODULE_VERSION("0.1");
+
+/*
+[Sat May  4 22:47:32 2024] interrupt_test:__cw_irq_test_init():65: major: 242, minor: 0
+[Sat May  4 22:47:32 2024] interrupt_test:__cw_irq_test_init():96: Hello, irq test module
+[Sat May  4 22:49:06 2024] interrupt_test:__cw_irq_dev_read():42: Trigger irq
+[Sat May  4 22:49:06 2024] interrupt_test:__cw_irq_handler():32: irq 11 triggered
+*/
