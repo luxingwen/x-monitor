@@ -1,10 +1,9 @@
 ifneq ($(KERNELRELEASE),)
 
-EXTRA_CFLAGS += -I$(src)
 obj-m += interrupt_test.o
 
 else # ifneq($(KERNELRELEASE),)
-
+ccflags-y += -DDEBUG -g -ggdb -gdwarf-4 -Og -Wall -fno-omit-frame-pointer -fvar-tracking-assignments -DDYNAMIC_DEBUG_MODULE
 DRIVER := interrupt_test
 
 ifneq ($(MAKECMDGOALS),help)
@@ -31,7 +30,6 @@ default:
 
 # Noisy output, for extra debugging
 noisy:
-	$(info ccflags-y is $(ccflags-y))
 	@+$(call kernelbuild,modules,V=1)
 
 # Silence any output generated
