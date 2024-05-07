@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/gfp.h>
 #include <linux/vmalloc.h>
+#include <linux/delay.h>
 
 // 如果编译没有代入版本信息
 #ifndef LINUX_VERSION_CODE
@@ -40,6 +41,8 @@
 static dev_t __cw_dev = 0;
 static struct cdev __cw_cdev;
 static struct class *__cw_cdev_class;
+// 中断开关的状态
+static uint8_t __cw_irq_switch_state = 0;
 
 static DEFINE_MUTEX(__mutex);
 
@@ -101,36 +104,56 @@ static ssize_t __cw_write_irq_switch(struct file *f, const char __user *ubuf,
 	// 读取用户态数据，put_user() 和 get_user() 用来从用户空间获取或者向用户空间发送单个值（例如一个 int，char，或者 long）
 	//get_user(flag, ubuf);
 	if (kbuf[0] == '0') {
-		// 屏蔽中断
-		pr_info("disable_irq irq:%d\n", IRQ_NUM);
-		disable_irq(IRQ_NUM);
+		if (__cw_irq_switch_state == 0) {
+			// 屏蔽中断
+			pr_info("disable_irq irq:%d\n", IRQ_NUM);
+			disable_irq(IRQ_NUM);
+			__cw_irq_switch_state = 1;
+		} else {
+			pr_info("enable_irq irq:%d\n", IRQ_NUM);
+			// 在开启中断之后，排队的中断会继续执行，只有一个排队的
+			// 如果没有屏蔽该中断就调用该函数，内核会告警：Unbalanced enable for IRQ 11，输出堆栈
+			// ** 必须和 disable_irq() 成对使用，否则内核会告警
+			enable_irq(IRQ_NUM);
+			__cw_irq_switch_state = 0;
+		}
+
 	} else if (kbuf[0] == '1') {
-		pr_info("enable_irq irq:%d\n", IRQ_NUM);
-		// 在开启中断之后，排队的中断会继续执行，只有一个排队的
-		// 如果没有屏蔽该中断就调用该函数，内核会告警：Unbalanced enable for IRQ 11，输出堆栈
-		// ** 必须和 disable_irq() 成对使用，否则内核会告警
-		enable_irq(IRQ_NUM);
+		// 判断是否在中断禁止状态
+		if (irqs_disabled()) {
+			pr_info("<-----Interrupts are disabled\n");
+		} else {
+			pr_info("<-----Interrupts are enabled\n");
+		}
+
+		if (__cw_irq_switch_state == 0) {
+			pr_info("Disable all interrupts for this CPU");
+			local_irq_disable();
+			// !! 感觉很快 cpu 的中断屏蔽就会被打开
+			__cw_irq_switch_state = 1;
+		} else {
+			pr_info("Enable all interrupts for this CPU");
+			local_irq_enable();
+			__cw_irq_switch_state = 0;
+		}
+
+		// 判断是否在中断禁止状态
+		if (irqs_disabled()) {
+			pr_info("Interrupts are disabled---->\n");
+		} else {
+			pr_info("Interrupts are enabled---->\n");
+		}
 	} else if (kbuf[0] == '2') {
-		//
-		pr_info("Disable all interrupts for this CPU");
-		local_irq_disable();
-	} else if (kbuf[0] == '3') {
-		//
-		pr_info("Enable all interrupts for this CPU");
-		local_irq_enable();
-	} else if (kbuf[0] == '4') {
-		// 感觉没什么用，触发中断还是可以响应的
-		// [Tue May  7 11:24:43 2024] interrupt_test:__cw_write_irq_switch():103: Disable all interrupts for this CPU and save flags
-		// [Tue May  7 11:24:44 2024] interrupt_test:__cw_write_irq_switch():103: Disable all interrupts for this CPU and save flags
-		// [Tue May  7 11:24:45 2024] interrupt_test:__cw_write_irq_switch():103: Disable all interrupts for this CPU and save flags
-		// [Tue May  7 11:26:31 2024] interrupt_test:__cw_irq_dev_read():56: Trigger irq:11
-		// [Tue May  7 11:26:31 2024] interrupt_test:__cw_irq_handler():46: irq 11 triggered
-		pr_info("Disable all interrupts for this CPU and save flags");
-		local_irq_save(flags);
-	} else if (kbuf[0] == '5') {
-		//
-		pr_info("Enable all interrupts for this CPU and restore flags");
-		local_irq_restore(flags);
+		if (__cw_irq_switch_state == 0) {
+			pr_info("Disable all interrupts for this CPU and save flags");
+			local_irq_save(flags);
+			__cw_irq_switch_state = 1;
+		} else {
+			pr_info("Enable all interrupts for this CPU and restore flags");
+			local_irq_restore(flags);
+			__cw_irq_switch_state = 0;
+		}
+
 	} else {
 		pr_err("Invalid input\n");
 	}
