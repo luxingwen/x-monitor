@@ -18,6 +18,9 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/proc_fs.h>
+#include <linux/slab.h>
+#include <linux/gfp.h>
+#include <linux/vmalloc.h>
 
 // 如果编译没有代入版本信息
 #ifndef LINUX_VERSION_CODE
@@ -67,22 +70,71 @@ static ssize_t __cw_irq_dev_read(struct file *filp, char __user *buf,
 static ssize_t __cw_write_irq_switch(struct file *f, const char __user *ubuf,
 				     size_t count, loff_t *off)
 {
-	char flag;
+	unsigned long flags = 0;
+	uint8_t *kbuf = 0;
+
+	if (count <= 0) {
+		pr_err("Invalid input\n");
+		return -EINVAL;
+	}
 
 	if (mutex_lock_interruptible(&__mutex))
 		return -ERESTARTSYS;
 
-	// 读取用户态数据，put_user() 和 get_user() 用来从用户空间获取或者向用户空间发送单个值（例如一个 int，char，或者 long）
-	get_user(flag, ubuf);
-	if (flag == '0') {
-		// 关闭中断
-		pr_info("Disable irq:%d\n", IRQ_NUM);
-		disable_irq(IRQ_NUM);
-	} else {
-		pr_info("Enable irq:%d\n", IRQ_NUM);
-		enable_irq(IRQ_NUM);
+	kbuf = kmalloc(count, GFP_KERNEL);
+	if (!kbuf) {
+		pr_err("kmalloc failed\n");
+		mutex_unlock(&__mutex);
+		return -ENOMEM;
 	}
+	if (copy_from_user(kbuf, ubuf, count)) {
+		pr_err("copy_from_user failed\n");
+		kfree(kbuf);
+		mutex_unlock(&__mutex);
+		return -EFAULT;
+	}
+	kbuf[count - 1] = '\0';
+	// 如果直接打印 ubuf，会导致 crash
+	// 和 pr_debug 一样，需要编译时加上-DDEBUG
+	print_hex_dump_bytes("ubuf: ", DUMP_PREFIX_OFFSET, kbuf, count);
 
+	// 读取用户态数据，put_user() 和 get_user() 用来从用户空间获取或者向用户空间发送单个值（例如一个 int，char，或者 long）
+	//get_user(flag, ubuf);
+	if (kbuf[0] == '0') {
+		// 屏蔽中断
+		pr_info("disable_irq irq:%d\n", IRQ_NUM);
+		disable_irq(IRQ_NUM);
+	} else if (kbuf[0] == '1') {
+		pr_info("enable_irq irq:%d\n", IRQ_NUM);
+		// 在开启中断之后，排队的中断会继续执行，只有一个排队的
+		// 如果没有屏蔽该中断就调用该函数，内核会告警：Unbalanced enable for IRQ 11，输出堆栈
+		// ** 必须和 disable_irq() 成对使用，否则内核会告警
+		enable_irq(IRQ_NUM);
+	} else if (kbuf[0] == '2') {
+		//
+		pr_info("Disable all interrupts for this CPU");
+		local_irq_disable();
+	} else if (kbuf[0] == '3') {
+		//
+		pr_info("Enable all interrupts for this CPU");
+		local_irq_enable();
+	} else if (kbuf[0] == '4') {
+		// 感觉没什么用，触发中断还是可以响应的
+		// [Tue May  7 11:24:43 2024] interrupt_test:__cw_write_irq_switch():103: Disable all interrupts for this CPU and save flags
+		// [Tue May  7 11:24:44 2024] interrupt_test:__cw_write_irq_switch():103: Disable all interrupts for this CPU and save flags
+		// [Tue May  7 11:24:45 2024] interrupt_test:__cw_write_irq_switch():103: Disable all interrupts for this CPU and save flags
+		// [Tue May  7 11:26:31 2024] interrupt_test:__cw_irq_dev_read():56: Trigger irq:11
+		// [Tue May  7 11:26:31 2024] interrupt_test:__cw_irq_handler():46: irq 11 triggered
+		pr_info("Disable all interrupts for this CPU and save flags");
+		local_irq_save(flags);
+	} else if (kbuf[0] == '5') {
+		//
+		pr_info("Enable all interrupts for this CPU and restore flags");
+		local_irq_restore(flags);
+	} else {
+		pr_err("Invalid input\n");
+	}
+	kfree(kbuf);
 	mutex_unlock(&__mutex);
 	return count;
 }
