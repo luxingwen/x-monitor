@@ -37,6 +37,31 @@
 			 (preempt_count() && 0xff), __func__);                                                               \
 	} while (0)
 
+/*
+ * SHOW_DELTA() macro
+ * Show the difference between the timestamps passed
+ * Parameters:
+ *  @later, @earlier : nanosecond-accurate timestamps
+ * Expect that @later > @earlier
+ *
+ * Grab a timestamp using the ktime_get_real_ns() API..
+ */
+#define SHOW_DELTA(later, earlier)                                                                     \
+	do {                                                                                           \
+		if (time_after((unsigned long)later,                                                   \
+			       (unsigned long)earlier)) {                                              \
+			s64 delta_ns = ktime_to_ns(ktime_sub(later, earlier));                         \
+			pr_info("delta: %lld ns", delta_ns);                                           \
+			if (delta_ns / 1000 >= 1)                                                      \
+				pr_cont(" (~ %lld us", delta_ns / 1000);                               \
+			if (delta_ns / 1000000 >= 1)                                                   \
+				pr_cont(" ~ %lld ms", delta_ns / 1000000);                             \
+			if (delta_ns / 1000 >= 1)                                                      \
+				pr_cont(")\n");                                                        \
+		} else                                                                                 \
+			pr_warn("SHOW_DELTA(): *invalid* earlier > later? (check order of params)\n"); \
+	} while (0)
+
 #endif
 
 #endif // __CW_MISC_H

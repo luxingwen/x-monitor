@@ -22,6 +22,7 @@
 #include <linux/gfp.h>
 #include <linux/vmalloc.h>
 #include <linux/delay.h>
+#include "../misc.h"
 
 // 如果编译没有代入版本信息
 #ifndef LINUX_VERSION_CODE
@@ -49,6 +50,7 @@ static DEFINE_MUTEX(__mutex);
 // 中断处理函数
 static irqreturn_t __cw_irq_handler(int irq, void *dev_id)
 {
+	PRINT_CTX();
 	pr_info("irq %d triggered\n", irq);
 	return IRQ_HANDLED;
 }
@@ -74,32 +76,33 @@ static ssize_t __cw_write_irq_switch(struct file *f, const char __user *ubuf,
 				     size_t count, loff_t *off)
 {
 	unsigned long flags = 0;
-	uint8_t *kbuf = 0;
+	uint8_t kbuf[32] = { 0 };
+	int32_t kbuf_size = 0;
 
 	if (count <= 0) {
 		pr_err("Invalid input\n");
 		return -EINVAL;
 	}
 
+	PRINT_CTX();
+	// echo 1sdsdfsfdas > /proc/cw_irq_switch
+	// kbuf_size: 12, count: 12
+	// **这个 count 是包括换行符，没有包含字符串结束符
+	kbuf_size = min(count, sizeof(kbuf) - 1);
+	pr_info("kbuf_size: %d, count: %zu\n", kbuf_size, count);
+
 	if (mutex_lock_interruptible(&__mutex))
 		return -ERESTARTSYS;
 
-	kbuf = kmalloc(count, GFP_KERNEL);
-	if (!kbuf) {
-		pr_err("kmalloc failed\n");
-		mutex_unlock(&__mutex);
-		return -ENOMEM;
-	}
-	if (copy_from_user(kbuf, ubuf, count)) {
-		pr_err("copy_from_user failed\n");
-		kfree(kbuf);
+	if (copy_from_user(kbuf, ubuf, kbuf_size)) {
 		mutex_unlock(&__mutex);
 		return -EFAULT;
 	}
-	kbuf[count - 1] = '\0';
+	// 因为 count 包含了换行符，所以这里还是要加上字符串结束符
+	kbuf[kbuf_size] = 0;
 	// 如果直接打印 ubuf，会导致 crash
 	// 和 pr_debug 一样，需要编译时加上-DDEBUG
-	print_hex_dump_bytes("ubuf: ", DUMP_PREFIX_OFFSET, kbuf, count);
+	print_hex_dump_bytes("ubuf: ", DUMP_PREFIX_OFFSET, kbuf, kbuf_size);
 
 	// 读取用户态数据，put_user() 和 get_user() 用来从用户空间获取或者向用户空间发送单个值（例如一个 int，char，或者 long）
 	//get_user(flag, ubuf);
@@ -121,9 +124,9 @@ static ssize_t __cw_write_irq_switch(struct file *f, const char __user *ubuf,
 	} else if (kbuf[0] == '1') {
 		// 判断是否在中断禁止状态
 		if (irqs_disabled()) {
-			pr_info("<-----Interrupts are disabled\n");
+			pr_info("<-----Current OS Interrupts are disabled\n");
 		} else {
-			pr_info("<-----Interrupts are enabled\n");
+			pr_info("<-----Current OS Interrupts are enabled\n");
 		}
 
 		if (__cw_irq_switch_state == 0) {
@@ -143,6 +146,17 @@ static ssize_t __cw_write_irq_switch(struct file *f, const char __user *ubuf,
 		} else {
 			pr_info("Interrupts are enabled---->\n");
 		}
+
+		// 延迟
+		ssleep(1);
+
+		// 应该是其他线程调用了 local_irq_enable，导致短暂延迟后，中断被打开
+		if (irqs_disabled()) {
+			pr_info("After ssleep Interrupts are disabled---->\n");
+		} else {
+			pr_info("After ssleep Interrupts are enabled---->\n");
+		}
+
 	} else if (kbuf[0] == '2') {
 		if (__cw_irq_switch_state == 0) {
 			pr_info("Disable all interrupts for this CPU and save flags");
@@ -157,9 +171,8 @@ static ssize_t __cw_write_irq_switch(struct file *f, const char __user *ubuf,
 	} else {
 		pr_err("Invalid input\n");
 	}
-	kfree(kbuf);
 	mutex_unlock(&__mutex);
-	return count;
+	return kbuf_size;
 }
 
 // proc 文件，开关中断
