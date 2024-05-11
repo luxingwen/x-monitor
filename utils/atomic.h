@@ -64,7 +64,7 @@ static inline void atomic_sub(int i, atomic_t *v) {
  * other cases.
  */
 static inline int atomic_sub_and_test(int i, atomic_t *v) {
-    // 减i，如果减后值为0，返回1，否则返回0
+    // 减 i，如果减后值为 0，返回 1，否则返回 0
     return !(__sync_sub_and_fetch(&v->counter, i));
 }
 

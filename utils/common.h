@@ -60,7 +60,7 @@ extern "C" {
 #include <argp.h>
 #include <malloc.h>
 
-// C11 新增的concurrency相关的header，gcc4.9以上才支持, -std=c11
+// C11 新增的 concurrency 相关的 header，gcc4.9 以上才支持，-std=c11
 #if GCC_VERSION >= 40900
 #include <stdatomic.h>
 #endif

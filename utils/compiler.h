@@ -193,3 +193,35 @@ macro 結果為 true ，則可以在 compile-time 的時候被告知有錯
         typeof(type) __tmp = function; \
         (void)__tmp;                   \
     })
+
+#define VEC(...) ((const int[]){ __VA_ARGS__ })
+// void func(const int *arg);
+// func(VEC(10, 20, 30));
+
+// As used in the linux kernel.
+// A macro that expands to 1 if a preprocessor value
+// was defined to 1, and 0 if it was not defined or
+// defined to an other value.
+
+#define IS_DEFINED(macro) IS_DEFINED_(macro)
+#define MACROTEST_1 ,
+#define IS_DEFINED_(value) IS_DEFINED__(MACROTEST_##value)
+#define IS_DEFINED__(comma) IS_DEFINED___(comma 1, 0)
+#define IS_DEFINED___(_, v, ...) v
+
+/*
+#if IS_DEFINED(SOMETHING)
+    ...
+#endif
+
+if (IS_DEFINED(SOMETHING)) {
+    ...
+}
+*/
+
+#define cw_min(a, b)            \
+    ({                          \
+        __typeof__(a) _a = (a); \
+        __typeof__(b) _b = (b); \
+        _a < _b ? _a : _b;      \
+    })
