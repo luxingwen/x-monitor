@@ -170,7 +170,7 @@ static int __init cw_waitqueue_test_init(void)
 	pr_info("use static waitqueue initialization\n");
 #else
 	pr_info("use dynamic waitqueue initialization\n");
-	init_waitqueue_head(&wq);
+	init_waitqueue_head(&__cw_wq);
 #endif
 
 	// will create kernel thread

@@ -103,6 +103,7 @@ trace-cmd start -p function -l xfs_trans_commit --func-stack
 trace-cmd start -p function -l 'xlog_cil_push*' --func-stack
 trace-cmd start -p function -l xlog_cil_push_now --func-stack
 trace-cmd start -p function -l xlog_cil_push_background --func-stack
+trace-cmd start -p function -l 'xfs_alloc_*' -l 'xfs_bmap*' --func-stack
 ```
 
 start命令后接上trace-cmd show看输出结果，还可以使用perf-tools工具集里的kprobe
@@ -117,6 +118,7 @@ kprobe -s -H p:xlog_sync
 kprobe 'r:__xlog_state_release_iclog $retval'
 kprobe 'p:xlog_state_release_iclog '
 kprobe -s -H p:xfs_agf_write_verify
+kprobe -s -H 'r:xfs_buf_get_map $retval'
 ```
 
 ##### 查看函数子调用
@@ -128,6 +130,8 @@ trace-cmd record -p function_graph -g __xfs_log_force_lsn
 trace-cmd record -p function_graph -g xlog_cil_push_work 
 trace-cmd record -p function_graph  -P 265793 -P 264849 --max-graph-depth 15
 trace-cmd record -p function_graph -g xfs_log_commit_cil  --max-graph-depth 2 
+trace-cmd record -p function_graph -g xfs_buf_read_map
+trace-cmd record -p function_graph -g xfs_bmap_btalloc
 ```
 
 record之后使用trace-cmd report -L -I -S > report.txt来查看子调用过程
@@ -140,7 +144,7 @@ perf trace -a -e 'xfs:xfs_log_force*' --kernel-syscall-graph --comm --failure --
 perf trace -a -e 'xfs:xlog_cil_push_work' --kernel-syscall-graph --comm --failure --call-graph dwarf 
 perf trace -e 'xfs:xfs_ail_move' -a --kernel-syscall-graph --comm --failure --call-graph dwarf/fp
 perf trace -e 'xfs:xfs_ail_mo*-a --kernel-syscall-graph --comm --failure --call-graph fp
-trace -e 'xfs:xfs_ail_*' -a --kernel-syscall-graph --comm --failure --call-graph fp
+perf trace -e 'xfs:xfs_ail_*' -a --kernel-syscall-graph --comm --failure --call-graph fp
 ```
 
 ##### 查看XFS某个函数的代码
@@ -157,6 +161,228 @@ stap -L 'kernel.function("vfs_write")'
 stap -L 'module("xfs").function("xfs_agf_write_verify")'
 stap -L 'module("xfs").function("xlog_cil_push_background")'
 ```
+
+### 代码逻辑
+
+#### xfs_trans_commit
+
+`xfs_trans_commit` 是 XFS 文件系统中用于提交事务的函数。它负责将事务中的所有修改记录到日志中，并确保这些修改最终应用到文件系统中。
+
+1. **锁定**：锁定事务和相关资源，以防止并发修改。
+2. **更新元数据**：将事务中的修改应用到内存中的元数据结构。
+3. **日志记录**：将事务的修改记录到 XFS 日志中。如果启用了 CIL（Committed Item List），则将修改记录到 CIL 中。
+4. **释放资源**：释放事务占用的锁和资源。
+5. **提交**：确保日志记录被推送到磁盘。
+CIL 是一个用于优化日志记录性能的结构。`xfs_trans_commit` 将事务的修改记录到 CIL 中，而不是直接写入磁盘日志。CIL 会定期将批量的修改推送到磁盘，从而减少日志写入的开销。
+`xfs_trans_commit` 本身不会直接将日志写入磁盘，而是将修改记录到 CIL 中。实际的日志写入由 CIL 的后台推送机制处理。
+
+#### xlog_cil_push_background
+
+`xlog_cil_push_background` 函数用于在后台将 CIL 中的记录推送到磁盘日志中，触发工作队列函数**xlog_cil_push_work**
+
+1. **检查推送条件**：检查是否需要进行推送，例如 CIL 是否已满或达到推送间隔时间。
+2. **锁定 CIL**：防止其他事务修改 CIL。
+3. **创建日志记录**：将 CIL 中的修改打包成一个日志记录。
+4. **写入磁盘**：将日志记录写入磁盘。
+5. **更新状态**：更新 CIL 的状态和相关元数据。
+
+#### xfs_cil_prepare_item
+
+xfs_cil_prepare_item会给事务的所有xfs_log_item设置lsn号
+
+```
+	/*
+	 * If this is the first time the item is being committed to the
+	 * CIL, store the sequence number on the log item so we can
+	 * tell in future commits whether this is the first checkpoint
+	 * the item is being committed into.
+	 */
+	if (!lv->lv_item->li_seq)
+		lv->lv_item->li_seq = log->l_cilp->xc_ctx->sequence;
+}
+```
+
+#### 不同的tail_lsn、lsn
+
+```
+struct xfs_log_item {
+....
+	xfs_lsn_t			li_lsn;		/* last on-disk lsn */
+	xfs_lsn_t			li_seq;		/* CIL commit seq */
+};
+```
+
+```
+typedef struct xlog_rec_header {
+	__be32	  h_magicno;	/* log record (LR) identifier		:  4 */
+	......
+	__be64	  h_lsn;	/* lsn of this LR			:  8 */
+	__be64	  h_tail_lsn;	/* lsn of 1st LR w/ buffers not committed: 8 */
+} xlog_rec_header_t;
+```
+
+**`h_lsn` ≠ `li_seq`**：`h_lsn` 是日志记录的 LSN，而 `li_seq` 是日志项在 CIL 中的提交序列号。这两个字段的含义和用途不同，不应相等。
+
+**`h_tail_lsn` ≠ `li_lsn`**：`h_tail_lsn` 是最早未提交日志记录的 LSN，而 `li_lsn` 是日志项最后一次写入的 LSN。这两个字段也不应相等。
+
+**`agf_lsn` 与 `li_lsn`**: 在 XFS 中，当一个日志项（如 AGF 结构体的更新）被写入日志文件时，`li_lsn` 字段会被更新为该日志项最后一次写入磁盘的 LSN。因此，`agf_lsn` 通常会等于 `li_lsn`，因为它记录了 AGF 结构体的最后写入序列号。
+
+#### 给xfs_in core log设置tail_lsn
+
+遍历 AIL 链表，找到最小的 LSN
+
+```
+xfs_lsn_t xlog_assign_tail_lsn_locked(struct xfs_mount *mp)
+{
+	......
+	lip = xfs_ail_min(mp->m_ail);
+	if (lip)
+		tail_lsn = lip->li_lsn;
+	else
+		tail_lsn = atomic64_read(&log->l_last_sync_lsn);
+```
+
+设置当前状态是：想要同步这个iclog；不再写入
+
+```
+static bool __xlog_state_release_iclog(struct xlog *log,
+				       struct xlog_in_core *iclog)
+{
+	.......
+	if (iclog->ic_state == XLOG_STATE_WANT_SYNC) {
+		/* update tail before writing to iclog */
+		xfs_lsn_t tail_lsn = xlog_assign_tail_lsn(log->l_mp);
+		// 开始写入 iclog
+		iclog->ic_state = XLOG_STATE_SYNCING;
+		iclog->ic_header.h_tail_lsn = cpu_to_be64(tail_lsn);
+		xlog_verify_tail_lsn(log, iclog, tail_lsn);
+		/* cycle incremented when incrementing curr_block */
+		return true;
+	}
+
+	ASSERT(iclog->ic_state == XLOG_STATE_ACTIVE);
+	return false;
+}
+```
+
+#### xlog_cil_insert_format_items
+
+`xlog_cil_insert_format_items` 函数用于将格式化的日志项插入到 CIL 中。
+
+1. **获取 CIL 上下文**：获取当前事务的 CIL 上下文。
+2. **格式化日志项**：将事务中的修改项格式化为日志项。
+3. **插入 CIL**：将格式化的日志项插入到 CIL。
+4. **更新状态**：更新 CIL 的状态，例如增加已用空间。
+
+#### 各个格式化函数的功能逻辑
+
+这些函数用于将不同类型的日志项格式化，以便记录到日志或 CIL 中。
+
+`xfs_bud_item_format`
+
+用于格式化 "buffer update done"（BUD）日志项。这些项记录缓冲区更新已完成。
+
+`xfs_buf_item_format`
+
+用于格式化缓冲区日志项。这些项记录缓冲区的修改。
+
+`xfs_qm_dquot_logitem_format`
+
+用于格式化配额（quota）日志项。这些项记录配额管理相关的修改。
+
+`xfs_qm_qoff_logitem_format`
+
+用于格式化配额关闭（quota off）日志项。这些项记录配额系统关闭的操作。
+
+`xfs_icreate_item_format`
+
+用于格式化 inode 创建日志项。这些项记录新的 inode 创建操作。
+
+`xfs_inode_item_format`
+
+用于格式化 inode 日志项。这些项记录 inode 的修改。
+
+#### xlog_cil_push_work
+
+`xlog_cil_push_work` 是一个内核函数，用于将 CIL（Committed Item List）中的日志项推送到磁盘日志中。
+
+1. **获取 CIL 上下文**：获取当前的 CIL 上下文。
+2. **创建新的日志记录**：将 CIL 中的所有脏的日志项打包成一个新的日志记录。
+3. **格式化日志**：格式化这些日志项以便写入磁盘。
+4. **写入磁盘**：调用 `submit_bio` 或类似的函数将日志记录写入磁盘。
+5. **更新状态**：更新 CIL 和事务的状态。
+6. **插入 AIL 链表**：将已提交的日志项插入到 AIL（Active Item List）中，以便后续处理。
+
+#### xfs_log持久化的状态
+
+```
+/*
+ * In core log state
+ */
+enum xlog_iclog_state {
+	XLOG_STATE_ACTIVE, /* Current IC log being written to */
+	XLOG_STATE_WANT_SYNC, /* Want to sync this iclog; no more writes 当 core log 准备好要同步到磁盘时，它会进入此状态。这表示不再向日志写入新的条目，并且日志准备好要写入磁盘。*/
+	XLOG_STATE_SYNCING, /* This IC log is syncing 当 core log 正在被写入磁盘时，它会处于此状态。这表示同步过程正在进行中，日志条目正在从内存缓冲区传输到磁盘存储*/
+	XLOG_STATE_DONE_SYNC, /* Done syncing to disk 当 core log 成功同步到磁盘后，它会进入此状态。这表示所有日志条目已写入磁盘，并且日志已准备好可以再次使用*/
+	XLOG_STATE_CALLBACK, /* Callback functions now 当 core log 处于此状态时，它表示正在执行与日志相关的回调函数。这些回调函数可能包括通知其他组件日志已同步或执行其他与日志相关的操作*/
+	XLOG_STATE_DIRTY, /* Dirty IC log, not ready for ACTIVE status 当 core log 包含未同步的条目时，它会处于此状态。这表示日志尚未准备好可以再次写入，需要先同步到磁盘*/
+	XLOG_STATE_IOERROR, /* IO error happened in sync'ing log 如果在同步 core log 时遇到 I/O 错误，它会进入此状态。这表示同步过程由于 I/O 错误而失败，可能需要采取进一步的操作来处理错误并恢复日志的一致性*/
+};
+```
+
+#### xlog_write
+
+xfs_log持久化，也就是将事务的记录的操作日志写入磁盘，核心函数是**xlog_write_copy_finish**，**xlog_write_iclog**
+
+#### xlog_state_set_callback
+
+cli的in core log写入磁盘后后触发ail
+
+```
+static void xlog_state_set_callback(struct xlog *log,
+				    struct xlog_in_core *iclog,
+				    xfs_lsn_t header_lsn)
+{
+	// 状态从 XLOG_STATE_DONE_SYNC 切换到 XLOG_STATE_CALLBACK
+	iclog->ic_state = XLOG_STATE_CALLBACK;
+
+	.......
+	// cil in core log 写入磁盘后，就插入 ail 列表，同时调用 wake_up_process 唤醒 xfsalid 内核线程
+	xlog_grant_push_ail(log, 0);
+}
+```
+
+#### xlog_state_done_syncing
+
+xfs in core log写入磁盘完成，将iclog的状态改为同步完成，同时开始进行callback，同时会唤醒在ic_write_wait等待的task，让其继续运行
+
+```
+STATIC void xlog_state_done_syncing(struct xlog_in_core *iclog)
+{
+	struct xlog *log = iclog->ic_log;
+
+	/*
+	 * If we got an error, either on the first buffer, or in the case of
+	 * split log writes, on the second, we shut down the file system and
+	 * no iclogs should ever be attempted to be written to disk again.
+	 */
+	if (!XLOG_FORCED_SHUTDOWN(log)) {
+		// xfs 没有被强制 shutdonw，且状态是 XLOG_STATE_SYNCING，修改状态为 XLOG_STATE_DONE_SYNC
+		ASSERT(iclog->ic_state == XLOG_STATE_SYNCING);
+		iclog->ic_state = XLOG_STATE_DONE_SYNC;
+	}
+	// 唤醒一个等待的task
+	wake_up_all(&iclog->ic_write_wait);
+	.......
+	xlog_state_do_callback(log);
+}
+```
+
+可以在这里加入一个kprobe，用来输出iclog->ic_header的h_lsn和h_tail_lsn，
+
+#### xlog_ioend_work
+
+这是一个工作队列函数，一个bio完成，回调该函数通知写入完成，通知xfs in core log写入磁盘完成
 
 ## 资料
 
