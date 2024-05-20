@@ -120,6 +120,7 @@ kprobe 'r:__xlog_state_release_iclog $retval'
 kprobe 'p:xlog_state_release_iclog '
 kprobe -s -H p:xfs_agf_write_verify
 kprobe -s -H 'r:xfs_buf_get_map $retval'
+kprobe -s -H p:xlog_write_iclog
 ```
 
 ##### 查看函数子调用
@@ -334,7 +335,7 @@ enum xlog_iclog_state {
 
 #### xlog_write
 
-xfs_log持久化，也就是将事务的记录的操作日志写入磁盘，核心函数是**xlog_write_copy_finish**，**xlog_write_iclog**
+`xlog_write` 函数负责将日志向量链表的数据写入日志文件。它管理日志记录的格式化、空间分配、及实际写入磁盘的操作。
 
 #### xlog_state_set_callback
 
@@ -431,7 +432,33 @@ XFS 文件系统使用 `xfs_buf` 来管理这些写入操作，确保数据完�
 
 #### xlog_write_iclog
 
+```
+           <...>-472567 [002] .... 63701.551899: xlog_write_iclog: (xlog_write_iclog+0x0/0x2b0 [xfs])
+           <...>-472567 [002] .... 63701.553793: <stack trace>
+ => xlog_write_iclog
+ => xlog_state_release_iclog
+ => __xfs_log_force_lsn
+ => xfs_log_force_lsn
+ => xfs_file_fsync
+ => do_fsync
+ => __x64_sys_fsync
+ => do_syscall_64
+ => entry_SYSCALL_64_after_hwframe
+     kworker/5:1-472198 [005] .... 63715.063773: xlog_write_iclog: (xlog_write_iclog+0x0/0x2b0 [xfs])
+     kworker/5:1-472198 [005] .... 63715.064450: <stack trace>
+ => xlog_write_iclog
+ => xlog_state_release_iclog
+ => xfs_log_force
+ => xfs_log_worker
+ => process_one_work
+ => worker_thread
+ => kthread
+ => ret_from_fork
+```
+
 #### xlog_sync
+
+#### xfs_log_release_iclog
 
 ### 资料
 
