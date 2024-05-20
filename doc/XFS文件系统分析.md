@@ -104,6 +104,7 @@ trace-cmd start -p function -l 'xlog_cil_push*' --func-stack
 trace-cmd start -p function -l xlog_cil_push_now --func-stack
 trace-cmd start -p function -l xlog_cil_push_background --func-stack
 trace-cmd start -p function -l 'xfs_alloc_*' -l 'xfs_bmap*' --func-stack
+trace-cmd start -p function -l xlog_write_iclog --func-stack
 ```
 
 start命令后接上trace-cmd show看输出结果，还可以使用perf-tools工具集里的kprobe
@@ -132,6 +133,7 @@ trace-cmd record -p function_graph  -P 265793 -P 264849 --max-graph-depth 15
 trace-cmd record -p function_graph -g xfs_log_commit_cil  --max-graph-depth 2 
 trace-cmd record -p function_graph -g xfs_buf_read_map
 trace-cmd record -p function_graph -g xfs_bmap_btalloc
+trace-cmd record -p function_graph -g xlog_cil_push_work
 ```
 
 record之后使用trace-cmd report -L -I -S > report.txt来查看子调用过程
@@ -162,7 +164,7 @@ stap -L 'module("xfs").function("xfs_agf_write_verify")'
 stap -L 'module("xfs").function("xlog_cil_push_background")'
 ```
 
-### 代码逻辑
+### 函数与数据结构
 
 #### xfs_trans_commit
 
@@ -405,7 +407,7 @@ STATIC void xlog_state_done_syncing(struct xlog_in_core *iclog)
 
 #### struct xfs_buf
 
-**`xfs_buf`** 是 XFS 文件系统中的缓冲区结构，用于管理和缓存特定的磁盘块（block），包括元数据块和数据块。`xfs_buf` 结构与文件系统的低级 I/O 操作紧密结合。
+**`xfs_buf`** 是 XFS 文件系统中的缓冲区结构，**用于管理和缓存特定的磁盘块（block）**，包括元数据块和数据块。`xfs_buf` 结构与文件系统的低级 I/O 操作紧密结合。
 
 当文件系统执行读操作时，Page Cache 会首先检查所请求的数据是否在缓存中。如果在缓存中，则直接返回数据。
 
@@ -423,7 +425,15 @@ XFS 文件系统使用 `xfs_buf` 来管理这些写入操作，确保数据完�
 
 `xfs_agf` （Allocation Group Free）是磁盘上的结构，包含分配组的空闲块信息。`xfs_agf` 结构存储在每个分配组的 AGF 块中，并记录该分配组中的空闲空间信息。是磁盘上持久化结构，当文件系统挂载时，xfs_agf的内容会被读取并加载到xfs_perag中。xfs_agf的信息会存放在xfs_buf中，
 
-资料
+#### struct xfs_log_vec
+
+#### xlog_state_release_iclog
+
+#### xlog_write_iclog
+
+#### xlog_sync
+
+### 资料
 
 [内核基础设施——wait queue - Notes about linux and my work (laoqinren.net)](https://linux.laoqinren.net/kernel/wait-queue/)
 
