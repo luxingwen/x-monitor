@@ -384,7 +384,46 @@ STATIC void xlog_state_done_syncing(struct xlog_in_core *iclog)
 
 这是一个工作队列函数，一个bio完成，回调该函数通知写入完成，通知xfs in core log写入磁盘完成
 
-## 资料
+#### xfs_alloc_vextent
+
+##### 功能
+
+`xfs_alloc_vextent` 函数用于分配一个或多个虚拟扩展（extent），这是 XFS 文件系统中块分配的核心函数之一。该函数根据指定的分配参数（如目标 AG、所需块数等）尝试分配实际的磁盘块。
+
+##### 逻辑
+
+1. **初始化分配环境**：
+   - 初始化分配请求的参数和环境，包括目标 AG、所需块数、分配策略等。
+2. **搜索空闲块**：
+   - 在指定的 AG 中搜索满足条件的空闲块。
+3. **执行块分配**：
+   - 根据搜索结果执行块分配操作，并更新相关的元数据结构。
+4. **返回结果**：
+   - 返回分配结果，包括分配的块号和状态。
+
+#### xfs_alloc_fix_freelist
+
+#### struct xfs_buf
+
+**`xfs_buf`** 是 XFS 文件系统中的缓冲区结构，用于管理和缓存特定的磁盘块（block），包括元数据块和数据块。`xfs_buf` 结构与文件系统的低级 I/O 操作紧密结合。
+
+当文件系统执行读操作时，Page Cache 会首先检查所请求的数据是否在缓存中。如果在缓存中，则直接返回数据。
+
+如果数据不在 Page Cache 中，则文件系统会从磁盘读取数据。这时，`xfs_buf` 可能被用来读取整个块，并将数据加载到 Page Cache 中。
+
+当文件系统执行写操作时，数据首先写入 Page Cache。内核会在适当的时候将 Page Cache 中的数据刷新到磁盘。
+
+XFS 文件系统使用 `xfs_buf` 来管理这些写入操作，确保数据完整性和一致性。
+
+#### struct xfs_perag 与 struct xfs_agf 的关系
+
+`xfs_perag` 和 `xfs_agf` 都与 XFS 文件系统的分配组（AG，Allocation Group）相关，但它们的作用和内容不同。
+
+`xfs_perag` 结构用于在内存中管理和维护每个分配组的元数据。它包含了分配组的运行时信息，如空闲块计数、引用计数等。是内存运行时的结构。
+
+`xfs_agf` （Allocation Group Free）是磁盘上的结构，包含分配组的空闲块信息。`xfs_agf` 结构存储在每个分配组的 AGF 块中，并记录该分配组中的空闲空间信息。是磁盘上持久化结构，当文件系统挂载时，xfs_agf的内容会被读取并加载到xfs_perag中。xfs_agf的信息会存放在xfs_buf中，
+
+资料
 
 [内核基础设施——wait queue - Notes about linux and my work (laoqinren.net)](https://linux.laoqinren.net/kernel/wait-queue/)
 
