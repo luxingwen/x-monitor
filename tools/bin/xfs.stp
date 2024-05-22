@@ -1,0 +1,31 @@
+#!/usr/bin/env stap
+
+probe begin {
+	printf("start tap to xfs...\n")
+}
+
+probe end {
+	printf("exit tap to xfs\n")
+}
+
+probe module("xfs").function("xfs_agf_write_verify") {
+	dev = $bp->b_mount->m_super->s_dev
+	agf_magic = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
+	bli_item_li_lsn = $bp->b_log_item->bli_item->li_lsn
+	printf("dev: %d, agf_magic: 0x%x, lsn: 0x%x\n", dev, htonl(agf_magic), bli_item_li_lsn)
+	print_backtrace()
+}
+
+probe module("xfs").function("xlog_state_get_iclog_space") {
+	offset = $log->l_iclog->ic_offset
+	curr_cycle = $log->l_curr_cycle
+	curr_block = $log->l_curr_block
+	printf("offset: %d, curr_cycle: %d, curr_block: %d\n", offset, curr_cycle, curr_block)
+	print_backtrace()
+}
+
+probe module("xfs").function("xlog_sync") {
+	iclog_offset = $iclog->ic_offset
+	printf("iclog_offset: %d, \n", iclog_offset)
+	print_backtrace()
+}

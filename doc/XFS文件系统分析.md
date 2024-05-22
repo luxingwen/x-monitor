@@ -432,6 +432,8 @@ XFS 文件系统使用 `xfs_buf` 来管理这些写入操作，确保数据完�
 
 #### xlog_write_iclog
 
+xfs文件系统mount成功后，会定时触发一个延迟任务，alloc_workqueue("xfs-sync/%s"，这个任务负责将iclog写入磁盘
+
 ```
            <...>-472567 [002] .... 63701.551899: xlog_write_iclog: (xlog_write_iclog+0x0/0x2b0 [xfs])
            <...>-472567 [002] .... 63701.553793: <stack trace>

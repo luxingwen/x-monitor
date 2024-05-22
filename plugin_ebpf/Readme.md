@@ -18,7 +18,7 @@
 | NAPI                    | 1：NAPI 机制在高速网络环境下的状态                           | 待实现                                           |
 | SoftLockup              |                                                              | 待实现                                           |
 | HungTask                |                                                              | 待实现                                           |
-| XFS                     | trace_xfs_alloc_file_space<br />trace_xfs_trans_cancel<br />trace_xfs_trans_commit<br />trace_xfs_log_assign_tail_lsn（xfs_log.c,xlog_assign_tail_lsn_locked,从ail列表中找到最小的xfs_log_item的lsn），表明这个lsn是写入磁盘的，也就是tail_lsn<br />trace_xfs_alloc_vextent_nofix<br />trace_xfs_alloc_vextent_loopfailed<br />trace_xfs_alloc_vextent_allfailed<br />trace_xfs_alloc_small_notenough<br />trace_xfs_alloc_small_error<br />trace_xfs_alloc_exact_error<br />trace_xfs_alloc_size_error：后面会调用xfs_btree_del_cursor<br />trace_xfs_perag_get | 待实现                                           |
+| XFS                     | trace_xfs_alloc_file_space<br />trace_xfs_trans_cancel<br />trace_xfs_trans_commit<br />trace_xfs_log_assign_tail_lsn（xfs_log.c,xlog_assign_tail_lsn_locked,从ail列表中找到最小的xfs_log_item的lsn），表明这个lsn是写入磁盘的，也就是tail_lsn<br />trace_xfs_alloc_vextent_nofix<br />trace_xfs_alloc_vextent_loopfailed<br />trace_xfs_alloc_vextent_allfailed<br />trace_xfs_alloc_small_notenough<br />trace_xfs_alloc_small_error<br />trace_xfs_alloc_exact_error<br />trace_xfs_alloc_size_error：后面会调用xfs_btree_del_cursor<br />trace_xfs_perag_get<br />trace_xfs_log_assign_tail_lsn | 待实现                                           |
 
 ## Tools
 
