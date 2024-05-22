@@ -121,6 +121,7 @@ kprobe 'p:xlog_state_release_iclog '
 kprobe -s -H p:xfs_agf_write_verify
 kprobe -s -H 'r:xfs_buf_get_map $retval'
 kprobe -s -H p:xlog_write_iclog
+kprobe -s -H p:xfs_trans_add_item 查看事务添加日志项
 ```
 
 ##### 查看函数子调用
@@ -135,6 +136,7 @@ trace-cmd record -p function_graph -g xfs_log_commit_cil  --max-graph-depth 2
 trace-cmd record -p function_graph -g xfs_buf_read_map
 trace-cmd record -p function_graph -g xfs_bmap_btalloc
 trace-cmd record -p function_graph -g xlog_cil_push_work
+trace-cmd record -p function_graph -g xfs_alloc_file_space
 ```
 
 record之后使用trace-cmd report -L -I -S > report.txt来查看子调用过程
@@ -167,43 +169,217 @@ stap -L 'module("xfs").function("xlog_cil_push_background")'
 
 ### 函数与数据结构
 
+#### fallocate分配空间，修改ag的过程
+
+是 XFS 文件系统中的一个关键函数，用于从自由空间中分配一个新的文件系统块范围（extent）,这个过程涉及读取和更新AG元数据，包括AGF和AGFL
+
+**读取AGF和AGFL**：
+
+- `xfs_alloc_read_agf`：读取 AGF（Allocation Group Free space information）的内容，并锁住相关的缓冲区，以防止其他进程修改。
+
+- `xfs_alloc_read_agfl`：读取 AGFL（Allocation Group Free List）的内容，并锁住相关的缓冲区。
+- 这些函数将 AGF 和 AGFL 的内容读入内存，并创建相应的 `xfs_buf_log_item`（用于日志记录）。
+
+```
+       fallocate-10567 [004]  8806.761988: funcgraph_entry:                   |  xfs_alloc_vextent() {
+       fallocate-10567 [004]  8806.764130: funcgraph_entry:      + 39.300 us  |    xfs_perag_get();
+       fallocate-10567 [004]  8806.764286: funcgraph_entry:                   |    xfs_alloc_fix_freelist() {
+       fallocate-10567 [004]  8806.764365: funcgraph_entry:      + 39.000 us  |      xfs_alloc_min_freelist();
+       fallocate-10567 [004]  8806.764522: funcgraph_entry:                   |      xfs_alloc_space_available() {
+       fallocate-10567 [004]  8806.764603: funcgraph_entry:      + 39.700 us  |        xfs_ag_resv_needed();
+       fallocate-10567 [004]  8806.764761: funcgraph_entry:      + 38.800 us  |        xfs_alloc_longest_free_extent();
+       fallocate-10567 [004]  8806.764953: funcgraph_exit:       ! 352.700 us |      }
+       fallocate-10567 [004]  8806.764993: funcgraph_entry:                   |      xfs_alloc_read_agf() {  ----》读取agf信息，保存在xfs_buf中
+       fallocate-10567 [004]  8806.765071: funcgraph_entry:      + 43.300 us  |        xfs_read_agf();
+       fallocate-10567 [004]  8806.765269: funcgraph_exit:       ! 199.600 us |      }
+       fallocate-10567 [004]  8806.765309: funcgraph_entry:      + 39.200 us  |      xfs_alloc_min_freelist();
+       fallocate-10567 [004]  8806.765464: funcgraph_entry:                   |      xfs_alloc_space_available() {
+       fallocate-10567 [004]  8806.765542: funcgraph_entry:      + 39.000 us  |        xfs_ag_resv_needed();
+       fallocate-10567 [004]  8806.765697: funcgraph_entry:      + 39.100 us  |        xfs_alloc_longest_free_extent();
+       fallocate-10567 [004]  8806.765891: funcgraph_exit:       ! 350.500 us |      }
+       fallocate-10567 [004]  8806.765932: funcgraph_entry:                   |      xfs_alloc_read_agfl() {
+       fallocate-10567 [004]  8806.766013: funcgraph_entry:      + 46.600 us  |        xfs_trans_read_buf_map();
+       fallocate-10567 [004]  8806.766179: funcgraph_entry:      + 38.700 us  |        xfs_buf_set_ref();
+       fallocate-10567 [004]  8806.766371: funcgraph_exit:       ! 360.800 us |      }
+       fallocate-10567 [004]  8806.766412: funcgraph_entry:                   |      xfs_trans_brelse() {
+       fallocate-10567 [004]  8806.766491: funcgraph_entry:      + 39.000 us  |        xfs_trans_del_item();
+       fallocate-10567 [004]  8806.766647: funcgraph_entry:      + 42.100 us  |        xfs_buf_item_put();
+       fallocate-10567 [004]  8806.766806: funcgraph_entry:      + 40.100 us  |        xfs_buf_unlock();
+       fallocate-10567 [004]  8806.766964: funcgraph_entry:      + 40.100 us  |        xfs_buf_rele();
+       fallocate-10567 [004]  8806.767158: funcgraph_exit:       ! 669.300 us |      }
+       fallocate-10567 [004]  8806.767237: funcgraph_exit:       # 2873.500 us |    }
+       fallocate-10567 [004]  8806.767277: funcgraph_entry:                   |    xfs_alloc_ag_vextent() {
+       fallocate-10567 [004]  8806.774668: funcgraph_entry:                   |      xfs_alloc_ag_vextent_size() {
+       fallocate-10567 [004]  8806.774747: funcgraph_entry:                   |        xfs_allocbt_init_cursor()
+       fallocate-10567 [004]  8806.775252: funcgraph_entry:      + 38.100 us  |        xfs_btree_lookup();
+       fallocate-10567 [004]  8806.775553: funcgraph_entry:                   |        xfs_alloc_get_rec()
+       fallocate-10567 [004]  8806.776167: funcgraph_entry:      + 18.300 us  |        xfs_alloc_compute_aligned();
+       fallocate-10567 [004]  8806.776236: funcgraph_entry:      + 16.700 us  |        xfs_alloc_fix_len();
+       fallocate-10567 [004]  8806.776305: funcgraph_entry:      + 19.700 us  |        xfs_allocbt_init_cursor();
+       fallocate-10567 [004]  8806.776376: funcgraph_entry:      + 38.300 us  |        xfs_alloc_fixup_trees();
+       fallocate-10567 [004]  8806.776466: funcgraph_entry:      + 18.200 us  |        xfs_btree_del_cursor();
+       fallocate-10567 [004]  8806.776535: funcgraph_entry:      + 18.100 us  |        xfs_btree_del_cursor();
+       fallocate-10567 [004]  8806.776620: funcgraph_exit:       # 1896.100 us |      }
+       fallocate-10567 [004]  8806.776638: funcgraph_entry:                   |      xfs_alloc_update_counters() { ----》更新agf元数据，内存中
+       fallocate-10567 [004]  8806.776675: funcgraph_entry:      + 17.500 us  |        xfs_alloc_log_agf(); ---》记录修改的日志，xfs_log_item设置为dirty
+       fallocate-10567 [004]  8806.776760: funcgraph_exit:       + 85.500 us  |      }
+       fallocate-10567 [004]  8806.776778: funcgraph_entry:                   |      xfs_ag_resv_alloc_extent() {
+       fallocate-10567 [004]  8806.776814: funcgraph_entry:      + 17.200 us  |        xfs_trans_mod_sb(); ----》修改事务中心记录的超级块信息
+       fallocate-10567 [004]  8806.776905: funcgraph_entry:      ! 392.000 us |        smp_apic_timer_interrupt();
+       fallocate-10567 [004]  8806.777348: funcgraph_exit:       + 87.400 us  |      }
+       fallocate-10567 [004]  8806.777382: funcgraph_exit:       # 2739.700 us |    }
+       fallocate-10567 [004]  8806.777400: funcgraph_entry:      + 16.699 us  |    xfs_perag_put();
+       fallocate-10567 [004]  8806.777484: funcgraph_exit:       # 15437.300 us |  }
+```
+
+#### 读取agf元数据信息加入事务的日志项列表中（修改前）
+
+当xfs的元数据发生变化时，会记录在xfs_log_item中，例如xfs_buf_log_item就绑定一个xfs_buf，xfs_buf就记录了磁盘上某个元数据结构，例如xfs_alloc_read_agfl、xfs_alloc_read_agf
+
+```
+       fallocate-96951 [007] .... 84936.458528: xfs_trans_add_item: (xfs_trans_add_item+0x0/0xb0 [xfs])
+       fallocate-96951 [007] .... 84936.458587: <stack trace>
+ => xfs_trans_add_item
+ => _xfs_trans_bjoin ----》在这里将读取的agf对应的xfs_buf初始化其b_log_item(xfs_buf_log_item)，这里是当前没有修改的数据，生成日志项，加入事务中
+ => xfs_trans_read_buf_map
+ => xfs_read_agf
+ => xfs_alloc_read_agf
+ => xfs_alloc_fix_freelist
+ => xfs_alloc_vextent
+ => xfs_bmap_btalloc
+ => xfs_bmapi_allocate
+ => xfs_bmapi_write
+ => xfs_alloc_file_space
+ => xfs_file_fallocate
+ => vfs_fallocate
+ => ksys_fallocate
+ => __x64_sys_fallocate
+ => do_syscall_64
+```
+
+将xfs_log_item链表结构li_trans
+
+```
+struct xfs_log_item {
+	struct list_head li_ail; /* AIL pointers */
+	struct list_head li_trans; /* transaction list */
+```
+
+加入到事务的t_items链表中
+
+```
+typedef struct xfs_trans {
+	struct list_head t_items; /* log item descriptors */
+```
+
+```
+xfs_trans_add_item(
+	struct xfs_trans	*tp,
+	struct xfs_log_item	*lip)
+{
+	ASSERT(lip->li_mountp == tp->t_mountp);
+	ASSERT(lip->li_ailp == tp->t_mountp->m_ail);
+	ASSERT(list_empty(&lip->li_trans));
+	ASSERT(!test_bit(XFS_LI_DIRTY, &lip->li_flags));
+
+	list_add_tail(&lip->li_trans, &tp->t_items);
+	trace_xfs_trans_add_item(tp, _RET_IP_);
+}
+```
+
+```
+STATIC void _xfs_trans_bjoin(struct xfs_trans *tp, struct xfs_buf *bp,
+			     int reset_recur)
+{
+	struct xfs_buf_log_item *bip;
+	// 给这个 xfs_buf 初始化一个 log_item，日志项
+	xfs_buf_item_init(bp, tp->t_mountp);
+	// xfs_buf 的日志项
+	bip = bp->b_log_item;
+	if (reset_recur)
+		bip->bli_recur = 0;
+
+	/*
+	 * Take a reference for this transaction on the buf item.
+	 */
+	atomic_inc(&bip->bli_refcount);
+
+	/*
+	 * Attach the item to the transaction so we can find it in
+	 * xfs_trans_get_buf() and friends.
+	 * // 将日志项加入到事务中
+	 */
+	xfs_trans_add_item(tp, &bip->bli_item);
+	bp->b_transp = tp;
+}
+```
+
+#### 修改agf元数据，xfs_alloc_log_agf
+
+afg元数据的变化，将事务中记录的log_item设置为dirty
+
+```
+/*
+ * Log the given fields from the agf structure.
+ */
+void xfs_alloc_log_agf(
+	xfs_trans_t *tp, /* transaction pointer */
+	xfs_buf_t *bp, /* buffer for a.g. freelist header */
+	int fields) /* mask of fields to be logged (XFS_AGF_...) */
+{
+	......
+	// 这个 tracepoint 可以拿到 agf 更新后的内容
+	trace_xfs_agf(tp->t_mountp, bp->b_addr, fields, _RET_IP_);
+	// 用于标识特定类型的缓冲区日志格式。在这里，“BLFT”代表“Buffer Log Format Type”，“AGF”代表“Allocation Group Footer”
+	xfs_trans_buf_set_type(tp, bp, XFS_BLFT_AGF_BUF);
+
+	xfs_btree_offsets(fields, offsets, XFS_AGF_NUM_BITS, &first, &last);
+	// 修改已经在 tran 事务的 log item 链表中的 item 为 dity
+	xfs_trans_log_buf(tp, bp, (uint)first, (uint)last);
+}
+```
+
+设置xfs_log_item为DIRTY
+
+```
+void xfs_trans_dirty_buf(struct xfs_trans *tp, struct xfs_buf *bp)
+{
+	struct xfs_buf_log_item *bip = bp->b_log_item;
+	......
+	if (bip->bli_flags & XFS_BLI_STALE) {
+		bip->bli_flags &= ~XFS_BLI_STALE;
+		ASSERT(bp->b_flags & XBF_STALE);
+		bp->b_flags &= ~XBF_STALE;
+		bip->__bli_format.blf_flags &= ~XFS_BLF_CANCEL;
+	}
+	bip->bli_flags |= XFS_BLI_DIRTY | XFS_BLI_LOGGED;
+
+	tp->t_flags |= XFS_TRANS_DIRTY;
+	// 设置这个 log_item 的 flag 为 dirty
+	set_bit(XFS_LI_DIRTY, &bip->bli_item.li_flags);
+}
+```
+
+#### xfs_buf_item_format格式化日志项
+
+FS 文件系统中用于格式化缓冲区日志项（buffer log item）的函数。这个函数的主要作用是将 `xfs_log_item` 记录的内容（例如元数据修改）格式化并写入到 `xfs_log_vec` 中，以便后续可以将这些日志条目写入到日志中，确保文件系统的一致性。
+
+```
+STATIC void
+xfs_buf_item_format(
+    struct xfs_log_item    *lip,
+    struct xfs_log_vec     *lv)
+```
+
+对于一个保存 AGF 信息的 `xfs_buf`，`bli_format_count` 的值取决于这个缓冲区中有多少个 `xfs_buf_log_format` 结构需要记录修改信息。通常情况下，AGF 信息占用一个块，因此只需要一个 `xfs_buf_log_format` 结构来记录这块的修改信息，<u>所以 `bli_format_count` 的值通常是 1</u>。
+
 #### xfs_trans_commit
 
 `xfs_trans_commit` 是 XFS 文件系统中用于提交事务的函数。它负责将事务中的所有修改记录到日志中，并确保这些修改最终应用到文件系统中。
 
-1. **锁定**：锁定事务和相关资源，以防止并发修改。
-2. **更新元数据**：将事务中的修改应用到内存中的元数据结构。
-3. **日志记录**：将事务的修改记录到 XFS 日志中。如果启用了 CIL（Committed Item List），则将修改记录到 CIL 中。
-4. **释放资源**：释放事务占用的锁和资源。
-5. **提交**：确保日志记录被推送到磁盘。
-CIL 是一个用于优化日志记录性能的结构。`xfs_trans_commit` 将事务的修改记录到 CIL 中，而不是直接写入磁盘日志。CIL 会定期将批量的修改推送到磁盘，从而减少日志写入的开销。
-`xfs_trans_commit` 本身不会直接将日志写入磁盘，而是将修改记录到 CIL 中。实际的日志写入由 CIL 的后台推送机制处理。
-
-#### xlog_cil_push_background
-
-`xlog_cil_push_background` 函数用于在后台将 CIL 中的记录推送到磁盘日志中，触发工作队列函数**xlog_cil_push_work**
-
-1. **检查推送条件**：检查是否需要进行推送，例如 CIL 是否已满或达到推送间隔时间。
-2. **锁定 CIL**：防止其他事务修改 CIL。
-3. **创建日志记录**：将 CIL 中的修改打包成一个日志记录。
-4. **写入磁盘**：将日志记录写入磁盘。
-5. **更新状态**：更新 CIL 的状态和相关元数据。
-
-#### xfs_cil_prepare_item
-
-xfs_cil_prepare_item会给事务的所有xfs_log_item设置lsn号
-
-```
-	/*
-	 * If this is the first time the item is being committed to the
-	 * CIL, store the sequence number on the log item so we can
-	 * tell in future commits whether this is the first checkpoint
-	 * the item is being committed into.
-	 */
-	if (!lv->lv_item->li_seq)
-		lv->lv_item->li_seq = log->l_cilp->xc_ctx->sequence;
-}
-```
+- 格式化事务中所有的xfs_log_item，格式化的数据存放在向量列表中xfs_log_vec，一个xfs_log_item可以有多个xfs_log_vec，由于一个日志项可能包含大量的数据，可能需要多个日志向量来进行分散/聚集 I/O 操作。因此，一个 `xfs_log_item` 可能会被分割成多个 `xfs_log_vec` 来完成日志记录
+- 将格式化后的xfs_log_item插入到cil链表中，这样同一个xfs_log_item既会在事务链表中，也会在xfs_cil链表中。
+- 调用xlog_cil_push_background触发cil工作队列执行。
 
 #### 不同的tail_lsn、lsn
 
