@@ -373,13 +373,58 @@ xfs_buf_item_format(
 
 对于一个保存 AGF 信息的 `xfs_buf`，`bli_format_count` 的值取决于这个缓冲区中有多少个 `xfs_buf_log_format` 结构需要记录修改信息。通常情况下，AGF 信息占用一个块，因此只需要一个 `xfs_buf_log_format` 结构来记录这块的修改信息，<u>所以 `bli_format_count` 的值通常是 1</u>。
 
-#### xfs_trans_commit
+#### xfs_trans_commit/xfs_log_commit_cil
 
 `xfs_trans_commit` 是 XFS 文件系统中用于提交事务的函数。它负责将事务中的所有修改记录到日志中，并确保这些修改最终应用到文件系统中。
 
-- 格式化事务中所有的xfs_log_item，格式化的数据存放在向量列表中xfs_log_vec，一个xfs_log_item可以有多个xfs_log_vec，由于一个日志项可能包含大量的数据，可能需要多个日志向量来进行分散/聚集 I/O 操作。因此，一个 `xfs_log_item` 可能会被分割成多个 `xfs_log_vec` 来完成日志记录
+- xfs_log_item表示需要记录到日志中的一个文件系统元数据操作，它包含了描述该操作的具体内容，比如 inode 修改、目录项更新、空间分配信息（AGF、AGI更改）等。
+
+- `xfs_log_vec` 结构体则用于管理实际写入日志的数据。它包括了指向一个或多个 `xfs_log_iovec` 结构的指针，这些 `xfs_log_iovec` 结构包含了实际要被写入到日志的数据。`xfs_log_vec` 是日志写入过程中的一个容器，它聚合了多个日志条目的数据，以便一次性地进行有效的日志写操作。每个 `xfs_log_item` 可以关联一个或多个 `xfs_log_vec`。通常，一个 `xfs_log_item` 对应一个 `xfs_log_vec`，但在某些情况下，一个日志项可能需要多个 `xfs_log_vec` 来完整地描述它的所有数据变更。例如，如果一个日志项涉及到多个不连续的元数据区块的更新，就可能需要多个 `xfs_log_vec` 来描述这些更新。
+
+  在事务提交过程中，`xfs_log_item` 提供了关于元数据更改的所有必要信息，而 `xfs_log_vec` 则负责将这些信息格式化并准备好写入到磁盘上的日志区。日志写入过程首先是通过 `xfs_log_item` 的信息来构建一个或多个 `xfs_log_vec`，然后这些 `xfs_log_vec` 被送到日志子系统进行物理写入。
+
 - 将格式化后的xfs_log_item插入到cil链表中，这样同一个xfs_log_item既会在事务链表中，也会在xfs_cil链表中。
-- 调用xlog_cil_push_background触发cil工作队列执行。
+
+  ```
+  	list_for_each_entry (lip, &tp->t_items, li_trans) {
+  		/* Skip items which aren't dirty in this transaction. */
+  		if (!test_bit(XFS_LI_DIRTY, &lip->li_flags))
+  			continue;
+  		......
+  		if (!list_is_last(&lip->li_cil, &cil->xc_cil))
+  			// xfs_log_item 不在 cil 链表的尾部
+  			// 在这里将 tran 中的 items 移到 cil 中，其实一个 xfs_log_item 在 tran 链表中，也会加入到 cil 链表中，在 xfs_log_item 被格式化之后
+  			// 不过后面 tran 被释放了
+  			list_move_tail(&lip->li_cil, &cil->xc_cil);
+  	}
+  ```
+
+- 调用**xlog_cil_push_background**触发工作队列m_cil_workqueue的cli的工作xc_push_work，执行函数xlog_cil_push_work
+
+  ```
+  	if (cil->xc_push_seq < cil->xc_current_sequence) {
+  		cil->xc_push_seq = cil->xc_current_sequence;
+  		// 在工作队列 m_cil_workqueue 上调度一个工作，这个工作会调用 xlog_cil_push_work 函数
+  		queue_work(log->l_mp->m_cil_workqueue, &cil->xc_push_work);
+  	}
+  ```
+
+- 在函数__xfs_trans_commit函数中将事务释放
+
+#### xlog_cil_push_work
+
+`xlog_cil_push_work` 是一个内核函数，用于将 CIL（Committed Item List）中的日志项推送到磁盘日志中。
+
+1. **获取 CIL 上下文**：获取当前的 CIL 上下文。
+2. **创建新的日志记录**：将 CIL 中的所有脏的日志项打包成一个新的日志记录。
+3. **格式化日志**：格式化这些日志项以便写入磁盘。
+4. **写入磁盘**：调用 `submit_bio` 或类似的函数将日志记录写入磁盘。
+5. **更新状态**：更新 CIL 和事务的状态。
+6. **插入 AIL 链表**：将已提交的日志项插入到 AIL（Active Item List）中，以便后续处理。
+
+#### checkpoint事务
+
+heckpoint 事务（也称为 CIL (Committed Item List) 提交）是一个关键机制，用于保证文件系统的一致性和高效日志管理。CIL 是一个链表，用于暂存已经提交但尚未写入磁盘的日志项（`xfs_log_item`）。
 
 #### 不同的tail_lsn、lsn
 
@@ -480,17 +525,6 @@ static bool __xlog_state_release_iclog(struct xlog *log,
 `xfs_inode_item_format`
 
 用于格式化 inode 日志项。这些项记录 inode 的修改。
-
-#### xlog_cil_push_work
-
-`xlog_cil_push_work` 是一个内核函数，用于将 CIL（Committed Item List）中的日志项推送到磁盘日志中。
-
-1. **获取 CIL 上下文**：获取当前的 CIL 上下文。
-2. **创建新的日志记录**：将 CIL 中的所有脏的日志项打包成一个新的日志记录。
-3. **格式化日志**：格式化这些日志项以便写入磁盘。
-4. **写入磁盘**：调用 `submit_bio` 或类似的函数将日志记录写入磁盘。
-5. **更新状态**：更新 CIL 和事务的状态。
-6. **插入 AIL 链表**：将已提交的日志项插入到 AIL（Active Item List）中，以便后续处理。
 
 #### xfs_log持久化的状态
 

@@ -1,0 +1,36 @@
+#!/usr/bin/env stap
+
+global agbp_maps
+
+probe begin {
+	printf("start tap to xfs.agf...\n")
+}
+
+probe end {
+	printf("exit tap to xfs.agf\n")
+}
+
+probe module("xfs").function("xfs_alloc_ag_vextent") {
+    s_dev = $args->mp->m_super->s_dev
+    agbp = $args->agbp
+
+    dev_maj = MAJOR(s_dev)
+    dev_min = MINOR(s_dev)
+
+    if(dev_maj == 7 && dev_min == 0) {
+        agbp_maps[agbp] = 1
+        // xfs_perag
+        agf_magic = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
+        agf_freeblks = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
+        //printf("%s device:[%d:%d], afg:%d, pag:%s\n", probefunc(), MAJOR(s_dev), MINOR(s_dev), $args->agno, $args->pag$)
+        printf("%s device:[%d:%d], agf_no:%d, agf_magic:0x%x, agf_freeblks:%d\n", probefunc(), MAJOR(s_dev), MINOR(s_dev), $args->agno, ntohl(agf_magic), ntohl(agf_freeblks))
+    }
+}
+
+probe module("xfs").function("xfs_alloc_update_counters") {
+    if($agbp in agbp_maps) {
+        //pagf_freeblks = @cast($agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
+        pagf_freeblks = $agbp->b_pag->pagf_freeblks
+        printf("%s pagf_freeblks:%d + len:%d\n", probefunc(), pagf_freeblks, $len)
+    }
+}
