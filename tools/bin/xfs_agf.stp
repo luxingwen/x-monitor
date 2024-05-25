@@ -1,6 +1,7 @@
 #!/usr/bin/env stap
 
 global agbp_maps
+global agbpp_maps
 
 probe begin {
 	printf("start tap to xfs.agf...\n")
@@ -10,6 +11,34 @@ probe end {
 	printf("exit tap to xfs.agf\n")
 }
 
+// 读取agf的元数据返回
+probe module("xfs").function("xfs_read_agf") {
+    s_dev = $mp->m_super->s_dev
+
+    dev_maj = MAJOR(s_dev)
+    dev_min = MINOR(s_dev)
+
+    //if(dev_maj == 7 && dev_min == 0) {
+    agbpp_maps[tid()] = $bpp
+    printf("xfs_read_agf.entry tid:%d,  device:[%d:%d], agno:%d\n", tid(), dev_maj, dev_min, $agno)
+    //}
+}
+
+probe module("xfs").function("xfs_read_agf").return {
+    ret = $return
+    if(tid() in agbpp_maps) {
+        agbpp = agbpp_maps[tid()]
+        // 读取指针地址的内容，解引用
+        agbp = kernel_pointer(agbpp)
+        agbp_error = @cast(agbp, "struct xfs_buf", "xfs")->b_error
+        //printf("xfs_read_agf.exit tid:%d, ret:%d, agbp_error:%d\n", tid(), ret, agbp_error)
+        s_dev = @cast(agbp, "struct xfs_buf", "xfs")->b_mount->m_super->s_dev
+        printf("xfs_read_agf.exit tid:%d, device:[%d:%d], ret:%d, agbp_error:%d\n", tid(), MAJOR(s_dev), MINOR(s_dev), ret, agbp_error)
+        delete agbpp_maps[tid()]
+    }
+}
+
+// 分配ag的空闲空间
 probe module("xfs").function("xfs_alloc_ag_vextent") {
     s_dev = $args->mp->m_super->s_dev
     agbp = $args->agbp
@@ -23,10 +52,11 @@ probe module("xfs").function("xfs_alloc_ag_vextent") {
         agf_magic = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
         agf_freeblks = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
         //printf("%s device:[%d:%d], afg:%d, pag:%s\n", probefunc(), MAJOR(s_dev), MINOR(s_dev), $args->agno, $args->pag$)
-        printf("%s device:[%d:%d], agf_no:%d, agf_magic:0x%x, agf_freeblks:%d\n", probefunc(), MAJOR(s_dev), MINOR(s_dev), $args->agno, ntohl(agf_magic), ntohl(agf_freeblks))
+        printf("%s device:[%d:%d], agno:%d, agf_magic:0x%x, agf_freeblks:%d\n", probefunc(), MAJOR(s_dev), MINOR(s_dev), $args->agno, ntohl(agf_magic), ntohl(agf_freeblks))
     }
 }
 
+// 分配ag的空闲空间完成，修改ag的元数据
 probe module("xfs").function("xfs_alloc_update_counters") {
     if($agbp in agbp_maps) {
         //pagf_freeblks = @cast($agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
