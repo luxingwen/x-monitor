@@ -28,12 +28,16 @@ probe module("xfs").function("xfs_read_agf").return {
     ret = $return
     if(tid() in agbpp_maps) {
         agbpp = agbpp_maps[tid()]
-        // 读取指针地址的内容，解引用
-        agbp = kernel_pointer(agbpp)
-        agbp_error = @cast(agbp, "struct xfs_buf", "xfs")->b_error
+        // 读取指针地址的内容，解引用，通过这种方式可以获取函数的返回参数值, 其实就是agf的xfs_buf的地址了
+        agbp_void = kernel_pointer(agbpp)
+        agbp_maps[agbp_void] = 1
+        agbp_error = @cast(agbp_void, "struct xfs_buf", "xfs")->b_error
         //printf("xfs_read_agf.exit tid:%d, ret:%d, agbp_error:%d\n", tid(), ret, agbp_error)
-        s_dev = @cast(agbp, "struct xfs_buf", "xfs")->b_mount->m_super->s_dev
-        printf("xfs_read_agf.exit tid:%d, device:[%d:%d], ret:%d, agbp_error:%d\n", tid(), MAJOR(s_dev), MINOR(s_dev), ret, agbp_error)
+        s_dev = @cast(agbp_void, "struct xfs_buf", "xfs")->b_mount->m_super->s_dev
+        agpb_buf_addr = @cast(agbp_void, "struct xfs_buf", "xfs")->b_addr
+        agf_magic = @cast(agpb_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum
+        agf_freeblks = @cast(agpb_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks
+        printf("xfs_read_agf.exit tid:%d, device:[%d:%d], ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d\n", tid(), MAJOR(s_dev), MINOR(s_dev), ret, agbp_error, ntohl(agf_magic), ntohl(agf_freeblks))
         delete agbpp_maps[tid()]
     }
 }
@@ -46,13 +50,13 @@ probe module("xfs").function("xfs_alloc_ag_vextent") {
     dev_maj = MAJOR(s_dev)
     dev_min = MINOR(s_dev)
 
-    if(dev_maj == 7 && dev_min == 0) {
-        agbp_maps[agbp] = 1
+    if(agbp in agbp_maps) {
+        //agbp_maps[agbp] = 1
         // xfs_perag
         agf_magic = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
         agf_freeblks = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
         //printf("%s device:[%d:%d], afg:%d, pag:%s\n", probefunc(), MAJOR(s_dev), MINOR(s_dev), $args->agno, $args->pag$)
-        printf("%s device:[%d:%d], agno:%d, agf_magic:0x%x, agf_freeblks:%d\n", probefunc(), MAJOR(s_dev), MINOR(s_dev), $args->agno, ntohl(agf_magic), ntohl(agf_freeblks))
+        printf("%s device:[%d:%d], agno:%d, agf_magic:0x%x, agf_freeblks:%d\n", probefunc(), dev_maj, dev_min, $args->agno, ntohl(agf_magic), ntohl(agf_freeblks))
     }
 }
 
