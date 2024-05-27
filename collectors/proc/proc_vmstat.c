@@ -31,7 +31,7 @@ static ARL_BASE *__arl_vmstat = NULL;
 static uint64_t
     // minor faults since last boot 一级页面和二级页面的错误数
     __pgfault = 0,
-    // major faults since last boot 一级页面的错误数(
+    // major faults since last boot 一级页面的错误数 (
     __pgmajfault = 0,
     // page ins since last boot 数据从硬盘读到物理内存
     __pgpgin = 0,
@@ -39,15 +39,17 @@ static uint64_t
     __pgpgout = 0,
     // swap ins since last boot 数据从磁盘交换区装入内存
     __pswpin = 0,
-    // swap outs since last boot 数据从内存转储到磁盘交换区的速率(5分钟内)
+    // swap outs since last boot 数据从内存转储到磁盘交换区的速率 (5 分钟内)
     // *should never be positive. This means the kernel is having to write
     // memory pages to disk to *free up memory for some other process or disk
     // cache. One may see occasional swapping on the *machine due to the kernel
     // swapping out a process page in favor of a disk cache page due to *the
     // swappiness factor set
-    // *平均每秒把数据从磁盘交换区装到内存的数据量读取/proc/vmstat文件得出最近240秒内pswpin的增量，
-    // *把pswpin的增量再除以240得到每秒的平均增量平均每秒把数据从内存装到磁盘交换区的数据量读取/proc/vmstat文件得出最近240秒内pswpout的增量，
-    // *把pswpout的增量再除以240得到每秒的平均增量
+    // *平均每秒把数据从磁盘交换区装到内存的数据量读取/proc/vmstat 文件得出最近
+    // 240 秒内 pswpin 的增量， *把 pswpin 的增量再除以 240
+    // 得到每秒的平均增量平均每秒把数据从内存装到磁盘交换区的数据量读取/proc/vmstat
+    // 文件得出最近 240 秒内 pswpout 的增量， *把 pswpout 的增量再除以 240
+    // 得到每秒的平均增量
     __pswpout = 0,
     // dirty pages waiting to be written to disk 脏页数
     // signifies amount of memory waiting to be written to disk. If you have a

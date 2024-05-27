@@ -18,7 +18,7 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
-    // 所有cpu共享的大小，位是字节，必须是内核页大小（几乎永远是
+    // 所有 cpu 共享的大小，位是字节，必须是内核页大小（几乎永远是
     // 4096）的倍数，也必须是 2 的幂次。
     __uint(max_entries, 256 * 1024);
 } __bs_ev_rbmap SEC(".maps");
@@ -30,20 +30,21 @@ const volatile __u64 min_duration_ns = 0;
 
 SEC("tp/sched/sched_process_exec")
 __s32 handle_exec(struct trace_event_raw_sched_process_exec *ctx) {
-    struct task_struct  *task;
-    __u16                fname_off;
+    struct task_struct *task;
+    __u16 fname_off;
     struct bootstrap_ev *bs_ev;
-    pid_t                pid;
-    __u64                start_ns;
-    kuid_t               uid;
+    pid_t pid;
+    __u64 start_ns;
+    kuid_t uid;
 
     pid = __xm_get_pid();
     start_ns = bpf_ktime_get_ns();
 
     void *value = bpf_map_lookup_elem(&__exec_start_hsmap, &pid);
     if (!value) {
-        // 在ringbuffer中保留空间
-        bs_ev = bpf_ringbuf_reserve(&__bs_ev_rbmap, sizeof(struct bootstrap_ev), 0);
+        // 在 ringbuffer 中保留空间
+        bs_ev =
+            bpf_ringbuf_reserve(&__bs_ev_rbmap, sizeof(struct bootstrap_ev), 0);
         if (!bs_ev) {
             return 0;
         }
@@ -59,7 +60,8 @@ __s32 handle_exec(struct trace_event_raw_sched_process_exec *ctx) {
         bpf_get_current_comm(&bs_ev->comm, sizeof(bs_ev->comm));
         // 难道高字节是偏移？
         fname_off = ctx->__data_loc_filename & 0xFFFF;
-        bpf_core_read_str(&bs_ev->filename, sizeof(bs_ev->filename), (void *)ctx + fname_off);
+        bpf_core_read_str(&bs_ev->filename, sizeof(bs_ev->filename),
+                          (void *)ctx + fname_off);
 
         bpf_ringbuf_submit(bs_ev, 0);
     }
@@ -69,10 +71,10 @@ __s32 handle_exec(struct trace_event_raw_sched_process_exec *ctx) {
 
 SEC("tp/sched/sched_process_exit")
 __s32 handle_exit(struct trace_event_raw_sched_process_template *ctx) {
-    struct task_struct  *task;
+    struct task_struct *task;
     struct bootstrap_ev *bs_ev;
-    pid_t                pid, tid;
-    __u64               *start_ns, duration_ns = 0;
+    pid_t pid, tid;
+    __u64 *start_ns, duration_ns = 0;
 
     pid = __xm_get_pid();
     tid = __xm_get_tid();
@@ -92,7 +94,8 @@ __s32 handle_exit(struct trace_event_raw_sched_process_template *ctx) {
             return 0;
         }
 
-        bs_ev = bpf_ringbuf_reserve(&__bs_ev_rbmap, sizeof(struct bootstrap_ev), 0);
+        bs_ev =
+            bpf_ringbuf_reserve(&__bs_ev_rbmap, sizeof(struct bootstrap_ev), 0);
         if (bs_ev) {
             task = (struct task_struct *)bpf_get_current_task();
 

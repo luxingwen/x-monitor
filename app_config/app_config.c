@@ -11,9 +11,9 @@
 #include "utils/log.h"
 
 struct appconfig {
-    char             config_file[FILENAME_MAX + 1];
-    config_t         cfg;
-    bool             loaded;
+    char config_file[FILENAME_MAX + 1];
+    config_t cfg;
+    bool loaded;
     pthread_rwlock_t rw_lock;
 };
 
@@ -34,9 +34,11 @@ int32_t appconfig_load(const char *config_file) {
             strncpy(__appconfig.config_file, config_file, FILENAME_MAX);
             config_init(&__appconfig.cfg);
 
-            if (config_read_file(&__appconfig.cfg, __appconfig.config_file) != CONFIG_TRUE) {
+            if (config_read_file(&__appconfig.cfg, __appconfig.config_file)
+                != CONFIG_TRUE) {
                 fprintf(stderr, "config_read_file failed: %s:%d - %s",
-                        config_error_file(&__appconfig.cfg), config_error_line(&__appconfig.cfg),
+                        config_error_file(&__appconfig.cfg),
+                        config_error_line(&__appconfig.cfg),
                         config_error_text(&__appconfig.cfg));
                 __appconfig.loaded = false;
                 config_destroy(&__appconfig.cfg);
@@ -71,12 +73,16 @@ void appconfig_reload() {
         config_destroy(&__appconfig.cfg);
         config_init(&__appconfig.cfg);
 
-        if (config_read_file(&__appconfig.cfg, __appconfig.config_file) != CONFIG_TRUE) {
-            error("config_read_file failed: %s:%d - %s", config_error_file(&__appconfig.cfg),
-                  config_error_line(&__appconfig.cfg), config_error_text(&__appconfig.cfg));
+        if (config_read_file(&__appconfig.cfg, __appconfig.config_file)
+            != CONFIG_TRUE) {
+            error("config_read_file failed: %s:%d - %s",
+                  config_error_file(&__appconfig.cfg),
+                  config_error_line(&__appconfig.cfg),
+                  config_error_text(&__appconfig.cfg));
             __appconfig.loaded = false;
         } else {
-            info("reload config file: '%s' successed.", __appconfig.config_file);
+            info("reload config file: '%s' successed.",
+                 __appconfig.config_file);
             config_write(&__appconfig.cfg, stdout);
             __appconfig.loaded = true;
         }
@@ -143,7 +149,8 @@ int32_t appconfig_get_int(const char *key, int32_t def) {
     return i;
 }
 
-const char *appconfig_get_member_str(const char *path, const char *key, const char *def) {
+const char *appconfig_get_member_str(const char *path, const char *key,
+                                     const char *def) {
     if (unlikely(!path || !key)) {
         return def;
     }
@@ -164,7 +171,8 @@ const char *appconfig_get_member_str(const char *path, const char *key, const ch
     return str;
 }
 
-int32_t appconfig_get_member_bool(const char *path, const char *key, int32_t def) {
+int32_t appconfig_get_member_bool(const char *path, const char *key,
+                                  int32_t def) {
     if (unlikely(!path || !key)) {
         return def;
     }
@@ -183,7 +191,8 @@ int32_t appconfig_get_member_bool(const char *path, const char *key, int32_t def
     return b;
 }
 
-int32_t appconfig_get_member_int(const char *path, const char *key, int32_t def) {
+int32_t appconfig_get_member_int(const char *path, const char *key,
+                                 int32_t def) {
     if (unlikely(!path || !key)) {
         return def;
     }
@@ -203,10 +212,11 @@ int32_t appconfig_get_member_int(const char *path, const char *key, int32_t def)
 }
 
 /**
- * It takes a path to a config setting, and returns a pointer to the config setting
+ * It takes a path to a config setting, and returns a pointer to the config
+ * setting
  *
- * @param path The path to the setting. This is in the same format as the path used by
- * config_lookup(), described above.
+ * @param path The path to the setting. This is in the same format as the path
+ * used by config_lookup(), described above.
  *
  * @return A pointer to a config_setting_t struct.
  */

@@ -158,7 +158,7 @@ perf trace -e 'xfs:xfs_ail_*' -a --kernel-syscall-graph --comm --failure --call-
 perf probe -L xfs_log_commit_cil -m /usr/lib/debug/lib/modules/4.18.0-348.7.1.el8_5.x86_64+debug/kernel/fs/xfs/xfs.ko.debug
 ```
 
-##### 使用SystemTap查看函数产生
+##### 使用SystemTap查看函数声明
 
 ```
 stap -L 'kernel.function("vfs_read")'
@@ -244,7 +244,7 @@ stap -L 'module("xfs").function("xlog_cil_push_background")'
  => xfs_trans_read_buf_map
  => xfs_read_agf
  => xfs_alloc_read_agf
- => xfs_alloc_fix_freelist
+     => xfs_alloc_fix_freelist
  => xfs_alloc_vextent
  => xfs_bmap_btalloc
  => xfs_bmapi_allocate

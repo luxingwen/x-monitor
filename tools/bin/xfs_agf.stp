@@ -2,6 +2,7 @@
 
 global agbp_maps
 global agbpp_maps
+global apbp_tran_maps
 
 probe begin {
 	printf("start tap to xfs.agf...\n")
@@ -11,60 +12,118 @@ probe end {
 	printf("exit tap to xfs.agf\n")
 }
 
+function build_agf_info_string:string(dev_maj, dev_min, agno)
+{
+    str = sprintf("dev:[%d:%d], agno:%d", dev_maj, dev_min, agno)
+    return str
+}
+
 // 读取agf的元数据返回
 probe module("xfs").function("xfs_read_agf") {
-    s_dev = $mp->m_super->s_dev
+    // s_dev = $mp->m_super->s_dev
 
-    dev_maj = MAJOR(s_dev)
-    dev_min = MINOR(s_dev)
+    // dev_maj = MAJOR(s_dev)
+    // dev_min = MINOR(s_dev)
 
     //if(dev_maj == 7 && dev_min == 0) {
     agbpp_maps[tid()] = $bpp
-    printf("xfs_read_agf.entry tid:%d,  device:[%d:%d], agno:%d\n", tid(), dev_maj, dev_min, $agno)
+    //printf("----------start----------\n")
+    //printf("tid:%d, xfs_read_agf.entry device:[%d:%d], agno:%d\n", tid(), dev_maj, dev_min, $agno)
     //}
 }
 
 probe module("xfs").function("xfs_read_agf").return {
     ret = $return
-    if(tid() in agbpp_maps) {
-        agbpp = agbpp_maps[tid()]
+    tid = tid()
+    if(tid in agbpp_maps) {
+        agbpp = agbpp_maps[tid]
         // 读取指针地址的内容，解引用，通过这种方式可以获取函数的返回参数值, 其实就是agf的xfs_buf的地址了
         agbp_void = kernel_pointer(agbpp)
-        agbp_maps[agbp_void] = 1
+        // 将agf对应的xfs_buf加入到map中，agno作为value
+        agno = @entry($agno)
+        s_dev = @cast(@entry($mp), "struct xfs_mount", "xfs")->m_super->s_dev
+        dev_maj = MAJOR(s_dev)
+        dev_min = MINOR(s_dev)
+        agf_info = build_agf_info_string(dev_maj, dev_min, agno)
+        agbp_maps[agbp_void] = agf_info
+
         agbp_error = @cast(agbp_void, "struct xfs_buf", "xfs")->b_error
         //printf("xfs_read_agf.exit tid:%d, ret:%d, agbp_error:%d\n", tid(), ret, agbp_error)
         s_dev = @cast(agbp_void, "struct xfs_buf", "xfs")->b_mount->m_super->s_dev
-        agpb_buf_addr = @cast(agbp_void, "struct xfs_buf", "xfs")->b_addr
-        agf_magic = @cast(agpb_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum
-        agf_freeblks = @cast(agpb_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks
-        printf("xfs_read_agf.exit tid:%d, device:[%d:%d], ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d\n", tid(), MAJOR(s_dev), MINOR(s_dev), ret, agbp_error, ntohl(agf_magic), ntohl(agf_freeblks))
-        delete agbpp_maps[tid()]
+        agbp_buf_addr = @cast(agbp_void, "struct xfs_buf", "xfs")->b_addr
+        agf_magic = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum
+        agf_freeblks = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks
+        printf("tid:%d, agf:{%s}, xfs_read_agf.exit ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d\n", tid, agf_info, ret, agbp_error, ntohl(agf_magic), ntohl(agf_freeblks))
+        delete agbpp_maps[tid]
+    }
+}
+
+// 将agf的xfs_buf对应的xfs_log_item加入到tran中
+probe module("xfs").function("_xfs_trans_bjoin") {
+    if($bp in agbp_maps) {
+        agf_info = agbp_maps[$bp]
+        // struct xfs_buf_log_item	*b_log_item;
+        // struct xfs_log_item	bli_item;
+        // agbp_bli = &@cast($bp, "struct xfs_buf", "xfs")->b_log_item->bli_item
+        // 如果是agf的xfs_buf
+        printf("tid:%d, agf:{%s}, _xfs_trans_bjoin xfs_log_item:%s into xfs_tran:%s\n", tid(), agf_info, @cast($bp, "struct xfs_buf", "xfs")->b_log_item->bli_item$, $tp$)
+        // 将agf的xfs_buf对应的xfs_tran加入到map中
+        apbp_tran_maps[$tp] = $bp
     }
 }
 
 // 分配ag的空闲空间
 probe module("xfs").function("xfs_alloc_ag_vextent") {
-    s_dev = $args->mp->m_super->s_dev
+    //s_dev = $args->mp->m_super->s_dev
     agbp = $args->agbp
 
-    dev_maj = MAJOR(s_dev)
-    dev_min = MINOR(s_dev)
-
     if(agbp in agbp_maps) {
-        //agbp_maps[agbp] = 1
+        agf_info = agbp_maps[agbp]
         // xfs_perag
         agf_magic = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
         agf_freeblks = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
-        //printf("%s device:[%d:%d], afg:%d, pag:%s\n", probefunc(), MAJOR(s_dev), MINOR(s_dev), $args->agno, $args->pag$)
-        printf("%s device:[%d:%d], agno:%d, agf_magic:0x%x, agf_freeblks:%d\n", probefunc(), dev_maj, dev_min, $args->agno, ntohl(agf_magic), ntohl(agf_freeblks))
+        printf("tid:%d, agf:{%s}, xfs_alloc_ag_vextent agf_magic:0x%x, agf_freeblks:%d\n", tid(), agf_info, ntohl(agf_magic), ntohl(agf_freeblks))
     }
 }
 
 // 分配ag的空闲空间完成，修改ag的元数据
 probe module("xfs").function("xfs_alloc_update_counters") {
     if($agbp in agbp_maps) {
+        agf_info = agbp_maps[$agbp]
         //pagf_freeblks = @cast($agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
         pagf_freeblks = $agbp->b_pag->pagf_freeblks
-        printf("%s pagf_freeblks:%d + len:%d\n", probefunc(), pagf_freeblks, $len)
+        printf("tid:%d, agf:{%s}, xfs_alloc_update_counters  pagf_freeblks:%d + len:%d\n", tid(), agf_info, pagf_freeblks, $len)
     }
 }
+
+// 负责将缓冲区 xfs_buf 的更改记录到日志中
+probe module("xfs").function("xfs_buf_item_log") {
+    agbp = $bip->bli_buf
+    if(agbp in agbp_maps) {
+        agf_info = agbp_maps[agbp]
+        printf("tid:%d, agf:{%s}, xfs_buf_item_log first:%d, last:%d, bi_format_count:%d, refcount:%d\n", tid(), agf_info, $first, $last, $bip->bli_format_count, $bip->bli_refcount->counter)
+    }
+}
+
+// 判断xfs_bmapi_write的返回值
+probe module("xfs").function("xfs_bmapi_write").return {
+    tran = @entry($tp)
+    error = $return
+    if(tran in apbp_tran_maps) {
+        agbp = apbp_tran_maps[tran]
+        agf_info = agbp_maps[agbp]
+        printf("tid:%d, agf:{%s}, xfs_bmapi_write ret:%d\n", tid(), agf_info, error)
+    }
+}
+
+// 提交事务后释放事务
+probe module("xfs").function("xfs_trans_free") {
+    tran = $tp
+    if(tran in apbp_tran_maps) {
+        agbp = apbp_tran_maps[tran]
+        agf_info = agbp_maps[agbp]
+        printf("tid:%d, agf:{%s}, xfs_trans_free tran:%s\n", tid(), agf_info, $tp$)
+        delete apbp_tran_maps[tran]
+    }
+}
+

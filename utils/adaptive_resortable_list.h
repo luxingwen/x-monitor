@@ -118,7 +118,7 @@ static inline int32_t arl_check(ARL_BASE *base, const char *keyword, const char 
         if (unlikely(base->found == base->wanted)) {
             // fprintf(stderr, "FOUND ALL WANTED 2: found = %zu, wanted = %zu, expected %zu\n",
             // base->found, base->wanted, base->expected);
-            // 如果所有的都找到了，那么就不需要再检查了，wanted是期望的数量，found是找到的数量
+            // 如果所有的都找到了，那么就不需要再检查了，wanted 是期望的数量，found 是找到的数量
             return 1;
         }
 

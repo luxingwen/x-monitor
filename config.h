@@ -1,5 +1,5 @@
 #define XMonitor_VERSION_MAJOR "1"
 #define XMonitor_VERSION_MINOR "0"
-#define COMMIT_HASH "cb9b181"
+#define COMMIT_HASH "4852fdd"
 #define BRANCH_NAME "main"
-#define BUILD_TIME "2022-11-04 03:59:51"
+#define BUILD_TIME "2024-05-24 08:21:59"
