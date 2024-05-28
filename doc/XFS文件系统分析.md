@@ -165,6 +165,7 @@ stap -L 'kernel.function("vfs_read")'
 stap -L 'kernel.function("vfs_write")'
 stap -L 'module("xfs").function("xfs_agf_write_verify")'
 stap -L 'module("xfs").function("xlog_cil_push_background")'
+stap -L 'module("xfs").function("xfs_bmapi_write").return'
 ```
 
 ### 函数与数据结构
@@ -249,7 +250,7 @@ stap -L 'module("xfs").function("xlog_cil_push_background")'
  => xfs_bmap_btalloc
  => xfs_bmapi_allocate
  => xfs_bmapi_write
- => xfs_alloc_file_space
+ => xfs_alloc_file_space ----》在这里构造xfs_tran
  => xfs_file_fallocate
  => vfs_fallocate
  => ksys_fallocate
@@ -360,19 +361,6 @@ void xfs_trans_dirty_buf(struct xfs_trans *tp, struct xfs_buf *bp)
 }
 ```
 
-#### xfs_buf_item_format格式化日志项
-
-FS 文件系统中用于格式化缓冲区日志项（buffer log item）的函数。这个函数的主要作用是将 `xfs_log_item` 记录的内容（例如元数据修改）格式化并写入到 `xfs_log_vec` 中，以便后续可以将这些日志条目写入到日志中，确保文件系统的一致性。
-
-```
-STATIC void
-xfs_buf_item_format(
-    struct xfs_log_item    *lip,
-    struct xfs_log_vec     *lv)
-```
-
-对于一个保存 AGF 信息的 `xfs_buf`，`bli_format_count` 的值取决于这个缓冲区中有多少个 `xfs_buf_log_format` 结构需要记录修改信息。通常情况下，AGF 信息占用一个块，因此只需要一个 `xfs_buf_log_format` 结构来记录这块的修改信息，<u>所以 `bli_format_count` 的值通常是 1</u>。
-
 #### xfs_trans_commit/xfs_log_commit_cil
 
 `xfs_trans_commit` 是 XFS 文件系统中用于提交事务的函数。它负责将事务中的所有修改记录到日志中，并确保这些修改最终应用到文件系统中。
@@ -410,6 +398,50 @@ xfs_buf_item_format(
   ```
 
 - 在函数__xfs_trans_commit函数中将事务释放
+
+#### xlog_ticket，日志票据
+
+在 XFS 文件系统中，日志票据（`xlog_ticket`）用于管理日志空间的分配和使用。日志票据的主要作用是跟踪和管理磁盘日志空间的使用情况，确保文件系统在执行各种操作（如文件改名、创建、删除等）时有充足的日志空间来记录这些操作。
+
+1. **管理日志空间**：`xlog_ticket` 记录了一个事务所需的日志空间大小，确保在日志中为该事务保留足够的空间。
+2. **跟踪事务进度**：它跟踪事务的进度，包括已经使用的日志空间和剩余的日志空间。
+3. **协调日志写入**：`xlog_ticket` 协调多个事务对日志空间的使用，避免出现日志空间不足的情况。
+4. **防止日志溢出**：通过管理和分配日志空间，`xlog_ticket` 能有效防止日志溢出，确保文件系统的稳定性和一致性。
+
+相关函数
+
+- `xfs_log_regrant`，函数用于重新授予日志空间（regrant log space）给一个已经存在的日志票据（log ticket）。当一个事务需要更多的日志空间时，可以使用这个函数来增加日志票据的空间。
+- xfs_log_reserve 函数用于为一个新的事务分配日志空间。该函数确保在开始事务之前有足够的日志空间来记录事务操作。计算事务所需的日志空间；检查日志中是否有足够的空间；如果有足够的空间，为事务分配日志空间，并创建一个日志票据。
+- xfs_log_ticket_regrant 函数用于重新分配日志票据中的日志空间。这个函数通常在一个事务已经使用完最初分配的日志空间，但需要更多空间时使用。检查新的日志空间需求。如果有足够的日志空间，重新分配并更新日志票据。
+- xfs_log_ticket_ungrant 函数用于释放一个日志票据所占用的日志空间。这个函数在事务完成或取消时使用。释放日志票据占用的日志空间。更新日志票据状态和相关计数器。
+
+#### xfs_buf_item_format格式化日志项
+
+FS 文件系统中用于格式化缓冲区日志项（buffer log item）的函数。这个函数的主要作用是将 `xfs_log_item` 记录的内容（例如元数据修改）格式化并写入到 `xfs_log_vec` 中，以便后续可以将这些日志条目写入到日志中，确保文件系统的一致性。
+
+```
+STATIC void
+xfs_buf_item_format(
+    struct xfs_log_item    *lip,
+    struct xfs_log_vec     *lv)
+```
+
+对于一个保存 AGF 信息的 `xfs_buf`，`bli_format_count` 的值取决于这个缓冲区中有多少个 `xfs_buf_log_format` 结构需要记录修改信息。通常情况下，AGF 信息占用一个块，因此只需要一个 `xfs_buf_log_format` 结构来记录这块的修改信息，<u>所以 `bli_format_count` 的值通常是 1</u>。
+
+```
+       fallocate-73144 [006] .... 30231.112269: xfs_buf_item_format: (xfs_buf_item_format+0x0/0x520 [xfs])
+       fallocate-73144 [006] .... 30231.112317: <stack trace>
+ => xfs_buf_item_format
+ => xfs_log_commit_cil
+ => __xfs_trans_commit
+ => xfs_alloc_file_space
+ => xfs_file_fallocate
+ => vfs_fallocate
+ => ksys_fallocate
+ => __x64_sys_fallocate
+ => do_syscall_64
+ => entry_SYSCALL_64_after_hwframe
+```
 
 #### xlog_cil_push_work
 
