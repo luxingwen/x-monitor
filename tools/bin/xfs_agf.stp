@@ -133,9 +133,9 @@ probe module("xfs").function("xfs_bmapi_write").return {
 probe module("xfs").function("xfs_trans_free") {
     tran = $tp
     if(tran in tran_agbp_map) {
-        agbp = tran_agbp_map[tran]
-        agf_info = agbp_map[agbp]
-        printf("%s, tid:%d, agf:{%s}, xfs_trans_free tran:%p\n", ctime(), tid(), agf_info, $tp)
+        //agbp = tran_agbp_map[tran]
+        //agf_info = agbp_map[agbp]
+        //printf("%s, tid:%d, agf:{%s}, xfs_trans_free tran:%p\n", ctime(), tid(), agf_info, $tp)
         delete tran_agbp_map[tran]
     }
 }
@@ -146,7 +146,7 @@ probe module("xfs").function("xfs_log_commit_cil") {
         agbp = tran_agbp_map[$tp]
         agf_info = agbp_map[agbp]
         mp_log = $mp->m_log
-        // 读取地址的内容
+        // 读取地址的内容，入参
         commit_lsn = kernel_long($commit_lsn) // should be equal -1
         printf("%s, tid:%d, agf:{%s}, xfs_log_commit_cil commit_lsn:%d, xc_commit_lsn:%d, regrant:%d, xfs_tran:%s, ticket:%s\n", ctime(), tid(), agf_info, commit_lsn, mp_log->l_cilp->xc_ctx->sequence, $regrant, $tp$, $tp->t_ticket$)
     }
@@ -197,4 +197,27 @@ probe module("xfs").function("xfs_buf_item_done") {
 
     }
 }
+
+// xlog_sync写入日志到磁盘
+probe module("xfs").function("xlog_sync").return {
+    ic_data = @cast(@entry($iclog), "struct xlog_in_core", "xfs")->ic_data
+    start_lsn = ntohll(ic_data->hic_header->h_lsn)
+    tail_lsn = ntohll(ic_data->hic_header->h_tail_lsn)
+    start_lsn_blkno = start_lsn & 0xffffffff
+    start_lsn_cycle = start_lsn >> 32
+    tail_lsn_blkno = tail_lsn & 0xffffffff
+    tail_lsn_cycle = tail_lsn >> 32
+    h_len = ntohl(ic_data->hic_header->h_len)
+    h_crc = ic_data->hic_header->h_crc
+    printf("%s, tid:%d, xlog_sync, start_lsn:(%d,%d), tail_lsn:(%d,%d), h_len:%d, h_crc:%d, execname:%s\n", ctime(), tid(), start_lsn_cycle, start_lsn_blkno, tail_lsn_cycle, tail_lsn_blkno, h_len, h_crc, execname())
+    print_backtrace()
+}
+
+// xlog_cil_committed，一个ctx提交回调响应
+// probe module("xfs").function("xlog_state_release_iclog") {
+//     // 通过
+// }
+
+
+
 

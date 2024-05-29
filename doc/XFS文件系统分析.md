@@ -458,6 +458,10 @@ xfs_buf_item_format(
 
 heckpoint 事务（也称为 CIL (Committed Item List) 提交）是一个关键机制，用于保证文件系统的一致性和高效日志管理。CIL 是一个链表，用于暂存已经提交但尚未写入磁盘的日志项（`xfs_log_item`）。
 
+#### xlog_write
+
+`xlog_write` 函数负责将日志向量链表的数据写入日志文件。它管理日志记录的格式化、空间分配、及实际写入磁盘的操作。
+
 #### 不同的tail_lsn、lsn
 
 ```
@@ -574,10 +578,6 @@ enum xlog_iclog_state {
 	XLOG_STATE_IOERROR, /* IO error happened in sync'ing log 如果在同步 core log 时遇到 I/O 错误，它会进入此状态。这表示同步过程由于 I/O 错误而失败，可能需要采取进一步的操作来处理错误并恢复日志的一致性*/
 };
 ```
-
-#### xlog_write
-
-`xlog_write` 函数负责将日志向量链表的数据写入日志文件。它管理日志记录的格式化、空间分配、及实际写入磁盘的操作。
 
 #### xlog_state_set_callback
 
