@@ -168,6 +168,32 @@ stap -L 'module("xfs").function("xlog_cil_push_background")'
 stap -L 'module("xfs").function("xfs_bmapi_write").return'
 ```
 
+##### 定位函数代码行
+
+```
+⚡ root@localhost  /home/calmwu/Program/x-monitor/tools/bin  ./faddr2line /usr/lib/debug/lib/modules/4.18.0-425.19.2.el8_7.x86_64/kernel/fs/xfs/xfs.ko.debug xfs_buf_ioend+0x75
+xfs_buf_ioend+0x75/0x620:
+xfs_buf_ioend at /usr/src/debug/kernel-4.18.0-425.19.2.el8_7/linux-4.18.0-425.19.2.el8_7.x86_64/fs/xfs/xfs_buf.c:1355
+```
+
+也可以用addr2line，就是要找到模块的基地址，然后转换
+
+```
+Fri May 31 06:30:00 2024, tid:171934, agf:{dev:[7:0], agno:0}, xfs_buf_item_relse execname:kworker/4:3
+ 0xffffffffc0519320 : xfs_buf_item_relse+0x0/0x80 [xfs]
+ 0xffffffffc04ece85 : xfs_buf_ioend+0x75/0x620 [xfs]
+ 
+ ⚡ root@localhost  /home/calmwu/Program/x-monitor/tools/bin  cat /proc/modules|grep xfs
+xfs 1568768 4 - Live 0xffffffffc048a000
+```
+
+c04ece85 -  c048a000 = 0x62E85
+
+```
+ ⚡ root@localhost  /home/calmwu/Program/x-monitor/tools/bin  addr2line -e /usr/lib/debug/lib/modules/4.18.0-425.19.2.el8_7.x86_64/kernel/fs/xfs/xfs.ko.debug 0x62E85
+/usr/src/debug/kernel-4.18.0-425.19.2.el8_7/linux-4.18.0-425.19.2.el8_7.x86_64/fs/xfs/xfs_buf.c:1355
+```
+
 ### 函数与数据结构
 
 #### fallocate分配空间，修改ag的过程
@@ -462,30 +488,15 @@ heckpoint 事务（也称为 CIL (Committed Item List) 提交）是一个关键�
 
 `xlog_write` 函数负责将日志向量链表的数据写入日志文件。它管理日志记录的格式化、空间分配、及实际写入磁盘的操作。
 
-#### 不同的tail_lsn、lsn
+#### start_lsn和tail_lsn的计算
 
 ```
-struct xfs_log_item {
-....
-	xfs_lsn_t			li_lsn;		/* last on-disk lsn */
-	xfs_lsn_t			li_seq;		/* CIL commit seq */
-};
+be64_to_cpu(iclog->ic_header.h_lsn);
+
+xfs_lsn_t tail_lsn = xlog_assign_tail_lsn(log->l_mp);
 ```
 
-```
-typedef struct xlog_rec_header {
-	__be32	  h_magicno;	/* log record (LR) identifier		:  4 */
-	......
-	__be64	  h_lsn;	/* lsn of this LR			:  8 */
-	__be64	  h_tail_lsn;	/* lsn of 1st LR w/ buffers not committed: 8 */
-} xlog_rec_header_t;
-```
-
-**`h_lsn` ≠ `li_seq`**：`h_lsn` 是日志记录的 LSN，而 `li_seq` 是日志项在 CIL 中的提交序列号。这两个字段的含义和用途不同，不应相等。
-
-**`h_tail_lsn` ≠ `li_lsn`**：`h_tail_lsn` 是最早未提交日志记录的 LSN，而 `li_lsn` 是日志项最后一次写入的 LSN。这两个字段也不应相等。
-
-**`agf_lsn` 与 `li_lsn`**: 在 XFS 中，当一个日志项（如 AGF 结构体的更新）被写入日志文件时，`li_lsn` 字段会被更新为该日志项最后一次写入磁盘的 LSN。因此，`agf_lsn` 通常会等于 `li_lsn`，因为它记录了 AGF 结构体的最后写入序列号。
+其实就是iclog->ic_header中的h_lsn和h_tail_lsn
 
 #### 给xfs_in core log设置tail_lsn
 
@@ -592,6 +603,7 @@ static void xlog_state_set_callback(struct xlog *log,
 	iclog->ic_state = XLOG_STATE_CALLBACK;
 
 	.......
+	atomic64_set(&log->l_last_sync_lsn, header_lsn); // 将日志写入的lsn设置为l_last_sync_lsn
 	// cil in core log 写入磁盘后，就插入 ail 列表，同时调用 wake_up_process 唤醒 xfsalid 内核线程
 	xlog_grant_push_ail(log, 0);
 }

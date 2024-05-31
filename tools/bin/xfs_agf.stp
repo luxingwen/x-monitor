@@ -29,16 +29,30 @@ function build_agf_info_string:string(dev_maj, dev_min, agno)
 
 // 读取agf的元数据返回
 probe module("xfs").function("xfs_read_agf") {
-    // s_dev = $mp->m_super->s_dev
+    s_dev = $mp->m_super->s_dev
+    dev_maj = MAJOR(s_dev)
+    dev_min = MINOR(s_dev)
 
-    // dev_maj = MAJOR(s_dev)
-    // dev_min = MINOR(s_dev)
-
-    //if(dev_maj == 7 && dev_min == 0) {
-    agbpp_map[tid()] = $bpp
+    if(dev_maj == 7 && dev_min == 0) {
+        agbpp_map[tid()] = $bpp
     //printf("----------start----------\n")
-    //printf("tid:%d, xfs_read_agf.entry device:[%d:%d], agno:%d\n", tid(), dev_maj, dev_min, $agno)
-    //}
+        printf("%s, tid:%d, --->xfs_read_agf device:[%d:%d], agno:%d\n", ctime(), tid(), dev_maj, dev_min, $agno)
+    }
+}
+
+probe module("xfs").function("xfs_buf_read_map") {
+    tid = tid()
+    if(tid in agbpp_map) {
+        printf("%s, tid:%d, xfs_read_agf--->xfs_buf_read_map(flags:0x%x)\n", ctime(), tid, $flags)
+    }
+}
+
+probe module("xfs").function("_xfs_buf_read").return {
+    tid = tid()
+    if(tid in agbpp_map) {
+        //xfs_buf_get_map中读取的agf对应的xfs_buf没有XBF_DONE标志，因此从磁盘读取
+        printf("%s, tid:%d, xfs_read_agf--->xfs_buf_read_map<---_xfs_buf_read, ret:%d\n", ctime(), tid, $return)
+    }
 }
 
 probe module("xfs").function("xfs_read_agf").return {
@@ -62,7 +76,7 @@ probe module("xfs").function("xfs_read_agf").return {
         agbp_buf_addr = @cast(agbp_void, "struct xfs_buf", "xfs")->b_addr
         agf_magic = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum
         agf_freeblks = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks
-        printf("%s, tid:%d, agf:{%s}, xfs_read_agf.exit ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), tid, agf_info, ret, agbp_error, ntohl(agf_magic), ntohl(agf_freeblks))
+        printf("%s, tid:%d, agf:{%s}, xfs_read_agf.exit<--- ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), tid, agf_info, ret, agbp_error, ntohl(agf_magic), ntohl(agf_freeblks))
         delete agbpp_map[tid]
     }
 }
@@ -73,10 +87,11 @@ probe module("xfs").function("_xfs_trans_bjoin") {
         agf_info = agbp_map[$bp]
         // struct xfs_buf_log_item	*b_log_item;
         // struct xfs_log_item	bli_item;
-        agbp_bip = &@cast($bp, "struct xfs_buf", "xfs")->b_log_item
+        agbp_bip = @cast($bp, "struct xfs_buf", "xfs")->b_log_item
         agbp_lip = &@cast($bp, "struct xfs_buf", "xfs")->b_log_item->bli_item
         // 如果是agf的xfs_buf
         printf("%s, tid:%d, agf:{%s}, _xfs_trans_bjoin xfs_log_item:%s into xfs_tran:%s\n", ctime(), tid(), agf_info, @cast($bp, "struct xfs_buf", "xfs")->b_log_item->bli_item$, $tp$)
+        printf("%s, tid:%d, agf:{%s}, agbp_bip:%p, agbp_lip:%p\n", ctime(), tid(), agf_info, agbp_bip, agbp_lip)
         // 将agf的xfs_buf对应的xfs_tran加入到map中
         tran_agbp_map[$tp] = $bp
         lip_agbp_map[agbp_lip] = $bp
@@ -109,13 +124,13 @@ probe module("xfs").function("xfs_alloc_update_counters") {
 }
 
 // 负责将缓冲区 xfs_buf 的更改记录到日志中
-probe module("xfs").function("xfs_buf_item_log") {
-    agbp = $bip->bli_buf
-    if(agbp in agbp_map) {
-        agf_info = agbp_map[agbp]
-        printf("%s, tid:%d, agf:{%s}, xfs_buf_item_log first:%d, last:%d, bi_format_count:%d, refcount:%d\n", ctime(), tid(), agf_info, $first, $last, $bip->bli_format_count, $bip->bli_refcount->counter)
-    }
-}
+// probe module("xfs").function("xfs_buf_item_log") {
+//     agbp = $bip->bli_buf
+//     if(agbp in agbp_map) {
+//         agf_info = agbp_map[agbp]
+//         printf("%s, tid:%d, agf:{%s}, xfs_buf_item_log first:%d, last:%d, bi_format_count:%d, refcount:%d\n", ctime(), tid(), agf_info, $first, $last, $bip->bli_format_count, $bip->bli_refcount->counter)
+//     }
+// }
 
 // 判断xfs_bmapi_write的返回值
 probe module("xfs").function("xfs_bmapi_write").return {
@@ -149,6 +164,61 @@ probe module("xfs").function("xfs_log_commit_cil") {
         // 读取地址的内容，入参
         commit_lsn = kernel_long($commit_lsn) // should be equal -1
         printf("%s, tid:%d, agf:{%s}, xfs_log_commit_cil commit_lsn:%d, xc_commit_lsn:%d, regrant:%d, xfs_tran:%s, ticket:%s\n", ctime(), tid(), agf_info, commit_lsn, mp_log->l_cilp->xc_ctx->sequence, $regrant, $tp$, $tp->t_ticket$)
+    }
+}
+
+// 固定日志缓冲区
+probe module("xfs").function("xfs_buf_item_pin").return {
+    lip = @entry($lip)
+    if(lip in lip_agbp_map) {
+        bip_refcount = @cast(lip, "struct xfs_buf_log_item", "xfs")->bli_refcount->counter
+        bip_pincount = @cast(lip, "struct xfs_buf_log_item", "xfs")->bli_buf->b_pin_count->counter
+        agbp = lip_agbp_map[lip]
+        printf("%s, tid:%d, agf:{%s}, xfs_buf_item_pin.return bip_refcount:%d, bip_pincount:%d\n", ctime(), tid(), agbp_map[agbp], bip_refcount, bip_pincount)
+    }
+}
+
+// 解除固定日志缓冲区
+probe module("xfs").function("xfs_buf_item_unpin") {
+    if($lip in lip_agbp_map) {
+        agbp = lip_agbp_map[$lip]
+        bip_stale = @cast($lip, "struct xfs_buf_log_item", "xfs")->bli_flags & 0x04//XFS_BLI_STALE
+        bip_refcount = @cast($lip, "struct xfs_buf_log_item", "xfs")->bli_refcount->counter
+        bip_pincount = @cast($lip, "struct xfs_buf_log_item", "xfs")->bli_buf->b_pin_count->counter
+        bip_refcount--
+        bip_pincount--
+        printf("%s, tid:%d, agf:{%s}, xfs_buf_item_unpin bip_stale:%d, bip_refcount:%d, bip_pincount:%d, remove:%d, execname:%s\n", ctime(), tid(), agbp_map[agbp], bip_stale, bip_refcount, bip_pincount, $remove, execname())
+        // 输出谁调用的unpin
+        print_backtrace()
+    }
+}
+
+// 释放agbp
+probe module("xfs").function("xfs_buf_item_relse") {
+    if($bp in agbp_map) {
+        agbp_bip = $bp->b_log_item
+        agf_info = agbp_map[$bp]
+        // 释放xfs_buf_log_item和xfs_log_item
+        delete bip_agbp_map[agbp_bip]
+        delete lip_agbp_map[agbp_bip]
+        //
+        if($bp->b_pag == 0) {
+            printf("%s, tid:%d, agf:{%s}, xfs_buf_free execname:%s\n", ctime(), tid(), agf_info, execname())
+            delete agbp_map[$bp]
+        }
+        printf("%s, tid:%d, agf:{%s}, xfs_buf_item_relse execname:%s\n", ctime(), tid(), agf_info, execname())
+        print_backtrace()
+    }
+}
+
+probe module("xfs").function("xfs_perag_put") {
+    s_dev = $pag->pag_mount->m_super->s_dev
+    pag_ref = $pag->pag_ref->counter
+    pag_ref--
+    if(pag_ref == 0) {
+        dev_maj = MAJOR(s_dev)
+        dev_min = MINOR(s_dev)
+        printf("%s, tid:%d, xfs_perag_put device:[%d:%d], agno:%d, pag_ref:%d\n", ctime(), tid(), dev_maj, dev_min, $pag->pag_agno, pag_ref)
     }
 }
 
@@ -193,14 +263,14 @@ probe module("xfs").function("xfs_buf_item_done") {
         agf_magic = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
         agf_freeblks = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
         printf("%s, tid:%d, agf:{%s}, xfs_buf_item_done, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), tid(), agf_info, ntohl(agf_magic), ntohl(agf_freeblks))
-        print_backtrace()
-
+        //print_backtrace()
     }
 }
 
-// xlog_sync写入日志到磁盘
+// xlog_sync写入日志到磁盘，发起了bio
 probe module("xfs").function("xlog_sync").return {
     ic_data = @cast(@entry($iclog), "struct xlog_in_core", "xfs")->ic_data
+    // 将xlog写入磁盘，获取start_lsn和tail_lsn
     start_lsn = ntohll(ic_data->hic_header->h_lsn)
     tail_lsn = ntohll(ic_data->hic_header->h_tail_lsn)
     start_lsn_blkno = start_lsn & 0xffffffff
@@ -213,10 +283,23 @@ probe module("xfs").function("xlog_sync").return {
     print_backtrace()
 }
 
-// xlog_cil_committed，一个ctx提交回调响应
-// probe module("xfs").function("xlog_state_release_iclog") {
-//     // 通过
+// xlog_sync回调
+probe module("xfs").function("xlog_state_do_iclog_callbacks") {
+    h_crc = $iclog->ic_data->hic_header->h_crc
+    h_len = ntohl($iclog->ic_data->hic_header->h_len)
+    start_lsn = ntohll($iclog->ic_data->hic_header->h_lsn)
+    start_lsn_blkno = start_lsn & 0xffffffff
+    start_lsn_cycle = start_lsn >> 32
+    printf("%s, tid:%d, xlog_state_do_iclog_callbacks, start_lsn:(%d,%d), h_len:%d, h_crc:%d, execname:%s\n", ctime(), tid(), start_lsn_cycle, start_lsn_blkno, h_len, h_crc, execname())
+}
+
+// xlog写入磁盘成功，记录xlog_in_core的h_lsn
+// 麒麟可以跟踪xlog_state_do_callback
+// probe module("xfs").function("xlog_state_set_callback") {
+
 // }
+
+
 
 
 
