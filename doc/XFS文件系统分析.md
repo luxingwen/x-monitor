@@ -733,6 +733,32 @@ xfs文件系统mount成功后，会定时触发一个延迟任务，alloc_workqu
  => ret_from_fork
 ```
 
+#### iop_push、xfsaild_push_item
+
+返回值
+
+```
+#define XFS_ITEM_SUCCESS 
+#define XFS_ITEM_PINNED 1
+#define XFS_ITEM_LOCKED 2
+#define XFS_ITEM_FLUSHING 3
+```
+
+- **`XFS_ITEM_SUCCESS`**：表示 AGF 日志条目已成功推送，可以继续处理下一个条目。日志项已成功推送并已从 AIL 中移除，日志项已经成功地刷新到磁盘或其他适当的目标位置，没有任何阻塞条件。
+- **`XFS_ITEM_FLUSHING`**：表示 AGF 日志条目正在写入，可能需要等待或进行其他处理。这个状态表示日志项已被标记为正在进行 I/O 操作（通常是写操作），并且还没有完成。其他线程应该等待刷新操作完成。
+- **`XFS_ITEM_PINNED`**：表示 AGF 日志条目被固定，无法推送，需要等待依赖操作完成。日志项被固定在内存中，通常是因为其引用计数器（reference count）没有降到零，意味着某些操作（如正在进行的 I/O 或其他持有该项的引用）阻止了它的释放。
+- **`FS_ITEM_LOCKED`**：表示 AGF 日志条目被锁定，无法推送，需要等待解锁。 日志项处于被锁定状态，可能是因为正在被其他操作使用，或者它的状态需要先被更新。需要等到锁释放后才能继续对其进行推送操作。
+
+#### xfs_buf_delwri_queue
+
+将xfs_buf加入delay write queue中，xfs_buf成员b_list是链表的节点。
+
+#### __xfs_buf_submit
+
+如果agf的对应的xfs_buf不存在，会调用该函数从磁盘读取，而且是同步读取，XBF_READ
+
+序列化agf的xfs_buf的元数据到磁盘，是提交delay write queue，这是使用XBF_ASYNC|XBF_WRITE，异步写
+
 ### 资料
 
 [内核基础设施——wait queue - Notes about linux and my work (laoqinren.net)](https://linux.laoqinren.net/kernel/wait-queue/)
