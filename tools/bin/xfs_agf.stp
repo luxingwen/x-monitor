@@ -5,7 +5,7 @@ global agbpp_map
 global tran_agbp_map // xfs_trans ---> xfs_buf ---> agf
 global lip_agbp_map // xfs_log_item ---> xfs_buf ---> agf
 global bip_agbp_map // xfs_buf_log_item ---> xfs_buf ---> agf
-global lv_agbp_map // xfs_log_vec ---> xfs_buf ---> agf
+//global lv_agbp_map // xfs_log_vec ---> xfs_buf ---> agf
 
 probe begin {
 	printf("start tap to xfs.agf...\n")
@@ -17,7 +17,7 @@ probe end {
     delete tran_agbp_map
     delete lip_agbp_map
     delete bip_agbp_map
-    delete lv_agbp_map
+    //delete lv_agbp_map
     printf("exit tap to xfs.agf\n")
 }
 
@@ -227,21 +227,10 @@ probe module("xfs").function("xfs_buf_item_format").return {
         lv_buf_len = @cast(@entry($lv), "struct xfs_log_vec", "xfs")->lv_buf_len
         lv_size = @cast(@entry($lv), "struct xfs_log_vec", "xfs")->lv_size
         agbp = lip_agbp_map[lip]
-        lv_agbp_map[@entry($lv)] = agbp
+        //lv_agbp_map[@entry($lv)] = agbp
         printf("%s, tid:%d, agf:{%s}, xfs_buf_item_format.return lv.lv_bytes:%d, lv_buf_len:%d, lv_size:%d\n", ctime(), tid(), agbp_map[agbp], lv_bytes, lv_buf_len, lv_size)
     }
 }
-
-probe module("xfs").function("xfs_buf_item_done") {
-    if($bp in agbp_map) {
-        agf_info = agbp_map[$bp]
-        agf_magic = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
-        agf_freeblks = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
-        printf("%s, tid:%d, agf:{%s}, xfs_buf_item_done, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), tid(), agf_info, ntohl(agf_magic), ntohl(agf_freeblks))
-        //print_backtrace()
-    }
-}
-
 // xlog_sync写入日志到磁盘，发起了bio
 probe module("xfs").function("xlog_sync").return {
     ic_data = @cast(@entry($iclog), "struct xlog_in_core", "xfs")->ic_data
@@ -254,8 +243,8 @@ probe module("xfs").function("xlog_sync").return {
     tail_lsn_cycle = tail_lsn >> 32
     h_len = ntohl(ic_data->hic_header->h_len)
     h_crc = ic_data->hic_header->h_crc
-    printf("%s, tid:%d, xlog_sync, start_lsn:(%d,%d), tail_lsn:(%d,%d), h_len:%d, h_crc:%d, execname:%s\n", ctime(), tid(), start_lsn_cycle, start_lsn_blkno, tail_lsn_cycle, tail_lsn_blkno, h_len, h_crc, execname())
-    print_backtrace()
+    printf("%s, tid:%d, xlog_sync.return, start_lsn:(%d,%d), tail_lsn:(%d,%d), h_len:%d, h_crc:%d, execname:%s\n", ctime(), tid(), start_lsn_cycle, start_lsn_blkno, tail_lsn_cycle, tail_lsn_blkno, h_len, h_crc, execname())
+    //print_backtrace()
 }
 
 // xlog_sync回调，日志写入磁盘回调，记录写入成功的lsn
@@ -263,9 +252,9 @@ probe module("xfs").function("xlog_state_do_iclog_callbacks") {
     h_crc = $iclog->ic_data->hic_header->h_crc
     h_len = ntohl($iclog->ic_data->hic_header->h_len)
     start_lsn = ntohll($iclog->ic_data->hic_header->h_lsn)
-    start_lsn_blkno = start_lsn & 0xffffffff
-    start_lsn_cycle = start_lsn >> 32
-    printf("%s, tid:%d, xlog_state_do_iclog_callbacks, start_lsn:(%d,%d), h_len:%d, h_crc:%d, execname:%s\n", ctime(), tid(), start_lsn_cycle, start_lsn_blkno, h_len, h_crc, execname())
+    //start_lsn_blkno = start_lsn & 0xffffffff
+    //start_lsn_cycle = start_lsn >> 32
+    printf("%s, tid:%d, xlog_state_do_iclog_callbacks, start_lsn:%s, h_len:%d, h_crc:%d, execname:%s\n", ctime(), tid(), format_lsn(start_lsn), h_len, h_crc, execname())
 }
 
 // xlog_bio_end_io--->xlog_state_do_iclog_callbacks ---> ctx ---> 日志向量 ---> xfs_log_item，agf的xfs_log_item已经提交
@@ -281,8 +270,9 @@ probe module("xfs").function("xfs_buf_item_committed") {
             // XFS_BLI_INODE_ALLOC_BUF
             ret_lsn = li_lsn
         }
+        // 这个lsn应该等于ctx->start_lsn = ntohll($iclog->ic_data->hic_header->h_lsn)
         ret_lsn_str = format_lsn(ret_lsn)
-        printf("%s, tid:%d, agf:{%s}, xfs_buf_item_committed, return lsn:%s\n", ctime(), tid(), agf_info, ret_lsn_str)
+        printf("%s, tid:%d, agf:{%s}, xfs_buf_item_committed, return_lsn:%s, lip_lsn:%s\n", ctime(), tid(), agf_info, ret_lsn_str, format_lsn(li_lsn))
     }
 }
 
@@ -318,7 +308,7 @@ probe module("xfs").function("xfs_buf_item_unpin") {
         bip_pincount--
         printf("%s, tid:%d, agf:{%s}, xfs_buf_item_unpin bip_stale:%d, bip_refcount:%d, bip_pincount:%d, remove:%d, execname:%s\n", ctime(), tid(), agbp_map[agbp], bip_stale, bip_refcount, bip_pincount, $remove, execname())
         // 输出谁调用的unpin
-        print_backtrace()
+        //print_backtrace()
     }
 }
 
@@ -335,7 +325,8 @@ probe module("xfs").function("xfs_buf_item_push").return {
     if(lip in lip_agbp_map) {
         agbp = lip_agbp_map[lip]
         agf_info = agbp_map[agbp]
-        printf("%s, tid:%d, agf:{%s}, xfsaild_push_item.xfs_buf_item_push ret:%d\n", ctime(), tid(), agf_info, ret)
+        li_lsn = @cast(lip, "struct xfs_log_item", "xfs")->li_lsn
+        printf("%s, tid:%d, agf:{%s}, xfsaild_push_item.xfs_buf_item_push li_lsn:%s ret:%d\n", ctime(), tid(), agf_info, format_lsn(li_lsn), ret)
     }
 }
 
@@ -370,20 +361,41 @@ probe module("xfs").function("xfs_buf_bio_end_io") {
     }
 }
 
-// agf的xfs_buf写入磁盘回调，释放lip， bip，agbp
-probe module("xfs").function("xfs_buf_ioend") {
+// 元数据写入后，bio回调在一个工作任务重进行，xfs_log_item从ail链表中删除，说明其元数据写入磁盘
+probe module("xfs").function("xfs_ail_delete_one") {
+    if($lip in lip_agbp_map) {
+        agbp = lip_agbp_map[$lip]
+        agf_info = agbp_map[agbp]
+        printf("%s, tid:%d, agf:{%s}, trace_xfs_ail_delete, lip_lsn:%s\n", ctime(), tid(), agf_info, format_lsn($lip->li_lsn))
+    }
+}
+
+probe module("xfs").function("xfs_buf_item_done") {
     if($bp in agbp_map) {
-        agbp_bip = $bp->b_log_item
         agf_info = agbp_map[$bp]
-        // 释放xfs_buf_log_item和xfs_log_item
+        agf_magic = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
+        agf_freeblks = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
+        printf("%s, tid:%d, agf:{%s}, xfs_buf_item_done, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), tid(), agf_info, ntohl(agf_magic), ntohl(agf_freeblks))
+        //print_backtrace()
+    }
+}
+
+// agf的xfs_buf写入磁盘回调，释放lip， bip，agbp
+probe module("xfs").function("xfs_buf_ioend").return {
+    bp = @entry($bp)
+    if(bp in agbp_map) {
+
+        agbp_bip = @cast(bp, "struct xfs_buf", "xfs")->b_log_item
+        agf_info = agbp_map[bp]
+        printf("%s, tid:%d, agf:{%s}, xfs_buf_ioend.return execname:%s\n", ctime(), tid(), agf_info, execname())
+
         delete bip_agbp_map[agbp_bip]
         delete lip_agbp_map[agbp_bip]
+        delete agbp_map[bp]
         //
-        if($bp->b_pag == 0) {
-            printf("%s, tid:%d, agf:{%s}, xfs_buf_free execname:%s\n", ctime(), tid(), agf_info, execname())
-            delete agbp_map[$bp]
-        }
-        printf("%s, tid:%d, agf:{%s}, xfs_buf_item_relse execname:%s\n", ctime(), tid(), agf_info, execname())
-        print_backtrace()
+        // if($bp->b_pag == 0) {
+        //     printf("%s, tid:%d, agf:{%s}, xfs_buf_free execname:%s\n", ctime(), tid(), agf_info, execname())
+        //     delete agbp_map[$bp]
+        // }
     }
 }

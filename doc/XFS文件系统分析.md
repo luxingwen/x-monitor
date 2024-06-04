@@ -735,6 +735,8 @@ xfs文件系统mount成功后，会定时触发一个延迟任务，alloc_workqu
 
 #### iop_push、xfsaild_push_item
 
+将xfs_log_item对应的xfs_buf数据写入delay write queue
+
 返回值
 
 ```
@@ -758,6 +760,32 @@ xfs文件系统mount成功后，会定时触发一个延迟任务，alloc_workqu
 如果agf的对应的xfs_buf不存在，会调用该函数从磁盘读取，而且是同步读取，XBF_READ
 
 序列化agf的xfs_buf的元数据到磁盘，是提交delay write queue，这是使用XBF_ASYNC|XBF_WRITE，异步写
+
+#### tail_lsn是在哪里设置的
+
+ic_data->hic_header->h_tail_lsn这个lsn是在哪里赋值的，xlog_sync时会设置tail_lsn，标识已经完成的事务
+
+ic_data->hic_header->h_lsn这个lsn是commit_lsn，这个lsn应该等于ctx->start_lsn
+
+这个commit_lsn在函数xfs_trans_ail_update_bulk中设置给xfs_log_item->li_lsn
+
+```
+void
+xfs_trans_ail_update_bulk(
+	struct xfs_ail		*ailp,
+	struct xfs_ail_cursor	*cur,
+	struct xfs_log_item	**log_items,
+	int			nr_items,
+	xfs_lsn_t		lsn) __releases(ailp->ail_lock)
+{
+	......
+		// 在这里给 xfs_log_item 设置了日志写入的 lsn，这个 lsn 是日志写入的 lsn
+		lip->li_lsn = lsn;
+		// 将 xfs_log_item 的 ail 链表节点 加入 tmp 链表中
+		list_add(&lip->li_ail, &tmp);
+    ......
+}
+```
 
 ### 资料
 
