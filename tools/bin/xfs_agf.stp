@@ -277,25 +277,25 @@ probe module("xfs").function("xfs_buf_item_committed") {
 }
 
 // 将xfs_log_item加入ali链表中
-probe module("xfs").function("trace_xfs_ail_move") {
-    if($lip in lip_agbp_map) {
-        agbp = lip_agbp_map[$lip]
-        agf_info = agbp_map[agbp]
-        old_lsn_str = format_lsn($old_lsn)
-        new_lsn_str = format_lsn($new_lsn)
-        printf("%s, tid:%d, agf:{%s}, trace_xfs_ail_move: lip_lsn:%s===>%s\n", ctime(), tid(), agf_info, old_lsn_str, new_lsn_str)
-    }
-}
+// probe module("xfs").function("trace_xfs_ail_move") {
+//     if($lip in lip_agbp_map) {
+//         agbp = lip_agbp_map[$lip]
+//         agf_info = agbp_map[agbp]
+//         old_lsn_str = format_lsn($old_lsn)
+//         new_lsn_str = format_lsn($new_lsn)
+//         printf("%s, tid:%d, agf:{%s}, trace_xfs_ail_move: lip_lsn:%s===>%s\n", ctime(), tid(), agf_info, old_lsn_str, new_lsn_str)
+//     }
+// }
 
 // lip加入到ail链表中
-probe module("xfs").function("trace_xfs_ail_insert") {
-    if($lip in lip_agbp_map) {
-        agbp = lip_agbp_map[$lip]
-        agf_info = agbp_map[agbp]
-        new_lsn_str = format_lsn($new_lsn)
-        printf("%s, tid:%d, agf:{%s}, trace_xfs_ail_insert lip_lsn:%s\n", ctime(), tid(), agf_info, new_lsn_str)
-    }
-}
+// probe module("xfs").function("trace_xfs_ail_insert") {
+//     if($lip in lip_agbp_map) {
+//         agbp = lip_agbp_map[$lip]
+//         agf_info = agbp_map[agbp]
+//         new_lsn_str = format_lsn($new_lsn)
+//         printf("%s, tid:%d, agf:{%s}, trace_xfs_ail_insert lip_lsn:%s\n", ctime(), tid(), agf_info, new_lsn_str)
+//     }
+// }
 
 // 解除固定日志缓冲区，后续xfsaild才可以push
 probe module("xfs").function("xfs_buf_item_unpin") {
@@ -366,7 +366,7 @@ probe module("xfs").function("xfs_ail_delete_one") {
     if($lip in lip_agbp_map) {
         agbp = lip_agbp_map[$lip]
         agf_info = agbp_map[agbp]
-        printf("%s, tid:%d, agf:{%s}, trace_xfs_ail_delete, lip_lsn:%s\n", ctime(), tid(), agf_info, format_lsn($lip->li_lsn))
+        printf("%s, tid:%d, agf:{%s}, xfs_ail_delete_one, lip_lsn:%s\n", ctime(), tid(), agf_info, format_lsn($lip->li_lsn))
     }
 }
 
@@ -399,3 +399,9 @@ probe module("xfs").function("xfs_buf_ioend").return {
         // }
     }
 }
+
+probe module("xfs").function("xfs_bmap_extents_to_btree") {
+    printf("%s, tid:%d, ")
+}
+
+

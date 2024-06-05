@@ -194,6 +194,66 @@ c04ece85 -  c048a000 = 0x62E85
 /usr/src/debug/kernel-4.18.0-425.19.2.el8_7/linux-4.18.0-425.19.2.el8_7.x86_64/fs/xfs/xfs_buf.c:1355
 ```
 
+由于麒麟没有提供kernel-debuginfo-common-`uname -r`rpm包，所以没法在gdb中直接使用disassemble和list命令对应到代码
+
+```
+(gdb) list *(xfs_bmap_extents_to_btree+0x533)
+0x359d3 is in xfs_bmap_extents_to_btree (fs/xfs/libxfs/xfs_bmap.c:657).
+652	in fs/xfs/libxfs/xfs_bmap.c
+```
+
+#### 麒麟xfs shutdown堆栈分析
+
+堆栈顶部，RIP指令
+
+```
+xfs_bmap_extents_to_btree+0x533
+```
+
+使用gdb查看xfs.ko，+1331偏移处的指令
+
+```
+disassemble xfs_bmap_extents_to_btree
+0x000000000001a933 <+1331>:	ud2
+```
+
+ud2:用于生成一个未定义的指令异常（Invalid Opcode Exception）
+
+查看从哪里跳转到此处
+
+```
+   0x000000000001a56f <+367>:	cmp    $0xffffffffffffffff,%rax
+   0x000000000001a573 <+371>:	je     0x1a933 <xfs_bmap_extents_to_btree+1331>
+```
+
+这里cmp指令，结合代码就是
+
+```
+	if (WARN_ON_ONCE(args.fsbno == NULLFSBLOCK)) {
+		error = -ENOSPC;
+		goto out_root_realloc;
+	}
+```
+
+NULLFSBLOCK = -1
+
+说明前面args.fsbo被设置为NULLFSBLOCK
+
+```
+	if (tp->t_firstblock == NULLFSBLOCK) {
+		args.type = XFS_ALLOCTYPE_START_BNO;
+		args.fsbno = XFS_INO_TO_FSB(mp, ip->i_ino);
+	} else if (tp->t_flags & XFS_TRANS_LOWMODE) {
+		args.type = XFS_ALLOCTYPE_START_BNO;
+		args.fsbno = tp->t_firstblock;
+	} else {
+		args.type = XFS_ALLOCTYPE_NEAR_BNO;
+		args.fsbno = tp->t_firstblock;
+	}
+```
+
+使用systemtap去观察**xfs_alloc_vexten**t函数，看args的fsbno，同时观察函数**xfs_bmap_extents_to_btree**函数参数tp的t_firstblock和t_flags，获取fsbno取值逻辑。
+
 ### 函数与数据结构
 
 #### fallocate分配空间，修改ag的过程
