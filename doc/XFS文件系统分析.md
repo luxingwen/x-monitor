@@ -309,6 +309,8 @@ xfs_trans_add_item(
 }
 ```
 
+在_xfs_trans_bjoin函数中给xfs_buf分配xfs_buf_log_item对象
+
 ```
 STATIC void _xfs_trans_bjoin(struct xfs_trans *tp, struct xfs_buf *bp,
 			     int reset_recur)

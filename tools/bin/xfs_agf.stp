@@ -122,7 +122,7 @@ probe module("xfs").function("xfs_alloc_ag_vextent") {
     }
 }
 
-// 分配ag的空闲空间完成，修改ag的元数据
+// 分配ag的空闲空间完成，修改ag的元数据，该函数会调用xfs_alloc_log_agf，将修改记录在xfs_buf_log_item中
 probe module("xfs").function("xfs_alloc_update_counters") {
     if($agbp in agbp_map) {
         agf_info = agbp_map[$agbp]
@@ -142,16 +142,16 @@ probe module("xfs").function("xfs_alloc_update_counters") {
 // }
 
 // 判断xfs_bmapi_write的返回值
-probe module("xfs").function("xfs_bmapi_write").return {
-    // 获得入参数xfs_tran*
-    tran = @entry($tp)
-    error = $return
-    if(tran in tran_agbp_map) {
-        agbp = tran_agbp_map[tran]
-        agf_info = agbp_map[agbp]
-        printf("%s, pid:%d, agf:{%s}, xfs_bmapi_write ret:%d\n", ctime(), pid(), agf_info, error)
-    }
-}
+// probe module("xfs").function("xfs_bmapi_write").return {
+//     // 获得入参数xfs_tran*
+//     tran = @entry($tp)
+//     error = $return
+//     if(tran in tran_agbp_map) {
+//         agbp = tran_agbp_map[tran]
+//         agf_info = agbp_map[agbp]
+//         printf("%s, pid:%d, agf:{%s}, xfs_bmapi_write ret:%d\n", ctime(), pid(), agf_info, error)
+//     }
+// }
 
 // 提交事务后释放事务
 probe module("xfs").function("xfs_trans_free") {
@@ -164,7 +164,24 @@ probe module("xfs").function("xfs_trans_free") {
     }
 }
 
-// 提交事务
+// xfs_buf的xfs_log_item已经移动到cil链表中，并且从tran链表中删除
+probe module("xfs").function("xfs_buf_item_committing") {
+    if($lip in lip_agbp_map) {
+        agbp = lip_agbp_map[$lip]
+        agbp_info = agbp_map[agbp]
+        // 判断是否有xfs_buf_log_item是否有dirty flag
+        released = "true"
+        bli_refcount = @cast($lip, "struct xfs_buf_log_item", "xfs")->bli_refcount->counter
+        bli_refcount--
+        bli_flags = bli_flags = @cast($lip, "struct xfs_buf_log_item", "xfs")->bli_flags
+        if(bli_flags & 0x02) {
+            released = "false"
+        }
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_committing commit_lsn:%d, bli_refcount:%d, released:%s\n", ctime(), pid(), agbp_info, $commit_lsn, bli_refcount, released)
+    }
+}
+
+// 提交事务，触发xlog_cil_push_work工作任务
 probe module("xfs").function("xfs_log_commit_cil") {
     if($tp in tran_agbp_map) {
         agbp = tran_agbp_map[$tp]
@@ -232,7 +249,11 @@ probe module("xfs").function("xfs_buf_item_format").return {
         printf("%s, pid:%d, agf:{%s}, xfs_buf_item_format.return lv.lv_bytes:%d, lv_buf_len:%d, lv_size:%d\n", ctime(), pid(), agbp_map[agbp], lv_bytes, lv_buf_len, lv_size)
     }
 }
-// xlog_sync写入日志到磁盘，发起了bio
+// xlog_sync写入日志到磁盘，发起了bio --->xlog_write_iclog ---> submit_bio
+/*
+	iclog->ic_bio.bi_end_io = xlog_bio_end_io; --->触发工作队列ic_end_io_work（xlog_ioend_work）
+	iclog->ic_bio.bi_private = iclog;
+*/
 probe module("xfs").function("xlog_sync").return {
     ic_data = @cast(@entry($iclog), "struct xlog_in_core", "xfs")->ic_data
     // 将xlog写入磁盘，获取start_lsn和tail_lsn
@@ -248,7 +269,12 @@ probe module("xfs").function("xlog_sync").return {
     //print_backtrace()
 }
 
-// xlog_sync回调，日志写入磁盘回调，记录写入成功的lsn
+// xlog_in_core写入磁盘回调
+// xlog_sync回调xlog_ioend_work --->xlog_state_do_iclog_callbacks，日志写入磁盘回调，记录写入成功的lsn
+// 拿到xfs_cil_ctx
+// --->xlog_cil_process_committed
+// ---> xlog_cil_committed(ctx)
+// 	xfs_trans_committed_bulk(ctx->cil->xc_log->l_ailp, ctx->lv_chain,ctx->start_lsn, abort);
 probe module("xfs").function("xlog_state_do_iclog_callbacks") {
     h_crc = $iclog->ic_data->hic_header->h_crc
     h_len = ntohl($iclog->ic_data->hic_header->h_len)
@@ -256,6 +282,11 @@ probe module("xfs").function("xlog_state_do_iclog_callbacks") {
     //start_lsn_blkno = start_lsn & 0xffffffff
     //start_lsn_cycle = start_lsn >> 32
     printf("%s, pid:%d, xlog_state_do_iclog_callbacks, commit_lsn:%s, h_len:%d, h_crc:%d, execname:%s\n", ctime(), pid(), format_lsn(commit_lsn), h_len, h_crc, execname())
+}
+
+// 会在这里设置xfs_log_item的lsn
+probe module("xfs").function("xfs_trans_committed_bulk") {
+    printf("%s, pid:%d, xfs_trans_committed_bulk commit_lsn:%s\n", ctime(), pid(), format_lsn($commit_lsn))
 }
 
 // xlog_bio_end_io--->xlog_state_do_iclog_callbacks ---> ctx ---> 日志向量 ---> xfs_log_item，agf的xfs_log_item已经提交
@@ -268,36 +299,35 @@ probe module("xfs").function("xfs_buf_item_committed") {
 
         bip_blags = @cast($lip, "struct xfs_buf_log_item", "xfs")->bli_flags
         li_lsn = $lip->li_lsn
-        if(bip_blags & 0x10 && li_lsn != 0) {
+        if((bip_blags & 0x10) && li_lsn != 0) {
             // XFS_BLI_INODE_ALLOC_BUF
             ret_lsn = li_lsn
         }
         // 这个lsn应该等于ctx->start_lsn = ntohll($iclog->ic_data->hic_header->h_lsn)
         ret_lsn_str = format_lsn(ret_lsn)
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_committed, lip_lsn:%s, commit_lsn:%s, return_lsn:%s\n", ctime(), pid(), agf_info, format_lsn($lsn), format_lsn(li_lsn), ret_lsn_str)
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_committed, bip_blags:0x%x, lip:%p, lip_lsn:%s, commit_lsn:%s, return_lsn:%s, caller:%s\n", ctime(), pid(), agf_info, bip_blags, $lip, format_lsn(li_lsn), format_lsn($lsn), ret_lsn_str, caller())
     }
 }
 
-// 将xfs_log_item加入ali链表中
-// probe module("xfs").function("trace_xfs_ail_move") {
-//     if($lip in lip_agbp_map) {
-//         agbp = lip_agbp_map[$lip]
-//         agf_info = agbp_map[agbp]
-//         old_lsn_str = format_lsn($old_lsn)
-//         new_lsn_str = format_lsn($new_lsn)
-//         printf("%s, pid:%d, agf:{%s}, trace_xfs_ail_move: lip_lsn:%s===>%s\n", ctime(), pid(), agf_info, old_lsn_str, new_lsn_str)
-//     }
-// }
-
-// lip加入到ail链表中
-// probe module("xfs").function("trace_xfs_ail_insert") {
-//     if($lip in lip_agbp_map) {
-//         agbp = lip_agbp_map[$lip]
-//         agf_info = agbp_map[agbp]
-//         new_lsn_str = format_lsn($new_lsn)
-//         printf("%s, pid:%d, agf:{%s}, trace_xfs_ail_insert lip_lsn:%s\n", ctime(), pid(), agf_info, new_lsn_str)
-//     }
-// }
+probe module("xfs").function("xfs_trans_ail_update_bulk") {
+    printf("%s, pid:%d, xfs_trans_ail_update_bulk nr_items:%d, commit_lsn:%s\n", ctime(), pid(), $nr_items, format_lsn($lsn))
+    for (i = 0; i < $nr_items; i++) {
+        lip = $log_items[i]
+        // 获得当前lip的lsn
+        lip_lsn = lip->li_lsn
+        lip_flags = lip->li_flags
+        lip_type = lip->li_type
+        if(lip in lip_agbp_map) {
+            agbp = lip_agbp_map[lip]
+            agf_info = agbp_map[agbp]
+            printf("%s, pid:%d, agf:{%s}, xfs_trans_ail_update_bulk, lip:%p, lip_type:%d, lip_lsn:%s, lip_flags:0x%x, will set commit_lsn:%s, caller:%s\n", ctime(), pid(), agf_info, lip, lip_type, format_lsn(lip_lsn), lip_flags, format_lsn($lsn), caller())
+        }
+        // else {
+        //     printf("%s, pid:%d, xfs_trans_ail_update_bulk, lip_type:%d, lip_lsn:%s, lip_flags:0x%x, will set commit_lsn:%s\n", ctime(), pid(), lip_type, format_lsn(lip_lsn), lip_flags, format_lsn($lsn))
+        // }
+    }
+    //print_backtrace()
+}
 
 // 解除固定日志缓冲区，后续xfsaild才可以push
 probe module("xfs").function("xfs_buf_item_unpin") {
