@@ -4,7 +4,7 @@ global agbp_map
 global agbpp_map
 global tran_agbp_map // xfs_trans ---> xfs_buf ---> agf
 global lip_agbp_map // xfs_log_item ---> xfs_buf ---> agf
-global bip_agbp_map // xfs_buf_log_item ---> xfs_buf ---> agf
+//global bip_agbp_map // xfs_buf_log_item ---> xfs_buf ---> agf
 //global lv_agbp_map // xfs_log_vec ---> xfs_buf ---> agf
 
 probe begin {
@@ -16,7 +16,7 @@ probe end {
     delete agbpp_map
     delete tran_agbp_map
     delete lip_agbp_map
-    delete bip_agbp_map
+    //delete bip_agbp_map
     //delete lv_agbp_map
     printf("exit tap to xfs.agf\n")
 }
@@ -41,10 +41,10 @@ probe module("xfs").function("xfs_read_agf") {
     dev_maj = MAJOR(s_dev)
     dev_min = MINOR(s_dev)
 
-    if(dev_maj == 7 && dev_min == 0) {
+    if(dev_maj == 7 && dev_min == 6) {
         pid = pid()
         agbpp_map[pid] = $bpp
-        printf("%s, pid:%d, --->xfs_read_agf device:[%d:%d], agno:%d\n", ctime(), pid, dev_maj, dev_min, $agno)
+        printf("%s, pid:%d, --->xfs_read_agf, device:[%d:%d], agno:%d\n", ctime(), pid, dev_maj, dev_min, $agno)
         //print_backtrace()
     }
 }
@@ -85,7 +85,7 @@ probe module("xfs").function("xfs_read_agf").return {
         agbp_buf_addr = @cast(agbp_void, "struct xfs_buf", "xfs")->b_addr
         agf_magic = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum
         agf_freeblks = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks
-        printf("%s, pid:%d, agf:{%s}, xfs_read_agf.exit<--- ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), pid, agf_info, ret, agbp_error, ntohl(agf_magic), ntohl(agf_freeblks))
+        printf("%s, pid:%d, agf:{%s}, xfs_read_agf.return<--- ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), pid, agf_info, ret, agbp_error, ntohl(agf_magic), ntohl(agf_freeblks))
         delete agbpp_map[pid]
     }
 }
@@ -99,12 +99,12 @@ probe module("xfs").function("_xfs_trans_bjoin") {
         agbp_bip = @cast($bp, "struct xfs_buf", "xfs")->b_log_item
         agbp_lip = &@cast($bp, "struct xfs_buf", "xfs")->b_log_item->bli_item
         // 如果是agf的xfs_buf
-        printf("%s, pid:%d, agf:{%s}, _xfs_trans_bjoin xfs_log_item:%s into xfs_tran:%s\n", ctime(), pid(), agf_info, @cast($bp, "struct xfs_buf", "xfs")->b_log_item->bli_item$, $tp$)
+        printf("%s, pid:%d, agf:{%s}, _xfs_trans_bjoin, xfs_log_item:%s into xfs_tran:%s\n", ctime(), pid(), agf_info, @cast($bp, "struct xfs_buf", "xfs")->b_log_item->bli_item$, $tp$)
         printf("%s, pid:%d, agf:{%s}, agbp_bip:%p, agbp_lip:%p\n", ctime(), pid(), agf_info, agbp_bip, agbp_lip)
         // 将agf的xfs_buf对应的xfs_tran加入到map中
         tran_agbp_map[$tp] = $bp
         lip_agbp_map[agbp_lip] = $bp
-        bip_agbp_map[agbp_bip] = $bp
+        //bip_agbp_map[agbp_bip] = $bp
     }
 }
 
@@ -118,7 +118,7 @@ probe module("xfs").function("xfs_alloc_ag_vextent") {
         // xfs_perag
         agf_magic = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
         agf_freeblks = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
-        printf("%s, pid:%d, agf:{%s}, xfs_alloc_ag_vextent agf_magic:0x%x, agf_freeblks:%d\n", ctime(), pid(), agf_info, ntohl(agf_magic), ntohl(agf_freeblks))
+        printf("%s, pid:%d, agf:{%s}, xfs_alloc_ag_vextent, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), pid(), agf_info, ntohl(agf_magic), ntohl(agf_freeblks))
     }
 }
 
@@ -128,7 +128,7 @@ probe module("xfs").function("xfs_alloc_update_counters") {
         agf_info = agbp_map[$agbp]
         //pagf_freeblks = @cast($agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
         pagf_freeblks = $agbp->b_pag->pagf_freeblks
-        printf("%s, pid:%d, agf:{%s}, xfs_alloc_update_counters  pagf_freeblks:%d + len:%d\n", ctime(), pid(), agf_info, pagf_freeblks, $len)
+        printf("%s, pid:%d, agf:{%s}, xfs_alloc_update_counters,  pagf_freeblks:%d + len:%d\n", ctime(), pid(), agf_info, pagf_freeblks, $len)
     }
 }
 
@@ -177,7 +177,7 @@ probe module("xfs").function("xfs_buf_item_committing") {
         if(bli_flags & 0x02) {
             released = "false"
         }
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_committing commit_lsn:%d, bli_refcount:%d, released:%s\n", ctime(), pid(), agbp_info, $commit_lsn, bli_refcount, released)
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_committing, lip:%p, commit_lsn:%d, bli_refcount:%d, released:%s\n", ctime(), pid(), agbp_info, $lip, $commit_lsn, bli_refcount, released)
     }
 }
 
@@ -189,7 +189,7 @@ probe module("xfs").function("xfs_log_commit_cil") {
         mp_log = $mp->m_log
         // 读取地址的内容，入参
         commit_lsn = kernel_long($commit_lsn) // should be equal -1
-        printf("%s, pid:%d, agf:{%s}, xfs_log_commit_cil commit_lsn:%d, xc_commit_lsn:%d, regrant:%d, xfs_tran:%s, ticket:%s\n", ctime(), pid(), agf_info, commit_lsn, mp_log->l_cilp->xc_ctx->sequence, $regrant, $tp$, $tp->t_ticket$)
+        printf("%s, pid:%d, agf:{%s}, xfs_log_commit_cil, commit_lsn:%d, xc_commit_lsn:%d, regrant:%d, xfs_tran:%s, ticket:%s\n", ctime(), pid(), agf_info, commit_lsn, mp_log->l_cilp->xc_ctx->sequence, $regrant, $tp$, $tp->t_ticket$)
     }
 }
 
@@ -200,7 +200,7 @@ probe module("xfs").function("xfs_buf_item_pin").return {
         bip_refcount = @cast(lip, "struct xfs_buf_log_item", "xfs")->bli_refcount->counter
         bip_pincount = @cast(lip, "struct xfs_buf_log_item", "xfs")->bli_buf->b_pin_count->counter
         agbp = lip_agbp_map[lip]
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_pin.return bip_refcount:%d, bip_pincount:%d\n", ctime(), pid(), agbp_map[agbp], bip_refcount, bip_pincount)
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_pin.return, lip:%p, bip_refcount:%d, bip_pincount:%d\n", ctime(), pid(), agbp_map[agbp], lip,  bip_refcount, bip_pincount)
     }
 }
 
@@ -226,14 +226,14 @@ probe module("xfs").function("xfs_buf_item_size").return {
         nvecs = kernel_int(nvecs_p)
         nbytes = kernel_int(nbytes_p)
         agbp = lip_agbp_map[lip]
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_size.return nvecs:%d, nbytes:%d\n", ctime(), pid(), agbp_map[agbp], nvecs, nbytes)
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_size.return, lip:%p, nvecs:%d, nbytes:%d\n", ctime(), pid(), agbp_map[agbp], lip, nvecs, nbytes)
     }
 }
 
 probe module("xfs").function("xfs_buf_item_format") {
     if($lip in lip_agbp_map) {
         agbp = lip_agbp_map[$lip]
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_format lv:%s\n", ctime(), pid(), agbp_map[agbp], $lv$)
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_format, lip:%p lv:%s\n", ctime(), pid(), agbp_map[agbp], $lip, $lv$)
     }
 }
 
@@ -246,9 +246,39 @@ probe module("xfs").function("xfs_buf_item_format").return {
         lv_size = @cast(@entry($lv), "struct xfs_log_vec", "xfs")->lv_size
         agbp = lip_agbp_map[lip]
         //lv_agbp_map[@entry($lv)] = agbp
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_format.return lv.lv_bytes:%d, lv_buf_len:%d, lv_size:%d\n", ctime(), pid(), agbp_map[agbp], lv_bytes, lv_buf_len, lv_size)
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_format.return, lip:%p, lv.lv_bytes:%d, lv_buf_len:%d, lv_size:%d\n", ctime(), pid(), agbp_map[agbp], lip, lv_bytes, lv_buf_len, lv_size)
     }
 }
+
+probe module("xfs").function("xfs_ail_min").return {
+    lip = $return
+    ali_min_lip_lsn = @cast(lip, "struct xfs_log_item", "xfs")->li_lsn
+    printf("%s, pid:%d, xfs_ail_min.return, lip:%p, ali_min_lip_lsn:%s\n", ctime(), pid(), lip, format_lsn(ali_min_lip_lsn))
+}
+
+// 获得iclog的tail_lsn
+// xfs_log_worker---xfs_log_force---xlog_state_release_iclog---xlog_assign_tail_lsn
+probe module("xfs").function("xlog_assign_tail_lsn_locked").return {
+    ret_tail_lsn = $return
+    ali_min_lip_lsn = 0xffffffffffffffff
+    mp = @entry($mp)
+    mp_ail = @cast(mp, "struct xfs_mount", "xfs")->m_ail
+    ail_first_lip = mp_ail->ail_head->next
+    if(ail_first_lip != 0) {
+        ali_min_lip_lsn = @cast(ail_first_lip, "struct xfs_log_item", "xfs")->li_lsn
+    }
+    log_last_sync_lsn = @cast(mp, "struct xfs_mount", "xfs")->m_log->l_last_sync_lsn->counter
+    printf("%s, pid:%d, xlog_assign_tail_lsn_locked, ail_first_lip:%p, ali_min_lip_lsn:%s, log_last_sync_lsn:%s, ret_tail_lsn:%s, caller:%s\n", ctime(), pid(), ail_first_lip, format_lsn(ali_min_lip_lsn), format_lsn(log_last_sync_lsn), format_lsn(ret_tail_lsn), caller())
+}
+
+// probe module("xfs").statement("*@fs/xfs/xfs_log.c:1180") {
+//     lip_lsn = 0
+//     if($lip != 0) {
+//         lip_lsn = $lip->li_lsn
+//     }
+//     printf("%s, pid:%d, func_name:%s, lip_lsn:%s, tail_lsn:%s\n", ctime(), pid(), ppfunc(), format_lsn(lip_lsn), format_lsn($tail_lsn))
+// }
+
 // xlog_sync写入日志到磁盘，发起了bio --->xlog_write_iclog ---> submit_bio
 /*
 	iclog->ic_bio.bi_end_io = xlog_bio_end_io; --->触发工作队列ic_end_io_work（xlog_ioend_work）
@@ -286,7 +316,7 @@ probe module("xfs").function("xlog_state_do_iclog_callbacks") {
 
 // 会在这里设置xfs_log_item的lsn
 probe module("xfs").function("xfs_trans_committed_bulk") {
-    printf("%s, pid:%d, xfs_trans_committed_bulk commit_lsn:%s\n", ctime(), pid(), format_lsn($commit_lsn))
+    printf("%s, pid:%d, xfs_trans_committed_bulk, commit_lsn:%s\n", ctime(), pid(), format_lsn($commit_lsn))
 }
 
 // xlog_bio_end_io--->xlog_state_do_iclog_callbacks ---> ctx ---> 日志向量 ---> xfs_log_item，agf的xfs_log_item已经提交
@@ -320,10 +350,10 @@ probe module("xfs").function("xfs_trans_ail_update_bulk") {
         if(lip in lip_agbp_map) {
             agbp = lip_agbp_map[lip]
             agf_info = agbp_map[agbp]
-            printf("%s, pid:%d, agf:{%s}, xfs_trans_ail_update_bulk, lip:%p, lip_type:%d, lip_lsn:%s, lip_flags:0x%x, will set commit_lsn:%s, caller:%s\n", ctime(), pid(), agf_info, lip, lip_type, format_lsn(lip_lsn), lip_flags, format_lsn($lsn), caller())
+            printf("%s, pid:%d, agf:{%s}, xfs_trans_ail_update_bulk, lip:%p, lip_type:%d, lip_flags:0x%x, lip_lsn:%s, will set commit_lsn:%s, caller:%s\n", ctime(), pid(), agf_info, lip, lip_type, lip_flags, format_lsn(lip_lsn), format_lsn($lsn), caller())
         }
         // else {
-        //     printf("%s, pid:%d, xfs_trans_ail_update_bulk, lip_type:%d, lip_lsn:%s, lip_flags:0x%x, will set commit_lsn:%s\n", ctime(), pid(), lip_type, format_lsn(lip_lsn), lip_flags, format_lsn($lsn))
+        //     printf("%s, pid:%d, xfs_trans_ail_update_bulk, lip_type:%d, lip_flags:0x%x, lip_lsn:%s, will set commit_lsn:%s\n", ctime(), pid(), lip_type, lip_flags, format_lsn(lip_lsn), format_lsn($lsn))
         // }
     }
     //print_backtrace()
@@ -338,7 +368,7 @@ probe module("xfs").function("xfs_buf_item_unpin") {
         bip_pincount = @cast($lip, "struct xfs_buf_log_item", "xfs")->bli_buf->b_pin_count->counter
         bip_refcount--
         bip_pincount--
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_unpin bip_stale:%d, bip_refcount:%d, bip_pincount:%d, remove:%d, execname:%s\n", ctime(), pid(), agbp_map[agbp], bip_stale, bip_refcount, bip_pincount, $remove, execname())
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_unpin, lip:%p, bip_stale:%d, bip_refcount:%d, bip_pincount:%d, remove:%d, execname:%s\n", ctime(), pid(), agbp_map[agbp], $lip, bip_stale, bip_refcount, bip_pincount, $remove, execname())
         // 输出谁调用的unpin
         //print_backtrace()
     }
@@ -358,7 +388,7 @@ probe module("xfs").function("xfs_buf_item_push").return {
         agbp = lip_agbp_map[lip]
         agf_info = agbp_map[agbp]
         li_lsn = @cast(lip, "struct xfs_log_item", "xfs")->li_lsn
-        printf("%s, pid:%d, agf:{%s}, xfsaild_push_item.xfs_buf_item_push li_lsn:%s ret:%d\n", ctime(), pid(), agf_info, format_lsn(li_lsn), ret)
+        printf("%s, pid:%d, agf:{%s}, xfsaild_push_item.xfs_buf_item_push, lip:%p, li_lsn:%s ret:%d\n", ctime(), pid(), agf_info, lip, format_lsn(li_lsn), ret)
     }
 }
 
@@ -371,11 +401,12 @@ probe module("xfs").function("__xfs_buf_submit") {
         agf_info = agbp_map[$bp]
         if($bp->b_flags & 2) {
             // 是写入，输出agf的元数据
+            lip = $bp->b_log_item
             lip_lsn = $bp->b_log_item->bli_item->li_lsn
             agbp_buf_addr = $bp->b_addr
             agf_magic = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum
             agf_freeblks = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks
-            printf("%s, pid:%d, agf:{%s}, __xfs_buf_submit agf_magic:0x%x, agf_freeblks:%d, lip_lsn:%s\n", ctime(), pid(), agf_info, ntohl(agf_magic), ntohl(agf_freeblks), format_lsn(lip_lsn))
+            printf("%s, pid:%d, agf:{%s}, __xfs_buf_submit, lip:%p, agf_magic:0x%x, agf_freeblks:%d, lip_lsn:%s\n", ctime(), pid(), agf_info, lip, ntohl(agf_magic), ntohl(agf_freeblks), format_lsn(lip_lsn))
         }
     }
 }
@@ -390,7 +421,38 @@ probe module("xfs").function("xfs_buf_bio_end_io") {
         b_io_remaining =  @cast(bi_priv, "struct xfs_buf", "xfs")->b_io_remaining->counter
         // b_io_remaining递减后=0，会触发b_ioend_work这个工作任务，运行函数xfs_buf_ioend_async
         b_io_remaining--
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_bio_end_io bio_status:%d, b_io_remaining:%d\n", ctime(), pid(), agf_info, bio_status, b_io_remaining)
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_bio_end_io, bio_status:%d, b_io_remaining:%d\n", ctime(), pid(), agf_info, bio_status, b_io_remaining)
+    }
+}
+
+// agf的xfs_buf写入磁盘回调，释放lip， bip，agbp
+probe module("xfs").function("xfs_buf_ioend") {
+    if($bp in agbp_map) {
+
+        agbp_bip = $bp->b_log_item
+        agf_info = agbp_map[$bp]
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_ioend lip:%p execname:%s\n", ctime(), pid(), agf_info, agbp_bip, execname())
+
+        //delete bip_agbp_map[agbp_bip]
+        //delete lip_agbp_map[agbp_bip]
+        //delete agbp_map[bp]
+        //
+        // if($bp->b_pag == 0) {
+        //     printf("%s, pid:%d, agf:{%s}, xfs_buf_free execname:%s\n", ctime(), pid(), agf_info, execname())
+        //     delete agbp_map[$bp]
+        // }
+    }
+}
+
+// 调用xfs_trans_ail_delete从ail链表中删除
+probe module("xfs").function("xfs_buf_item_done") {
+    if($bp in agbp_map) {
+        lip = $bp->b_log_item
+        agf_info = agbp_map[$bp]
+        agf_magic = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
+        agf_freeblks = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_done, lip:%p, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), pid(), agf_info, lip, ntohl(agf_magic), ntohl(agf_freeblks))
+        //print_backtrace()
     }
 }
 
@@ -399,37 +461,25 @@ probe module("xfs").function("xfs_ail_delete_one") {
     if($lip in lip_agbp_map) {
         agbp = lip_agbp_map[$lip]
         agf_info = agbp_map[agbp]
-        printf("%s, pid:%d, agf:{%s}, xfs_ail_delete_one, lip_lsn:%s\n", ctime(), pid(), agf_info, format_lsn($lip->li_lsn))
+        printf("%s, pid:%d, agf:{%s}, xfs_ail_delete_one, lip:%p, lip_lsn:%s\n", ctime(), pid(), agf_info, $lip, format_lsn($lip->li_lsn))
     }
 }
 
-probe module("xfs").function("xfs_buf_item_done") {
+probe module("xfs").function("xfs_buf_item_relse") {
+    if($bp in agbp_map) {
+        agbp_bip = $bp->b_log_item
+        agf_info = agbp_map[$bp]
+        delete lip_agbp_map[agbp_bip]
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_relse, bip:%p datach from xfs_buf\n", ctime(), pid(), agf_info, agbp_bip)
+    }
+}
+
+// xfs_buf会先放入lru队列，如果被选中要释放freebuf=true，那么就会释放这个xfs_buf
+probe module("xfs").function("xfs_buf_free") {
     if($bp in agbp_map) {
         agf_info = agbp_map[$bp]
-        agf_magic = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
-        agf_freeblks = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_done, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), pid(), agf_info, ntohl(agf_magic), ntohl(agf_freeblks))
-        //print_backtrace()
-    }
-}
-
-// agf的xfs_buf写入磁盘回调，释放lip， bip，agbp
-probe module("xfs").function("xfs_buf_ioend").return {
-    bp = @entry($bp)
-    if(bp in agbp_map) {
-
-        agbp_bip = @cast(bp, "struct xfs_buf", "xfs")->b_log_item
-        agf_info = agbp_map[bp]
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_ioend.return execname:%s\n", ctime(), pid(), agf_info, execname())
-
-        delete bip_agbp_map[agbp_bip]
-        delete lip_agbp_map[agbp_bip]
-        delete agbp_map[bp]
-        //
-        // if($bp->b_pag == 0) {
-        //     printf("%s, pid:%d, agf:{%s}, xfs_buf_free execname:%s\n", ctime(), pid(), agf_info, execname())
-        //     delete agbp_map[$bp]
-        // }
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_free, caller:%s\n", ctime(), pid(), agf_info, caller())
+        delete agbp_map[$bp]
     }
 }
 

@@ -87,10 +87,46 @@ perf trace -e 'xfs:xfs_ail_mo*-a --kernel-syscall-graph --comm --failure --call-
 perf trace -e 'xfs:xfs_ail_*' -a --kernel-syscall-graph --comm --failure --call-graph fp
 ```
 
-##### 查看XFS某个函数的代码
+##### 查看XFS某个函数的代码，以及可见的变量
 
 ```
 perf probe -L xfs_log_commit_cil -m /usr/lib/debug/lib/modules/4.18.0-348.7.1.el8_5.x86_64+debug/kernel/fs/xfs/xfs.ko.debug
+```
+
+```
+perf probe -L xlog_assign_tail_lsn_locked -m /usr/lib/debug/lib/modules/4.18.0-425.3.1.el8.x86_64+debug/kernel/fs/xfs/xfs.ko.debug
+
+<xlog_assign_tail_lsn_locked@/usr/src/debug/kernel-4.18.0-425.3.1.el8/linux-4.18.0-425.3.1.el8.x86_64/fs/xfs/xfs_log.c:0>
+      0  xlog_assign_tail_lsn_locked(
+                struct xfs_mount        *mp)
+         {
+      3         struct xlog             *log = mp->m_log;
+      4         struct xfs_log_item     *lip;
+                xfs_lsn_t               tail_lsn;
+         
+      7         assert_spin_locked(&mp->m_ail->ail_lock);
+         
+                /*
+                 * To make sure we always have a valid LSN for the log tail we keep
+                 * track of the last LSN which was committed in log->l_last_sync_lsn,
+                 * and use that when the AIL was empty.
+                 */
+                lip = xfs_ail_min(mp->m_ail);
+                if (lip)
+     16                 tail_lsn = lip->li_lsn;
+                else
+     18                 tail_lsn = atomic64_read(&log->l_last_sync_lsn);
+     19         trace_xfs_log_assign_tail_lsn(log, tail_lsn);
+     20         atomic64_set(&log->l_tail_lsn, tail_lsn);
+                return tail_lsn;
+         }
+```
+
+##### 查看内核源码是什么安装包安装的
+
+```
+rpm -qf /usr/src/debug/kernel-4.18.0-425.3.1.el8/linux-4.18.0-425.3.1.el8.x86_64/fs/xfs/xfs_log.c
+kernel-debuginfo-common-x86_64-4.18.0-425.3.1.el8.x86_64
 ```
 
 ##### 使用SystemTap查看函数声明
