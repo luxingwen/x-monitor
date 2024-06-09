@@ -83,9 +83,14 @@ probe module("xfs").function("xfs_read_agf").return {
         //printf("xfs_read_agf.exit pid:%d, ret:%d, agbp_error:%d\n", pid(), ret, agbp_error)
         s_dev = @cast(agbp_void, "struct xfs_buf", "xfs")->b_mount->m_super->s_dev
         agbp_buf_addr = @cast(agbp_void, "struct xfs_buf", "xfs")->b_addr
-        agf_magic = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum
-        agf_freeblks = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks
-        printf("%s, pid:%d, agf:{%s}, xfs_read_agf.return<--- ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), pid, agf_info, ret, agbp_error, ntohl(agf_magic), ntohl(agf_freeblks))
+
+        agf_magic = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum)
+        agf_freeblks = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks)
+        agf_longest = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_longest) // be32
+        agf_lsn = ntohll(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_lsn) // be64
+        agf_crc = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_crc) // be32
+
+        printf("%s, pid:%d, agf:{%s}, xfs_read_agf.return<--- ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d, agf_longest:%d, agf_lsn:%s, agf_crc:0x%x\n", ctime(), pid, agf_info, ret, agbp_error, agf_magic, agf_freeblks, agf_longest, format_lsn(agf_lsn), agf_crc)
         delete agbpp_map[pid]
     }
 }
@@ -116,9 +121,13 @@ probe module("xfs").function("xfs_alloc_ag_vextent") {
     if(agbp in agbp_map) {
         agf_info = agbp_map[agbp]
         // xfs_perag
-        agf_magic = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
-        agf_freeblks = @cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
-        printf("%s, pid:%d, agf:{%s}, xfs_alloc_ag_vextent, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), pid(), agf_info, ntohl(agf_magic), ntohl(agf_freeblks))
+        agf_magic = ntohl(@cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum)
+        agf_freeblks = ntohl(@cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks)
+        agf_longest = ntohl(@cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_longest) // be32
+        agf_lsn = ntohll(@cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_lsn) // be64
+        agf_crc = ntohl(@cast(agbp->b_addr, "struct xfs_agf", "xfs")->agf_crc) // be32
+
+        printf("%s, pid:%d, agf:{%s}, xfs_alloc_ag_vextent, agf_magic:0x%x, agf_freeblks:%d, agf_longest:%d, agf_lsn:%s, agf_crc:0x%x\n", ctime(), pid(), agf_info, agf_magic, agf_freeblks, agf_longest, format_lsn(agf_lsn), agf_crc)
     }
 }
 
@@ -250,25 +259,26 @@ probe module("xfs").function("xfs_buf_item_format").return {
     }
 }
 
-probe module("xfs").function("xfs_ail_min").return {
-    lip = $return
-    ali_min_lip_lsn = @cast(lip, "struct xfs_log_item", "xfs")->li_lsn
-    printf("%s, pid:%d, xfs_ail_min.return, lip:%p, ali_min_lip_lsn:%s\n", ctime(), pid(), lip, format_lsn(ali_min_lip_lsn))
-}
+// xfs_ail_update_finish在更新完ail链表后，会调用xfs_ail_min，获得ail链表中最小的lsn
+// probe module("xfs").function("xfs_ail_min") {
+//     ail_min_lip = $ailp->ail_head->next
+//     ali_min_lip_lsn = @cast(ail_min_lip, "struct xfs_log_item", "xfs")->li_lsn
+//     printf("%s, pid:%d, xfs_ail_min, ali_min_lip:%p, ali_min_lip_lsn:%s\n", ctime(), pid(), ail_min_lip, format_lsn(ali_min_lip_lsn))
+// }
 
 // 获得iclog的tail_lsn
 // xfs_log_worker---xfs_log_force---xlog_state_release_iclog---xlog_assign_tail_lsn
 probe module("xfs").function("xlog_assign_tail_lsn_locked").return {
     ret_tail_lsn = $return
-    ali_min_lip_lsn = 0xffffffffffffffff
+    ali_min_lip_lsn = 0
     mp = @entry($mp)
     mp_ail = @cast(mp, "struct xfs_mount", "xfs")->m_ail
-    ail_first_lip = mp_ail->ail_head->next
-    if(ail_first_lip != 0) {
-        ali_min_lip_lsn = @cast(ail_first_lip, "struct xfs_log_item", "xfs")->li_lsn
+    ali_min_lip = mp_ail->ail_head->next
+    if(ali_min_lip != 0) {
+        ali_min_lip_lsn = @cast(ali_min_lip, "struct xfs_log_item", "xfs")->li_lsn
     }
     log_last_sync_lsn = @cast(mp, "struct xfs_mount", "xfs")->m_log->l_last_sync_lsn->counter
-    printf("%s, pid:%d, xlog_assign_tail_lsn_locked, ail_first_lip:%p, ali_min_lip_lsn:%s, log_last_sync_lsn:%s, ret_tail_lsn:%s, caller:%s\n", ctime(), pid(), ail_first_lip, format_lsn(ali_min_lip_lsn), format_lsn(log_last_sync_lsn), format_lsn(ret_tail_lsn), caller())
+    printf("%s, pid:%d, xlog_assign_tail_lsn_locked, ali_min_lip:%p, ali_min_lip_lsn:%s, log_last_sync_lsn:%s, tail_lsn:%s, caller:%s\n", ctime(), pid(), ali_min_lip, format_lsn(ali_min_lip_lsn), format_lsn(log_last_sync_lsn), format_lsn(ret_tail_lsn), caller())
 }
 
 // probe module("xfs").statement("*@fs/xfs/xfs_log.c:1180") {
@@ -352,11 +362,13 @@ probe module("xfs").function("xfs_trans_ail_update_bulk") {
             agf_info = agbp_map[agbp]
             printf("%s, pid:%d, agf:{%s}, xfs_trans_ail_update_bulk, lip:%p, lip_type:%d, lip_flags:0x%x, lip_lsn:%s, will set commit_lsn:%s, caller:%s\n", ctime(), pid(), agf_info, lip, lip_type, lip_flags, format_lsn(lip_lsn), format_lsn($lsn), caller())
         }
-        // else {
-        //     printf("%s, pid:%d, xfs_trans_ail_update_bulk, lip_type:%d, lip_flags:0x%x, lip_lsn:%s, will set commit_lsn:%s\n", ctime(), pid(), lip_type, lip_flags, format_lsn(lip_lsn), format_lsn($lsn))
-        // }
     }
-    //print_backtrace()
+}
+
+probe module("xfs").function("xfs_ail_update_finish") {
+    if($old_lsn != 0) {
+        printf("%s, pid:%d, xfs_ail_update_finish, old_lsn:%s, change_to_new_tail_lsn. caller:%s\n", ctime(), pid(), format_lsn($old_lsn), caller())
+    }
 }
 
 // 解除固定日志缓冲区，后续xfsaild才可以push
@@ -404,9 +416,14 @@ probe module("xfs").function("__xfs_buf_submit") {
             lip = $bp->b_log_item
             lip_lsn = $bp->b_log_item->bli_item->li_lsn
             agbp_buf_addr = $bp->b_addr
-            agf_magic = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum
-            agf_freeblks = @cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks
-            printf("%s, pid:%d, agf:{%s}, __xfs_buf_submit, lip:%p, agf_magic:0x%x, agf_freeblks:%d, lip_lsn:%s\n", ctime(), pid(), agf_info, lip, ntohl(agf_magic), ntohl(agf_freeblks), format_lsn(lip_lsn))
+
+            agf_magic = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum)
+            agf_freeblks = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks)
+            agf_longest = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_longest) // be32
+            agf_lsn = ntohll(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_lsn) // be64
+            agf_crc = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_crc) // be32
+
+            printf("%s, pid:%d, agf:{%s}, __xfs_buf_submit, lip:%p, lip_lsn:%s, agf_magic:0x%x, agf_freeblks:%d, agf_longest:%d, agf_lsn:%s, agf_crc:0x%x\n", ctime(), pid(), agf_info, lip, format_lsn(lip_lsn), agf_magic, agf_freeblks, agf_longest, format_lsn(agf_lsn), agf_crc)
         }
     }
 }
@@ -449,9 +466,12 @@ probe module("xfs").function("xfs_buf_item_done") {
     if($bp in agbp_map) {
         lip = $bp->b_log_item
         agf_info = agbp_map[$bp]
-        agf_magic = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum
-        agf_freeblks = @cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks
-        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_done, lip:%p, agf_magic:0x%x, agf_freeblks:%d\n", ctime(), pid(), agf_info, lip, ntohl(agf_magic), ntohl(agf_freeblks))
+        agf_magic = ntohl(@cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_magicnum)
+        agf_freeblks = ntohl(@cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_freeblks)
+        agf_longest = ntohl(@cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_longest) // be32
+        agf_lsn = ntohll(@cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_lsn) // be64
+        agf_crc = ntohl(@cast($bp->b_addr, "struct xfs_agf", "xfs")->agf_crc) // be32
+        printf("%s, pid:%d, agf:{%s}, xfs_buf_item_done, lip:%p, agf_magic:0x%x, agf_freeblks:%d, agf_longest:%d, agf_lsn:%s, agf_crc:0x%x\n", ctime(), pid(), agf_info, lip, agf_magic, agf_freeblks, agf_longest, format_lsn(agf_lsn), agf_crc)
         //print_backtrace()
     }
 }
