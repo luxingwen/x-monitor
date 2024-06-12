@@ -87,10 +87,46 @@ perf trace -e 'xfs:xfs_ail_mo*-a --kernel-syscall-graph --comm --failure --call-
 perf trace -e 'xfs:xfs_ail_*' -a --kernel-syscall-graph --comm --failure --call-graph fp
 ```
 
-##### 查看XFS某个函数的代码
+##### 查看XFS某个函数的代码，以及可见的变量
 
 ```
 perf probe -L xfs_log_commit_cil -m /usr/lib/debug/lib/modules/4.18.0-348.7.1.el8_5.x86_64+debug/kernel/fs/xfs/xfs.ko.debug
+```
+
+```
+perf probe -L xlog_assign_tail_lsn_locked -m /usr/lib/debug/lib/modules/4.18.0-425.3.1.el8.x86_64+debug/kernel/fs/xfs/xfs.ko.debug
+
+<xlog_assign_tail_lsn_locked@/usr/src/debug/kernel-4.18.0-425.3.1.el8/linux-4.18.0-425.3.1.el8.x86_64/fs/xfs/xfs_log.c:0>
+      0  xlog_assign_tail_lsn_locked(
+                struct xfs_mount        *mp)
+         {
+      3         struct xlog             *log = mp->m_log;
+      4         struct xfs_log_item     *lip;
+                xfs_lsn_t               tail_lsn;
+         
+      7         assert_spin_locked(&mp->m_ail->ail_lock);
+         
+                /*
+                 * To make sure we always have a valid LSN for the log tail we keep
+                 * track of the last LSN which was committed in log->l_last_sync_lsn,
+                 * and use that when the AIL was empty.
+                 */
+                lip = xfs_ail_min(mp->m_ail);
+                if (lip)
+     16                 tail_lsn = lip->li_lsn;
+                else
+     18                 tail_lsn = atomic64_read(&log->l_last_sync_lsn);
+     19         trace_xfs_log_assign_tail_lsn(log, tail_lsn);
+     20         atomic64_set(&log->l_tail_lsn, tail_lsn);
+                return tail_lsn;
+         }
+```
+
+##### 查看内核源码是什么安装包安装的
+
+```
+rpm -qf /usr/src/debug/kernel-4.18.0-425.3.1.el8/linux-4.18.0-425.3.1.el8.x86_64/fs/xfs/xfs_log.c
+kernel-debuginfo-common-x86_64-4.18.0-425.3.1.el8.x86_64
 ```
 
 ##### 使用SystemTap查看函数声明
@@ -783,6 +819,40 @@ xfs_trans_ail_update_bulk(
     ......
 }
 ```
+
+### 验证
+
+这是systemtap输出agf-0元数据提交后bio回调日志，输出了agf-0的元数据基本信息
+
+```
+xfs_buf_item_done, lip:0xffff9cfd4b736e70, agf_magic:0x58414746, agf_freeblks:63980, agf_longest:63976, agf_lsn:(1,1875), agf_crc:0xe82a97b7
+```
+
+直接查看磁盘元数据，可以看到lsn对应(1,1875) = "00 00 00 01 00 00 07 53"，crc接在后面，“f9 ec”表示63980， “f9 e8”表示63976
+
+```
+ ⚡ root@localhost  ~  hexdump -C -s 512 -n 512 /dev/loop6
+00000200  58 41 47 46 00 00 00 01  00 00 00 00 00 00 fa 00  |XAGF............|
+00000210  00 00 00 01 00 00 00 02  00 00 00 00 00 00 00 01  |................|
+00000220  00 00 00 01 00 00 00 00  00 00 00 01 00 00 00 04  |................|
+00000230  00 00 00 04 00 00 f9 ec  00 00 f9 e8 00 00 00 00  |................|
+00000240  d8 1b 9f 1f e7 cb 4c 88  81 e4 04 96 d7 bd 4f 6f  |......L.......Oo|
+00000250  00 00 00 00 00 00 00 01  00 00 00 05 00 00 00 01  |................|
+00000260  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+*
+000002d0  00 00 00 01 00 00 07 53  e8 2a 97 b7 00 00 00 00  |.......S.*......|
+000002e0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+*
+00000400
+```
+
+一个ag大小的计算方式：agsize=64000 blks * 4096 bytes/blk = 262144000 bytes，ag中有多少块可用xfs_info去查看
+
+AGF0偏移 = 超级块偏移 + 0 * AG大小 = 512
+
+AGF1偏移 = 超级块偏移 + 1 * AG大小 = 512 + 262144000 = 262144512
+
+AGF2偏移 = 超级块偏移 + 2 * AG大小 = 512 + 524288000 = 524288512
 
 ### 资料
 
