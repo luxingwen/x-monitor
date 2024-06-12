@@ -461,5 +461,4 @@ probe module("xfs").function("xfs_alloc_vextent").return {
             }
         }
     }
-
 }
