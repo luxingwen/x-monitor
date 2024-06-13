@@ -41,12 +41,12 @@ probe module("xfs").function("xfs_read_agf") {
     dev_maj = MAJOR(s_dev)
     dev_min = MINOR(s_dev)
 
-    if(dev_maj == 7 && dev_min == 6) {
-        pid = pid()
-        agbpp_map[pid] = $bpp
-        printf("%s, pid:%d, --->xfs_read_agf, device:[%d:%d], agno:%d\n", ctime(), pid, dev_maj, dev_min, $agno)
-        //print_backtrace()
-    }
+    //if(dev_maj == 7 && dev_min == 6) {
+    pid = pid()
+    agbpp_map[pid] = $bpp
+    printf("%s, pid:%d, --->xfs_read_agf, device:[%d:%d], agno:%d\n", ctime(), pid, dev_maj, dev_min, $agno)
+    //print_backtrace()
+    //}
 }
 
 probe module("xfs").function("xfs_buf_read_map") {
@@ -166,8 +166,8 @@ probe module("xfs").function("xfs_alloc_update_counters") {
 probe module("xfs").function("xfs_trans_free") {
     tran = $tp
     if(tran in tran_agbp_map) {
-        //agbp = tran_agbp_map[tran]
-        //agf_info = agbp_map[agbp]
+        agbp = tran_agbp_map[tran]
+        agf_info = agbp_map[agbp]
         printf("%s, pid:%d, agf:{%s}, xfs_trans_free tran:%p, caller:%s\n", ctime(), pid(), agf_info, $tp, caller())
         delete tran_agbp_map[tran]
     }
