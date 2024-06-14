@@ -64,29 +64,34 @@ probe module("xfs").function("xfs_read_agf").return {
     ret = $return
     pid = pid()
     if(pid in agbpp_map) {
-        agbpp = agbpp_map[pid]
-        // 读取指针地址的内容，解引用，通过这种方式可以获取函数的返回参数值, 其实就是agf的xfs_buf的地址了
-        agbp_void = kernel_pointer(agbpp)
-        // 将agf对应的xfs_buf加入到map中，agno作为value
-        agno = @entry($agno)
-        s_dev = @cast(@entry($mp), "struct xfs_mount", "xfs")->m_super->s_dev
-        dev_maj = MAJOR(s_dev)
-        dev_min = MINOR(s_dev)
-        agf_info = build_agf_info_string(dev_maj, dev_min, agno)
-        agbp_map[agbp_void] = agf_info
+    if(pid in agbpp_map) {
+        if(ret == 0) {
+            agbpp = agbpp_map[pid]
+            // 读取指针地址的内容，解引用，通过这种方式可以获取函数的返回参数值, 其实就是agf的xfs_buf的地址了
+            agbp_void = kernel_pointer(agbpp)
+            // 将agf对应的xfs_buf加入到map中，agno作为value
+            agno = @entry($agno)
+            s_dev = @cast(@entry($mp), "struct xfs_mount", "xfs")->m_super->s_dev
+            dev_maj = MAJOR(s_dev)
+            dev_min = MINOR(s_dev)
+            agf_info = build_agf_info_string(dev_maj, dev_min, agno)
+            agbp_map[agbp_void] = agf_info
 
-        agbp_error = @cast(agbp_void, "struct xfs_buf", "xfs")->b_error
-        //printf("xfs_read_agf.exit pid:%d, ret:%d, agbp_error:%d\n", pid(), ret, agbp_error)
-        //s_dev = @cast(agbp_void, "struct xfs_buf", "xfs")->b_mount->m_super->s_dev
-        agbp_buf_addr = @cast(agbp_void, "struct xfs_buf", "xfs")->b_addr
+            agbp_error = @cast(agbp_void, "struct xfs_buf", "xfs")->b_error
+            //printf("xfs_read_agf.exit pid:%d, ret:%d, agbp_error:%d\n", pid(), ret, agbp_error)
+            //s_dev = @cast(agbp_void, "struct xfs_buf", "xfs")->b_mount->m_super->s_dev
+            agbp_buf_addr = @cast(agbp_void, "struct xfs_buf", "xfs")->b_addr
 
-        agf_magic = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum)
-        agf_freeblks = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks)
-        agf_longest = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_longest) // be32
-        agf_lsn = ntohll(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_lsn) // be64
-        agf_crc = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_crc) // be32
+            agf_magic = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum)
+            agf_freeblks = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks)
+            agf_longest = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_longest) // be32
+            agf_lsn = ntohll(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_lsn) // be64
+            agf_crc = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_crc) // be32
 
-        printf("%s, pid:%d, agf:{%s}, xfs_read_agf.return<--- ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d, agf_longest:%d, agf_lsn:%s, agf_crc:0x%x\n", ctime(), pid, agf_info, ret, agbp_error, agf_magic, agf_freeblks, agf_longest, format_lsn(agf_lsn), agf_crc)
+            printf("%s, pid:%d, agf:{%s}, xfs_read_agf.return<--- ret:%d, agbp_error:%d, agf_magic:0x%x, agf_freeblks:%d, agf_longest:%d, agf_lsn:%s, agf_crc:0x%x\n", ctime(), pid, agf_info, ret, agbp_error, agf_magic, agf_freeblks, agf_longest, format_lsn(agf_lsn), agf_crc)
+        } else {
+            printf("%s, pid:%d, xfs_read_agf.return<--- ret:%d\n", ctime(), pid, ret)
+        }
         delete agbpp_map[pid]
     }
 }
@@ -95,16 +100,25 @@ probe module("xfs").function("xfs_read_agf").return {
 probe module("xfs").function("_xfs_trans_bjoin") {
     if($bp in agbp_map) {
         agf_info = agbp_map[$bp]
+        printf("%s, pid:%d, agf:{%s}, _xfs_trans_bjoin, xfs_tran:%s\n", ctime(), pid(), agf_info, $tp$)
+    }
+}
+
+probe module("xfs").function("_xfs_trans_bjoin").return {
+    bp = @entry($bp)
+    if(bp in agbp_map) {
+        tp = @entry($tp)
+        agf_info = agbp_map[bp]
         // struct xfs_buf_log_item	*b_log_item;
         // struct xfs_log_item	bli_item;
-        agbp_bip = @cast($bp, "struct xfs_buf", "xfs")->b_log_item
-        agbp_lip = &@cast($bp, "struct xfs_buf", "xfs")->b_log_item->bli_item
+        agbp_bip = @cast(bp, "struct xfs_buf", "xfs")->b_log_item
+        agbp_lip = &@cast(agbp_bip, "struct xfs_buf_log_item", "xfs")->bli_item
         // 如果是agf的xfs_buf
-        printf("%s, pid:%d, agf:{%s}, _xfs_trans_bjoin, xfs_log_item:%s into xfs_tran:%s\n", ctime(), pid(), agf_info, @cast($bp, "struct xfs_buf", "xfs")->b_log_item->bli_item$, $tp$)
-        printf("%s, pid:%d, agf:{%s}, agbp_bip:%p, agbp_lip:%p\n", ctime(), pid(), agf_info, agbp_bip, agbp_lip)
+        printf("%s, pid:%d, agf:{%s}, _xfs_trans_bjoin.return, agbp_bip:%p, agbp_lip:%p, xfs_log_item:%s\n", ctime(), pid(), agf_info, agbp_bip, agbp_lip, @cast(agbp_bip, "struct xfs_buf_log_item", "xfs")->bli_item$)
         // 将agf的xfs_buf对应的xfs_tran加入到map中
-        tran_agbp_map[$tp] = $bp
-        lip_agbp_map[agbp_lip] = $bp
+        tran_agbp_map[tp] = bp
+        lip_agbp_map[agbp_lip] = bp
+        //bip_agbp_map[agbp_bip] = $bp
     }
 }
 
@@ -140,8 +154,8 @@ probe module("xfs").function("xfs_alloc_update_counters") {
 probe module("xfs").function("xfs_trans_free") {
     tran = $tp
     if(tran in tran_agbp_map) {
-        //agbp = tran_agbp_map[tran]
-        //agf_info = agbp_map[agbp]
+        agbp = tran_agbp_map[tran]
+        agf_info = agbp_map[agbp]
         printf("%s, pid:%d, agf:{%s}, xfs_trans_free tran:%p, caller:%s\n", ctime(), pid(), agf_info, $tp, caller())
         delete tran_agbp_map[tran]
     }
@@ -266,9 +280,9 @@ probe module("xfs").function("xlog_sync").return {
 
 // xlog_in_core写入磁盘回调
 probe module("xfs").function("xlog_state_do_callback") {
-    h_crc = $iclog->ic_data->hic_header->h_crc
-    h_len = ntohl($iclog->ic_data->hic_header->h_len)
-    commit_lsn = ntohll($iclog->ic_data->hic_header->h_lsn)
+    h_crc = $ciclog->ic_data->hic_header->h_crc
+    h_len = ntohl($ciclog->ic_data->hic_header->h_len)
+    commit_lsn = ntohll($ciclog->ic_data->hic_header->h_lsn)
     printf("%s, pid:%d, xlog_state_do_callback, commit_lsn:%s, h_len:%d, h_crc:%d, execname:%s\n", ctime(), pid(), format_lsn(commit_lsn), h_len, h_crc, execname())
 }
 
