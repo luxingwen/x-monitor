@@ -323,7 +323,9 @@ probe module("xfs").function("xlog_sync").return {
 }
 
 // xlog_in_core写入磁盘回调
-// xlog_sync回调xlog_ioend_work --->xlog_state_do_iclog_callbacks，日志写入磁盘回调，记录写入成功的lsn
+// xlog_bio_end_io--->ic_end_io_work
+// xlog_sync回调xlog_ioend_work /*(iclog->ic_bio.bi_status);*/--->
+// xlog_state_do_iclog_callbacks，日志写入磁盘回调，记录写入成功的lsn
 // 拿到xfs_cil_ctx
 // --->xlog_cil_process_committed
 // ---> xlog_cil_committed(ctx)
@@ -334,7 +336,7 @@ probe module("xfs").function("xlog_state_do_iclog_callbacks") {
     commit_lsn = ntohll($iclog->ic_data->hic_header->h_lsn)
     //start_lsn_blkno = start_lsn & 0xffffffff
     //start_lsn_cycle = start_lsn >> 32
-    printf("%s, pid:%d, xlog_state_do_iclog_callbacks, commit_lsn:%s, h_len:%d, h_crc:%d, execname:%s\n", ctime(), pid(), format_lsn(commit_lsn), h_len, h_crc, execname())
+    printf("%s, pid:%d, xlog_state_do_iclog_callbacks, bi_status:%d, commit_lsn:%s, h_len:%d, h_crc:%d, execname:%s\n", ctime(), pid(), $iclog->ic_bio->bi_status, format_lsn(commit_lsn), h_len, h_crc, execname())
 }
 
 // 会在这里设置xfs_log_item的lsn
@@ -434,10 +436,9 @@ probe module("xfs").function("__xfs_buf_submit") {
             agf_magic = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_magicnum)
             agf_freeblks = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks)
             agf_longest = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_longest) // be32
-            agf_lsn = ntohll(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_lsn) // be64
-            agf_crc = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_crc) // be32
-
-            printf("%s, pid:%d, agf:{%s}, __xfs_buf_submit, lip:%p, lip_lsn:%s, agf_magic:0x%x, agf_freeblks:%d, agf_longest:%d, agf_lsn:%s, agf_crc:0x%x\n", ctime(), pid(), agf_info, lip, format_lsn(lip_lsn), agf_magic, agf_freeblks, agf_longest, format_lsn(agf_lsn), agf_crc)
+            //agf_lsn = ntohll(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_lsn) // be64
+            //agf_crc = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_crc) // be32
+            printf("%s, pid:%d, agf:{%s}, __xfs_buf_submit, lip:%p, lip_lsn:%s, agf_magic:0x%x, agf_freeblks:%d, agf_longest:%d\n", ctime(), pid(), agf_info, lip, format_lsn(lip_lsn), agf_magic, agf_freeblks, agf_longest)
         }
     }
 }
@@ -451,8 +452,11 @@ probe module("xfs").function("xfs_agf_write_verify").return {
         agf_flfirst = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_flfirst)
         agf_fllast = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_fllast)
         agf_flcount = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_flcount)
+        agf_freeblks = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_freeblks)
+        agf_longest = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_longest) // be32
         agf_lsn = ntohll(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_lsn) // be64
-        printf("%s, pid:%d, agf:{%s}, xfs_agf_write_verify.return, agf_flfirst:%d, agf_fllast:%d, agf_flcount:%d, agf_lsn:%s\n", ctime(), pid(), agf_info, agf_flfirst, agf_fllast, agf_flcount, format_lsn(agf_lsn))
+        agf_crc = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_crc) // be32
+        printf("%s, pid:%d, agf:{%s}, xfs_agf_write_verify.return, agf_flfirst:%d, agf_fllast:%d, agf_flcount:%d, agf_freeblks:%d, agf_longest:%d, agf_lsn:%s, agf_crc:0x%x\n", ctime(), pid(), agf_info, agf_flfirst, agf_fllast, agf_flcount, agf_freeblks, agf_longest, format_lsn(agf_lsn), agf_crc)
     }
 }
 

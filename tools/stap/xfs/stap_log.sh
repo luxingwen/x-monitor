@@ -31,7 +31,7 @@ echo $$ > $LOCK_FILE
 trap cleanup SIGINT SIGQUIT SIGTERM
 
 # 运行 stap 命令并将输出重定向到日志文件
-stap -v ./xfs_agf.stp 2>&1 | tee -a $LOG_FILE &
+stap -s 16 -v ./xfs_agf.stp 2>&1 | tee -a $LOG_FILE &
 
 # 获取 stap 命令的进程ID
 STAP_PID=$!
