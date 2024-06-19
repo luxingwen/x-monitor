@@ -277,15 +277,15 @@ probe module("xfs").function("xlog_sync").return {
     //print_backtrace()
 }
 
-probe module("xfs").function("xlog_iodone") {
-    if($bp in agbp_map) {
-        agf_info = agbp_map[$bp]
-        h_crc = @cast($bp->b_log_item, "struct xlog_in_core", "xfs")->ic_data->hic_header->h_crc
-        h_len = ntohl(@cast($bp->b_log_item, "struct xlog_in_core", "xfs")->ic_data->hic_header->h_len)
-        commit_lsn = ntohll(@cast($bp->b_log_item, "struct xlog_in_core", "xfs")->ic_data->hic_header->h_lsn)
-        printf("%s, pid:%d, agf:{%s}, xlog_iodone, b_error:%d, b_io_error:%d, commit_lsn:%s, h_len:%d, h_crc:%d, caller:%s\n", ctime(), pid(), agf_info, $bp->b_error, $bp->b_io_error, format_lsn(commit_lsn), h_len, h_crc, caller())
-    }
-}
+// probe module("xfs").function("xlog_iodone") {
+//     if($bp in agbp_map) {
+//         agf_info = agbp_map[$bp]
+//         h_crc = @cast($bp->b_log_item, "struct xlog_in_core", "xfs")->ic_data->hic_header->h_crc
+//         h_len = ntohl(@cast($bp->b_log_item, "struct xlog_in_core", "xfs")->ic_data->hic_header->h_len)
+//         commit_lsn = ntohll(@cast($bp->b_log_item, "struct xlog_in_core", "xfs")->ic_data->hic_header->h_lsn)
+//         printf("%s, pid:%d, agf:{%s}, xlog_iodone, b_error:%d, b_io_error:%d, commit_lsn:%s, h_len:%d, h_crc:%d, caller:%s\n", ctime(), pid(), agf_info, $bp->b_error, $bp->b_io_error, format_lsn(commit_lsn), h_len, h_crc, caller())
+//     }
+// }
 
 // xlog_in_core写入磁盘回调
 // xfs_buf_bio_end_io--->
@@ -375,16 +375,21 @@ probe module("xfs").function("xfs_buf_item_push").return {
 probe module("xfs").function("__xfs_buf_submit") {
     // 如果caller = xlog_bdstrat那么是xlog写入磁盘
     // 如果caller = xfs_buf_delwri_submit_buffers那么是agf的元数据写入磁盘
+    caller_info = caller()
+
+    if(isinstr(caller_info, "xlog_bdstrat")) {
+        // xlog写入磁盘
+        if($bp->b_flags & 2) {
+            start_lsn = ntohll(@cast($bp->b_log_item, "struct xlog_in_core", "xfs")->ic_data->hic_header->h_lsn)
+            tail_lsn = ntohll(@cast($bp->b_log_item, "struct xlog_in_core", "xfs")->ic_data->hic_header->h_tail_lsn)
+            h_len = ntohl(@cast($bp->b_log_item, "struct xlog_in_core", "xfs")->ic_data->hic_header->h_len)
+            h_crc = @cast($bp->b_log_item, "struct xlog_in_core", "xfs")->ic_data->hic_header->h_crc
+            printf("%s, pid:%d, __xfs_buf_submit, wait:%d, start_lsn:%s, tail_lsn:%s, h_len:%d, h_crc:0x%x, caller:%s\n", ctime(), pid(), $wait, format_lsn(start_lsn), format_lsn(tail_lsn), h_len, h_crc, caller_info)
+        }
+    }
     if($bp in agbp_map) {
         agf_info = agbp_map[$bp]
-
-        caller_info = caller()
-        if(isinstr(caller_info, "xlog_bdstrat")) {
-            // xlog写入磁盘
-            if($bp->b_flags & 2) {
-                printf("%s, pid:%d, agf:{%s}, __xfs_buf_submit, wait:%d, caller:%s\n", ctime(), pid(), agf_info, $wait, caller())
-            }
-        } else if(isinstr(caller_info, "xfs_buf_delwri_submit_buffers")) {
+        if(isinstr(caller_info, "xfs_buf_delwri_submit_buffers")) {
             // XBF_WRITE = 2
             if($bp->b_flags & 2) {
                 // 是写入，输出agf的元数据
@@ -397,7 +402,7 @@ probe module("xfs").function("__xfs_buf_submit") {
                 agf_longest = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_longest) // be32
                 //agf_lsn = ntohll(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_lsn) // be64
                 //agf_crc = ntohl(@cast(agbp_buf_addr, "struct xfs_agf", "xfs")->agf_crc) // be32
-                printf("%s, pid:%d, agf:{%s}, __xfs_buf_submit, wait:%d, lip:%p, lip_lsn:%s, agf_magic:0x%x, agf_freeblks:%d, agf_longest:%d, caller:%s\n", ctime(), pid(), agf_info, $wait, lip, format_lsn(lip_lsn), agf_magic, agf_freeblks, agf_longest, caller())
+                printf("%s, pid:%d, agf:{%s}, __xfs_buf_submit, wait:%d, lip:%p, lip_lsn:%s, agf_magic:0x%x, agf_freeblks:%d, agf_longest:%d, caller:%s\n", ctime(), pid(), agf_info, $wait, lip, format_lsn(lip_lsn), agf_magic, agf_freeblks, agf_longest, caller_info)
             }
         }
     }
