@@ -17,6 +17,41 @@
 #include <linux/cdev.h>
 #include <linux/ioctl.h>
 
+// 如果编译没有代入版本信息
+#ifndef LINUX_VERSION_CODE
+#include <linux/version.h>
+#else
+#define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
+#endif
+
+#define MODULE_TAG "CW_IOCTL_TEST"
+#define CW_IOCTL_DEV_MAJOR 0
+#define CW_IOCTL_NR_DEVS 2
+
+static int32_t __cw_ioctl_dev_major = CW_IOCTL_DEV_MAJOR;
+static int32_t __cw_ioctl_dev_minor = 0;
+static int32_t __cw_ioctl_nr_devs = CW_IOCTL_NR_DEVS;
+
+// 定义模块参数
+module_param(__cw_ioctl_dev_major, int32_t, S_IRUGO);
+module_param(__cw_ioctl_dev_minor, int32_t, S_IRUGO);
+module_param(__cw_ioctl_nr_devs, int32_t, S_IRUGO);
+
+static int32_t __ioctl_dev_open(struct inode *inode, struct file *filp);
+static int32_t __ioctl_dev_release(struct inode *inode, struct file *filp);
+static ssize_t __ioctl_dev_read(struct file *filp, char __user *buf,
+				size_t count, loff_t *f_pos);
+static ssize_t __ioctl_dev_write(struct file *filp, const char __user *buf,
+				 size_t count, loff_t *f_pos);
+static long __ioctl_dev_ioctl(struct file *filp, unsigned int cmd,
+			      unsigned long arg);
+
+static int32_t __ioctl_dev_open(struct inode *inode, struct file *filp)
+{
+	pr_info(CW_IOCTL_TEST " device file opened\n");
+	return 0;
+}
+
 static int32_t __init cw_ioctl_test_init(void)
 {
 	return 0;
