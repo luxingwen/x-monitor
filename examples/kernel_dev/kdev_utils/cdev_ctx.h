@@ -1,8 +1,8 @@
 /*
  * @Author: calmwu
  * @Date: 2024-06-15 22:16:08
- * @Last Modified by:   calmwu
- * @Last Modified time: 2024-06-15 22:16:08
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2024-06-24 15:11:56
  */
 
 #ifndef __CW_KDEV_UILTS_CDEV_CTX_H
@@ -13,7 +13,7 @@ struct module;
 struct class;
 
 // 字符设备的创建上下文
-struct module_crt_cdev_ctx {
+struct module_cdev_crt_ctx {
 	int32_t major; // 主设备号，如果为 0，表明需要动态分配
 	uint32_t base_minor; // 次设备号的起始值
 	uint32_t count; // 次设备号的数量
@@ -28,7 +28,7 @@ struct module_crt_cdev_ctx {
 	struct cdev *cdev_ary; // 字符设备数组
 };
 
-int32_t module_create_cdevs(struct module_crt_cdev_ctx *ctx);
-void module_destroy_cdevs(struct module_crt_cdev_ctx *ctx);
+int32_t module_create_cdevs(struct module_cdev_crt_ctx *ctx);
+void module_destroy_cdevs(struct module_cdev_crt_ctx *ctx);
 
 #endif /* __CW_KDEV_UILTS_CDEV_CTX_H */

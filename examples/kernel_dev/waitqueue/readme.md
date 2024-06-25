@@ -1,4 +1,4 @@
-1. 编译动态初始化waitqueue
+1. 编译动态初始化 waitqueue
 
    ```
    make CFLAGS_EXTRA=-DINIT_BY_DNY noisy
@@ -22,7 +22,7 @@
    modprobe waitqueue_test
    ```
 
-   dmesg查看
+   dmesg 查看
 
    ```
    Sun Apr  7 14:48:36 2024] waitqueue_test: loading out-of-tree module taints kernel.
@@ -41,7 +41,7 @@
    cat /dev/cw_waitqueue_test
    ```
 
-   dmesg查看输出
+   dmesg 查看输出
 
    ```
    [Sun Apr  7 14:48:36 2024] cw_waitqueue_test_init
@@ -68,7 +68,7 @@
    rmmod waitqueue_test
    ```
 
-   dmesg查看
+   dmesg 查看
 
    ```
    [Sun Apr  7 14:54:20 2024] Event came from Exit function
