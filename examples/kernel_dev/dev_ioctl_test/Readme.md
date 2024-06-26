@@ -65,6 +65,8 @@
 
    [DKMS简介 - wwang - 博客园 (cnblogs.com)](https://www.cnblogs.com/wwang/archive/2011/06/21/2085571.html)
 
+   [Is DKMS provided in Red Hat Enterprise Linux? - Red Hat Customer Portal](https://access.redhat.com/solutions/1132653)
+
    
 
    
