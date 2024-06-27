@@ -29,7 +29,7 @@
 4. 配置模块参数，添加配置文件
 
    ```
-    ⚡ root@localhost  ~  ccat /etc/modprobe.d/cw_dev_ioctl_test.conf 
+    ⚡ root@localhost  ~  cat /etc/modprobe.d/cw_dev_ioctl_test.conf 
    options cw_dev_ioctl_test __cw_ioctl_nr_devs=1
    ```
 
@@ -67,7 +67,9 @@
 
    [Is DKMS provided in Red Hat Enterprise Linux? - Red Hat Customer Portal](https://access.redhat.com/solutions/1132653)
 
-   
+   [Dynamic Kernel Module Support - Genspark](https://www.genspark.ai/spark?id=a59f3b9b-3957-35df-8caa-23fb759e0461)
 
+   
+   
    
 

@@ -26,121 +26,114 @@
  * @param ctx The context containing the necessary information for creating the character devices.
  * @return 0 on success, or a negative error code on failure.
  */
-int32_t module_create_cdevs(struct module_cdev_crt_ctx *ctx)
+int32_t module_create_cdevs(struct cw_cdev_crt_ctx *ctx)
 {
-	int32_t ret = 0;
-	uint32_t i, j, k = 0;
-	dev_t dev;
-	struct device *device;
+    int32_t ret = 0;
+    uint32_t i, j, k = 0;
+    dev_t dev;
+    struct device *device;
 
-	if (unlikely(!ctx)) {
-		pr_err("Invalid context\n");
-		return -EINVAL;
-	}
+    if (unlikely(!ctx)) {
+        pr_err("Invalid context\n");
+        return -EINVAL;
+    }
 
-	if (unlikely(0 == ctx->fops)) {
-		pr_err("Invalid file operations\n");
-		return -EINVAL;
-	}
+    if (unlikely(0 == ctx->fops)) {
+        pr_err("Invalid file operations\n");
+        return -EINVAL;
+    }
 
-	if (unlikely(0 == ctx->cdev_driver_name || 0 == ctx->cdev_cls_name ||
-		     0 == ctx->cdev_name_fmt)) {
-		pr_err("Invalid driver name, class name or device name format\n");
-		return -EINVAL;
-	}
+    if (unlikely(0 == ctx->name)) {
+        pr_err("Invalid device name\n");
+        return -EINVAL;
+    }
 
-	if (ctx->major == 0) {
-		// 使用动态分配的方式获取主设备号
-		ret = alloc_chrdev_region(&dev, ctx->base_minor, ctx->count,
-					  ctx->cdev_driver_name);
-		if (ret < 0) {
-			pr_err("%s: alloc_chrdev_region failed\n",
-			       ctx->cdev_driver_name);
-			return ret;
-		}
-		ctx->major = MAJOR(dev);
-	} else {
-		// 使用指定的主设备号
-		dev = MKDEV(ctx->major, ctx->base_minor);
-		ret = register_chrdev_region(dev, ctx->count,
-					     ctx->cdev_driver_name);
-		if (ret < 0) {
-			pr_err("%s: register_chrdev_region failed\n",
-			       ctx->cdev_driver_name);
-			return ret;
-		}
-	}
-	pr_info("%s: dev major:%d, minor:%d\n", ctx->cdev_driver_name,
-		ctx->major, MAJOR(dev));
+    // 分配设备号
+    if (ctx->major == 0) {
+        // 使用动态分配的方式获取主设备号
+        ret = alloc_chrdev_region(&dev, ctx->base_minor, ctx->count, ctx->name);
+        if (ret < 0) {
+            pr_err("Unable to allocate major number for device:%s\n",
+                   ctx->name);
+            return ret;
+        }
+        ctx->major = MAJOR(dev);
+    } else {
+        // 使用指定的主设备号
+        dev = MKDEV(ctx->major, ctx->base_minor);
+        ret = register_chrdev_region(dev, ctx->count, ctx->name);
+        if (ret < 0) {
+            pr_err("Unable to register major number for device:%s\n",
+                   ctx->name);
+            return ret;
+        }
+    }
+    pr_info("%s: major:%d, count:%d\n", ctx->name, ctx->major, ctx->count);
 
-	// create class, /sys/class
-	ctx->cdev_cls = class_create(ctx->owner, ctx->cdev_cls_name);
-	if (IS_ERR(ctx->cdev_cls)) {
-		pr_err("%s: couldn't create %s class\n", ctx->cdev_driver_name,
-		       ctx->cdev_cls_name);
-		ret = PTR_ERR(ctx->cdev_cls);
-		goto unreg_chrdev;
-	}
+    // create class, /sys/class
+    ctx->cdev_cls = class_create(ctx->owner, ctx->name);
+    if (IS_ERR(ctx->cdev_cls)) {
+        ret = PTR_ERR(ctx->cdev_cls);
+        pr_err("Unable to create %s class:%d\n", ctx->name, ret);
+        goto unreg_chrdev;
+    }
 
-	// create cdev array
-	ctx->cdev_ary = (struct cdev *)kmalloc_array(
-		ctx->count, sizeof(struct cdev), GFP_KERNEL | __GFP_ZERO);
-	if (unlikely(!ctx->cdev_ary)) {
-		ret = -ENOMEM;
-		goto unreg_class;
-	}
+    // create cdevs array
+    ctx->devs = (struct cw_dev *)kmalloc_array(
+            ctx->count, sizeof(struct cw_dev), GFP_KERNEL | __GFP_ZERO);
+    if (unlikely(!ctx->devs)) {
+        ret = -ENOMEM;
+        goto unreg_class;
+    }
 
-	// 添加设备
-	for (i = 0; i < ctx->count; i++) {
-		cdev_init(&ctx->cdev_ary[i], ctx->fops);
-		ctx->cdev_ary[i].owner = ctx->owner;
-		ret = cdev_add(&ctx->cdev_ary[i], dev + i, 1);
-		if (ret < 0) {
-			pr_err("%s: cdev_add %s%d failed\n",
-			       ctx->cdev_driver_name, ctx->cdev_name_fmt, i);
-			goto un_cdev_add;
-		} else {
-			j = i;
-			pr_info("%s: cdev_add %s%d success\n",
-				ctx->cdev_driver_name, ctx->cdev_name_fmt, i);
-		}
-	}
-	j = ctx->count;
+    // 添加设备
+    for (i = 0; i < ctx->count; i++) {
+        cdev_init(&ctx->devs[i].cdev, ctx->fops);
+        ctx->devs[i].cdev.owner = ctx->owner;
+        ret = cdev_add(&ctx->devs[i].cdev, dev + i, 1);
+        if (ret < 0) {
+            pr_err("cdev_add %s-%d failed, ret:%d\n", ctx->name, i, ret);
+            goto un_cdev_add;
+        } else {
+            j = i;
+            pr_info("cdev_add %s-%d success\n", ctx->name, i);
+        }
+    }
+    j = ctx->count;
 
-	// 创建设备 /dev
-	for (i = 0; i < ctx->count; i++) {
-		device = device_create(ctx->cdev_cls, NULL, dev + i,
-				       ctx->dev_priv_data, ctx->cdev_name_fmt,
-				       i);
-		if (IS_ERR(device)) {
-			pr_err("%s: device_create '%s'[%d] failed\n",
-			       ctx->cdev_driver_name, ctx->cdev_name_fmt, i);
-			ret = PTR_ERR(device);
-			goto un_dev_crt;
-		} else {
-			k = j;
-			pr_info("%s: device_create '%s'[%d] success\n",
-				ctx->cdev_driver_name, ctx->cdev_name_fmt, i);
-		}
-	}
+    // 创建设备 /dev
+    for (i = 0; i < ctx->count; i++) {
+        ctx->devs[i].devt = dev + i;
+        device = device_create(ctx->cdev_cls, NULL, ctx->devs[i].devt,
+                               ctx->dev_priv_data, ctx->name_fmt, i);
+        if (IS_ERR(device)) {
+            ret = PTR_ERR(device);
+            pr_err("Unable to create %s-%d, ret:%d\n", ctx->name, i, ret);
+            goto un_dev_crt;
+        } else {
+            k = j;
+            ctx->devs[i].device = device;
+            pr_info("Create %s-%d success\n", ctx->name, i);
+        }
+    }
 
-	pr_info("%s module_create_cdevs success\n", ctx->cdev_driver_name);
-	return 0;
+    pr_info("module_create_cdevs success\n");
+    return 0;
 
 un_dev_crt:
-	for (i = 0; i < k; i++) {
-		device_destroy(ctx->cdev_cls, dev + i);
-	}
+    for (i = 0; i < k; i++) {
+        device_destroy(ctx->cdev_cls, dev + i);
+    }
 un_cdev_add:
-	for (i = 0; i < j; i++) {
-		cdev_del(&ctx->cdev_ary[i]);
-	}
-	kfree(ctx->cdev_ary);
+    for (i = 0; i < j; i++) {
+        cdev_del(&ctx->devs[i].cdev);
+    }
+    kfree(ctx->devs);
 unreg_class:
-	class_destroy(ctx->cdev_cls);
+    class_destroy(ctx->cdev_cls);
 unreg_chrdev:
-	unregister_chrdev_region(dev, ctx->count);
-	return ret;
+    unregister_chrdev_region(dev, ctx->count);
+    return ret;
 }
 
 EXPORT_SYMBOL_GPL(module_create_cdevs);
@@ -149,37 +142,36 @@ EXPORT_SYMBOL_GPL(module_create_cdevs);
  * @brief Destroys the character devices associated with the given module context.
  *
  * This function is responsible for destroying the character devices that were created
- * using the module_cdev_crt_ctx structure. It should be called when the module is being
+ * using the cw_cdev_crt_ctx structure. It should be called when the module is being
  * unloaded or when the character devices are no longer needed.
  *
- * @param ctx The module_cdev_crt_ctx structure containing the character devices to be destroyed.
+ * @param ctx The cw_cdev_crt_ctx structure containing the character devices to be destroyed.
  */
-void module_destroy_cdevs(struct module_cdev_crt_ctx *ctx)
+void module_destroy_cdevs(struct cw_cdev_crt_ctx *ctx)
 {
-	uint32_t i;
-	dev_t dev = MKDEV(ctx->major, ctx->base_minor);
+    uint32_t i;
+    dev_t dev = MKDEV(ctx->major, ctx->base_minor);
 
-	if (unlikely(!ctx)) {
-		pr_err("Invalid context\n");
-		return;
-	}
-	// 删除设备
-	for (i = 0; i < ctx->count; i++) {
-		device_destroy(ctx->cdev_cls, dev + i);
-		pr_info("%s: device_destroy dev:[%d:%d]\n",
-			ctx->cdev_driver_name, ctx->major, ctx->base_minor + i);
-	}
-	// 删除类
-	class_destroy(ctx->cdev_cls);
-	// 删除 cdev
-	for (i = 0; i < ctx->count; i++) {
-		cdev_del(&ctx->cdev_ary[i]);
-	}
-	// 释放 cdev 数组
-	kfree(ctx->cdev_ary);
-	// 释放设备号
-	unregister_chrdev_region(dev, ctx->count);
-	pr_info("%s module_destroy_cdevs success\n", ctx->cdev_driver_name);
+    if (unlikely(!ctx)) {
+        pr_err("Invalid context\n");
+        return;
+    }
+    // 删除设备
+    for (i = 0; i < ctx->count; i++) {
+        pr_info("device_destroy dev:'%s'\n", ctx->devs[i].device->init_name);
+        device_destroy(ctx->cdev_cls, dev + i);
+    }
+    // 删除类
+    class_destroy(ctx->cdev_cls);
+    // 删除 cdev
+    for (i = 0; i < ctx->count; i++) {
+        cdev_del(&ctx->devs[i].cdev);
+    }
+    // 释放设备数组
+    kfree(ctx->devs);
+    // 释放设备号
+    unregister_chrdev_region(dev, ctx->count);
+    pr_info("module_destroy_cdevs success\n");
 }
 
 EXPORT_SYMBOL_GPL(module_destroy_cdevs);
