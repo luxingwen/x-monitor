@@ -68,27 +68,30 @@ static struct file_operations __ioctl_dev_fops = {
 
 static int32_t __ioctl_dev_open(struct inode *inode, struct file *filp)
 {
-    pr_info(MODULE_TAG " device file opened\n");
+    struct cw_dev *dev = container_of(inode->i_cdev, struct cw_dev, cdev);
+    pr_info(MODULE_TAG " open device:'%s'\n", (char *)(dev->extern_data));
+    filp->private_data = dev->extern_data;
     return 0;
 }
 
 static int32_t __ioctl_dev_release(struct inode *inode, struct file *filp)
 {
-    pr_info(MODULE_TAG " device file released\n");
+    pr_info(MODULE_TAG " released device:'%s'\n", (char *)(filp->private_data));
     return 0;
 }
 
 static ssize_t __ioctl_dev_read(struct file *filp, char __user *buf,
                                 size_t count, loff_t *f_pos)
 {
-    pr_info(MODULE_TAG " read device file\n");
+    pr_info(MODULE_TAG " read from device:'%s'\n",
+            (char *)(filp->private_data));
     return 0;
 }
 
 static ssize_t __ioctl_dev_write(struct file *filp, const char __user *buf,
                                  size_t count, loff_t *f_pos)
 {
-    pr_info(MODULE_TAG " write device file\n");
+    pr_info(MODULE_TAG " write to device:'%s'\n", (char *)(filp->private_data));
     return 0;
 }
 
@@ -102,6 +105,7 @@ static long __ioctl_dev_ioctl(struct file *filp, unsigned int cmd,
 static int32_t __init cw_ioctl_test_init(void)
 {
     int32_t ret = 0;
+    int32_t i = 0;
 
     __cw_ioctl_dev_crt_ctx.major = __cw_ioctl_dev_major;
     __cw_ioctl_dev_crt_ctx.base_minor = __cw_ioctl_dev_minor;
@@ -116,12 +120,21 @@ static int32_t __init cw_ioctl_test_init(void)
         pr_err(MODULE_TAG " module_create_cdevs failed\n");
         return ret;
     }
+
+    for (i = 0; i < __cw_ioctl_nr_devs; i++) {
+        __cw_ioctl_dev_crt_ctx.devs[i].extern_data =
+                kasprintf(GFP_KERNEL, "this cw_ioctl_dev_%d extern data", i);
+    }
     pr_info(MODULE_TAG " init successfully!\n");
     return 0;
 }
 
 static void __exit cw_ioctl_test_exit(void)
 {
+    int32_t i = 0;
+    for (i = 0; i < __cw_ioctl_dev_crt_ctx.count; i++) {
+        kfree(__cw_ioctl_dev_crt_ctx.devs[i].extern_data);
+    }
     module_destroy_cdevs(&__cw_ioctl_dev_crt_ctx);
     pr_info(MODULE_TAG " bye!\n");
 }

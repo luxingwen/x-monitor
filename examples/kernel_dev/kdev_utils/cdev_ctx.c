@@ -158,7 +158,7 @@ void module_destroy_cdevs(struct cw_cdev_crt_ctx *ctx)
     }
     // 删除设备
     for (i = 0; i < ctx->count; i++) {
-        pr_info("device_destroy dev:'%s'\n", ctx->devs[i].device->init_name);
+        pr_info("device_destroy dev:'%s%d'\n", ctx->name, i);
         device_destroy(ctx->cdev_cls, dev + i);
     }
     // 删除类

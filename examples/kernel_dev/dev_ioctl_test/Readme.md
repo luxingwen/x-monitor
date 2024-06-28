@@ -69,6 +69,8 @@
 
    [Dynamic Kernel Module Support - Genspark](https://www.genspark.ai/spark?id=a59f3b9b-3957-35df-8caa-23fb759e0461)
 
+   [dkms 101 (terenceli.github.io)](https://terenceli.github.io/技术/2018/07/14/dkms-101)
+   
    
    
    
