@@ -272,9 +272,10 @@
       
       CLEAN="make clean"
       MAKE="'make' BUILD_KERNEL=$kernelver noisy"
+      POST_INSTALL="post_install.sh"
       
       BUILT_MODULE_NAME[0]="i40e"
-      DEST_MODULE_LOCATION[0]="/updates/dkms"
+      DEST_MODULE_LOCATION[0]="/kernel/../updates/dkms"
       
       AUTOINSTALL="yes"
       ```
@@ -380,6 +381,22 @@
       megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
       ```
 
+   6. 使用POST_INSTALL
+
+      ```
+      #!/bin/bash
+      
+      make BUILD_KERNEL=$kernelver auxiliary_install
+      ```
+
+      执行dkms install会调用该脚本执行
+
+      ```
+      Running the post_install script:
+      Installing auxiliary...
+      depmod....
+      ```
+
 10. 资料
 
    [使用 DKMS 添加内核模块 — Documentation for Clear Linux* project](https://www.clearlinux.org/clear-linux-documentation/zh_CN/guides/kernel/kernel-modules-dkms.html#build-install-and-load-an-out-of-tree-module)
@@ -391,6 +408,10 @@
    [Is DKMS provided in Red Hat Enterprise Linux? - Red Hat Customer Portal](https://access.redhat.com/solutions/1132653)
 
    [dkms 101 (terenceli.github.io)](https://terenceli.github.io/技术/2018/07/14/dkms-101)
+
+   [Building a Linux kernel driver on Ubuntu using dkms (jksinton.com)](https://jksinton.com/linux/building-a-linux-kernel-driver-on-ubuntu-using-dkms/)
+
+   [Kernel/DkmsDriverPackage - Community Help Wiki (ubuntu.com)](https://help.ubuntu.com/community/Kernel/DkmsDriverPackage)
 
    
 
