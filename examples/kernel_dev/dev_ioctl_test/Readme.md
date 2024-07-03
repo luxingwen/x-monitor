@@ -397,7 +397,18 @@
       depmod....
       ```
 
-10. 资料
+10. DKMS多机管理
+
+    As we have seen, DKMS provides a simple mechanism to build, install, and track device driver updates. So far, all these actions have related to a single machine. But what if you’ve got many similar machines under your admin istrative control? What if you have a compiler and kernel source on only one system (**your master build system**), but you need to deploy your newly built driver to all your other systems? DKMS provides a solution to this as well—in the **mktarball** and **ldtarball** commands
+
+    ```
+    dkms build -m i40e -v 2.25.9 -k 4.18.0-425.3.1.el8.x86_64 -k 4.18.0-425.19.2.el8_7.x86_64
+    dkms mktarball -m i40e -v 2.25.9 -k 4.18.0-425.3.1.el8.x86_64 -k 4.18.0-425.19.2.el8_7.x86_64
+    ```
+
+    
+
+11. 资料
 
    [使用 DKMS 添加内核模块 — Documentation for Clear Linux* project](https://www.clearlinux.org/clear-linux-documentation/zh_CN/guides/kernel/kernel-modules-dkms.html#build-install-and-load-an-out-of-tree-module)
 
