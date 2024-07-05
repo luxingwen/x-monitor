@@ -37,7 +37,7 @@
 
 struct cw_ioctl_dev {
     char *buf;
-    size_t n;
+    size_t len;
     struct semaphore sem;
 };
 
@@ -104,35 +104,40 @@ static ssize_t __ioctl_dev_read(struct file *filp, char __user *buf,
     struct cw_dev *dev = filp->private_data;
     struct cw_ioctl_dev *ci_dev = (struct cw_ioctl_dev *)dev->extern_data;
 
-    pr_info(MODULE_TAG " will read from device[%d:%d]\n", MAJOR(dev->devt),
-            MINOR(dev->devt));
+    // pr_info(MODULE_TAG " will read from device[%d:%d]\n", MAJOR(dev->devt),
+    //         MINOR(dev->devt));
 
     if (down_interruptible(&ci_dev->sem)) {
         return -ERESTARTSYS;
     }
 
     // 判断偏移是否超过缓冲区大小
-    if (*f_pos >= ci_dev->n) {
-        goto out;
+    // if (*f_pos >= ci_dev->len) {
+    //     goto out;
+    // }
+
+    // // 判断从偏移开始读取的字节数是否超过缓冲区大小，计算可以读取的字节数
+    // if (*f_pos + count > ci_dev->len) {
+    //     count = ci_dev->len - *f_pos;
+    // }
+
+    // if (count > 0) {
+    //     if (copy_to_user(buf, ci_dev->buf + *f_pos, count)) {
+    //         ret = -EFAULT;
+    //     } else {
+    //         *f_pos += count; //更新偏移
+    //         ret = count;
+    //     }
+    // }
+    ret = simple_read_from_buffer(buf, count, f_pos, ci_dev->buf, ci_dev->len);
+    if (ret >= 0) {
+        pr_info(MODULE_TAG " read %ld bytes from device[%d:%d].\n", ret,
+                MAJOR(dev->devt), MINOR(dev->devt));
+    } else {
+        pr_err(MODULE_TAG " read from device[%d:%d] failed. ret:%ld\n",
+               MAJOR(dev->devt), MINOR(dev->devt), ret);
     }
 
-    // 判断从偏移开始读取的字节数是否超过缓冲区大小，计算可以读取的字节数
-    if (*f_pos + count > ci_dev->n) {
-        count = ci_dev->n - *f_pos;
-    }
-
-    if (count > 0) {
-        if (copy_to_user(buf, ci_dev->buf + *f_pos, count)) {
-            ret = -EFAULT;
-        } else {
-            *f_pos += count; //更新偏移
-            ret = count;
-        }
-    }
-    pr_info(MODULE_TAG " read %lu bytes from device[%d:%d] successfully\n",
-            count, MAJOR(dev->devt), MINOR(dev->devt));
-
-out:
     up(&ci_dev->sem);
     return ret;
 }
@@ -148,37 +153,42 @@ static ssize_t __ioctl_dev_write(struct file *filp, const char __user *buf,
     ssize_t ret = 0;
     struct cw_dev *dev = filp->private_data;
     struct cw_ioctl_dev *ci_dev = (struct cw_ioctl_dev *)dev->extern_data;
-    pr_info(MODULE_TAG " will write to device[%d:%d]\n", MAJOR(dev->devt),
-            MINOR(dev->devt));
 
     if (count == 0) {
+        pr_warn(MODULE_TAG " write nothing to device[%d:%d]\n",
+                MAJOR(dev->devt), MINOR(dev->devt));
         return 0;
     }
 
     if (down_interruptible(&ci_dev->sem)) {
+        pr_warn(MODULE_TAG " write interrupted\n");
         return -ERESTARTSYS;
     }
 
     // 释放 dev 的空间
     kfree(ci_dev->buf);
     ci_dev->buf = NULL;
-    ci_dev->n = 0;
+    ci_dev->len = 0;
 
     // 重新分配
     ci_dev->buf = kzalloc(count, GFP_KERNEL);
     if (NULL == ci_dev->buf) {
+        pr_err(MODULE_TAG " write failed, no memory\n");
         ret = -ENOMEM;
         goto out;
     }
-    if (copy_from_user(ci_dev->buf, buf, count)) {
-        ret = -EFAULT;
+    ret = simple_write_to_buffer(ci_dev->buf, count, f_pos, buf, count);
+    if (ret < 0) {
+        pr_err(MODULE_TAG
+               " write to device[%d:%d] failed, copy_to_user failed\n",
+               MAJOR(dev->devt), MINOR(dev->devt));
         goto copy_failed;
     }
-    ci_dev->n = count;
-    pr_info(MODULE_TAG " write %lu bytes to device[%d:%d] successfully\n",
-            count, MAJOR(dev->devt), MINOR(dev->devt));
-
-    ret = count;
+    ci_dev->len = ret;
+    print_hex_dump_bytes(MODULE_TAG "User buffer: ", DUMP_PREFIX_OFFSET,
+                         ci_dev->buf, ci_dev->len);
+    pr_info(MODULE_TAG " write %lu bytes to device[%d:%d]\n", ret,
+            MAJOR(dev->devt), MINOR(dev->devt));
     goto out;
 
 copy_failed:

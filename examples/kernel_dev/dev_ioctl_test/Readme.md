@@ -40,7 +40,27 @@
    cw_dev_ioctl_test
    ```
 
-6. 内核升级钩子，该目录下的脚本在内核升级后会自动执行
+6. 测试，写入6个字符，使用xxd读取10个字符
+
+   ```
+    ⚡ root@localhost  ~  cat /dev/cw_ioctl_dev0
+    ⚡ root@localhost  ~  echo "123456" > /dev/cw_ioctl_dev0
+   [Fri Jul  5 11:16:10 2024] cw_dev_ioctl_test:__ioctl_dev_ioctl():203: Module:[cw_ioctl_test] ioctl device file
+   [Fri Jul  5 11:16:10 2024] cw_dev_ioctl_test:__ioctl_dev_read():135: Module:[cw_ioctl_test] read 7 bytes from device[241:0] successfully
+   [Fri Jul  5 11:16:10 2024] cw_dev_ioctl_test:__ioctl_dev_read():135: Module:[cw_ioctl_test] read 0 bytes from device[241:0] successfully
+   [Fri Jul  5 11:16:10 2024] cw_dev_ioctl_test:__ioctl_dev_release():93: Module:[cw_ioctl_test] released device[241:0]
+    ⚡ root@localhost  ~  xxd -l 10 -p /dev/cw_ioctl_dev0
+   3132333435360a
+    ⚡ root@localhost  ~  xxd -s 4 -l 2 -p /dev/cw_ioctl_dev0
+   3536
+    ⚡ root@localhost  ~  xxd -s 6 -l 2 -p /dev/cw_ioctl_dev0
+   0a
+    ⚡ root@localhost  ~  xxd -s 7 -l 2 -p /dev/cw_ioctl_dev0
+   ```
+
+   
+
+7. 内核升级钩子，该目录下的脚本在内核升级后会自动执行
 
    ```
     ✘ ⚡ root@localhost  /etc/kernel  cd postinst.d 
@@ -49,7 +69,7 @@
    -rwxr-xr-x. 1 root root 1566 Jan 13  2023 51-dracut-rescue-postinst.sh
    ```
 
-7. DKMS
+8. DKMS
 
    DKMS全称是Dynamic Kernel Module Support，在内核版本变动之后可以自动重新生成新的模块。
 
@@ -57,7 +77,7 @@
 
    ![image-20240625171246482](./image-20240625171246482.png)
 
-8. megaraid_sas-07.729.00.00
+9. megaraid_sas-07.729.00.00
 
    1. 下载https://docs.broadcom.com/docs-and-downloads/07.729.00.00-1_MR7.29_Linux_driver.zip
 
@@ -256,7 +276,7 @@
        megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
        ```
 
-9. i40e-2.25.9
+10. i40e-2.25.9
 
    1. 配置dkms.conf
 
@@ -397,7 +417,7 @@
       depmod....
       ```
 
-10. DKMS多机管理
+11. DKMS多机管理
 
     As we have seen, DKMS provides a simple mechanism to build, install, and track device driver updates. So far, all these actions have related to a single machine. But what if you’ve got many similar machines under your admin istrative control? What if you have a compiler and kernel source on only one system (**your master build system**), but you need to deploy your newly built driver to all your other systems? DKMS provides a solution to this as well—in the **mktarball** and **ldtarball** commands
 
@@ -408,7 +428,7 @@
 
     
 
-11. 资料
+12. 资料
 
    [使用 DKMS 添加内核模块 — Documentation for Clear Linux* project](https://www.clearlinux.org/clear-linux-documentation/zh_CN/guides/kernel/kernel-modules-dkms.html#build-install-and-load-an-out-of-tree-module)
 

@@ -92,11 +92,11 @@ int32_t module_create_cdevs(struct cw_cdev_crt_ctx *ctx)
         ctx->devs[i].cdev.owner = ctx->owner;
         ret = cdev_add(&ctx->devs[i].cdev, dev + i, 1);
         if (ret < 0) {
-            pr_err("cdev_add %s-%d failed, ret:%d\n", ctx->name, i, ret);
+            pr_err("cdev_add %s%d failed, ret:%d\n", ctx->name, i, ret);
             goto un_cdev_add;
         } else {
             j = i;
-            pr_info("cdev_add %s-%d success\n", ctx->name, i);
+            pr_info("cdev_add %s%d success\n", ctx->name, i);
         }
     }
     j = ctx->count;
@@ -108,12 +108,12 @@ int32_t module_create_cdevs(struct cw_cdev_crt_ctx *ctx)
                                ctx->dev_priv_data, ctx->name_fmt, i);
         if (IS_ERR(device)) {
             ret = PTR_ERR(device);
-            pr_err("Unable to create %s-%d, ret:%d\n", ctx->name, i, ret);
+            pr_err("Unable to create %s%d, ret:%d\n", ctx->name, i, ret);
             goto un_dev_crt;
         } else {
             k = j;
             ctx->devs[i].device = device;
-            pr_info("Create %s-%d success\n", ctx->name, i);
+            pr_info("Create %s%d success\n", ctx->name, i);
         }
     }
 
