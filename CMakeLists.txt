@@ -69,7 +69,7 @@ if(STATIC_LINKING)
 endif(STATIC_LINKING)
 
 # debug、release 版本
-set(CMAKE_C_FLAGS_DEBUG "-Wall -Wformat=2 -g -ggdb3")
+set(CMAKE_C_FLAGS_DEBUG "-Wall -Wformat=2 -g -ggdb3 -Wno-format-security -Wno-format-overflow  -Wno-unused-but-set-variable -Wno-unused-const-variable")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall -Wformat=2")
 
 if(${CMAKE_BUILD_TYPE} MATCHES "Release")
@@ -226,6 +226,7 @@ add_subdirectory(examples/ebpf/deny_ptrace_cli)
 add_subdirectory(examples/ebpf/stack_unwind_cli)
 
 add_subdirectory(examples/kernel_dev/mmap_dev_module/user)
+add_subdirectory(examples/kernel_dev/dev_ioctl_test/ioctl_userspace)
 
 # x-monitor 的所有源代码
 file(GLOB_RECURSE X-MONITOR_SRCS

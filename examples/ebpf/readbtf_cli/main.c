@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-06-28 14:19:24
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2023-09-25 10:15:48
+ * @Last Modified time: 2024-07-08 15:09:29
  */
 
 #include "utils/common.h"
@@ -89,7 +89,7 @@ int32_t main(int32_t argc, char **argv) {
         libbpf_set_print(xm_bpf_printf);
     }
 
-    // 从vmlinux中读取BTF信息
+    // 从 vmlinux 中读取 BTF 信息
     vmlinux_btf = btf__load_vmlinux_btf();
     err = libbpf_get_error(vmlinux_btf);
     if (unlikely(0 != err)) {
@@ -99,7 +99,7 @@ int32_t main(int32_t argc, char **argv) {
     target_btf = vmlinux_btf;
 
     if (__env.find_in_module) {
-        // 从指定的模块中读取BTF信息
+        // 从指定的模块中读取 BTF 信息
         module_btf = btf__load_module_btf(module_name, vmlinux_btf);
         err = libbpf_get_error(module_btf);
         if (unlikely(0 != err)) {

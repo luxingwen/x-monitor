@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-07-04 11:47:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-07-07 15:16:03
+ * @Last Modified time: 2024-07-08 15:26:48
  */
 
 #include "utils/common.h"
@@ -45,9 +45,10 @@ static void usage(const char *prog) {
             prog);
 }
 
-static size_t __write_response(void *ptr, size_t size, size_t nmemb, void *data) {
+static size_t __write_response(void *ptr, size_t size, size_t nmemb,
+                               void *data) {
     const char *tag = (const char *)data;
-    int32_t     bytes = size * nmemb;
+    int32_t bytes = size * nmemb;
     // *是指定的位宽
     debug("---%s--- %.*s", tag, bytes, (char *)ptr);
     return bytes;
@@ -63,18 +64,18 @@ static __always_inline int32_t __check_dohttp_result(CURLcode code, long res) {
 }
 
 int32_t main(int32_t argc, char **argv) {
-    int32_t                   opt = 0;
-    CURL                     *curl;
-    CURLcode                  curl_code;
-    long                      http_res_code = 0;
-    int32_t                   do_http_ret = 0;
-    struct curl_slist        *headers = NULL;
-    char                     *url = NULL;
-    enum curl_action          action = CURL_GET;
-    bool                      verbose = false;
-    BackoffAlgorithmStatus_t  retryStatus = BackoffAlgorithmSuccess;
+    int32_t opt = 0;
+    CURL *curl;
+    CURLcode curl_code;
+    long http_res_code = 0;
+    int32_t do_http_ret = 0;
+    struct curl_slist *headers = NULL;
+    char *url = NULL;
+    enum curl_action action = CURL_GET;
+    bool verbose = false;
+    BackoffAlgorithmStatus_t retryStatus = BackoffAlgorithmSuccess;
     BackoffAlgorithmContext_t retryContext;
-    uint16_t                  nextRetryBackoff = 0;
+    uint16_t nextRetryBackoff = 0;
 
     if (log_init("../examples/log.cfg", "prom_reg_test") != 0) {
         fprintf(stderr, "log init failed\n");
@@ -107,7 +108,8 @@ int32_t main(int32_t argc, char **argv) {
     }
 
     BackoffAlgorithm_InitializeParams(&retryContext, __retry_backoff_base_ms,
-                                      __retry_max_backoff_delay_ms, __retry_max_attempts);
+                                      __retry_max_backoff_delay_ms,
+                                      __retry_max_attempts);
 
     srand(now_realtime_sec());
 
@@ -117,7 +119,7 @@ int32_t main(int32_t argc, char **argv) {
     if (likely(curl)) {
         curl_easy_setopt(curl, CURLOPT_URL, url);
 
-        // 设置http header内容
+        // 设置 http header 内容
         headers = curl_slist_append(headers, "Content-Type: charset=UTF-8");
 
         // 设置连接超时，单位为秒
@@ -129,10 +131,11 @@ int32_t main(int32_t argc, char **argv) {
         if (action == CURL_POST) {
             curl_easy_setopt(curl, CURLOPT_POST, 1);
 
-            headers = curl_slist_append(headers, "Content-Type: application/json");
+            headers = curl_slist_append(headers, "Content-Type: "
+                                                 "application/json");
             headers = curl_slist_append(headers, "Accept: application/json");
-            // 构造json数据
-            // 设置post数据
+            // 构造 json 数据
+            // 设置 post 数据
 
             // curl_easy_setopt(curl, CURLOPT_POSTFIELDS,
             // "{\"name\":\"test\",\"password\":\"123456\"}");
@@ -159,19 +162,20 @@ int32_t main(int32_t argc, char **argv) {
 
             do_http_ret = __check_dohttp_result(curl_code, http_res_code);
             if (unlikely(0 != do_http_ret)) {
-
                 // 退避重试
-                retryStatus =
-                    BackoffAlgorithm_GetNextBackoff(&retryContext, rand(), &nextRetryBackoff);
+                retryStatus = BackoffAlgorithm_GetNextBackoff(
+                    &retryContext, rand(), &nextRetryBackoff);
 
-                debug("retryStatus: %d, nextRetryBackoff: %d", retryStatus, nextRetryBackoff);
+                debug("retryStatus: %d, nextRetryBackoff: %d", retryStatus,
+                      nextRetryBackoff);
 
                 if (retryStatus == BackoffAlgorithmSuccess) {
                     usleep(nextRetryBackoff * 1000);
                 }
             }
 
-        } while ((0 != do_http_ret) && retryStatus != BackoffAlgorithmRetriesExhausted);
+        } while ((0 != do_http_ret)
+                 && retryStatus != BackoffAlgorithmRetriesExhausted);
 
         /* always cleanup */
         curl_easy_cleanup(curl);

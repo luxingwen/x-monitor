@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-25 11:02:43
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-25 17:24:49
+ * @Last Modified time: 2024-07-08 15:27:31
  */
 
 #include "utils/common.h"
@@ -25,14 +25,18 @@ int32_t main(int32_t argc, char **argv) {
     debug("arl_test");
 
     static uint64_t
-        // 所有可用的内存大小，物理内存减去预留位和内核使用。系统从加电开始到引导完成，firmware/BIOS要预留一些内存，内核本身要占用一些内存，
-        // 最后剩下可供内核支配的内存就是MemTotal。这个值在系统运行期间一般是固定不变的，重启会改变
-        mem_total = 0,
-        // 表示系统尚未使用的内存
+        // 所有可用的内存大小，物理内存减去预留位和内核使用。系统从加电开始到引导完成，firmware/BIOS
+        // 要预留一些内存，内核本身要占用一些内存，
+        // 最后剩下可供内核支配的内存就是
+        // MemTotal。这个值在系统运行期间一般是固定不变的，重启会改变
+            mem_total = 0,
+            // 表示系统尚未使用的内存
         mem_free = 0,
-        // 真正的系统可用内存，系统中有些内存虽然已被使用但是可以回收的，比如cache/buffer、slab都有一部分可以回收，所以这部分可回收的内存加上MemFree才是系统可用的内存
+            // 真正的系统可用内存，系统中有些内存虽然已被使用但是可以回收的，比如
+            // cache/buffer、slab 都有一部分可以回收，所以这部分可回收的内存加上
+            // MemFree 才是系统可用的内存
         mem_available = 0,
-        // 用来给块设备做缓存的内存，(文件系统的 metadata、pages)
+            // 用来给块设备做缓存的内存，(文件系统的 metadata、pages)
         buffers = 0;
 
     // 第三个参数和动态分配节点释放有关

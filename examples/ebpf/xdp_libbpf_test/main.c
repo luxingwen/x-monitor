@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-11 10:36:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-12-28 11:11:16
+ * @Last Modified time: 2024-07-08 15:12:12
  */
 #include "utils/common.h"
 #include "utils/compiler.h"
@@ -91,14 +91,15 @@ static void poll_stats(int32_t map_fd, int32_t xdp_stats_map_fd,
         // int32_t lookup_key = -1, next_key;
         uint32_t key = UINT32_MAX;
 
-        // 轮询map中所有元素
+        // 轮询 map 中所有元素
         while (bpf_map_get_next_key(map_fd, &key, &key) == 0) {
             if (__sig_exit)
                 break;
 
             uint64_t sum = 0;
             // TODO:
-            // values是个core核数的数组，这是BPF_MAP_TYPE_PERCPU_ARRAY特性？
+            // values 是个 core 核数的数组，这是 BPF_MAP_TYPE_PERCPU_ARRAY
+            // 特性？
             ret = bpf_map_lookup_elem(map_fd, &key, values);
             if (0 == ret) {
                 for (uint32_t i = 0; i < nr_cpus; i++) {
@@ -241,7 +242,8 @@ int32_t main(int32_t argc, char **argv) {
     // 附加 它是可选的，你可以通过直接使用 libbpf API 获得更多控制）；
     // ret = xdp_pass_bpf__attach(obj);
     // ret = bpf_xdp_attach(prog_fd, env.itf_index, __xdp_flags, NULL);
-    // 使用bpf_set_link_xdp_fd执行attach成功，和bpf_xdp_attach差异在于old_prog_fd这个参数
+    // 使用 bpf_set_link_xdp_fd 执行 attach 成功，和 bpf_xdp_attach 差异在于
+    // old_prog_fd 这个参数
     ret = xm_bpf_xdp_link_attach(env.itf_index, env.xdp_flags, prog_fd);
     // ret = bpf_set_link_xdp_fd(env.itf_index, prog_fd, env.xdp_flags);
     if (ret < 0) {

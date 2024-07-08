@@ -58,9 +58,22 @@
     ⚡ root@localhost  ~  xxd -s 7 -l 2 -p /dev/cw_ioctl_dev0
    ```
 
-   
+7. 测试程序
 
-7. 内核升级钩子，该目录下的脚本在内核升级后会自动执行
+   ```
+   calmwu@localhost  ~/Program/x-monitor/build  make ioctl_test VERBOSE=1
+   
+   ✘ ⚡ root@localhost  /home/calmwu/Program/x-monitor/bin  ./ioctl_test -d /dev/cw_ioctl_dev1 -c read
+   24-07-08 17:02:59:509 [INFO] ioctl get '/dev/cw_ioctl_dev1' success. len:0
+    ⚡ root@localhost  /home/calmwu/Program/x-monitor/bin  ./ioctl_test -d /dev/cw_ioctl_dev0 -c read
+   24-07-08 17:06:56:238 [INFO] ioctl get '/dev/cw_ioctl_dev0' success. len:10
+    ⚡ root@localhost  /home/calmwu/Program/x-monitor/bin  ./ioctl_test -d /dev/cw_ioctl_dev0 -c write -l 6
+   24-07-08 17:07:35:784 [INFO] ioctl set '/dev/cw_ioctl_dev0' success. len:6
+    ⚡ root@localhost  /home/calmwu/Program/x-monitor/bin  ./ioctl_test -d /dev/cw_ioctl_dev0 -c read      
+   24-07-08 17:08:05:384 [INFO] ioctl get '/dev/cw_ioctl_dev0' success. len:10
+   ```
+
+8. 内核升级钩子，该目录下的脚本在内核升级后会自动执行
 
    ```
     ✘ ⚡ root@localhost  /etc/kernel  cd postinst.d 
@@ -69,7 +82,7 @@
    -rwxr-xr-x. 1 root root 1566 Jan 13  2023 51-dracut-rescue-postinst.sh
    ```
 
-8. DKMS
+9. DKMS
 
    DKMS全称是Dynamic Kernel Module Support，在内核版本变动之后可以自动重新生成新的模块。
 
@@ -77,7 +90,7 @@
 
    ![image-20240625171246482](./image-20240625171246482.png)
 
-9. megaraid_sas-07.729.00.00
+10. megaraid_sas-07.729.00.00
 
    1. 下载https://docs.broadcom.com/docs-and-downloads/07.729.00.00-1_MR7.29_Linux_driver.zip
 
@@ -276,148 +289,148 @@
        megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
        ```
 
-10. i40e-2.25.9
+11. i40e-2.25.9
 
-   1. 配置dkms.conf
+12. 配置dkms.conf
 
-      ```
-      #
-      # Master copy of dkms.conf for i40e.
-      # Dont edit this file manually. Auto build script makes necessary changes.
-      #
-      
-      PACKAGE_NAME="i40e"
-      PACKAGE_VERSION=2.25.9
-      MOD_PATH=${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}
-      
-      CLEAN="make clean"
-      MAKE="'make' BUILD_KERNEL=$kernelver noisy"
-      POST_INSTALL="post_install.sh"
-      
-      BUILT_MODULE_NAME[0]="i40e"
-      DEST_MODULE_LOCATION[0]="/kernel/../updates/dkms"
-      
-      AUTOINSTALL="yes"
-      ```
+       ```
+       #
+       # Master copy of dkms.conf for i40e.
+       # Dont edit this file manually. Auto build script makes necessary changes.
+       #
+       
+       PACKAGE_NAME="i40e"
+       PACKAGE_VERSION=2.25.9
+       MOD_PATH=${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}
+       
+       CLEAN="make clean"
+       MAKE="'make' BUILD_KERNEL=$kernelver noisy"
+       POST_INSTALL="post_install.sh"
+       
+       BUILT_MODULE_NAME[0]="i40e"
+       DEST_MODULE_LOCATION[0]="/kernel/../updates/dkms"
+       
+       AUTOINSTALL="yes"
+       ```
 
-   2. 内核模块添加到 DKMS 树中，查看状态，内核默认i40e驱动信息
+13. 内核模块添加到 DKMS 树中，查看状态，内核默认i40e驱动信息
 
-      ```
-       ⚡ root@localhost  /usr/src   dkms add -m i40e -v 2.25.9      
-      Creating symlink /var/lib/dkms/i40e/2.25.9/source -> /usr/src/i40e-2.25.9
-       ⚡ root@localhost  /usr/src  dkms status
-      dev_ioctl_test/0.1: added
-      i40e/2.25.9: added
-      megaraid_sas/07.729.00.00, 4.18.0-425.19.2.el8_7.x86_64, x86_64: installed (original_module exists)
-      megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
-       ⚡ root@localhost  /usr/src  modinfo i40e
-      filename:       /lib/modules/4.18.0-425.3.1.el8.x86_64/kernel/drivers/net/ethernet/intel/i40e/i40e.ko.xz
-      version:        4.18.0-425.3.1.el8.x86_64
-      license:        GPL v2
-      description:    Intel(R) Ethernet Connection XL710 Network Driver
-      author:         Intel Corporation, <e1000-devel@lists.sourceforge.net>
-      rhelversion:    8.7
-      srcversion:     31A438ACFB9B2CE2EBFCDA7
-      ```
+       ```
+        ⚡ root@localhost  /usr/src   dkms add -m i40e -v 2.25.9      
+       Creating symlink /var/lib/dkms/i40e/2.25.9/source -> /usr/src/i40e-2.25.9
+        ⚡ root@localhost  /usr/src  dkms status
+       dev_ioctl_test/0.1: added
+       i40e/2.25.9: added
+       megaraid_sas/07.729.00.00, 4.18.0-425.19.2.el8_7.x86_64, x86_64: installed (original_module exists)
+       megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
+        ⚡ root@localhost  /usr/src  modinfo i40e
+       filename:       /lib/modules/4.18.0-425.3.1.el8.x86_64/kernel/drivers/net/ethernet/intel/i40e/i40e.ko.xz
+       version:        4.18.0-425.3.1.el8.x86_64
+       license:        GPL v2
+       description:    Intel(R) Ethernet Connection XL710 Network Driver
+       author:         Intel Corporation, <e1000-devel@lists.sourceforge.net>
+       rhelversion:    8.7
+       srcversion:     31A438ACFB9B2CE2EBFCDA7
+       ```
 
-   3. 使用 DKMS 构建内核模块
+14. 使用 DKMS 构建内核模块
 
-      ```
-       ⚡ root@localhost  /usr/src  dkms build -m i40e -v 2.25.9
-      Sign command: /lib/modules/4.18.0-425.3.1.el8.x86_64/build/scripts/sign-file
-      Signing key: /var/lib/dkms/mok.key
-      Public certificate (MOK): /var/lib/dkms/mok.pub
-      
-      Building module:
-      Cleaning build area......
-      'make' BUILD_KERNEL=4.18.0-425.3.1.el8.x86_64 noisy..........................
-      Signing module /var/lib/dkms/i40e/2.25.9/build/i40e.ko
-      Cleaning build area......
-      ```
+       ```
+        ⚡ root@localhost  /usr/src  dkms build -m i40e -v 2.25.9
+       Sign command: /lib/modules/4.18.0-425.3.1.el8.x86_64/build/scripts/sign-file
+       Signing key: /var/lib/dkms/mok.key
+       Public certificate (MOK): /var/lib/dkms/mok.pub
+       
+       Building module:
+       Cleaning build area......
+       'make' BUILD_KERNEL=4.18.0-425.3.1.el8.x86_64 noisy..........................
+       Signing module /var/lib/dkms/i40e/2.25.9/build/i40e.ko
+       Cleaning build area......
+       ```
 
-   4. 使用DKMS安装内核模块，这里需要加--force
+15. 使用DKMS安装内核模块，这里需要加--force
 
-      ```
-       ⚡ root@localhost  /usr/src  dkms install -m i40e -v 2.25.9 --force
-      -rw-r--r--. 1 root root 194780 Apr  6  2023 ./4.18.0-425.19.2.el8_7.x86_64/kernel/drivers/net/ethernet/intel/i40e/i40e.ko.xz
-      lrwxrwxrwx  1 root root     55 Jul  2 14:42 ./4.18.0-425.19.2.el8_7.x86_64/weak-updates/i40e.ko.xz -> /lib/modules/4.18.0-425.3.1.el8.x86_64/extra/i40e.ko.xz
-      -rw-r--r--  1 root root 238132 Jul  2 14:41 ./4.18.0-425.3.1.el8.x86_64/extra/i40e.ko.xz
-      ```
+       ```
+        ⚡ root@localhost  /usr/src  dkms install -m i40e -v 2.25.9 --force
+       -rw-r--r--. 1 root root 194780 Apr  6  2023 ./4.18.0-425.19.2.el8_7.x86_64/kernel/drivers/net/ethernet/intel/i40e/i40e.ko.xz
+       lrwxrwxrwx  1 root root     55 Jul  2 14:42 ./4.18.0-425.19.2.el8_7.x86_64/weak-updates/i40e.ko.xz -> /lib/modules/4.18.0-425.3.1.el8.x86_64/extra/i40e.ko.xz
+       -rw-r--r--  1 root root 238132 Jul  2 14:41 ./4.18.0-425.3.1.el8.x86_64/extra/i40e.ko.xz
+       ```
 
-   5. 重启，测试内核4.18.0-425.19.2.el8_7.x86_64，重启后发现dkms的i40e并没有安装
+16. 重启，测试内核4.18.0-425.19.2.el8_7.x86_64，重启后发现dkms的i40e并没有安装
 
-      ```
-       ⚡ root@localhost  ~  dkms status 
-      dev_ioctl_test/0.1: added
-      i40e/2.25.9, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
-      megaraid_sas/07.729.00.00, 4.18.0-425.19.2.el8_7.x86_64, x86_64: installed (original_module exists)
-      megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
-      ```
+       ```
+        ⚡ root@localhost  ~  dkms status 
+       dev_ioctl_test/0.1: added
+       i40e/2.25.9, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
+       megaraid_sas/07.729.00.00, 4.18.0-425.19.2.el8_7.x86_64, x86_64: installed (original_module exists)
+       megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
+       ```
 
-      执行dkms install -m i40e -v 2.25.9 --force，其会进行编译，安装
+       执行dkms install -m i40e -v 2.25.9 --force，其会进行编译，安装
 
-      ```
-       ⚡ root@localhost  ~                                         
-      dkms install -m i40e -v 2.25.9 --force
-      Sign command: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/build/scripts/sign-file
-      Signing key: /var/lib/dkms/mok.key
-      Public certificate (MOK): /var/lib/dkms/mok.pub
-      
-      Building module:
-      Cleaning build area......
-      'make' BUILD_KERNEL=4.18.0-425.19.2.el8_7.x86_64 noisy........................
-      Signing module /var/lib/dkms/i40e/2.25.9/build/i40e.ko
-      Cleaning build area......
-      
-      i40e.ko.xz:
-      Running module version sanity check.
-       - Original module
-         - Found /lib/modules/4.18.0-425.19.2.el8_7.x86_64/kernel/drivers/net/ethernet/intel/i40e/i40e.ko.xz
-         - Storing in /var/lib/dkms/i40e/original_module/4.18.0-425.19.2.el8_7.x86_64/x86_64/
-         - Archiving for uninstallation purposes
-       - Installation
-         - Installing to /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/
-      Adding any weak-modules
-      depmod: ERROR: fstatat(6, kvdo.ko): No such file or directory
-      depmod: ERROR: fstatat(6, uds.ko): No such file or directory
-      depmod: WARNING: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules/interrupt_test/interrupt_test.ko needs unknown symbol vector_irq
-      depmod....
-       ⚡ root@localhost  ~  modinfo i40e 
-      filename:       /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/i40e.ko.xz
-      version:        2.25.9
-      license:        GPL
-      description:    Intel(R) 40-10 Gigabit Ethernet Connection Network Driver
-      author:         Intel Corporation, <e1000-devel@lists.sourceforge.net>
-      ```
+       ```
+        ⚡ root@localhost  ~                                         
+       dkms install -m i40e -v 2.25.9 --force
+       Sign command: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/build/scripts/sign-file
+       Signing key: /var/lib/dkms/mok.key
+       Public certificate (MOK): /var/lib/dkms/mok.pub
+       
+       Building module:
+       Cleaning build area......
+       'make' BUILD_KERNEL=4.18.0-425.19.2.el8_7.x86_64 noisy........................
+       Signing module /var/lib/dkms/i40e/2.25.9/build/i40e.ko
+       Cleaning build area......
+       
+       i40e.ko.xz:
+       Running module version sanity check.
+        - Original module
+          - Found /lib/modules/4.18.0-425.19.2.el8_7.x86_64/kernel/drivers/net/ethernet/intel/i40e/i40e.ko.xz
+          - Storing in /var/lib/dkms/i40e/original_module/4.18.0-425.19.2.el8_7.x86_64/x86_64/
+          - Archiving for uninstallation purposes
+        - Installation
+          - Installing to /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/
+       Adding any weak-modules
+       depmod: ERROR: fstatat(6, kvdo.ko): No such file or directory
+       depmod: ERROR: fstatat(6, uds.ko): No such file or directory
+       depmod: WARNING: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules/interrupt_test/interrupt_test.ko needs unknown symbol vector_irq
+       depmod....
+        ⚡ root@localhost  ~  modinfo i40e 
+       filename:       /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/i40e.ko.xz
+       version:        2.25.9
+       license:        GPL
+       description:    Intel(R) 40-10 Gigabit Ethernet Connection Network Driver
+       author:         Intel Corporation, <e1000-devel@lists.sourceforge.net>
+       ```
 
-      查看状态，都已安装，原生的驱动模块也都保存
+       查看状态，都已安装，原生的驱动模块也都保存
 
-      ```
-       ⚡ root@localhost  ~  dkms status
-      dev_ioctl_test/0.1: added
-      i40e/2.25.9, 4.18.0-425.19.2.el8_7.x86_64, x86_64: installed (original_module exists)
-      i40e/2.25.9, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
-      megaraid_sas/07.729.00.00, 4.18.0-425.19.2.el8_7.x86_64, x86_64: installed (original_module exists)
-      megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
-      ```
+       ```
+        ⚡ root@localhost  ~  dkms status
+       dev_ioctl_test/0.1: added
+       i40e/2.25.9, 4.18.0-425.19.2.el8_7.x86_64, x86_64: installed (original_module exists)
+       i40e/2.25.9, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
+       megaraid_sas/07.729.00.00, 4.18.0-425.19.2.el8_7.x86_64, x86_64: installed (original_module exists)
+       megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
+       ```
 
-   6. 使用POST_INSTALL
+17. 使用POST_INSTALL
 
-      ```
-      #!/bin/bash
-      
-      make BUILD_KERNEL=$kernelver auxiliary_install
-      ```
+       ```
+       #!/bin/bash
+       
+       make BUILD_KERNEL=$kernelver auxiliary_install
+       ```
 
-      执行dkms install会调用该脚本执行
+       执行dkms install会调用该脚本执行
 
-      ```
-      Running the post_install script:
-      Installing auxiliary...
-      depmod....
-      ```
+       ```
+       Running the post_install script:
+       Installing auxiliary...
+       depmod....
+       ```
 
-11. DKMS多机管理
+18. DKMS多机管理
 
     As we have seen, DKMS provides a simple mechanism to build, install, and track device driver updates. So far, all these actions have related to a single machine. But what if you’ve got many similar machines under your admin istrative control? What if you have a compiler and kernel source on only one system (**your master build system**), but you need to deploy your newly built driver to all your other systems? DKMS provides a solution to this as well—in the **mktarball** and **ldtarball** commands
 
@@ -428,7 +441,7 @@
 
     
 
-12. 资料
+19. 资料
 
    [使用 DKMS 添加内核模块 — Documentation for Clear Linux* project](https://www.clearlinux.org/clear-linux-documentation/zh_CN/guides/kernel/kernel-modules-dkms.html#build-install-and-load-an-out-of-tree-module)
 

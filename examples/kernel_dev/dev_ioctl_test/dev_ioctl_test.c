@@ -2,7 +2,7 @@
  * @Author: calmwu
  * @Date: 2024-06-15 11:23:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-06-24 16:52:14
+ * @Last Modified time: 2024-07-08 17:04:59
  */
 
 #define pr_fmt(fmt) "%s:%s():%d: " fmt, KBUILD_MODNAME, __func__, __LINE__
@@ -202,8 +202,56 @@ out:
 static long __ioctl_dev_ioctl(struct file *filp, unsigned int cmd,
                               unsigned long arg)
 {
-    pr_info(MODULE_TAG " ioctl device file\n");
-    return 0;
+    int32_t ret = 0, tmp;
+    struct cw_dev *dev = filp->private_data;
+    struct cw_ioctl_dev *ci_dev = (struct cw_ioctl_dev *)dev->extern_data;
+
+    pr_info(MODULE_TAG " ioctl device[%d:%d], cmd=%d\n", MAJOR(dev->devt),
+            MINOR(dev->devt), _IOC_NR(cmd));
+
+    // 校验 cmd 类型
+    if (unlikely(_IOC_TYPE(cmd) != CW_IOCTL_MAGIC)) {
+        pr_err(MODULE_TAG " ioctl device[%d:%d], invalid cmd magic\n",
+               MAJOR(dev->devt), MINOR(dev->devt));
+        return -ENOTTY;
+    }
+    // 校验 cmd 序号
+    if (_IOC_NR(cmd) > CW_IOCTL_MAX_NRS) {
+        pr_err(MODULE_TAG " ioctl device[%d:%d], invalid cmd nr\n",
+               MAJOR(dev->devt), MINOR(dev->devt));
+        return -ENOTTY;
+    }
+
+    switch (cmd) {
+    case CW_IOCTL_RESET:
+        pr_info(MODULE_TAG " ioctl device[%d:%d], reset\n", MAJOR(dev->devt),
+                MINOR(dev->devt));
+        down(&ci_dev->sem);
+        kfree(ci_dev->buf);
+        ci_dev->len = 0;
+        up(&ci_dev->sem);
+        break;
+    case CW_IOCTL_GET_LENS:
+        pr_info(MODULE_TAG " ioctl device[%d:%d], get buf len\n",
+                MAJOR(dev->devt), MINOR(dev->devt));
+        down(&ci_dev->sem);
+        ret = __put_user(ci_dev->len, (int32_t __user *)arg);
+        up(&ci_dev->sem);
+        break;
+    case CW_IOCTL_SET_LENS:
+        down(&ci_dev->sem);
+        ret = __get_user(tmp, (int32_t __user *)arg);
+        if (ci_dev->len > tmp) {
+            ci_dev->len = tmp;
+            pr_info(MODULE_TAG " ioctl device[%d:%d], set buf len:%ld\n",
+                    MAJOR(dev->devt), MINOR(dev->devt), ci_dev->len);
+        }
+        up(&ci_dev->sem);
+        break;
+    default:
+        break;
+    }
+    return ret;
 }
 
 static int32_t __init cw_ioctl_test_init(void)
