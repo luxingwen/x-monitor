@@ -38,6 +38,7 @@
 struct cw_ioctl_dev {
     char *buf;
     size_t len;
+    int32_t debug_level;
     struct semaphore sem;
 };
 
@@ -74,6 +75,33 @@ static struct file_operations __ioctl_dev_fops = {
     .write = __ioctl_dev_write,
     .unlocked_ioctl = __ioctl_dev_ioctl,
 };
+
+static ssize_t cw_ioctl_dev_debug_level_show(struct device *dev,
+                                             struct device_attribute *attr,
+                                             char *buf)
+{
+    ssize_t n = 0;
+    return n;
+}
+
+static ssize_t cw_ioctl_dev_debug_level_store(struct device *dev,
+                                              struct device_attribute *attr,
+                                              const char *buf, size_t count)
+{
+    ssize_t ret = (ssize_t)count;
+    return ret;
+}
+
+static DEVICE_ATTR_RW(cw_ioctl_dev_debug_level);
+
+static ssize_t cw_ioctl_dev_pgoff_show(struct device *dev,
+                                       struct device_attribute *attr, char *buf)
+{
+    ssize_t n = 0;
+    return n;
+}
+
+static DEVICE_ATTR_RO(cw_ioctl_dev_pgoff);
 
 static int32_t __ioctl_dev_open(struct inode *inode, struct file *filp)
 {
@@ -277,6 +305,11 @@ static int32_t __init cw_ioctl_test_init(void)
             (struct cw_ioctl_dev *)kmalloc_array(__cw_ioctl_nr_devs,
                                                  sizeof(struct cw_ioctl_dev),
                                                  GFP_KERNEL | __GFP_ZERO);
+    if (!__cw_ioctl_devs) {
+        pr_err(MODULE_TAG " kmalloc_array cw_ioctl_devs failed.\n");
+        ret = -ENOMEM;
+        goto out1;
+    }
 
     for (i = 0; i < __cw_ioctl_nr_devs; i++) {
         // __cw_ioctl_dev_crt_ctx.devs[i].extern_data = kasprintf(
@@ -284,16 +317,36 @@ static int32_t __init cw_ioctl_test_init(void)
         // 初始化信号量
         sema_init(&__cw_ioctl_devs[i].sem, 1);
         __cw_ioctl_dev_crt_ctx.devs[i].extern_data = __cw_ioctl_devs + i;
+        dev_set_drvdata(__cw_ioctl_dev_crt_ctx.devs[i].device,
+                        (__cw_ioctl_devs + i));
+    }
+
+    // 创建 sysfile
+    for (i = 0; i < __cw_ioctl_nr_devs; i++) {
+        device_create_file(__cw_ioctl_dev_crt_ctx.devs[i].device,
+                           &dev_attr_cw_ioctl_dev_debug_level);
+        device_create_file(__cw_ioctl_dev_crt_ctx.devs[i].device,
+                           &dev_attr_cw_ioctl_dev_pgoff);
     }
     pr_info(MODULE_TAG " init successfully!\n");
     return 0;
+
+out1:
+    module_destroy_cdevs(&__cw_ioctl_dev_crt_ctx);
+    return ret;
 }
 
 static void __exit cw_ioctl_test_exit(void)
 {
     uint32_t i = 0;
-    module_destroy_cdevs(&__cw_ioctl_dev_crt_ctx);
     for (; i < __cw_ioctl_dev_crt_ctx.count; i++) {
+        device_remove_file(__cw_ioctl_dev_crt_ctx.devs[i].device,
+                           &dev_attr_cw_ioctl_dev_debug_level);
+        device_remove_file(__cw_ioctl_dev_crt_ctx.devs[i].device,
+                           &dev_attr_cw_ioctl_dev_pgoff);
+    }
+    module_destroy_cdevs(&__cw_ioctl_dev_crt_ctx);
+    for (i = 0; i < __cw_ioctl_dev_crt_ctx.count; i++) {
         kfree(__cw_ioctl_devs[i].buf);
     }
     kfree(__cw_ioctl_devs);
