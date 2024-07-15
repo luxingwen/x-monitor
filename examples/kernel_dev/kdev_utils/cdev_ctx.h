@@ -25,7 +25,8 @@ struct cw_cdev_crt_ctx {
     int32_t major; /*主设备号，如果为 0，表明需要动态分配*/
     uint32_t base_minor;          /*次设备号的起始值*/
     uint32_t count;               /*次设备号的数量*/
-    const char *name;             /**/
+    const char *name;             /*设备名*/
+    const char *cls_name;         // 设备类名 /sys/calss/xxx
     const char *name_fmt;         /*名字模板*/
     struct file_operations *fops; /* operations */
     struct module *owner;         // 模块

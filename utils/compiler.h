@@ -41,7 +41,7 @@ macro 結果為 true ，則可以在 compile-time 的時候被告知有錯
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]) + __must_be_array(arr))
 
-// 定义纯函数
+// 定义纯函数，函数不会对外部状态产生影响，也不会修改全局变量
 #ifndef __pure
 #define __pure __attribute__((pure))
 #endif
@@ -83,6 +83,7 @@ macro 結果為 true ，則可以在 compile-time 的時候被告知有錯
 #define typeof_member(T, m) typeof(((T *)0)->m)
 #endif
 
+// 通过结构成员地址获取结构首地址
 #ifndef container_of
 /**
  * container_of - cast a member of a structure out to the containing structure

@@ -92,206 +92,208 @@
 
 10. megaraid_sas-07.729.00.00
 
-   1. 下载https://docs.broadcom.com/docs-and-downloads/07.729.00.00-1_MR7.29_Linux_driver.zip
+    1. 下载https://docs.broadcom.com/docs-and-downloads/07.729.00.00-1_MR7.29_Linux_driver.zip
 
-   2. 构建目录，/usr/src/megaraid_sas-07.729.00.00
+    2. 构建目录，/usr/src/megaraid_sas-07.729.00.00
 
-      ```
-       ⚡ root@localhost  /usr/src  cd megaraid_sas-07.729.00.00 
-       ⚡ root@localhost  /usr/src/megaraid_sas-07.729.00.00  ls -trl
-      total 608
-      -rwxr-xr-x 1 root root 272271 Nov 19  2023 megaraid_sas_base.c
-      -rwxr-xr-x 1 root root 163423 Nov 19  2023 megaraid_sas_fusion.c
-      -rwxr-xr-x 1 root root  44381 Nov 19  2023 megaraid_sas_fp.c
-      -rwxr-xr-x 1 root root   4683 Nov 19  2023 megaraid_sas_debugfs.c
-      -rwxr-xr-x 1 root root  69420 Nov 19  2023 megaraid_sas.h
-      -rwxr-xr-x 1 root root  43194 Nov 19  2023 megaraid_sas_fusion.h
-      -rwxr-xr-x 1 root root   1440 Nov 19  2023 compile.sh
-      -rwxr-xr-x 1 root root   1021 Nov 19  2023 Makefile.standalone
-      -rwxr-xr-x 1 root root    132 Nov 19  2023 Makefile
-      -rwxr-xr-x 1 root root   1819 Jul  1 15:27 dkms.conf
-      ```
 
-   3. 配置dkms.conf文件，修改PACKAGE_VERSION
+    ```
+     ⚡ root@localhost  /usr/src  cd megaraid_sas-07.729.00.00 
+     ⚡ root@localhost  /usr/src/megaraid_sas-07.729.00.00  ls -trl
+    total 608
+    -rwxr-xr-x 1 root root 272271 Nov 19  2023 megaraid_sas_base.c
+    -rwxr-xr-x 1 root root 163423 Nov 19  2023 megaraid_sas_fusion.c
+    -rwxr-xr-x 1 root root  44381 Nov 19  2023 megaraid_sas_fp.c
+    -rwxr-xr-x 1 root root   4683 Nov 19  2023 megaraid_sas_debugfs.c
+    -rwxr-xr-x 1 root root  69420 Nov 19  2023 megaraid_sas.h
+    -rwxr-xr-x 1 root root  43194 Nov 19  2023 megaraid_sas_fusion.h
+    -rwxr-xr-x 1 root root   1440 Nov 19  2023 compile.sh
+    -rwxr-xr-x 1 root root   1021 Nov 19  2023 Makefile.standalone
+    -rwxr-xr-x 1 root root    132 Nov 19  2023 Makefile
+    -rwxr-xr-x 1 root root   1819 Jul  1 15:27 dkms.conf
+    ```
 
-      ```
-       ⚡ root@localhost  /usr/src/megaraid_sas-07.729.00.00  cat dkms.conf 
-      #
-      # Master copy of dkms.conf for megaraid_sas.
-      # Dont edit this file manually. Auto build script makes necessary changes.
-      #
-      
-      PACKAGE_NAME="megaraid_sas"
-      PACKAGE_VERSION=07.729.00.00
-      MOD_PATH=${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}
-      
-      MAKE[0]="make -C ${kernel_source_dir} SUBDIRS=${MOD_PATH}/build modules"
-      CLEAN="make -C ${kernel_source_dir} SUBDIRS=${MOD_PATH}/build clean"
-      
-      BUILT_MODULE_NAME[0]="megaraid_sas"
-      DEST_MODULE_LOCATION[0]="/kernel/drivers/scsi/megaraid/"
-      MODULES_CONF_ALIAS_TYPE[0]="scsi_hostadapter"
-      
-      REMAKE_INITRD="yes"
-      ```
+    3. 配置dkms.conf文件，修改PACKAGE_VERSION
 
-   4. add/status
+    ```
+     ⚡ root@localhost  /usr/src/megaraid_sas-07.729.00.00  cat dkms.conf 
+    #
+    # Master copy of dkms.conf for megaraid_sas.
+    # Dont edit this file manually. Auto build script makes necessary changes.
+    #
+    
+    PACKAGE_NAME="megaraid_sas"
+    PACKAGE_VERSION=07.729.00.00
+    MOD_PATH=${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}
+    
+    MAKE[0]="make -C ${kernel_source_dir} SUBDIRS=${MOD_PATH}/build modules"
+    CLEAN="make -C ${kernel_source_dir} SUBDIRS=${MOD_PATH}/build clean"
+    
+    BUILT_MODULE_NAME[0]="megaraid_sas"
+    DEST_MODULE_LOCATION[0]="/kernel/drivers/scsi/megaraid/"
+    MODULES_CONF_ALIAS_TYPE[0]="scsi_hostadapter"
+    
+    REMAKE_INITRD="yes"
+    ```
 
-      ```
-       ⚡ root@localhost  /usr/src   dkms add -m megaraid_sas -v 07.729.00.00          
-      Deprecated feature: REMAKE_INITRD (/usr/src/megaraid_sas-07.729.00.00/dkms.conf)
-      Deprecated feature: MODULES_CONF_ALIAS_TYPE (/usr/src/megaraid_sas-07.729.00.00/dkms.conf)
-      Creating symlink /var/lib/dkms/megaraid_sas/07.729.00.00/source -> /usr/src/megaraid_sas-07.729.00.00
-       ⚡ root@localhost  /usr/src  dkms status 
-      dev_ioctl_test/0.1: added
-      megaraid_sas/07.729.00.00: added
-      ```
+    4. add/status
 
-   5. 编译，ko生成在/var/lib/dkms/megaraid_sas/07.729.00.00/build/目录下
+    ```
+     ⚡ root@localhost  /usr/src   dkms add -m megaraid_sas -v 07.729.00.00          
+    Deprecated feature: REMAKE_INITRD (/usr/src/megaraid_sas-07.729.00.00/dkms.conf)
+    Deprecated feature: MODULES_CONF_ALIAS_TYPE (/usr/src/megaraid_sas-07.729.00.00/dkms.conf)
+    Creating symlink /var/lib/dkms/megaraid_sas/07.729.00.00/source -> /usr/src/megaraid_sas-07.729.00.00
+     ⚡ root@localhost  /usr/src  dkms status 
+    dev_ioctl_test/0.1: added
+    megaraid_sas/07.729.00.00: added
+    ```
 
-      ```
-       ⚡ root@localhost  /usr/src  dkms build -m megaraid_sas -v 07.729.00.00
-      Sign command: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/build/scripts/sign-file
-      Signing key: /var/lib/dkms/mok.key
-      Public certificate (MOK): /var/lib/dkms/mok.pub
-      Deprecated feature: REMAKE_INITRD (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
-      Deprecated feature: MODULES_CONF_ALIAS_TYPE (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
-      
-      Building module:
-      Cleaning build area...........
-      make -j8 KERNELRELEASE=4.18.0-425.19.2.el8_7.x86_64 -C /lib/modules/4.18.0-425.19.2.el8_7.x86_64/build SUBDIRS=/var/lib/dkms/megaraid_sas/07.729.00.00/build modules........................
-      Signing module /var/lib/dkms/megaraid_sas/07.729.00.00/build/megaraid_sas.ko
-      Cleaning build area...........
-      ```
+    5. 编译，ko生成在/var/lib/dkms/megaraid_sas/07.729.00.00/build/目录下
 
-   6. 查看kernel所带默认驱动版本，07.719.03.00-rh1
+    ```
+     ⚡ root@localhost  /usr/src  dkms build -m megaraid_sas -v 07.729.00.00
+    Sign command: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/build/scripts/sign-file
+    Signing key: /var/lib/dkms/mok.key
+    Public certificate (MOK): /var/lib/dkms/mok.pub
+    Deprecated feature: REMAKE_INITRD (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
+    Deprecated feature: MODULES_CONF_ALIAS_TYPE (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
+    
+    Building module:
+    Cleaning build area...........
+    make -j8 KERNELRELEASE=4.18.0-425.19.2.el8_7.x86_64 -C /lib/modules/4.18.0-425.19.2.el8_7.x86_64/build SUBDIRS=/var/lib/dkms/megaraid_sas/07.729.00.00/build modules........................
+    Signing module /var/lib/dkms/megaraid_sas/07.729.00.00/build/megaraid_sas.ko
+    Cleaning build area...........
+    ```
 
-      ```
-       ⚡ root@localhost  /lib/modules/4.18.0-425.19.2.el8_7.x86_64/kernel/drivers/scsi/megaraid  modinfo megaraid_sas
-      filename:       /lib/modules/4.18.0-425.19.2.el8_7.x86_64/kernel/drivers/scsi/megaraid/megaraid_sas.ko.xz
-      description:    Broadcom MegaRAID SAS Driver
-      author:         megaraidlinux.pdl@broadcom.com
-      version:        07.719.03.00-rh1
-      ```
+    6. 查看kernel所带默认驱动版本，07.719.03.00-rh1
 
-   7. 安装，modinfo看到已经使用extra目录下的驱动模块
+    ```
+     ⚡ root@localhost  /lib/modules/4.18.0-425.19.2.el8_7.x86_64/kernel/drivers/scsi/megaraid  modinfo megaraid_sas
+    filename:       /lib/modules/4.18.0-425.19.2.el8_7.x86_64/kernel/drivers/scsi/megaraid/megaraid_sas.ko.xz
+    description:    Broadcom MegaRAID SAS Driver
+    author:         megaraidlinux.pdl@broadcom.com
+    version:        07.719.03.00-rh1
+    ```
 
-      ```
-       ⚡ root@localhost  /usr/src/megaraid_sas-07.729.00.00  dkms install -m megaraid_sas -v 07.729.00.00
-      Deprecated feature: REMAKE_INITRD (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
-      Deprecated feature: MODULES_CONF_ALIAS_TYPE (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
-      
-      megaraid_sas.ko.xz:
-      Running module version sanity check.
-       - Original module
-         - Found /lib/modules/4.18.0-425.19.2.el8_7.x86_64/kernel/drivers/scsi/megaraid/megaraid_sas.ko.xz
-         - Storing in /var/lib/dkms/megaraid_sas/original_module/4.18.0-425.19.2.el8_7.x86_64/x86_64/
-         - Archiving for uninstallation purposes
-       - Installation
-         - Installing to /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/
-      Adding any weak-modules
-      depmod: ERROR: fstatat(6, kvdo.ko): No such file or directory
-      depmod: ERROR: fstatat(6, uds.ko): No such file or directory
-      depmod: WARNING: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules/interrupt_test/interrupt_test.ko needs unknown symbol vector_irq
-      depmod..........
-       ⚡ root@localhost  /usr/src/megaraid_sas-07.729.00.00  modinfo megaraid_sas
-      filename:       /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/megaraid_sas.ko.xz
-      description:    Broadcom MegaRAID SAS Driver
-      author:         megaraidlinux.pdl@broadcom.com
-      ```
+    7. 安装，modinfo看到已经使用extra目录下的驱动模块
 
-   8. 从DKMS中删除内核模块
+    ```
+     ⚡ root@localhost  /usr/src/megaraid_sas-07.729.00.00  dkms install -m megaraid_sas -v 07.729.00.00
+    Deprecated feature: REMAKE_INITRD (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
+    Deprecated feature: MODULES_CONF_ALIAS_TYPE (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
+    
+    megaraid_sas.ko.xz:
+    Running module version sanity check.
+     - Original module
+       - Found /lib/modules/4.18.0-425.19.2.el8_7.x86_64/kernel/drivers/scsi/megaraid/megaraid_sas.ko.xz
+       - Storing in /var/lib/dkms/megaraid_sas/original_module/4.18.0-425.19.2.el8_7.x86_64/x86_64/
+       - Archiving for uninstallation purposes
+     - Installation
+       - Installing to /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/
+    Adding any weak-modules
+    depmod: ERROR: fstatat(6, kvdo.ko): No such file or directory
+    depmod: ERROR: fstatat(6, uds.ko): No such file or directory
+    depmod: WARNING: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules/interrupt_test/interrupt_test.ko needs unknown symbol vector_irq
+    depmod..........
+     ⚡ root@localhost  /usr/src/megaraid_sas-07.729.00.00  modinfo megaraid_sas
+    filename:       /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/megaraid_sas.ko.xz
+    description:    Broadcom MegaRAID SAS Driver
+    author:         megaraidlinux.pdl@broadcom.com
+    ```
 
-      ```
-      dkms remove -m megaraid_sas -v 07.729.00.00
-      Deprecated feature: REMAKE_INITRD (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
-      Deprecated feature: MODULES_CONF_ALIAS_TYPE (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
-      Module megaraid_sas-07.729.00.00 for kernel 4.18.0-425.19.2.el8_7.x86_64 (x86_64).
-      Before uninstall, this module version was ACTIVE on this kernel.
-      Removing any linked weak-modules
-      
-      megaraid_sas.ko.xz:
-       - Uninstallation
-         - Deleting from: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/
-       - Original module
-         - Archived original module found in the DKMS tree
-         - Moving it to: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/updates/
-      depmod..........
-      
-      Removing original_module from DKMS tree for kernel 4.18.0-425.19.2.el8_7.x86_64 (x86_64)
-      Deleting module megaraid_sas-07.729.00.00 completely from the DKMS tree.
-      ```
+    8. 从DKMS中删除内核模块
 
-   9. 重启系统，需要配置/etc/modules-load.d/megaraid_sas.conf文件自动加载
+    ```
+    dkms remove -m megaraid_sas -v 07.729.00.00
+    Deprecated feature: REMAKE_INITRD (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
+    Deprecated feature: MODULES_CONF_ALIAS_TYPE (/var/lib/dkms/megaraid_sas/07.729.00.00/source/dkms.conf)
+    Module megaraid_sas-07.729.00.00 for kernel 4.18.0-425.19.2.el8_7.x86_64 (x86_64).
+    Before uninstall, this module version was ACTIVE on this kernel.
+    Removing any linked weak-modules
+    
+    megaraid_sas.ko.xz:
+     - Uninstallation
+       - Deleting from: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/
+     - Original module
+       - Archived original module found in the DKMS tree
+       - Moving it to: /lib/modules/4.18.0-425.19.2.el8_7.x86_64/updates/
+    depmod..........
+    
+    Removing original_module from DKMS tree for kernel 4.18.0-425.19.2.el8_7.x86_64 (x86_64)
+    Deleting module megaraid_sas-07.729.00.00 completely from the DKMS tree.
+    ```
 
-      ```
-       ⚡ root@localhost  ~  lsmod|grep mega
-      megaraid_sas          180224  0
-       ⚡ root@localhost  ~  modinfo megaraid_sas
-      filename:       /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/megaraid_sas.ko.xz
-      description:    Broadcom MegaRAID SAS Driver
-      author:         megaraidlinux.pdl@broadcom.com
-      version:        07.729.00.00
-      ```
+    9. 重启系统，需要配置/etc/modules-load.d/megaraid_sas.conf文件自动加载
 
-   10. 安装内核，前四位相同。该版本自带了megaraid_sas驱动模块，看安装后729版本的驱动是否生效，**切记要安装headers包**，**可实际上还是需要devel包**，不然/usr/src/kernels/目录下没有代码，没法进行内核模块的编译。
+    ```
+     ⚡ root@localhost  ~  lsmod|grep mega
+    megaraid_sas          180224  0
+     ⚡ root@localhost  ~  modinfo megaraid_sas
+    filename:       /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/megaraid_sas.ko.xz
+    description:    Broadcom MegaRAID SAS Driver
+    author:         megaraidlinux.pdl@broadcom.com
+    version:        07.729.00.00
+    ```
 
-       如下输出可以看到，安装呢内核后，会首先发现默认的驱动模块/lib/modules/4.18.0-425.3.1.el8.x86_64/kernel/drivers/scsi/megaraid/megaraid_sas.ko.xz，同时也会安装dkms管理的内核模块。
+    10. 安装内核，前四位相同。该版本自带了megaraid_sas驱动模块，看安装后729版本的驱动是否生效，**切记要安装headers包**，**可实际上还是需要devel包**，不然/usr/src/kernels/目录下没有代码，没法进行内核模块的编译。
 
-       ```
-       dnf -y install kernel-devel-4.18.0-425.3.1.el8.x86_64 kernel-headers-4.18.0-425.3.1.el8.x86_64 kernel-4.18.0-425.3.1.el8.x86_64
-       
-       Building module:
-       Cleaning build area....
-       make -j8 KERNELRELEASE=4.18.0-425.3.1.el8.x86_64 -C /lib/modules/4.18.0-425.3.1.el8.x86_64/build SUBDIRS=/var/lib/dkms/megaraid_sas/07.729.00.00/build modules......
-       Signing module /var/lib/dkms/megaraid_sas/07.729.00.00/build/megaraid_sas.ko
-       Cleaning build area....
-       
-       megaraid_sas.ko.xz:
-       Running module version sanity check.
-        - Original module
-          - Found /lib/modules/4.18.0-425.3.1.el8.x86_64/kernel/drivers/scsi/megaraid/megaraid_sas.ko.xz
-          - Storing in /var/lib/dkms/megaraid_sas/original_module/4.18.0-425.3.1.el8.x86_64/x86_64/
-          - Archiving for uninstallation purposes
-        - Installation
-          - Installing to /lib/modules/4.18.0-425.3.1.el8.x86_64/extra/
-       ```
+    如下输出可以看到，安装呢内核后，会首先发现默认的驱动模块/lib/modules/4.18.0-425.3.1.el8.x86_64/kernel/drivers/scsi/megaraid/megaraid_sas.ko.xz，同时也会安装dkms管理的内核模块。
 
-       实际上默认去的驱动模块会被删除
+    ```
+    dnf -y install kernel-devel-4.18.0-425.3.1.el8.x86_64 kernel-headers-4.18.0-425.3.1.el8.x86_64 kernel-4.18.0-425.3.1.el8.x86_64
+    
+    Building module:
+    Cleaning build area....
+    make -j8 KERNELRELEASE=4.18.0-425.3.1.el8.x86_64 -C /lib/modules/4.18.0-425.3.1.el8.x86_64/build SUBDIRS=/var/lib/dkms/megaraid_sas/07.729.00.00/build modules......
+    Signing module /var/lib/dkms/megaraid_sas/07.729.00.00/build/megaraid_sas.ko
+    Cleaning build area....
+    
+    megaraid_sas.ko.xz:
+    Running module version sanity check.
+     - Original module
+       - Found /lib/modules/4.18.0-425.3.1.el8.x86_64/kernel/drivers/scsi/megaraid/megaraid_sas.ko.xz
+       - Storing in /var/lib/dkms/megaraid_sas/original_module/4.18.0-425.3.1.el8.x86_64/x86_64/
+       - Archiving for uninstallation purposes
+     - Installation
+       - Installing to /lib/modules/4.18.0-425.3.1.el8.x86_64/extra/
+    ```
 
-       ```
-        ⚡ root@localhost  /lib/modules  find . -name megaraid_sas.ko.xz
-       ./4.18.0-425.19.2.el8_7.x86_64/extra/megaraid_sas.ko.xz
-       ./4.18.0-425.19.2.el8_7.x86_64/weak-updates/megaraid_sas.ko.xz
-       ./4.18.0-425.3.1.el8.x86_64/extra/megaraid_sas.ko.xz
-       ```
+    实际上默认去的驱动模块会被删除
 
-   11. 重启，选择这个4.18.0-425.3.1.el8.x86_64
+    ```
+     ⚡ root@localhost  /lib/modules  find . -name megaraid_sas.ko.xz
+    ./4.18.0-425.19.2.el8_7.x86_64/extra/megaraid_sas.ko.xz
+    ./4.18.0-425.19.2.el8_7.x86_64/weak-updates/megaraid_sas.ko.xz
+    ./4.18.0-425.3.1.el8.x86_64/extra/megaraid_sas.ko.xz
+    ```
 
-       ```
-        ⚡ root@localhost  ~  uname -r
-       4.18.0-425.3.1.el8.x86_64
-        ⚡ root@localhost  ~  lsmod|grep megaraid_sas
-       megaraid_sas          180224  0
-        ⚡ root@localhost  ~  modinfo megaraid_sas
-       filename:       /lib/modules/4.18.0-425.3.1.el8.x86_64/extra/megaraid_sas.ko.xz
-       description:    Broadcom MegaRAID SAS Driver
-       author:         megaraidlinux.pdl@broadcom.com
-       version:        07.729.00.00
-       ```
+    11. 重启，选择这个4.18.0-425.3.1.el8.x86_64
 
-       可见使用的dkms管理的，729版本。通过dkms status命令可以看到
+    ```
+     ⚡ root@localhost  ~  uname -r
+    4.18.0-425.3.1.el8.x86_64
+     ⚡ root@localhost  ~  lsmod|grep megaraid_sas
+    megaraid_sas          180224  0
+     ⚡ root@localhost  ~  modinfo megaraid_sas
+    filename:       /lib/modules/4.18.0-425.3.1.el8.x86_64/extra/megaraid_sas.ko.xz
+    description:    Broadcom MegaRAID SAS Driver
+    author:         megaraidlinux.pdl@broadcom.com
+    version:        07.729.00.00
+    ```
 
-       ```
-        ⚡ root@localhost  ~  dkms status
-       dev_ioctl_test/0.1: added
-       megaraid_sas/07.729.00.00, 4.18.0-425.19.2.el8_7.x86_64, x86_64: installed (original_module exists)
-       megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
-       ```
+    可见使用的dkms管理的，729版本。通过dkms status命令可以看到
+
+    ```
+     ⚡ root@localhost  ~  dkms status
+    dev_ioctl_test/0.1: added
+    megaraid_sas/07.729.00.00, 4.18.0-425.19.2.el8_7.x86_64, x86_64: installed (original_module exists)
+    megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
+    ```
 
 11. i40e-2.25.9
 
-12. 配置dkms.conf
+    1. 配置dkms.conf
+
 
        ```
        #
@@ -313,7 +315,7 @@
        AUTOINSTALL="yes"
        ```
 
-13. 内核模块添加到 DKMS 树中，查看状态，内核默认i40e驱动信息
+    2. 内核模块添加到 DKMS 树中，查看状态，内核默认i40e驱动信息
 
        ```
         ⚡ root@localhost  /usr/src   dkms add -m i40e -v 2.25.9      
@@ -333,7 +335,7 @@
        srcversion:     31A438ACFB9B2CE2EBFCDA7
        ```
 
-14. 使用 DKMS 构建内核模块
+    3. 使用 DKMS 构建内核模块
 
        ```
         ⚡ root@localhost  /usr/src  dkms build -m i40e -v 2.25.9
@@ -348,7 +350,7 @@
        Cleaning build area......
        ```
 
-15. 使用DKMS安装内核模块，这里需要加--force
+    4. 使用DKMS安装内核模块，这里需要加--force
 
        ```
         ⚡ root@localhost  /usr/src  dkms install -m i40e -v 2.25.9 --force
@@ -357,7 +359,7 @@
        -rw-r--r--  1 root root 238132 Jul  2 14:41 ./4.18.0-425.3.1.el8.x86_64/extra/i40e.ko.xz
        ```
 
-16. 重启，测试内核4.18.0-425.19.2.el8_7.x86_64，重启后发现dkms的i40e并没有安装
+    5. 重启，测试内核4.18.0-425.19.2.el8_7.x86_64，重启后发现dkms的i40e并没有安装
 
        ```
         ⚡ root@localhost  ~  dkms status 
@@ -414,7 +416,7 @@
        megaraid_sas/07.729.00.00, 4.18.0-425.3.1.el8.x86_64, x86_64: installed (original_module exists)
        ```
 
-17. 使用POST_INSTALL
+12. 使用POST_INSTALL
 
        ```
        #!/bin/bash
@@ -430,7 +432,7 @@
        depmod....
        ```
 
-18. DKMS多机管理
+13. DKMS多机管理
 
     As we have seen, DKMS provides a simple mechanism to build, install, and track device driver updates. So far, all these actions have related to a single machine. But what if you’ve got many similar machines under your admin istrative control? What if you have a compiler and kernel source on only one system (**your master build system**), but you need to deploy your newly built driver to all your other systems? DKMS provides a solution to this as well—in the **mktarball** and **ldtarball** commands
 
@@ -441,7 +443,7 @@
 
     
 
-19. 资料
+14. 资料
 
    [使用 DKMS 添加内核模块 — Documentation for Clear Linux* project](https://www.clearlinux.org/clear-linux-documentation/zh_CN/guides/kernel/kernel-modules-dkms.html#build-install-and-load-an-out-of-tree-module)
 

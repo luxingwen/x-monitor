@@ -17,6 +17,7 @@
 #include <linux/cdev.h>
 #include <linux/ioctl.h>
 #include <linux/semaphore.h>
+#include <linux/major.h>
 
 // 如果编译没有代入版本信息
 #ifndef LINUX_VERSION_CODE
@@ -55,7 +56,7 @@ static int32_t __cw_ioctl_nr_devs = CW_IOCTL_NR_DEVS;
 module_param(__cw_ioctl_nr_devs, int, S_IRUGO);
 
 // 设备创建上下文
-static struct cw_cdev_crt_ctx __cw_ioctl_dev_crt_ctx;
+static struct cw_cdev_crt_ctx __dev_crt_ctx;
 
 // 设备文件操作
 static int32_t __ioctl_dev_open(struct inode *inode, struct file *filp);
@@ -287,15 +288,16 @@ static int32_t __init cw_ioctl_test_init(void)
     int32_t ret = 0;
     int32_t i = 0;
 
-    __cw_ioctl_dev_crt_ctx.major = __cw_ioctl_dev_major;
-    __cw_ioctl_dev_crt_ctx.base_minor = __cw_ioctl_dev_minor;
-    __cw_ioctl_dev_crt_ctx.count = __cw_ioctl_nr_devs; // 设备数量
-    __cw_ioctl_dev_crt_ctx.name = CW_DEV_NAME;
-    __cw_ioctl_dev_crt_ctx.fops = &__ioctl_dev_fops;
-    __cw_ioctl_dev_crt_ctx.name_fmt = CW_DEV_NAME_FMT;
-    __cw_ioctl_dev_crt_ctx.dev_priv_data = NULL;
+    __dev_crt_ctx.major = __cw_ioctl_dev_major;
+    __dev_crt_ctx.base_minor = __cw_ioctl_dev_minor;
+    __dev_crt_ctx.count = __cw_ioctl_nr_devs; // 设备数量
+    __dev_crt_ctx.name = CW_DEV_NAME;
+    __dev_crt_ctx.cls_name = "misc";
+    __dev_crt_ctx.fops = &__ioctl_dev_fops;
+    __dev_crt_ctx.name_fmt = CW_DEV_NAME_FMT;
+    __dev_crt_ctx.dev_priv_data = NULL;
 
-    ret = module_create_cdevs(&__cw_ioctl_dev_crt_ctx);
+    ret = module_create_cdevs(&__dev_crt_ctx);
     if (unlikely(0 != ret)) {
         pr_err(MODULE_TAG " module_create_cdevs failed\n");
         return ret;
@@ -312,41 +314,40 @@ static int32_t __init cw_ioctl_test_init(void)
     }
 
     for (i = 0; i < __cw_ioctl_nr_devs; i++) {
-        // __cw_ioctl_dev_crt_ctx.devs[i].extern_data = kasprintf(
+        // __dev_crt_ctx.devs[i].extern_data = kasprintf(
         //         GFP_KERNEL, "~~this cw_ioctl_dev_%d extern data~~", i);
         // 初始化信号量
         sema_init(&__cw_ioctl_devs[i].sem, 1);
-        __cw_ioctl_dev_crt_ctx.devs[i].extern_data = __cw_ioctl_devs + i;
-        dev_set_drvdata(__cw_ioctl_dev_crt_ctx.devs[i].device,
-                        (__cw_ioctl_devs + i));
+        __dev_crt_ctx.devs[i].extern_data = __cw_ioctl_devs + i;
+        dev_set_drvdata(__dev_crt_ctx.devs[i].device, (__cw_ioctl_devs + i));
     }
 
     // 创建 sysfile
     for (i = 0; i < __cw_ioctl_nr_devs; i++) {
-        device_create_file(__cw_ioctl_dev_crt_ctx.devs[i].device,
+        device_create_file(__dev_crt_ctx.devs[i].device,
                            &dev_attr_cw_ioctl_dev_debug_level);
-        device_create_file(__cw_ioctl_dev_crt_ctx.devs[i].device,
+        device_create_file(__dev_crt_ctx.devs[i].device,
                            &dev_attr_cw_ioctl_dev_pgoff);
     }
     pr_info(MODULE_TAG " init successfully!\n");
     return 0;
 
 out1:
-    module_destroy_cdevs(&__cw_ioctl_dev_crt_ctx);
+    module_destroy_cdevs(&__dev_crt_ctx);
     return ret;
 }
 
 static void __exit cw_ioctl_test_exit(void)
 {
     uint32_t i = 0;
-    for (; i < __cw_ioctl_dev_crt_ctx.count; i++) {
-        device_remove_file(__cw_ioctl_dev_crt_ctx.devs[i].device,
+    for (; i < __dev_crt_ctx.count; i++) {
+        device_remove_file(__dev_crt_ctx.devs[i].device,
                            &dev_attr_cw_ioctl_dev_debug_level);
-        device_remove_file(__cw_ioctl_dev_crt_ctx.devs[i].device,
+        device_remove_file(__dev_crt_ctx.devs[i].device,
                            &dev_attr_cw_ioctl_dev_pgoff);
     }
-    module_destroy_cdevs(&__cw_ioctl_dev_crt_ctx);
-    for (i = 0; i < __cw_ioctl_dev_crt_ctx.count; i++) {
+    module_destroy_cdevs(&__dev_crt_ctx);
+    for (i = 0; i < __dev_crt_ctx.count; i++) {
         kfree(__cw_ioctl_devs[i].buf);
     }
     kfree(__cw_ioctl_devs);

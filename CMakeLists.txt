@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.18)
+
+# 一定要写在 project 之前
+set(CMAKE_C_COMPILER "/usr/bin/clang")
+set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
+
 project(x-monitor)
 
-set(CMAKE_C_COMPILER "/usr/bin/gcc")
-set(CMAKE_CXX_COMPILER "/usr/bin/g++")
+message(STATUS "C++ compiler id: ${CMAKE_CXX_COMPILER_ID}")
 
 execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
                 OUTPUT_VARIABLE GCC_VERSION)
@@ -44,7 +48,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 set(STATIC_LINKING OFF CACHE BOOL "Build ipftrace2 as a statically linked executable")
 set(STATIC_LIBC OFF CACHE BOOL "Attempt to embed libc, only known to work with musl. Has issues with dlopen.")
-set(USE_ADDRSANITIZER OFF CACHE BOOL "AddressSanitizer (detects addressability issues) and LeakSanitizer (detects memory leaks).")
+set(USE_ADDRSANITIZER ON CACHE BOOL "AddressSanitizer (detects addressability issues) and LeakSanitizer (detects memory leaks).")
 
 set(APP_METRIC_PREFIX "app" CACHE STRING "Prefix for AppMetrics.")
 set(APP_METRIC_LABEL_NAME "app" CACHE STRING "Label for AppMetrics.")
@@ -69,7 +73,7 @@ if(STATIC_LINKING)
 endif(STATIC_LINKING)
 
 # debug、release 版本
-set(CMAKE_C_FLAGS_DEBUG "-Wall -Wformat=2 -g -ggdb3 -Wno-format-security -Wno-format-overflow  -Wno-unused-but-set-variable -Wno-unused-const-variable")
+set(CMAKE_C_FLAGS_DEBUG "-Wall -Wformat=2 -g -ggdb3 -Wno-format-security -Wno-unused-but-set-variable -Wno-unused-const-variable")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall -Wformat=2")
 
 if(${CMAKE_BUILD_TYPE} MATCHES "Release")
@@ -88,16 +92,9 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpointer-arith -Werror-implicit-function-de
 
 # -Wredundant-decls 如果在同一个可见域某定义多次声明，编译器就发出警告，即使这些重复声明有效并且毫无差别.
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wnested-externs")
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wconversion -Wtrampolines -Wimplicit-fallthrough")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wconversion -Wimplicit-fallthrough")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FORTIFY_SOURCE=2")
-
-if (GCC_VERSION VERSION_GREATER_EQUAL 12.0)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstrict-flex-arrays=3")
-endif()
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstack-clash-protection -fstack-protector-strong")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-z,nodlopen -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now")
 
 # -Wcast-qual 一旦某个指针强制类型转换以便移除类型修饰符时，编译器就发出警告。例如，如果把 const char * 强制转换为普通的 char *时，警告就会出现。
 # -Wshadow 一旦某个局部变量屏蔽了另一个局部变量，编译器就发出警
@@ -107,11 +104,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fverbose-asm -save-temps")
 
 # -Wstrict-prototypes 如果函数的声明或定义没有指出参数类型，编译器就发出警告。(如果函数的前向引用说明指出了参数类型，则允许后面使用旧式风格的函数定义，而不会产生警告.)
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wold-style-definition -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls")
-if (GCC_VERSION GREATER "4.9")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wsuggest-attribute=noreturn -Wjump-misses-init")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wduplicated-cond -Wmisleading-indentation -Wnull-dereference")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wduplicated-branches -Wrestrict")
-endif()
 
 #  -fsanitize=undefined
 if(USE_ADDRSANITIZER)
@@ -126,6 +118,17 @@ if(CMAKE_VERSION VERSION_LESS "3.1")
   endif()
 else()
   set(CMAKE_C_STANDARD 11)
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wtrampolines -Wsuggest-attribute=noreturn -Wjump-misses-init -Wduplicated-cond -Wduplicated-branches -Wrestrict -Wno-format-overflow")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-z,nodlopen -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now")
+  if (GCC_VERSION GREATER "4.9")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmisleading-indentation -Wnull-dereference")
+  endif()
+  if (GCC_VERSION VERSION_GREATER_EQUAL 12.0)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstrict-flex-arrays=3")
+  endif()
 endif()
 
 # set(CMAKE_C_STANDARD 11)

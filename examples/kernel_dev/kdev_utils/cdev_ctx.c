@@ -51,6 +51,7 @@ int32_t module_create_cdevs(struct cw_cdev_crt_ctx *ctx)
     // 分配设备号
     if (ctx->major == 0) {
         // 使用动态分配的方式获取主设备号
+        // name 会在/sys/devices 目录下找到，例如这里是/proc/devices/virtual/cw_ioctl_dev，在文件/proc/devices 中也可以找到，
         ret = alloc_chrdev_region(&dev, ctx->base_minor, ctx->count, ctx->name);
         if (ret < 0) {
             pr_err("Unable to allocate major number for device:%s\n",
@@ -71,10 +72,10 @@ int32_t module_create_cdevs(struct cw_cdev_crt_ctx *ctx)
     pr_info("%s: major:%d, count:%d\n", ctx->name, ctx->major, ctx->count);
 
     // create class, /sys/class
-    ctx->cdev_cls = class_create(ctx->owner, ctx->name);
+    ctx->cdev_cls = class_create(ctx->owner, ctx->cls_name);
     if (IS_ERR(ctx->cdev_cls)) {
         ret = PTR_ERR(ctx->cdev_cls);
-        pr_err("Unable to create %s class:%d\n", ctx->name, ret);
+        pr_err("Unable to create %s class:%d\n", ctx->cls_name, ret);
         goto unreg_chrdev;
     }
 
