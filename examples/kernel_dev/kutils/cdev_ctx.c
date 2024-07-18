@@ -2,7 +2,7 @@
  * @Author: calmwu
  * @Date: 2024-06-15 22:16:33
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-06-24 17:29:25
+ * @Last Modified time: 2024-07-18 16:49:42
  */
 
 #define pr_fmt(fmt) "%s:%s():%d: " fmt, KBUILD_MODNAME, __func__, __LINE__
@@ -16,7 +16,7 @@
 #include <linux/slab.h>
 #include <linux/compiler.h>
 
-#include "cdev_ctx.h"
+#include "kutils.h"
 
 /**
  * @brief Creates character devices for a module.
@@ -72,10 +72,10 @@ int32_t module_create_cdevs(struct cw_cdev_crt_ctx *ctx)
     pr_info("%s: major:%d, count:%d\n", ctx->name, ctx->major, ctx->count);
 
     // create class, /sys/class
-    ctx->cdev_cls = class_create(ctx->owner, ctx->cls_name);
+    ctx->cdev_cls = class_create(ctx->owner, ctx->name);
     if (IS_ERR(ctx->cdev_cls)) {
         ret = PTR_ERR(ctx->cdev_cls);
-        pr_err("Unable to create %s class:%d\n", ctx->cls_name, ret);
+        pr_err("Unable to create %s class:%d\n", ctx->name, ret);
         goto unreg_chrdev;
     }
 

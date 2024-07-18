@@ -2,11 +2,11 @@
  * @Author: calmwu
  * @Date: 2024-06-15 22:16:08
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-06-24 15:11:56
+ * @Last Modified time: 2024-07-18 10:24:10
  */
 
-#ifndef __CW_KDEV_UILTS_CDEV_CTX_H
-#define __CW_KDEV_UILTS_CDEV_CTX_H
+#ifndef __CW_KUILTS_H
+#define __CW_KUILTS_H
 
 struct file_operations;
 struct module;
@@ -25,8 +25,7 @@ struct cw_cdev_crt_ctx {
     int32_t major; /*主设备号，如果为 0，表明需要动态分配*/
     uint32_t base_minor;          /*次设备号的起始值*/
     uint32_t count;               /*次设备号的数量*/
-    const char *name;             /*设备名*/
-    const char *cls_name;         // 设备类名 /sys/calss/xxx
+    const char *name;             /**/
     const char *name_fmt;         /*名字模板*/
     struct file_operations *fops; /* operations */
     struct module *owner;         // 模块
@@ -38,4 +37,7 @@ struct cw_cdev_crt_ctx {
 int32_t module_create_cdevs(struct cw_cdev_crt_ctx *ctx);
 void module_destroy_cdevs(struct cw_cdev_crt_ctx *ctx);
 
-#endif /* __CW_KDEV_UILTS_CDEV_CTX_H */
+int32_t show_tasklist(char *buf, size_t buf_size);
+int32_t show_thrdlist(char *buf, size_t buf_size);
+
+#endif /* __CW_KUILTS_H */

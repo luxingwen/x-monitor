@@ -2,7 +2,7 @@
  * @Author: calmwu
  * @Date: 2024-06-15 11:23:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-07-08 17:04:59
+ * @Last Modified time: 2024-07-18 17:58:51
  */
 
 #define pr_fmt(fmt) "%s:%s():%d: " fmt, KBUILD_MODNAME, __func__, __LINE__
@@ -26,12 +26,13 @@
 #define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
 #endif
 
-#include <cdev_ctx.h>
+#include <kutils.h>
+#include <misc.h>
 #include "dev_ioctl_cmd.h"
 
 #define MODULE_TAG "Module:[cw_ioctl_test]"
 #define CW_IOCTL_DEV_MAJOR 0
-#define CW_IOCTL_NR_DEVS 2
+#define CW_IOCTL_NR_DEVS 1
 
 #define CW_DEV_NAME "cw_ioctl_dev"
 #define CW_DEV_NAME_FMT "cw_ioctl_dev%d"
@@ -46,6 +47,7 @@ struct cw_ioctl_dev {
 static struct cw_ioctl_dev *__cw_ioctl_devs = NULL;
 
 // 定义模块参数和变量
+// /sys/module/cw_dev_ioctl_test
 static int32_t __cw_ioctl_dev_major = CW_IOCTL_DEV_MAJOR;
 module_param(__cw_ioctl_dev_major, int, S_IRUGO);
 
@@ -77,32 +79,39 @@ static struct file_operations __ioctl_dev_fops = {
     .unlocked_ioctl = __ioctl_dev_ioctl,
 };
 
-static ssize_t cw_ioctl_dev_debug_level_show(struct device *dev,
-                                             struct device_attribute *attr,
-                                             char *buf)
+static ssize_t cw_thrdlist_show(struct device *dev,
+                                struct device_attribute *attr, char *buf)
 {
-    ssize_t n = 0;
-    return n;
+    ssize_t read_bytes = 0;
+    read_bytes = show_thrdlist(buf, (ssize_t)PAGE_SIZE);
+    pr_info(MODULE_TAG " show_thrdlist: read_bytes=%ld\n", read_bytes);
+    return read_bytes;
 }
 
-static ssize_t cw_ioctl_dev_debug_level_store(struct device *dev,
-                                              struct device_attribute *attr,
-                                              const char *buf, size_t count)
+// static ssize_t cw_ioctl_dev_debug_level_store(struct device *dev,
+//                                               struct device_attribute *attr,
+//                                               const char *buf, size_t count)
+// {
+//     ssize_t ret = (ssize_t)count;
+//     return ret;
+// }
+
+// /sys/devices/virtual/cw_ioctl_dev/cw_ioctl_dev0/cw_thrdlist
+static DEVICE_ATTR_RO(cw_thrdlist);
+
+// dev_attr_show 函数会调用 tasklist_show 函数
+// 返回写入 buf 的字节数，如果大于 PAGE_SIZE 会报错
+static ssize_t cw_tasklist_show(struct device *dev,
+                                struct device_attribute *attr, char *buf)
 {
-    ssize_t ret = (ssize_t)count;
-    return ret;
+    ssize_t read_bytes = 0;
+    read_bytes = show_tasklist(buf, (ssize_t)PAGE_SIZE);
+    pr_info(MODULE_TAG " show_tasklist: read_bytes=%ld\n", read_bytes);
+    return read_bytes;
 }
 
-static DEVICE_ATTR_RW(cw_ioctl_dev_debug_level);
-
-static ssize_t cw_ioctl_dev_pgoff_show(struct device *dev,
-                                       struct device_attribute *attr, char *buf)
-{
-    ssize_t n = 0;
-    return n;
-}
-
-static DEVICE_ATTR_RO(cw_ioctl_dev_pgoff);
+// /sys/devices/virtual/cw_ioctl_dev/cw_ioctl_dev0/cw_tasklist
+static DEVICE_ATTR_RO(cw_tasklist);
 
 static int32_t __ioctl_dev_open(struct inode *inode, struct file *filp)
 {
@@ -292,7 +301,6 @@ static int32_t __init cw_ioctl_test_init(void)
     __dev_crt_ctx.base_minor = __cw_ioctl_dev_minor;
     __dev_crt_ctx.count = __cw_ioctl_nr_devs; // 设备数量
     __dev_crt_ctx.name = CW_DEV_NAME;
-    __dev_crt_ctx.cls_name = "misc";
     __dev_crt_ctx.fops = &__ioctl_dev_fops;
     __dev_crt_ctx.name_fmt = CW_DEV_NAME_FMT;
     __dev_crt_ctx.dev_priv_data = NULL;
@@ -324,10 +332,8 @@ static int32_t __init cw_ioctl_test_init(void)
 
     // 创建 sysfile
     for (i = 0; i < __cw_ioctl_nr_devs; i++) {
-        device_create_file(__dev_crt_ctx.devs[i].device,
-                           &dev_attr_cw_ioctl_dev_debug_level);
-        device_create_file(__dev_crt_ctx.devs[i].device,
-                           &dev_attr_cw_ioctl_dev_pgoff);
+        device_create_file(__dev_crt_ctx.devs[i].device, &dev_attr_cw_thrdlist);
+        device_create_file(__dev_crt_ctx.devs[i].device, &dev_attr_cw_tasklist);
     }
     pr_info(MODULE_TAG " init successfully!\n");
     return 0;
@@ -341,10 +347,8 @@ static void __exit cw_ioctl_test_exit(void)
 {
     uint32_t i = 0;
     for (; i < __dev_crt_ctx.count; i++) {
-        device_remove_file(__dev_crt_ctx.devs[i].device,
-                           &dev_attr_cw_ioctl_dev_debug_level);
-        device_remove_file(__dev_crt_ctx.devs[i].device,
-                           &dev_attr_cw_ioctl_dev_pgoff);
+        device_remove_file(__dev_crt_ctx.devs[i].device, &dev_attr_cw_thrdlist);
+        device_remove_file(__dev_crt_ctx.devs[i].device, &dev_attr_cw_tasklist);
     }
     module_destroy_cdevs(&__dev_crt_ctx);
     for (i = 0; i < __dev_crt_ctx.count; i++) {

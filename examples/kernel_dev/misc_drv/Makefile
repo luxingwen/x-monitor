@@ -2,14 +2,13 @@
 ifneq ($(KERNELRELEASE),)
 
 EXTRA_CFLAGS += -I$(src)
-obj-m += cw_dev_ioctl_test.o
-cw_dev_ioctl_test-y = dev_ioctl_test.o ../kutils/cdev_ctx.o ../kutils/tasks_show.o
+obj-m += misc_drv_test.o
 
 else # ifneq($(KERNELRELEASE),) # 否则，说明是用户直接调用 make 命令
 
 CUR_DIR := $(shell pwd)
-EXTRA_CFLAGS += -I$(src) -g -DDEBUG -Werror -Wno-sign-compare -I$(CUR_DIR)/../kutils
-DRIVER := cw_dev_ioctl_test
+EXTRA_CFLAGS += -I$(src) -g -DDEBUG -Werror -Wno-sign-compare
+DRIVER := misc_drv_test
 
 ifneq ($(MAKECMDGOALS),help)
 include ../common.mk
